@@ -1,0 +1,411 @@
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Navigation from './components/Navigation';
+
+// Existing components
+import Home from './components/Home';
+import Dashboard from './components/Dashboard';
+
+// Import other existing components you have
+import Login from './components/Login';
+import Settings from './components/Settings';
+import PromptBuilder from './components/PromptBuilder';
+import Analytics from './components/Analytics';
+
+// Placeholder components for missing pages
+const PlaceholderPage = ({ title, description }: { title: string; description: string }) => (
+  <div className="min-h-screen bg-gray-50">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">{title}</h1>
+        <p className="text-xl text-gray-600 mb-8">{description}</p>
+        <div className="bg-white rounded-lg shadow p-8 max-w-2xl mx-auto">
+          <p className="text-gray-500">This page is under development.</p>
+          <p className="text-sm text-gray-400 mt-2">Coming soon...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Layout wrapper for pages that need navigation
+const Layout = ({ children, user, onAuthAction }: { 
+  children: React.ReactNode; 
+  user?: any; 
+  onAuthAction?: (action: 'login' | 'signup' | 'logout') => void;
+}) => (
+  <div className="min-h-screen bg-gray-50">
+    <Navigation user={user} onAuthAction={onAuthAction} />
+    {children}
+  </div>
+);
+
+function App() {
+  // Mock user state - replace with real auth later
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const handleAuthAction = (action: 'login' | 'signup' | 'logout') => {
+    switch (action) {
+      case 'login':
+        // Navigate to login or handle login
+        window.location.href = '/login';
+        break;
+      case 'signup':
+        // Navigate to signup or handle signup
+        window.location.href = '/signup';
+        break;
+      case 'logout':
+        setUser(null);
+        setIsAuthenticated(false);
+        window.location.href = '/';
+        break;
+    }
+  };
+
+  // Protected Route wrapper
+  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+    if (!isAuthenticated) {
+      return <Navigate to="/login" replace />;
+    }
+    return <>{children}</>;
+  };
+
+  return (
+    <Router>
+      <div className="App">
+        <Routes>
+          {/* Home page - no navigation wrapper since it has its own */}
+          <Route path="/" element={<Home />} />
+          
+          {/* Auth routes */}
+          <Route 
+            path="/login" 
+            element={<Login onLogin={(userData) => {
+              setUser(userData);
+              setIsAuthenticated(true);
+            }} />} 
+          />
+          <Route 
+            path="/signup" 
+            element={
+              <PlaceholderPage 
+                title="Sign Up" 
+                description="Create your SmartPromptIQ account" 
+              />
+            } 
+          />
+
+          {/* Dashboard */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <Dashboard />
+              </Layout>
+            } 
+          />
+
+          {/* Prompt Studio routes */}
+          <Route 
+            path="/prompt-studio/composer" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <ProtectedRoute>
+                  <PromptBuilder />
+                </ProtectedRoute>
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/prompt-studio/saved" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Saved Prompts" 
+                  description="Manage your saved prompt templates" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/prompt-studio/templates" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Tags & Templates" 
+                  description="Organize your prompts with tags and templates" 
+                />
+              </Layout>
+            } 
+          />
+
+          {/* Context Lab routes */}
+          <Route 
+            path="/context-lab/creator" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Context Creator" 
+                  description="Create and manage context for your prompts" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/context-lab/stacks" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Context Stacks" 
+                  description="Layer multiple contexts for complex scenarios" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/context-lab/preview" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Preview & Test" 
+                  description="Test your contexts before deployment" 
+                />
+              </Layout>
+            } 
+          />
+
+          {/* Workflows routes */}
+          <Route 
+            path="/workflows/automation" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Automation Flows" 
+                  description="Create automated prompt workflows" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/workflows/scheduler" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Task Scheduler" 
+                  description="Schedule automated tasks and workflows" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/workflows/dependencies" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Dependencies" 
+                  description="Manage workflow dependencies and connections" 
+                />
+              </Layout>
+            } 
+          />
+
+          {/* Marketplace routes */}
+          <Route 
+            path="/marketplace/prompts" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Prompt Packs" 
+                  description="Browse and purchase professional prompt packs" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/marketplace/contexts" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Context Modules" 
+                  description="Discover reusable context modules" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/marketplace/licensing" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Licensing Opportunities" 
+                  description="License your prompts and contexts to others" 
+                />
+              </Layout>
+            } 
+          />
+
+          {/* Analytics */}
+          <Route 
+            path="/analytics" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <ProtectedRoute>
+                  <Analytics />
+                </ProtectedRoute>
+              </Layout>
+            } 
+          />
+
+          {/* Settings routes */}
+          <Route 
+            path="/settings" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/settings/branding" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Branding Settings" 
+                  description="Customize your brand appearance" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/settings/api" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="API Keys" 
+                  description="Manage your API keys and integrations" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/settings/integration" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Domain & Integration" 
+                  description="Configure domain settings and integrations" 
+                />
+              </Layout>
+            } 
+          />
+
+          {/* Help & Docs routes */}
+          <Route 
+            path="/help/tutorials" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Tutorials" 
+                  description="Learn how to use SmartPromptIQ effectively" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/help/docs" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Developer Documentation" 
+                  description="Technical documentation and API references" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/help/faq" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Frequently Asked Questions" 
+                  description="Find answers to common questions" 
+                />
+              </Layout>
+            } 
+          />
+
+          {/* Profile */}
+          <Route 
+            path="/profile" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <ProtectedRoute>
+                  <PlaceholderPage 
+                    title="Profile" 
+                    description="Manage your account information and preferences" 
+                  />
+                </ProtectedRoute>
+              </Layout>
+            } 
+          />
+
+          {/* Quick Actions */}
+          <Route 
+            path="/notifications" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Notifications" 
+                  description="View your recent notifications and updates" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/recent" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Recent Sessions" 
+                  description="View your recent prompt sessions and activity" 
+                />
+              </Layout>
+            } 
+          />
+          <Route 
+            path="/deploy" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <PlaceholderPage 
+                  title="Deploy Status" 
+                  description="Monitor deployment status and build logs" 
+                />
+              </Layout>
+            } 
+          />
+
+          {/* Catch all route */}
+          <Route 
+            path="*" 
+            element={
+              <Layout user={user} onAuthAction={handleAuthAction}>
+                <div className="min-h-screen flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold text-gray-900 mb-4">404 - Page Not Found</h1>
+                    <p className="text-gray-600 mb-8">The page you're looking for doesn't exist.</p>
+                    <a href="/" className="text-blue-600 hover:text-blue-800">Go back home</a>
+                  </div>
+                </div>
+              </Layout>
+            } 
+          />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
+
+export default App;

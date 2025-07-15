@@ -1,0 +1,12 @@
+﻿<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" rx="6" fill="white"/>
+  <path
+    d="M6 9C4 8 4 10 6 12C4 13 4 15 6 16C4 17 4 19 6 20C7 21 9 21 10 20C11 21 13 21 14 20C15 21 17 21 18 20C19 19 19 17 18 16C19 15 19 13 18 12C19 10 19 8 18 9C17 8 15 8 14 9C13 8 11 8 10 9C9 8 7 8 6 9Z"
+    fill="#E879B9"
+    stroke="#E879B9"
+    strokeWidth="0.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  />
+  <line x1="12" y1="9" x2="12" y2="20" stroke="#E879B9" strokeWidth="0.8" strokeLinecap="round"/>
+</svg>
