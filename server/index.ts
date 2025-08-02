@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ensureDatabaseSetup, closeDatabaseConnection } from './db';
@@ -21,7 +21,7 @@ app.get('/api/test', (req, res) => {
 
 // *** NEW SUGGESTIONS ENDPOINTS ***
 app.get('/api/suggestions/personalized', (req, res) => {
-  try {
+  try { console.log("?? Handling personalized suggestion request");
     const { category } = req.query;
     
     const suggestions = [
@@ -57,11 +57,11 @@ app.get('/api/suggestions/personalized', (req, res) => {
       }
     ];
 
-    console.log(`📡 Suggestions requested for category: ${category}`);
+    console.log(`?? Suggestions requested for category: ${category}`);
     res.json({ suggestions });
   } catch (error) {
     console.error('Error getting suggestions:', error);
-    res.status(500).json({ error: 'Failed to get suggestions' });
+    console.error("? Error getting suggestions:", error);
   }
 });
 
@@ -80,7 +80,7 @@ app.get('/api/suggestions/trending', (req, res) => {
       }
     ];
 
-    console.log('📈 Trending suggestions requested');
+    console.log('?? Trending suggestions requested');
     res.json({ suggestions });
   } catch (error) {
     res.status(500).json({ error: 'Failed to get trending suggestions' });
@@ -90,26 +90,305 @@ app.get('/api/suggestions/trending', (req, res) => {
 app.post('/api/suggestions/interaction', (req, res) => {
   try {
     const { suggestionId, action } = req.body;
-    console.log(`👤 User ${action} suggestion ${suggestionId}`);
+    console.log(`?? User ${action} suggestion ${suggestionId}`);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to record interaction' });
   }
 });
 
+// *** EDUCATION ENDPOINTS ***
+app.post('/api/education/course-creation', (req, res) => {
+  try {
+    const data = req.body;
+    console.log('?? Course creation request:', data);
+    const result = {
+      id: Date.now().toString(),
+      type: 'course_creation',
+      title: `Course: ${data.courseName || 'Educational Course'}`,
+      description: `Comprehensive course design for ${data.subject || 'learning'}`,
+      subject: data.subject || 'General',
+      targetAudience: data.targetAudience || 'Students',
+      modules: [
+        'Introduction and Fundamentals',
+        'Core Concepts and Theory',
+        'Practical Applications',
+        'Advanced Topics',
+        'Final Project and Assessment'
+      ],
+      objectives: data.learningObjectives ? data.learningObjectives : [
+        'Understand key concepts',
+        'Apply practical skills',
+        'Analyze real-world scenarios'
+      ],
+      activities: [
+        'Interactive lectures and discussions',
+        'Hands-on exercises and labs',
+        'Group projects and collaboration',
+        'Case study analysis'
+      ],
+      assessments: data.assessmentMethods ? data.assessmentMethods : [
+        'Quizzes and tests',
+        'Project deliverables',
+        'Peer evaluations'
+      ],
+      resources: [
+        'Course textbook and readings',
+        'Online resources and tutorials',
+        'Software tools and platforms',
+        'Community forums and support'
+      ],
+      timeline: data.duration || '8 weeks',
+      difficulty: 'Intermediate',
+      recommendations: [
+        'Schedule regular study sessions',
+        'Engage with peer discussions',
+        'Practice concepts through exercises',
+        'Seek help when needed'
+      ],
+      generatedAt: new Date().toISOString()
+    };
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate course' });
+  }
+});
+
+app.post('/api/education/skill-development', (req, res) => {
+  try {
+    const data = req.body;
+    console.log('?? Skill development request:', data);
+    const result = {
+      id: Date.now().toString(),
+      type: 'skill_development',
+      title: `Skill Development: ${data.skillName || 'Professional Skills'}`,
+      description: `Personalized learning path for ${data.skillName || 'skill development'}`,
+      subject: data.skillName || 'Professional Development',
+      targetAudience: `${data.currentLevel || 'Beginner'} to ${data.targetLevel || 'Advanced'} learners`,
+      modules: [
+        'Foundation and Assessment',
+        'Core Skill Building',
+        'Advanced Techniques',
+        'Real-world Application',
+        'Mastery and Certification'
+      ],
+      objectives: [
+        `Progress from ${data.currentLevel || 'current'} to ${data.targetLevel || 'target'} level`,
+        'Build practical competency',
+        'Apply skills in real scenarios',
+        'Achieve measurable improvement'
+      ],
+      activities: [
+        'Skill assessment and benchmarking',
+        'Structured practice sessions',
+        'Mentorship and feedback',
+        'Project-based learning'
+      ],
+      assessments: [
+        'Initial skill assessment',
+        'Progress checkpoints',
+        'Practical demonstrations',
+        'Final competency evaluation'
+      ],
+      resources: [
+        'Learning materials and guides',
+        'Practice environments',
+        'Expert mentorship',
+        'Community support groups'
+      ],
+      timeline: data.timeframe || '3-6 months',
+      difficulty: data.targetLevel || 'Intermediate',
+      recommendations: [
+        'Set clear milestones',
+        'Practice consistently',
+        'Seek feedback regularly',
+        'Track progress systematically'
+      ],
+      generatedAt: new Date().toISOString()
+    };
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate skill development plan' });
+  }
+});
+
+app.post('/api/education/research-insights', (req, res) => {
+  try {
+    const data = req.body;
+    console.log('?? Research insights request:', data);
+    const result = {
+      id: Date.now().toString(),
+      type: 'research_insights',
+      title: `Research: ${data.researchTopic || 'Academic Research'}`,
+      description: `Data analysis framework for ${data.researchTopic || 'research project'}`,
+      subject: data.researchTopic || 'Research Methodology',
+      targetAudience: data.stakeholders || 'Research team',
+      modules: [
+        'Research Design and Planning',
+        'Data Collection Methods',
+        'Analysis and Processing',
+        'Interpretation and Insights',
+        'Reporting and Presentation'
+      ],
+      objectives: data.analysisGoals ? data.analysisGoals : [
+        'Collect reliable data',
+        'Analyze patterns and trends',
+        'Generate actionable insights',
+        'Present findings effectively'
+      ],
+      activities: [
+        'Literature review and planning',
+        'Data collection and validation',
+        'Statistical analysis',
+        'Insight generation and validation'
+      ],
+      assessments: [
+        'Research proposal review',
+        'Data quality assessment',
+        'Analysis methodology evaluation',
+        'Final report and presentation'
+      ],
+      resources: [
+        'Research databases and tools',
+        'Statistical software packages',
+        'Expert consultation',
+        'Academic literature access'
+      ],
+      timeline: data.timeline || '2-3 months',
+      difficulty: 'Advanced',
+      recommendations: [
+        'Define clear research questions',
+        'Use appropriate methodologies',
+        'Validate findings thoroughly',
+        'Present results clearly'
+      ],
+      generatedAt: new Date().toISOString()
+    };
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate research insights' });
+  }
+});
+
+app.post('/api/education/skill-development', (req, res) => {
+  try {
+    const data = req.body;
+    console.log('?? Skill development request:', data);
+    const result = {
+      id: Date.now().toString(),
+      title: `Skill Development: ${data.skillArea || 'Professional Skills'}`,
+      prompt: `Develop a plan for learning ${data.skillArea} at ${data.currentLevel} level`,
+      generatedAt: new Date().toISOString()
+    };
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate skill development plan' });
+  }
+});
+
+app.post('/api/education/research-insights', (req, res) => {
+  try {
+    const data = req.body;
+    console.log('?? Research insights request:', data);
+    const result = {
+      id: Date.now().toString(),
+      title: `Research: ${data.researchTopic || 'Academic Research'}`,
+      prompt: `Conduct research on ${data.researchTopic} focusing on ${data.researchScope}`,
+      generatedAt: new Date().toISOString()
+    };
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate research insights' });
+  }
+// *** EDUCATION ENDPOINTS ***
+
+
+app.post('/api/education/research-insights', (req, res) => {
+  try {
+    const data = req.body;
+    console.log('?? Research insights request:', data);
+    const result = {
+      id: Date.now().toString(),
+      type: 'research_insights',
+      title: `Research: ${data.researchTopic || 'Academic Research'}`,
+      description: `Data analysis framework for ${data.researchTopic || 'research project'}`,
+      subject: data.researchTopic || 'Research Methodology',
+      targetAudience: data.stakeholders || 'Research team',
+      modules: [
+        'Research Design and Planning',
+        'Data Collection Methods',
+        'Analysis and Processing',
+        'Interpretation and Insights',
+        'Reporting and Presentation'
+      ],
+      objectives: data.analysisGoals ? data.analysisGoals : [
+        'Collect reliable data',
+        'Analyze patterns and trends',
+        'Generate actionable insights',
+        'Present findings effectively'
+      ],
+      activities: [
+        'Literature review and planning',
+        'Data collection and validation',
+        'Statistical analysis',
+        'Insight generation and validation'
+      ],
+      assessments: [
+        'Research proposal review',
+        'Data quality assessment',
+        'Analysis methodology evaluation',
+        'Final report and presentation'
+      ],
+      resources: [
+        'Research databases and tools',
+        'Statistical software packages',
+        'Expert consultation',
+        'Academic literature access'
+      ],
+      timeline: data.timeline || '2-3 months',
+      difficulty: 'Advanced',
+      recommendations: [
+        'Define clear research questions',
+        'Use appropriate methodologies',
+        'Validate findings thoroughly',
+        'Present results clearly'
+      ],
+      generatedAt: new Date().toISOString()
+    };
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate research insights' });
+app.post('/api/education/research-insights', (req, res) => {
+  try {
+    const data = req.body;
+    console.log('?? Research insights request:', data);
+    const result = {
+      id: Date.now().toString(),
+      title: `Research: ${data.researchTopic || 'Academic Research'}`,
+      prompt: `Conduct research on ${data.researchTopic} focusing on ${data.researchScope}`,
+      generatedAt: new Date().toISOString()
+    };
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate research insights' });
+  }
+}); 
+ }
+});
+});
 async function startServer() {
   try {
-    console.log('🔄 Connecting to database...');
+    console.log('?? Connecting to database...');
     await ensureDatabaseSetup();
-    console.log('✅ Database connected successfully at:', new Date().toISOString());
-    console.log('📦 Database setup complete');
+    console.log('? Database connected successfully at:', new Date().toISOString());
+    console.log('?? Database setup complete');
     
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📡 API available at http://localhost:${PORT}/api`);
+      console.log(`?? Server running on http://localhost:${PORT}`);
+      console.log(`?? API available at http://localhost:${PORT}/api`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('? Failed to start server:', error);
     process.exit(1);
   }
 }
@@ -127,3 +406,7 @@ process.on('SIGINT', async () => {
 });
 
 startServer();
+import socialCampaignRoutes from './routes/marketing/socialCampaign';
+app.use('/api/marketing', socialCampaignRoutes);
+import suggestionsRoutes from "./routes/suggestions";
+app.use("/api/suggestions", suggestionsRoutes);

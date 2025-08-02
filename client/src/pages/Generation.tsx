@@ -1,290 +1,103 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import Navigation from "@/components/Navigation";
-import BackButton from "@/components/BackButton";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { apiRequest } from "@/lib/queryClient";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Copy, Save, Plus, Loader2 } from "lucide-react";
-import PromptCustomizer from "@/components/PromptCustomizer";
-import PromptRefinement from "@/components/PromptRefinement";
-import QuickSuggestions from "@/components/QuickSuggestions";
+import { useEffect, useState } from "react";
+
+interface Suggestion {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  prompt: string;
+  tags: string[];
+  relevanceScore: number;
+  estimatedTokens: number;
+}
+
+const categories = ["marketing", "content", "business", "technical", "education"];
 
 export default function Generation() {
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [generatedContent, setGeneratedContent] = useState<string>("");
-  const [customization, setCustomization] = useState({
-    tone: "professional",
-    detailLevel: "comprehensive", 
-    format: "structured"
-  });
-  const [promptTitle, setPromptTitle] = useState("");
+  const [category, setCategory] = useState("marketing");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const questionnaireData = JSON.parse(sessionStorage.getItem("questionnaire") || "{}");
+  const fetchSuggestions = async (selectedCategory: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(\`/api/suggestions/personalized?category=\${selectedCategory}\`);
+      const data = await response.json();
+      setSuggestions(data.suggestions);
+    } catch (err) {
+      setError("Failed to load suggestions.");
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendInteraction = async (id: string, action: "like" | "dislike") => {
+    try {
+      await fetch("/api/suggestions/interaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ suggestionId: id, action })
+      });
+      console.log(\`Interaction recorded: \${action} on \${id}\`);
+    } catch (err) {
+      console.error("Interaction error:", err);
+    }
+  };
 
   useEffect(() => {
-    if (!questionnaireData.category || !questionnaireData.responses) {
-      setLocation("/categories");
-    }
-  }, [questionnaireData, setLocation]);
-
-  const generateMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/generate-prompt", {
-        category: questionnaireData.category,
-        answers: questionnaireData.responses,
-        customization
-      });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      setGeneratedContent(data.prompt);
-      setPromptTitle(`${questionnaireData.category.charAt(0).toUpperCase() + questionnaireData.category.slice(1)} Strategy Prompt`);
-    },
-    onError: (error) => {
-      toast({
-        title: "Generation Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/prompts", {
-        title: promptTitle,
-        content: generatedContent,
-        category: questionnaireData.category,
-        questionnaire: questionnaireData.responses,
-        customization: customization,
-        isFavorite: false
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Prompt Saved",
-        description: "Your prompt has been saved to your dashboard",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      setLocation("/dashboard");
-    },
-    onError: (error) => {
-      toast({
-        title: "Save Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(generatedContent);
-    toast({
-      title: "Copied!",
-      description: "Prompt copied to clipboard",
-    });
-  };
-
-  const handleSave = () => {
-    if (!promptTitle.trim()) {
-      toast({
-        title: "Title Required",
-        description: "Please enter a title for your prompt",
-        variant: "destructive",
-      });
-      return;
-    }
-    saveMutation.mutate();
-  };
-
-  const handleCreateAnother = () => {
-    sessionStorage.removeItem("questionnaire");
-    setLocation("/categories");
-  };
-
-  if (!questionnaireData.category) {
-    return null;
-  }
+    fetchSuggestions(category);
+  }, [category]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navigation />
-      
-      <section className="py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <BackButton />
-          <div className="text-center mb-12">
-            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="text-white text-2xl" size={32} />
+    <div className="p-6">
+      <h1 className="text-3xl font-bold mb-4">Smart Suggestions</h1>
+
+      <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+        Select Category:
+      </label>
+      <select
+        id="category"
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        className="mb-6 p-2 border border-gray-300 rounded-md"
+      >
+        {categories.map((cat) => (
+          <option key={cat} value={cat}>
+            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+          </option>
+        ))}
+      </select>
+
+      {loading && <p>Loading suggestions...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {suggestions.map((s) => (
+          <div key={s.id} className="bg-white shadow-md rounded-xl p-5 border border-gray-200">
+            <h2 className="text-xl font-semibold text-blue-700">{s.title}</h2>
+            <p className="text-gray-700 mb-2">{s.description}</p>
+            <div className="text-sm text-gray-500 mb-1">Prompt: <em>{s.prompt}</em></div>
+            <div className="text-xs text-gray-400 mb-2">Tags: {s.tags.join(", ")}</div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => sendInteraction(s.id, "like")}
+                className="px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
+              >
+                ?? Like
+              </button>
+              <button
+                onClick={() => sendInteraction(s.id, "dislike")}
+                className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700"
+              >
+                ?? Dislike
+              </button>
             </div>
-            <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              {generateMutation.isPending ? "Generating Your Custom Prompt" : "Your Generated Prompt"}
-            </h2>
-            <p className="text-xl text-slate-600">
-              {generateMutation.isPending 
-                ? "Our AI is analyzing your responses to create the perfect prompt..."
-                : "Review and customize your AI-generated prompt below"
-              }
-            </p>
           </div>
-
-          {generateMutation.isPending ? (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center space-x-2 text-indigo-600 text-lg font-medium">
-                <Loader2 className="animate-spin" size={24} />
-                <span>Processing...</span>
-              </div>
-              <div className="mt-6 max-w-2xl mx-auto">
-                <div className="bg-slate-100 rounded-full h-2">
-                  <div className="bg-gradient-to-r from-indigo-500 to-violet-500 h-2 rounded-full w-3/4 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-          ) : generatedContent ? (
-            <div>
-              <Card className="bg-slate-900 mb-8">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <input
-                      type="text"
-                      value={promptTitle}
-                      onChange={(e) => setPromptTitle(e.target.value)}
-                      className="bg-transparent text-white font-semibold text-lg border-none outline-none flex-1"
-                      placeholder="Enter prompt title..."
-                    />
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCopy}
-                        className="text-slate-400 hover:text-white"
-                      >
-                        <Copy size={16} />
-                      </Button>
-                    </div>
-                  </div>
-                  <Textarea
-                    value={generatedContent}
-                    onChange={(e) => setGeneratedContent(e.target.value)}
-                    className="min-h-[400px] bg-slate-800 border-slate-700 text-green-400 font-mono text-sm leading-relaxed resize-none"
-                  />
-                </CardContent>
-              </Card>
-
-              <PromptRefinement
-                currentPrompt={generatedContent}
-                onPromptUpdate={setGeneratedContent}
-                category={questionnaireData.category}
-                originalAnswers={questionnaireData.responses}
-              />
-
-              <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
-                <Button
-                  onClick={handleSave}
-                  disabled={saveMutation.isPending}
-                  className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white"
-                >
-                  {saveMutation.isPending ? (
-                    <>
-                      <Loader2 className="animate-spin mr-2" size={16} />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2" size={16} />
-                      Save to Dashboard
-                    </>
-                  )}
-                </Button>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleCreateAnother}
-                    className="w-full sm:w-auto"
-                  >
-                    <Plus className="mr-2" size={16} />
-                    Create Another
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setLocation("/dashboard")}
-                    className="w-full sm:w-auto"
-                  >
-                    View Dashboard
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="grid lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-1">
-                <PromptCustomizer 
-                  customization={customization}
-                  onChange={setCustomization}
-                />
-              </div>
-              
-              <div className="lg:col-span-1">
-                <Card className="generation-card">
-                  <CardContent className="p-6">
-                    <div className="text-center space-y-6">
-                      <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-full flex items-center justify-center mx-auto">
-                        <Sparkles className="text-indigo-600" size={32} />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                          Ready to Generate
-                        </h3>
-                        <p className="text-slate-600 mb-6">
-                          Click below to create your customized AI prompt based on your questionnaire responses and preferences.
-                        </p>
-                      </div>
-                      <Button
-                        onClick={() => generateMutation.mutate()}
-                        disabled={generateMutation.isPending}
-                        size="lg"
-                        className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white"
-                      >
-                        {generateMutation.isPending ? (
-                          <>
-                            <Loader2 className="animate-spin mr-2" size={20} />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="mr-2" size={20} />
-                            Generate AI Prompt
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <div className="lg:col-span-1">
-                <QuickSuggestions 
-                  category={questionnaireData.category}
-                  maxSuggestions={6}
-                  onSelectSuggestion={(suggestion) => {
-                    setGeneratedContent(suggestion.prompt);
-                    setPromptTitle(suggestion.title);
-                  }}
-                  compact={true}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
+        ))}
+      </div>
     </div>
   );
 }

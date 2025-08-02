@@ -5,6 +5,13 @@ import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 
+import authRoutes from './routes/auth';
+import userRoutes from './routes/users';
+import projectRoutes from './routes/projects';
+import billingRoutes from './routes/billing';
+import teamRoutes from './routes/teams';
+import generationRoutes from './routes/generations';
+
 dotenv.config();
 
 const app = express();
@@ -32,14 +39,17 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    message: 'Backend server is running successfully!'
+    success: true,
+    message: 'Backend is healthy',
+    timestamp: new Date().toISOString()
   });
 });
 
-// Basic API info endpoint
+// API info
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
 app.get('/api', (req, res) => {
   res.json({
     message: 'SmartPromptIQ Pro Backend API',
@@ -51,6 +61,14 @@ app.get('/api', (req, res) => {
     }
   });
 });
+
+// Mount API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/billing', billingRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/generations', generationRoutes);
 
 // Catch all for unmatched routes
 app.use('*', (req, res) => {
@@ -67,7 +85,7 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
   res.status(500).json({
     success: false,
     message: 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    error: process.env.NODE_ENV === 'development' ? error.message : undefined
   });
 });
 

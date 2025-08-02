@@ -1,4 +1,6 @@
-﻿services:
+﻿version: "3.9"
+
+services:
   postgres:
     image: postgres:16-alpine
     container_name: smartpromptiq-db
@@ -15,6 +17,17 @@
       interval: 10s
       timeout: 5s
       retries: 5
+
+  backend:
+    build:
+      context: ./backend  # ← make sure this matches your backend folder
+    container_name: smartpromptiq-backend
+    ports:
+      - "3001:5000"
+    environment:
+      DATABASE_URL: postgres://postgres:localdev123@postgres:5432/smartpromptiq
+    depends_on:
+      - postgres
 
 volumes:
   postgres_data:

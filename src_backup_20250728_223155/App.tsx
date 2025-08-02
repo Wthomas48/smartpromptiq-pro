@@ -1,9 +1,11 @@
-﻿import { Switch, Route } from "wouter";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+
+// Import all pages
 import Home from "@/pages/Home";
 import Categories from "@/pages/Categories";
 import Questionnaire from "@/pages/Questionnaire";
@@ -30,14 +32,19 @@ import ProjectStatus from "@/pages/ProjectStatus";
 import StripeKeyManager from "@/pages/StripeKeyManager";
 import NotFound from "@/pages/not-found";
 
-function Router() {
+// IMPORTANT: This component uses useAuth, so it MUST be inside AuthProvider
+function AppRouter() {
+  console.log("AppRouter component loaded - NEW VERSION");
   const { isAuthenticated, isLoading } = useAuth();
-  
+
   return (
     <Switch>
+      {/* Public routes - always accessible */}
       <Route path="/demo" component={Demo} />
       <Route path="/starter-project" component={StarterProject} />
       <Route path="/stripe-keys" component={StripeKeyManager} />
+
+      {/* Authentication-based routing */}
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Home} />
       ) : (
@@ -62,22 +69,27 @@ function Router() {
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/custom-questionnaire" component={CustomQuestionnaire} />
           <Route path="/documentation" component={Documentation} />
-          <Route path="/starter-project" component={StarterProject} />
           <Route path="/project-status/:id" component={ProjectStatus} />
         </>
       )}
+
+      {/* 404 fallback */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+// Main App component - NO useAuth here!
 function App() {
+  console.log("App component loaded - NEW VERSION");
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <AppRouter />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

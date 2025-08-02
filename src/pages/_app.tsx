@@ -1,14 +1,10 @@
-import AIModelIntegrationDemo from "@/pages/AIModelIntegrationDemo";
-import BackendTest from "./pages/BackendTest";
-import { Switch, Route } from "wouter";
+﻿import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuth, AuthProvider } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/Home";
-import SignIn from "@/pages/SignIn";
-import Register from "@/pages/Register";
 import Categories from "@/pages/Categories";
 import Questionnaire from "@/pages/Questionnaire";
 import Generation from "@/pages/Generation";
@@ -31,49 +27,26 @@ import Documentation from "@/pages/Documentation";
 import Demo from "@/pages/Demo";
 import StarterProject from "@/pages/StarterProject";
 import ProjectStatus from "@/pages/ProjectStatus";
-import { StripeKeyManager } from "@/pages/StripeKeyManager";
+import StripeKeyManager from "@/pages/StripeKeyManager";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  console.log("?? APP ROUTER - isAuth:", isAuthenticated, "isLoading:", isLoading);
-
   return (
     <Switch>
-      {/* Always available routes */}
-            <Route path="/demo" component={Demo} />
+      <Route path="/demo" component={Demo} />
       <Route path="/starter-project" component={StarterProject} />
       <Route path="/stripe-keys" component={StripeKeyManager} />
-      
-      {/* Test route */}
-      <Route path="/test">
-        {() => <div style={{backgroundColor: "green", color: "white", padding: "20px"}}>TEST WORKS!</div>}
-      </Route>
-      
-      {/* Authentication-based routing */}
-      {!isAuthenticated ? (
-       
- <>
-          {/* Public routes */}
-          <Route path="/" component={Home} />
-          <Route path="/signin" component={SignIn} />
-          <Route path="/register" component={Register} />
-        </>
+      {isLoading || !isAuthenticated ? (
+        <Route path="/" component={Home} />
       ) : (
         <>
-          {/* Protected routes */}
-         {/* Always available routes */}
-<Route path="/demo" component={Demo} />
-<Route path="/starter-project" component={StarterProject} />
-<Route path="/stripe-keys" component={StripeKeyManager} />
-<Route path="/backend-test" component={BackendTest} />
-         <Route path="/" component={Dashboard} />
-          <Route path="/signin" component={Dashboard} />
-          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/" component={Dashboard} />
           <Route path="/categories" component={Categories} />
           <Route path="/questionnaire/:category" component={Questionnaire} />
           <Route path="/generation" component={Generation} />
+          <Route path="/dashboard" component={Dashboard} />
           <Route path="/teams" component={Teams} />
           <Route path="/templates" component={Templates} />
           <Route path="/billing" component={Billing} />
@@ -87,15 +60,12 @@ function Router() {
           <Route path="/realtime-suggestions" component={RealTimeSuggestionsDemo} />
           <Route path="/feedback-analytics" component={FeedbackAnalyticsDemo} />
           <Route path="/admin" component={AdminDashboard} />
-         <Route path="/ai-demo" component={AIModelIntegrationDemo} />
-
- <Route path="/custom-questionnaire" component={CustomQuestionnaire} />
+          <Route path="/custom-questionnaire" component={CustomQuestionnaire} />
           <Route path="/documentation" component={Documentation} />
+          <Route path="/starter-project" component={StarterProject} />
           <Route path="/project-status/:id" component={ProjectStatus} />
         </>
       )}
-      
-      {/* 404 fallback */}
       <Route component={NotFound} />
     </Switch>
   );
@@ -104,15 +74,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }
 
 export default App;
-

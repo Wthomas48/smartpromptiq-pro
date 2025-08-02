@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
 }
 
 datasource db {
@@ -18,23 +19,23 @@ model User {
   role      String   @default("USER")
   plan      String   @default("FREE")
   
-  stripeCustomerId    String?
+  stripeCustomerId     String?
   stripeSubscriptionId String?
   subscriptionStatus   String?
   subscriptionEndDate  DateTime?
   
-  generationsUsed     Int @default(0)
-  generationsLimit    Int @default(10)
+  generationsUsed  Int @default(0)
+  generationsLimit Int @default(10)
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   lastLogin DateTime?
   
-  teams         TeamMember[]
-  projects      Project[]
-  generations   Generation[]
-  analytics     Analytics[]
-  templates     Template[]
+  teams       TeamMember[]
+  projects    Project[]
+  generations Generation[]
+  analytics   Analytics[]
+  templates   Template[]
   
   @@map("users")
 }
@@ -48,8 +49,8 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  members   TeamMember[]
-  projects  Project[]
+  members  TeamMember[]
+  projects Project[]
   
   @@map("teams")
 }
@@ -76,8 +77,8 @@ model Project {
   category    String
   status      String   @default("ACTIVE")
   
-  settings    String?
-  metadata    String?
+  settings String?
+  metadata String?
   
   userId String
   teamId String?
@@ -97,15 +98,14 @@ model Generation {
   projectId String
   userId    String
   
-  prompt      String
-  response    String
-  model       String
-  category    String
-  
-  tokenCount  Int?
-  cost        Float?
-  quality     Int?
-  metadata    String?
+  prompt     String
+  response   String
+  model      String
+  category   String
+  tokenCount Int?
+  cost       Float?
+  quality    Int?
+  metadata   String?
   
   createdAt DateTime @default(now())
   
@@ -140,10 +140,10 @@ model Analytics {
   id     String   @id @default(cuid())
   userId String
   
-  event      String
-  category   String
-  value      Float?
-  metadata   String?
+  event    String
+  category String
+  value    Float?
+  metadata String?
   
   timestamp DateTime @default(now())
   

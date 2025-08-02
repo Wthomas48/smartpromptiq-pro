@@ -1,166 +1,114 @@
-﻿import React, { useState, useEffect, createContext, useContext } from "react";
-import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 
 interface User {
   id: string;
   email: string;
-  firstName?: string;
-  lastName?: string;
-  profileImageUrl?: string;
-  subscriptionTier?: string;
-  tokenBalance?: number;
-  stripeCustomerId?: string;
-  subscriptionStatus?: string;
+  name: string;
+  role: 'user' | 'admin';
 }
 
 interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: User | null;
-  token: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  checkAuth: () => Promise<void>;
-  updateTokenBalance: (newBalance: number) => void;
+  register: (email: string, password: string, name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const checkAuth = async () => {
-    try {
-      setIsLoading(true);
-      console.log("Checking auth...");
-
-      // Check for auth token in localStorage
-      const storedToken = localStorage.getItem("token");
-      const storedUser = localStorage.getItem("user");
-      
-      if (storedToken && storedUser) {
-        // For demo mode, just use the stored data
-        const userData = JSON.parse(storedUser);
-        setUser(userData);
-        setToken(storedToken);
-        setIsAuthenticated(true);
-        console.log("User authenticated:", userData);
-      } else {
-        console.log("No token found");
-        setIsAuthenticated(false);
-        setUser(null);
-        setToken(null);
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          setUser({
+            id: '1',
+            email: 'demo@example.com',
+            name: 'Demo User',
+            role: 'user'
+          });
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setIsLoading(false);
       }
+    };
+
+    checkAuth();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockUser = {
+        id: '1',
+        email,
+        name: 'Demo User',
+        role: 'user' as const
+      };
+      
+      setUser(mockUser);
+      localStorage.setItem('auth_token', 'mock_token');
     } catch (error) {
-      console.error("Auth check failed:", error);
-      setIsAuthenticated(false);
-      setUser(null);
-      setToken(null);
+      throw new Error('Login failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Check for auth token on mount
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const login = async (email: string, password: string) => {
+  const register = async (email: string, password: string, name: string) => {
+    setIsLoading(true);
     try {
-      // Demo mode - accept any credentials
-      const userData = {
-        id: "demo-user-" + Date.now(),
-        email: email,
-        firstName: email.split("@")[0],
-        lastName: "User",
-        subscriptionTier: "free",
-        tokenBalance: 10
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockUser = {
+        id: '1',
+        email,
+        name,
+        role: 'user' as const
       };
       
-      const demoToken = "demo-token-" + Date.now();
-      
-      // Store token and user data
-      localStorage.setItem("token", demoToken);
-      localStorage.setItem("user", JSON.stringify(userData));
-      
-      setToken(demoToken);
-      setUser(userData);
-      setIsAuthenticated(true);
-
-      toast({
-        title: "Welcome back!",
-        description: `Signed in as ${userData.firstName}`,
-      });
-
-      // Redirect to dashboard
-      setLocation("/dashboard");
-    } catch (error: any) {
-      console.error("Login failed:", error);
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      // Clear local state
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      setIsAuthenticated(false);
-      setUser(null);
-      setToken(null);
-
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
-
-      // Redirect to home
-      setLocation("/");
+      setUser(mockUser);
+      localStorage.setItem('auth_token', 'mock_token');
     } catch (error) {
-      console.error("Logout failed:", error);
+      throw new Error('Registration failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const updateTokenBalance = (newBalance: number) => {
-    if (user) {
-      const updatedUser = { ...user, tokenBalance: newBalance };
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-    }
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('auth_token');
   };
 
   return (
     <AuthContext.Provider value={{
-      isAuthenticated,
-      isLoading,
       user,
-      token,
+      isAuthenticated: !!user,
+      isLoading,
       login,
       logout,
-      checkAuth,
-      updateTokenBalance
+      register
     }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
