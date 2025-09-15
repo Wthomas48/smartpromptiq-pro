@@ -6,7 +6,7 @@ import { apiRequest } from '@/lib/queryClient';
 import Navigation from '@/components/Navigation';
 import PricingCard from '@/components/pricing/PricingCard';
 import TokenPurchase from '@/components/pricing/TokenPurchase';
-import UsageTracker from '@/components/pricing/UsageTracker';
+import UsageTracker from '@/components/UsageTracker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

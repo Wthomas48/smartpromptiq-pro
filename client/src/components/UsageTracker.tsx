@@ -22,6 +22,50 @@ interface UsageStats {
   tier: string;
 }
 
+interface UsageData {
+  tokenBalance: number;
+  subscriptionTier: string;
+  monthlyUsage: {
+    used: number;
+    limit: number;
+    percentage: number;
+    resetDate: string;
+  };
+  rateLimits: {
+    usage: { hourly: number; daily: number };
+    remaining: { hourly: number; daily: number };
+    limits: { hourly: number; daily: number };
+  };
+  realTimeStats: {
+    promptsToday: number;
+    tokensUsed: number;
+    apiCalls: number;
+    lastActivity: string | null;
+  };
+}
+
+interface UsageBreakdown {
+  categories: Array<{
+    category: string;
+    count: number;
+    tokens: number;
+    cost: number;
+  }>;
+  dailyUsage: Array<{
+    date: string;
+    prompts: number;
+    tokens: number;
+    cost: number;
+  }>;
+}
+
+interface UsageTrackerProps {
+  usage?: UsageData;
+  breakdown?: UsageBreakdown;
+  onRefresh?: () => void;
+  onUpgrade?: () => void;
+}
+
 // Mock data for demo
 const mockUsageStats: UsageStats = {
   daily: { used: 47, limit: 100, remaining: 53 },
@@ -29,7 +73,7 @@ const mockUsageStats: UsageStats = {
   tier: "pro"
 };
 
-export default function UsageTracker() {
+export default function UsageTracker({ usage, breakdown, onRefresh, onUpgrade }: UsageTrackerProps = {}) {
   const [usageStats] = useState<UsageStats>(mockUsageStats);
   const [isLoading] = useState(false);
   const [error] = useState(null);
@@ -221,9 +265,9 @@ export default function UsageTracker() {
         <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
           <h4 className="font-medium mb-2">?? Save on usage:</h4>
           <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-            <li>• Similar prompts may be served from cache</li>
-            <li>• Use templates to reduce generation time</li>
-            <li>• Refine existing prompts instead of starting over</li>
+            <li>ï¿½ Similar prompts may be served from cache</li>
+            <li>ï¿½ Use templates to reduce generation time</li>
+            <li>ï¿½ Refine existing prompts instead of starting over</li>
           </ul>
         </div>
       </CardContent>
