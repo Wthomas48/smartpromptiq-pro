@@ -35,7 +35,10 @@
       "Bash(start \"\" \"http://localhost:5173\")",
       "Bash(start \"\" \"http://localhost:5173/team-dashboard\")",
       "Bash(start \"\" \"http://localhost:5173/dashboard\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(railway status:*)"
     ],
     "deny": [],
     "ask": []
