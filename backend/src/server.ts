@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { connectDatabase } from './config/database';
 
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
@@ -11,6 +12,14 @@ import projectRoutes from './routes/projects';
 import billingRoutes from './routes/billing';
 import teamRoutes from './routes/teams';
 import generationRoutes from './routes/generations';
+import promptRoutes from './routes/prompts';
+import generateRoutes from './routes/generate';
+import cacheRoutes from './routes/cache';
+import templateRoutes from './routes/templates';
+import suggestionRoutes from './routes/suggestions';
+import feedbackRoutes from './routes/feedback';
+import adminRoutes from './routes/admin';
+import customCategoryRoutes from './routes/custom-categories';
 
 dotenv.config();
 
@@ -23,7 +32,7 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -69,6 +78,14 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/generations', generationRoutes);
+app.use('/api/prompts', promptRoutes);
+app.use('/api/cache', cacheRoutes);
+app.use('/api/templates', templateRoutes);
+app.use('/api/suggestions', suggestionRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/custom-categories', customCategoryRoutes);
+app.use('/api', generateRoutes);
 
 // Catch all for unmatched routes
 app.use('*', (req, res) => {
@@ -90,12 +107,15 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
   console.log(`🔗 Health Check: http://localhost:${PORT}/health`);
   console.log(`🔗 API Info: http://localhost:${PORT}/api`);
+
+  // Connect to database
+  await connectDatabase();
 });
 
 export default app;

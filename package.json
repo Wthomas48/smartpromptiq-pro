@@ -5,10 +5,10 @@
     "type": "commonjs",
     "scripts": {
         "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-        "dev:server": "tsx watch server/index.ts",
+        "dev:server": "cd backend && node simple-server.js",
         "dev:client": "cd client && npm run dev",
         "build:client": "cd client && npm run build",
-        "install:all": "npm install && cd client && npm install",
+        "install:all": "npm install && cd client && npm install && cd ../backend && npm install",
         "db:generate": "drizzle-kit generate",
         "db:push": "drizzle-kit push",
         "db:migrate": "drizzle-kit migrate",

@@ -31,7 +31,11 @@ const suggestedRefinements = [
  "Make the tone more conversational",
  "Add timeline and milestones",
  "Include success metrics and KPIs",
- "Simplify for non-technical stakeholders"
+ "Simplify for non-technical stakeholders",
+ "Add real-world examples and case studies",
+ "Include budget considerations and cost analysis",
+ "Focus on quick wins and immediate actions",
+ "Add competitive analysis and differentiation"
 ];
 
 export default function PromptRefinement({ 
@@ -44,6 +48,7 @@ export default function PromptRefinement({
  const [refinementQuery, setRefinementQuery] = useState("");
  const [refinementHistory, setRefinementHistory] = useState<RefinementHistory[]>([]);
  const [isExpanded, setIsExpanded] = useState(false);
+ const [lastRefinement, setLastRefinement] = useState<string>("");
 
  const refineMutation = useMutation({
    mutationFn: async (query: string) => {
@@ -60,17 +65,18 @@ export default function PromptRefinement({
      const newHistory: RefinementHistory = {
        id: Date.now().toString(),
        question: refinementQuery,
-       response: data.refinedPrompt,
+       response: data.data.refinedPrompt,
        timestamp: new Date()
      };
      
      setRefinementHistory(prev => [...prev, newHistory]);
-     onPromptUpdate(data.refinedPrompt);
+     onPromptUpdate(data.data.refinedPrompt);
+     setLastRefinement(refinementQuery);
      setRefinementQuery("");
      
      toast({
-       title: "Prompt Refined",
-       description: "Your prompt has been updated based on your feedback",
+       title: "Prompt Refined Successfully!",
+       description: `Applied: "${data.data.refinementApplied}"`,
      });
    },
    onError: (error) => {
@@ -89,6 +95,22 @@ export default function PromptRefinement({
  const handleRefine = () => {
    if (!refinementQuery.trim()) return;
    refineMutation.mutate(refinementQuery);
+ };
+
+ const handleKeyPress = (e: React.KeyboardEvent) => {
+   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+     e.preventDefault();
+     handleRefine();
+   }
+ };
+
+ const clearHistory = () => {
+   setRefinementHistory([]);
+   setLastRefinement("");
+   toast({
+     title: "History Cleared",
+     description: "Refinement history has been reset",
+   });
  };
 
  return (
@@ -114,10 +136,20 @@ export default function PromptRefinement({
          {/* Refinement History */}
          {refinementHistory.length > 0 && (
            <div className="space-y-4">
-             <h4 className="font-medium text-slate-900 flex items-center">
-               <MessageCircle size={16} className="mr-2" />
-               Refinement History
-             </h4>
+             <div className="flex items-center justify-between">
+               <h4 className="font-medium text-slate-900 flex items-center">
+                 <MessageCircle size={16} className="mr-2" />
+                 Refinement History
+               </h4>
+               <Button
+                 variant="ghost"
+                 size="sm"
+                 onClick={clearHistory}
+                 className="text-xs text-slate-500 hover:text-slate-700"
+               >
+                 Clear
+               </Button>
+             </div>
              <div className="space-y-3 max-h-40 overflow-y-auto">
                {refinementHistory.map((item) => (
                  <div key={item.id} className="bg-slate-50 rounded-lg p-3">
@@ -161,7 +193,8 @@ export default function PromptRefinement({
            <Textarea
              value={refinementQuery}
              onChange={(e) => setRefinementQuery(e.target.value)}
-             placeholder="Describe how you'd like to improve this prompt..."
+             onKeyDown={handleKeyPress}
+             placeholder="Describe how you'd like to improve this prompt... (Ctrl+Enter to refine)"
              className="min-h-[80px] resize-none"
            />
            <Button
@@ -183,13 +216,32 @@ export default function PromptRefinement({
            </Button>
          </div>
 
+         {/* Last Refinement Applied */}
+         {lastRefinement && (
+           <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+             <div className="flex items-center text-sm">
+               <Sparkles className="w-4 h-4 text-green-600 mr-2" />
+               <span className="text-green-800 font-medium">Last applied: </span>
+               <span className="text-green-700 ml-1">"{lastRefinement}"</span>
+             </div>
+           </div>
+         )}
+
          {/* Stats */}
          <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-4">
-           <div className="flex items-center justify-between text-sm">
-             <span className="text-slate-600">Refinements Applied:</span>
-             <Badge variant="secondary" className="bg-violet-100 text-violet-800">
-               {refinementHistory.length}
-             </Badge>
+           <div className="grid grid-cols-2 gap-4 text-sm">
+             <div className="flex items-center justify-between">
+               <span className="text-slate-600">Refinements:</span>
+               <Badge variant="secondary" className="bg-violet-100 text-violet-800">
+                 {refinementHistory.length}
+               </Badge>
+             </div>
+             <div className="flex items-center justify-between">
+               <span className="text-slate-600">Prompt Length:</span>
+               <Badge variant="outline" className="text-slate-700">
+                 {currentPrompt.length} chars
+               </Badge>
+             </div>
            </div>
          </div>
        </CardContent>

@@ -2,19 +2,55 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, Trash2, Copy, ExternalLink } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import type { Prompt } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+
+// Mock Prompt type definition
+interface Prompt {
+  id: number;
+  title: string;
+  description?: string;
+  content: string;
+  category: string;
+  isFavorite: boolean;
+  createdAt: string;
+  tags?: string[];
+  status?: string;
+  quality?: number;
+}
 
 interface PromptCardProps {
   prompt: Prompt;
   onToggleFavorite: (id: number) => void;
   onDelete: (id: number) => void;
+  onView: (prompt: Prompt) => void;
 }
 
-export default function PromptCard({ prompt, onToggleFavorite, onDelete }: PromptCardProps) {
-  const handleCopy = () => {
-    navigator.clipboard.writeText(prompt.content);
-    // You can add a toast notification here
+export default function PromptCard({ prompt, onToggleFavorite, onDelete, onView }: PromptCardProps) {
+  const { toast } = useToast();
+
+  // Safety check to prevent undefined errors
+  if (!prompt) {
+    return null;
+  }
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt.content || '');
+      toast({
+        title: "Copied to clipboard! 📋",
+        description: `"${prompt.title}" content copied successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy to clipboard. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleView = () => {
+    onView(prompt);
   };
 
   return (
@@ -23,10 +59,10 @@ export default function PromptCard({ prompt, onToggleFavorite, onDelete }: Promp
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <h3 className="font-semibold text-lg text-gray-900 line-clamp-1">
-              {prompt.title}
+              {prompt.title || 'Untitled Prompt'}
             </h3>
             <p className="text-sm text-gray-500 mt-1">
-              {formatDistanceToNow(new Date(prompt.createdAt), { addSuffix: true })}
+              {prompt.createdAt ? new Date(prompt.createdAt).toLocaleDateString() : 'No date'}
             </p>
           </div>
           <Button
@@ -55,7 +91,7 @@ export default function PromptCard({ prompt, onToggleFavorite, onDelete }: Promp
             <Copy size={16} className="mr-1" />
             Copy
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleView}>
             <ExternalLink size={16} className="mr-1" />
             View
           </Button>

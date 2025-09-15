@@ -1,2 +1,0 @@
-console.log("FRESH main.tsx - " + Date.now());
-document.getElementById('root').innerHTML = '<h1>Direct DOM Test - No React</h1><p>Timestamp: ' + new Date() + '</p>';

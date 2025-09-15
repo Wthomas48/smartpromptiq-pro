@@ -1,19 +1,16 @@
 import React from 'react';
+import BrainLogo from './BrainLogo';
 
 interface LogoProps {
   size?: number;
   className?: string;
+  animate?: boolean;
 }
 
-const Logo: React.FC<LogoProps> = ({ size = 24, className = "" }) => {
+const Logo: React.FC<LogoProps> = ({ size = 24, className = "", animate = false }) => {
   return (
-    <div 
-      className={`bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center ${className}`}
-      style={{ width: size, height: size }}
-    >
-      <span className="text-white font-bold" style={{ fontSize: size * 0.6 }}>
-        S
-      </span>
+    <div className={`flex items-center justify-center ${className}`}>
+      <BrainLogo size={size} animate={animate} />
     </div>
   );
 };

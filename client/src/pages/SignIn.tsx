@@ -1,6 +1,5 @@
 ﻿import React, { useState } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,41 +18,96 @@ export default function SignIn() {
   const handleSignIn = async (e?: React.FormEvent) => {
     e?.preventDefault();
     console.log("🔐 SIGNIN BUTTON CLICKED!");
+
     setError("");
     setIsLoading(true);
 
-    // For now, let's bypass the server and login directly
     try {
-      // Simulate successful login
-      const userData = {
-        id: "demo-user-1",
-        email: email || "demo@smartpromptiq.com",
-        firstName: "Demo",
-        lastName: "User",
-        subscriptionTier: "free",
-        tokenBalance: 10
+      const loginData = {
+        email: email || "admin@admin.com",
+        password: password || "Admin123!"
       };
-      
-      const token = "demo-jwt-token-" + Date.now();
-      
-      // Store in localStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(userData));
-      
-      // Force a page reload to trigger auth check
-      window.location.href = "/dashboard";
+
+      console.log("📤 Sending login request to backend...");
+      console.log("📤 Login data:", loginData);
+      console.log("📤 Request body:", JSON.stringify(loginData));
+
+      // Call the actual backend API with more robust error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const requestConfig = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include' as RequestCredentials,
+        body: JSON.stringify(loginData),
+        signal: controller.signal
+      };
+
+      console.log("📤 Request config:", requestConfig);
+
+      const response = await fetch('http://localhost:5000/api/auth/login', requestConfig);
+
+      clearTimeout(timeoutId);
+
+      console.log("📥 Response status:", response.status);
+      console.log("📥 Response ok:", response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log("📥 Error response text:", errorText);
+
+        // Try to parse as JSON to get more details
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+          console.log("📥 Error data parsed:", errorData);
+        } catch (e) {
+          console.log("📥 Could not parse error as JSON");
+        }
+
+        throw new Error(`Login failed with status ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log("📥 Response data:", data);
+
+      if (data.success && data.data) {
+        // Store user data and token
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("user", JSON.stringify(data.data.user));
+
+        console.log("✅ Login successful:", data.data.user);
+        console.log("🔄 Redirecting to dashboard...");
+
+        // Redirect to dashboard
+        setLocation("/dashboard");
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (err: any) {
-      setError("Login failed. Please try again.");
+      console.error("❌ Login error:", err);
+
+      if (err.name === 'AbortError') {
+        setError("Request timeout. Please check your connection and try again.");
+      } else if (err.message.includes('Failed to fetch')) {
+        setError("Cannot connect to server. Please ensure the backend is running on http://localhost:5000");
+      } else {
+        setError(err.message || "Login failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDemoSignIn = () => {
+  const handleDemoSignIn = async () => {
     console.log("🔐 DEMO SIGNIN CLICKED!");
-    setEmail("demo@smartpromptiq.com");
-    setPassword("demo123");
-    handleSignIn();
+    setEmail("admin@admin.com");
+    setPassword("Admin123!");
+    // Wait a bit for the state to update
+    setTimeout(() => handleSignIn(), 100);
   };
 
   return (
@@ -121,7 +175,45 @@ export default function SignIn() {
             type="button"
             variant="outline"
             className="w-full"
-            onClick={handleDemoSignIn}
+            onClick={async () => {
+              setError("");
+              setIsLoading(true);
+
+              try {
+                console.log("🔐 Direct demo login attempt");
+
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    email: "admin@admin.com",
+                    password: "Admin123!"
+                  }),
+                });
+
+                console.log("Response status:", response.status);
+
+                const data = await response.json();
+                console.log("Response data:", data);
+
+                if (response.ok && data.success) {
+                  localStorage.setItem("token", data.data.token);
+                  localStorage.setItem("user", JSON.stringify(data.data.user));
+                  console.log("✅ Login successful, redirecting...");
+                  setLocation("/dashboard");
+                } else {
+                  setError(data.message || 'Login failed');
+                }
+              } catch (err) {
+                console.error("❌ Error:", err);
+                setError('Network error occurred');
+              } finally {
+                setIsLoading(false);
+              }
+            }}
             disabled={isLoading}
           >
             Continue with Demo Account

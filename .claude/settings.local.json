@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(npm start)",
+      "Bash(npx ts-node:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(where convert)",
+      "Bash(copy:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx prisma:*)",
+      "Bash(move SavedTemplates.txs SavedTemplates.tsx)",
+      "WebSearch",
+      "Bash(move Templates.tsx Templates_OLD.tsx)",
+      "Bash(move Templates_Clean.tsx Templates.tsx)",
+      "Bash(grep:*)",
+      "Bash(npm run create-admin:*)",
+      "Bash(timeout 5s npm run dev)",
+      "Bash(find:*)",
+      "Bash(start \"\" \"test-login.html\")",
+      "Bash(start \"\" \"http://localhost:5173/signin\")",
+      "Bash(rg:*)",
+      "Bash(npx vite:*)",
+      "Bash(move Teams.tsx Teams_Broken.tsx)",
+      "Bash(move Teams_Clean.tsx Teams.tsx)",
+      "Bash(start \"\" \"http://localhost:5173/teams\")",
+      "Bash(start \"\" \"http://localhost:5173\")",
+      "Bash(start \"\" \"http://localhost:5173/team-dashboard\")",
+      "Bash(start \"\" \"http://localhost:5173/dashboard\")",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

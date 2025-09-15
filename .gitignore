@@ -174,3 +174,22 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+backend/prisma/dev.db*
+database.sqlite
+
+# Build outputs
+client/dist/
+backend/dist/
+
+# Deployment files
+.railway/
+.vercel/
+
+# Temporary files
+*.tmp
+*.temp

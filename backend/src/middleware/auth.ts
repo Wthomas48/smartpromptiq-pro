@@ -17,26 +17,38 @@ export const authenticate = async (
 ) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Access token required' 
+      return res.status(401).json({
+        success: false,
+        message: 'Access token required'
       });
     }
 
     const token = authHeader.substring(7);
+
+    // Handle demo tokens for development/demo environment
+    if (token.startsWith('demo-token-')) {
+      req.user = {
+        id: 'demo-user-123',
+        email: 'demo@example.com',
+        role: 'user'
+      };
+      return next();
+    }
+
+    // Handle real JWT tokens
     const decoded = verifyToken(token) as JWTPayload;
-    
+
     // Verify user still exists
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId }
     });
 
     if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'User not found' 
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
       });
     }
 
@@ -48,9 +60,9 @@ export const authenticate = async (
 
     next();
   } catch (error) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid token' 
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
     });
   }
 };

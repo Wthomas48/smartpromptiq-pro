@@ -2,7 +2,7 @@
 import { body, validationResult } from 'express-validator';
 import { hashPassword, comparePassword, validatePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
-import { authenticate } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
 
 const router = express.Router();
@@ -13,7 +13,7 @@ router.post('/register', [
   body('password').isLength({ min: 8 }),
   body('firstName').optional().trim().escape(),
   body('lastName').optional().trim().escape(),
-], async (req, res) => {
+], async (req: express.Request, res: express.Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -90,7 +90,7 @@ router.post('/register', [
 router.post('/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').notEmpty()
-], async (req, res) => {
+], async (req: express.Request, res: express.Response) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -103,12 +103,17 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
+    console.log('🔍 Login attempt:', { email, passwordLength: password?.length });
+
     // Find user
     const user = await prisma.user.findUnique({
       where: { email }
     });
 
+    console.log('👤 User found:', user ? `Yes (${user.email})` : 'No');
+
     if (!user) {
+      console.log('❌ User not found for email:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -116,8 +121,12 @@ router.post('/login', [
     }
 
     // Verify password
+    console.log('🔐 Comparing passwords...');
     const isPasswordValid = await comparePassword(password, user.password);
+    console.log('🔐 Password valid:', isPasswordValid);
+
     if (!isPasswordValid) {
+      console.log('❌ Password mismatch for user:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -157,7 +166,7 @@ router.post('/login', [
 });
 
 // Get current user
-router.get('/me', authenticate, async (req, res) => {
+router.get('/me', authenticate, async (req: AuthRequest, res: express.Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
