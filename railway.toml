@@ -1,8 +1,6 @@
 ﻿[build]
-builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
+builder = "DOCKERFILE"
 
 [deploy]
-startCommand = "node server.cjs"
 healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"
