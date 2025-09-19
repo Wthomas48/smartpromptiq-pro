@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
 import { connectDatabase } from './config/database';
 
 import authRoutes from './routes/auth';
@@ -97,6 +98,22 @@ app.use('/api/marketing', categoryRoutes);
 app.use('/api/education', categoryRoutes);
 app.use('/api/finance', categoryRoutes);
 app.use('/api/business', categoryRoutes);
+
+// Serve static files from client build
+const clientDistPath = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath));
+
+// SPA fallback - serve index.html for non-API routes
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({
+      success: false,
+      message: `API route ${req.originalUrl} not found`,
+      availableRoutes: ['/health', '/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/me', '/api/teams', '/api/billing/info', '/api/suggestions/personalized', '/api/generate-prompt', '/api/prompts']
+    });
+  }
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
 
 // Catch all for unmatched routes
 app.use('*', (req, res) => {
