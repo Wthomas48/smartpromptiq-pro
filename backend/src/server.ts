@@ -20,6 +20,9 @@ import suggestionRoutes from './routes/suggestions';
 import feedbackRoutes from './routes/feedback';
 import adminRoutes from './routes/admin';
 import customCategoryRoutes from './routes/custom-categories';
+import ratingRoutes from './routes/rating';
+import demoRoutes from './routes/demo';
+import categoryRoutes from './routes/categories';
 
 dotenv.config();
 
@@ -85,7 +88,15 @@ app.use('/api/suggestions', suggestionRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/custom-categories', customCategoryRoutes);
+app.use('/api/rating', ratingRoutes);
+app.use('/api/demo', demoRoutes);
 app.use('/api', generateRoutes);
+app.use('/api/personal', categoryRoutes);
+app.use('/api/product', categoryRoutes);
+app.use('/api/marketing', categoryRoutes);
+app.use('/api/education', categoryRoutes);
+app.use('/api/finance', categoryRoutes);
+app.use('/api/business', categoryRoutes);
 
 // Catch all for unmatched routes
 app.use('*', (req, res) => {

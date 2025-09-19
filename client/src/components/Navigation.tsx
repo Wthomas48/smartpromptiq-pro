@@ -1,17 +1,19 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users } from "lucide-react";
+import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Shield, Star } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Navigation() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isAdmin } = useAuth();
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const { showRating } = useRatingSystemContext();
   
   
   // Mobile menu state
@@ -26,17 +28,30 @@ export default function Navigation() {
     logout();
   };
 
+  const handleGiveFeedback = () => {
+    showRating({
+      type: 'manual',
+      context: {
+        page: location,
+        userInitiated: true,
+        timestamp: Date.now()
+      },
+      category: 'general',
+      priority: 'medium'
+    });
+  };
+
 
   // Navigation items for better organization
   const mainNavItems = [
     { href: "/dashboard", label: "Dashboard", icon: null, badge: null },
     { href: "/teams", label: "Teams 🚀", icon: Users, badge: "4 Active", special: true },
-    { href: "/templates", label: "Templates", icon: null, badge: null },
     { href: "/categories", label: "Create New", icon: null, badge: null },
     { href: "/documentation", label: "Docs", icon: null, badge: null }
   ];
 
   const categoryNavItems = [
+    { href: "/templates", label: "All Templates" },
     { href: "/marketing", label: "Marketing" },
     { href: "/product-development", label: "Product Development" },
     { href: "/financial-planning", label: "Financial Planning" },
@@ -109,9 +124,17 @@ export default function Navigation() {
           )}
 
           <div className="flex items-center space-x-3">
+            {/* Token Balance Indicator */}
+            {isAuthenticated && (
+              <div className="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2 rounded-lg border border-indigo-200">
+                <Coins className="w-4 h-4 text-indigo-600" />
+                <span className="text-sm font-medium text-indigo-700">47 tokens</span>
+              </div>
+            )}
+
             {/* Theme Toggle */}
             <ThemeToggle />
-            
+
             {/* Mobile menu button */}
             {isAuthenticated && (
               <button
@@ -136,6 +159,12 @@ export default function Navigation() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border shadow-lg">
                   <DropdownMenuItem asChild>
+                    <Link href="/tokens" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <Coins className="w-4 h-4 mr-2 text-indigo-600" />
+                      Manage Tokens
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/billing" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
                       <CreditCard className="w-4 h-4 mr-2" />
                       Billing & Subscription
@@ -148,7 +177,39 @@ export default function Navigation() {
                       Account Settings
                     </Link>
                   </DropdownMenuItem>
-                  
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem
+                    onClick={() => showRating({
+                      type: 'manual',
+                      context: { source: 'navigation_menu' },
+                      category: 'general',
+                      priority: 'medium'
+                    })}
+                    className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Star className="w-4 h-4 mr-2 text-yellow-500" />
+                    Rate App Performance
+                  </DropdownMenuItem>
+
+                  {isAdmin() && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <Shield className="w-4 h-4 mr-2 text-amber-600" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuItem
+                    onClick={handleGiveFeedback}
+                    className="cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <Heart className="w-4 h-4 mr-2 text-red-500" />
+                    Give Feedback
+                  </DropdownMenuItem>
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     onClick={handleLogout}

@@ -67,6 +67,12 @@ export default function PricingPage() {
     const tier = urlParams.get('upgrade');
     const feature = urlParams.get('feature');
     const template = urlParams.get('template');
+    const tab = urlParams.get('tab');
+
+    // Set active tab if specified
+    if (tab && ['subscriptions', 'tokens', 'usage'].includes(tab)) {
+      setActiveTab(tab);
+    }
 
     if (tier || feature || template) {
       setUpgradeContext({ tier, feature, template });
@@ -121,8 +127,10 @@ export default function PricingPage() {
       price: billingCycle === 'yearly' ? 14990 : 1499, // $149.90/year or $14.99/month
       billingCycle: billingCycle,
       popular: true,
+      badge: 'Most Popular',
+      buttonLabel: 'Choose Plan',
       features: [
-        '200 prompts/month',
+        '200 AI prompts per month',
         'All categories',
         'Email support',
         'Templates',
@@ -145,10 +153,10 @@ export default function PricingPage() {
       id: 'pro',
       name: 'Pro',
       description: 'Perfect for teams and power users',
-      price: billingCycle === 'yearly' ? 49990 : 4999, // $499.90/year or $49.99/month
+      price: billingCycle === 'yearly' ? 49900 : 4999, // $499/year or $49.99/month
       billingCycle: billingCycle,
       features: [
-        '1,000 prompts/month',
+        '1,000 AI prompts/month',
         'Priority support',
         'Advanced analytics',
         'Team collaboration',
@@ -171,10 +179,10 @@ export default function PricingPage() {
       id: 'business',
       name: 'Business',
       description: 'Designed for growing businesses',
-      price: billingCycle === 'yearly' ? 149990 : 14999, // $1,499.90/year or $149.99/month
+      price: billingCycle === 'yearly' ? 149900 : 14999, // $1,499/year or $149.99/month
       billingCycle: billingCycle,
       features: [
-        '5,000 prompts/month',
+        '5,000 AI prompts/month',
         '24/7 support',
         'Custom categories',
         'White-label options',

@@ -252,3 +252,5 @@ Write-Host "2. Run 'npm install' to ensure all dependencies are installed" -Fore
 Write-Host "3. Run 'npm run dev' to start the development server" -ForegroundColor White
 Write-Host "4. Test the application in your browser at http://localhost:3000" -ForegroundColor White
 Write-Host "5. Complete the manual testing checklist" -ForegroundColor White
+
+

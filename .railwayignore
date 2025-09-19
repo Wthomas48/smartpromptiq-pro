@@ -1,0 +1,13 @@
+# Prevent Railway from using root-level files that could cause build conflicts
+/index.html.backup
+/vite.config.ts
+/tsconfig.json
+/tsconfig.node.json
+
+# Only use client directory for frontend builds
+!/client/
+!/backend/
+!/nixpacks.toml
+!/railway.toml
+!/package.json
+!/.npmrc

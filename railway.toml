@@ -1,14 +1,8 @@
-[build]
-builder = "nixpacks"
+﻿[build]
+builder = "NIXPACKS"
+buildCommand = "npm ci && npm --prefix client ci && npm --prefix client run build"
 
 [deploy]
-startCommand = "cd backend && node simple-server.js"
+startCommand = "node server.cjs"
 healthcheckPath = "/health"
-healthcheckTimeout = 300
-restartPolicyType = "always"
-
-[environments.production]
-variables = {}
-
-[environments.staging]
-variables = {}
+restartPolicyType = "ON_FAILURE"

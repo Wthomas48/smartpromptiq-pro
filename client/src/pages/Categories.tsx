@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import Navigation from '@/components/Navigation';
 import BackButton from '@/components/BackButton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import RequestCustomCategory from '@/components/RequestCustomCategory';
@@ -174,8 +173,6 @@ export default function Categories() {
         <div className="absolute top-3/4 right-1/4 w-64 h-64 bg-blue-200/20 rounded-full blur-2xl animate-bounce" style={{ animationDelay: '1s' }}></div>
         <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-pink-200/20 rounded-full blur-xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
-      
-      <Navigation />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 pt-4">
         <BackButton />
@@ -347,15 +344,31 @@ export default function Categories() {
                   </ul>
                 </div>
 
-                {/* Action Button */}
-                <Link href={`/questionnaire/${category.id}`}>
-                  <Button className={`w-full bg-gradient-to-r ${category.gradient} hover:shadow-lg transition-all duration-300 transform hover:scale-105 border-0 text-white font-medium py-3`}>
-                    <span className="flex items-center justify-center gap-2">
-                      Start AI Journey
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </Button>
-                </Link>
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <Link href={`/questionnaire/${category.id}`}>
+                    <Button className={`w-full bg-gradient-to-r ${category.gradient} hover:shadow-lg transition-all duration-300 transform hover:scale-105 border-0 text-white font-medium py-3`}>
+                      <span className="flex items-center justify-center gap-2">
+                        Start AI Journey
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </Button>
+                  </Link>
+
+                  <div className="flex space-x-2">
+                    <Link href="/register" className="flex-1">
+                      <Button variant="outline" className="w-full border-2 border-green-200 text-green-700 hover:bg-green-50 font-medium py-2.5">
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Create Free Account
+                      </Button>
+                    </Link>
+                    <Link href="/demo" className="flex-1">
+                      <Button variant="outline" className="w-full border-2 border-blue-200 text-blue-700 hover:bg-blue-50 font-medium py-2.5">
+                        Try Demo
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}

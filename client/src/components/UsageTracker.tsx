@@ -67,18 +67,18 @@ interface UsageTrackerProps {
 }
 
 // Mock data for demo
-const mockUsageStats: UsageStats = {
-  daily: { used: 47, limit: 100, remaining: 53 },
-  monthly: { used: 285, limit: 1000, remaining: 715 },
-  tier: "pro"
+const deprecatedMockUsageStats: UsageStats = {
+  daily: { used: 8, limit: 50, remaining: 42 },
+  monthly: { used: 150, limit: 200, remaining: 50 },
+  tier: "starter"
 };
 
 export default function UsageTracker({ usage, breakdown, onRefresh, onUpgrade }: UsageTrackerProps = {}) {
-  const [usageStats] = useState<UsageStats>(mockUsageStats);
+  const [usageStats] = useState<UsageStats>(deprecatedMockUsageStats);
   const [isLoading] = useState(false);
   const [error] = useState(null);
 
-  console.log("?? UsageTracker loaded with mock data:", usageStats);
+  console.log("?? UsageTracker loaded with usage data:", usageStats);
 
   if (isLoading) {
     return (
@@ -234,8 +234,8 @@ export default function UsageTracker({ usage, breakdown, onRefresh, onUpgrade }:
               {usageStats.tier === 'free' && (
                 <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div>
-                    <div className="font-medium text-blue-900 dark:text-blue-100">Pro Plan</div>
-                    <div className="text-sm text-blue-700 dark:text-blue-300">100 prompts/day, 1000/month</div>
+                    <div className="font-medium text-blue-900 dark:text-blue-100">Starter Plan</div>
+                    <div className="text-sm text-blue-700 dark:text-blue-300">50 prompts/day, 200/month</div>
                   </div>
                   <Link href="/billing">
                     <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
@@ -244,11 +244,24 @@ export default function UsageTracker({ usage, breakdown, onRefresh, onUpgrade }:
                   </Link>
                 </div>
               )}
-              {usageStats.tier === 'pro' && (
+              {(usageStats.tier === 'free' || usageStats.tier === 'starter') && (
+                <div className="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                  <div>
+                    <div className="font-medium text-indigo-900 dark:text-indigo-100">Pro Plan</div>
+                    <div className="text-sm text-indigo-700 dark:text-indigo-300">200 prompts/day, 1000/month</div>
+                  </div>
+                  <Link href="/billing">
+                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+                      Upgrade
+                    </Button>
+                  </Link>
+                </div>
+              )}
+              {(usageStats.tier === 'free' || usageStats.tier === 'starter' || usageStats.tier === 'pro') && (
                 <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                   <div>
                     <div className="font-medium text-purple-900 dark:text-purple-100">Enterprise Plan</div>
-                    <div className="text-sm text-purple-700 dark:text-purple-300">1000 prompts/day, 10000/month</div>
+                    <div className="text-sm text-purple-700 dark:text-purple-300">Unlimited prompts</div>
                   </div>
                   <Link href="/billing">
                     <Button size="sm" className="bg-purple-600 hover:bg-purple-700">

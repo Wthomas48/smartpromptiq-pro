@@ -27,25 +27,25 @@ async function main() {
     }
   });
 
-  // Create demo user
-  const demoPassword = await hashPassword('Demo123!');
-  const demoUser = await prisma.user.upsert({
-    where: { email: 'demo@example.com' },
+  // Create test user for development
+  const testPassword = await hashPassword('Test123!');
+  const testUser = await prisma.user.upsert({
+    where: { email: 'test@smartpromptiq.com' },
     update: {},
     create: {
-      email: 'demo@example.com',
-      password: demoPassword,
-      firstName: 'Demo',
-      lastName: 'User',
+      email: 'test@smartpromptiq.com',
+      password: testPassword,
+      firstName: 'Alex',
+      lastName: 'Johnson',
       role: 'USER',
       plan: 'PRO',
-      generationsLimit: 500
+      generationsLimit: 1000
     }
   });
 
   console.log('✅ Database seeded successfully!');
   console.log('🔑 Admin user: admin@example.com / Admin123!');
-  console.log('🔑 Demo user: demo@example.com / Demo123!');
+  console.log('🔑 Test user: test@smartpromptiq.com / Test123!');
 }
 
 main()

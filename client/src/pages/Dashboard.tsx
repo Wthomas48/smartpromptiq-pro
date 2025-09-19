@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import Navigation from "@/components/Navigation";
+import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import PromptCard from "@/components/PromptCard";
 import TokenBalance from "@/components/TokenBalance";
 import UsageTracker from "@/components/UsageTracker";
@@ -24,6 +24,10 @@ import {
   Briefcase, DollarSign, GraduationCap, Layers, Coffee, Mic, Smile,
   PartyPopper, Gift, Sunrise, Music, Palette, Camera, Headphones, Trash2, Copy
 } from "lucide-react";
+import TierIndicator from "@/components/TierIndicator";
+import UpgradePrompt from "@/components/UpgradePrompt";
+import AdminDashboard from "@/components/AdminDashboard";
+import { useAuth } from "@/hooks/useAuth";
 
 // Mock data for development
 const mockStats = {
@@ -35,19 +39,64 @@ const mockStats = {
   avgResponseTime: "2.3s"
 };
 
-// Enhanced user data
-const currentUser = {
-  name: 'Alex Johnson',
-  role: 'Senior Product Manager',
-  avatar: '👨‍💼',
-  level: 'Expert',
-  streak: 12,
-  totalPoints: 4847,
-  monthlyGoal: 5000,
-  joinedDate: 'March 2024',
-  completionRate: 94,
-  qualityScore: 4.8
+// Get real user data from auth hook
+const getRealUserData = (user: any) => {
+  if (!user) {
+    return {
+      name: 'Demo User',
+      firstName: 'Demo',
+      role: '🎮 Demo Mode',
+      avatar: '🎭',
+      level: 'Demo Experience',
+      email: 'demo@example.com',
+      plan: 'DEMO'
+    };
+  }
+
+  const firstName = user.firstName || user.email.split('@')[0];
+  const fullName = user.firstName && user.lastName
+    ? `${user.firstName} ${user.lastName}`
+    : (user.firstName || firstName);
+
+  return {
+    name: fullName,
+    firstName: user.firstName || firstName,
+    role: user.role === 'ADMIN' ? '🚀 AI Prompt Master' : '✨ Creative Innovator',
+    avatar: getAvatarForPlan(user.plan),
+    level: getLevelFromPlan(user.plan),
+    email: user.email,
+    plan: user.plan || 'FREE',
+    tokenBalance: user.tokenBalance || 0,
+    generationsUsed: user.generationsUsed || 0,
+    generationsLimit: user.generationsLimit || 5,
+    joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'
+  };
 };
+
+const getAvatarForPlan = (plan: string) => {
+  const avatars = {
+    'FREE': '⭐',
+    'STARTER': '🚀',
+    'PRO': '💎',
+    'BUSINESS': '👑',
+    'ENTERPRISE': '🏆',
+    'DEMO': '🎭'
+  };
+  return avatars[plan as keyof typeof avatars] || '⭐';
+};
+
+const getLevelFromPlan = (plan: string) => {
+  const levels = {
+    'FREE': 'Getting Started',
+    'STARTER': 'Rising Star',
+    'PRO': 'Expert Creator',
+    'BUSINESS': 'Business Leader',
+    'ENTERPRISE': 'AI Master'
+  };
+  return levels[plan as keyof typeof levels] || 'Getting Started';
+};
+
+
 
 // Quick actions data
 const quickActions = [
@@ -139,62 +188,16 @@ const notifications = [
   { id: 4, type: 'reminder', message: 'Weekly team sync in 30 minutes', time: '4 hours ago', unread: false }
 ];
 
-// Mock prompts data
-const mockPrompts = [
-  {
-    id: 1,
-    title: "Comprehensive Business Plan Generator",
-    description: "Create detailed business plans with market analysis, financial projections, and strategic roadmaps",
-    category: "business",
-    isFavorite: true,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    content: "Generate a comprehensive business plan for...",
-    tags: ['Strategy', 'Analysis', 'Planning'],
-    status: 'completed',
-    quality: 4.8
-  },
-  {
-    id: 2,
-    title: "Creative Writing & Storytelling Prompt",
-    description: "Generate engaging story prompts and creative writing exercises for various genres",
-    category: "creative",
-    isFavorite: false,
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    content: "Write a compelling story about...",
-    tags: ['Creative', 'Writing', 'Fiction'],
-    status: 'draft',
-    quality: 4.5
-  },
-  {
-    id: 3,
-    title: "Technical Documentation Framework",
-    description: "Create clear, comprehensive technical documentation with best practices",
-    category: "technical",
-    isFavorite: true,
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    content: "Document the following technical process...",
-    tags: ['Documentation', 'Technical', 'Process'],
-    status: 'completed',
-    quality: 4.9
-  },
-  {
-    id: 4,
-    title: "Social Media Campaign Strategy",
-    description: "Develop engaging social media campaigns with content calendar and metrics",
-    category: "marketing",
-    isFavorite: true,
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    content: "Create a social media strategy for...",
-    tags: ['Social Media', 'Marketing', 'Engagement'],
-    status: 'in-progress',
-    quality: 4.7
-  }
-];
+// Enhanced User Data Hooks - Real-time fetching with React Query
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { trackFeatureUsage, trackMilestone } = useRatingSystemContext();
+  const { isAdmin, user } = useAuth();
+
+  // Component state
   const [filters, setFilters] = useState({
     category: "all",
     search: "",
@@ -208,32 +211,172 @@ export default function Dashboard() {
   const [promptToDelete, setPromptToDelete] = useState(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
-  // Handler functions for PromptCard
-  const handleToggleFavorite = (id: number) => {
-    // Find the current prompt
-    const prompt = mockPrompts.find(p => p.id === id);
-    if (prompt) {
-      // Toggle favorite status (this would typically be an API call)
-      const newStatus = !prompt.isFavorite;
-      prompt.isFavorite = newStatus;
+  // Real-time user data fetching with React Query
+  const {
+    data: promptsData,
+    isLoading: promptsLoading,
+    error: promptsError,
+    refetch: refetchPrompts
+  } = useQuery({
+    queryKey: ['/api/prompts', filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters.category !== 'all') params.append('category', filters.category);
+      if (filters.search) params.append('search', filters.search);
 
-      toast({
-        title: newStatus ? "Added to favorites! ⭐" : "Removed from favorites",
-        description: `"${prompt.title}" ${newStatus ? 'has been favorited' : 'removed from favorites'}`,
-      });
+      const response = await apiRequest('GET', `/api/prompts?${params.toString()}`);
+      return response.json();
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: true
+  });
 
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+  // User statistics with personalized data
+  const {
+    data: userStats,
+    isLoading: statsLoading
+  } = useQuery({
+    queryKey: ['/api/prompts/stats'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/prompts/stats');
+      return response.json();
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    refetchInterval: 1000 * 60 * 2 // Auto refresh every 2 minutes
+  });
+
+  // Recent activity with real user actions
+  const {
+    data: recentActivity,
+    isLoading: activityLoading
+  } = useQuery({
+    queryKey: ['/api/prompts/activity'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/prompts/activity');
+      return response.json();
+    },
+    staleTime: 1000 * 30, // 30 seconds
+    refetchInterval: 1000 * 60 // Refresh every minute
+  });
+
+  // User achievements and milestones
+  const {
+    data: achievements,
+    isLoading: achievementsLoading
+  } = useQuery({
+    queryKey: ['/api/prompts/achievements'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/prompts/achievements');
+      return response.json();
+    },
+    staleTime: 1000 * 60 * 10 // 10 minutes
+  });
+
+  // Real data or fallback
+  const prompts = promptsData?.data || [];
+  const stats = userStats?.data || {
+    totalPrompts: 0,
+    favoritePrompts: 0,
+    totalTokensUsed: 0,
+    avgQualityRating: 0,
+    promptsThisWeek: 0,
+    categoriesExplored: 0
+  };
+  const activity = recentActivity?.data || [];
+  const userAchievements = achievements?.data || [];
+
+  // Use real user data from authentication
+  const currentUser = getRealUserData(user);
+
+  // Personalized greeting based on time and user data
+  const getPersonalizedGreeting = () => {
+    const hour = new Date().getHours();
+    const firstName = currentUser.firstName;
+    const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+    if (prompts.length === 0) {
+      return `${timeGreeting}, ${firstName}! 🚀 Ready to create your first amazing prompt?`;
+    } else if (stats.promptsThisWeek > 5) {
+      return `${timeGreeting}, ${firstName}! 🔥 You're on fire this week with ${stats.promptsThisWeek} prompts!`;
+    } else {
+      return `${timeGreeting}, ${firstName}! ✨ Let's create something amazing today.`;
     }
   };
 
+  // Show admin dashboard for admin users
+  if (isAdmin()) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="container mx-auto px-4 py-8">
+          <AdminDashboard />
+        </div>
+      </div>
+    );
+  }
+
+  // Handler functions for PromptCard with real API calls
+  const handleToggleFavorite = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('PATCH', `/api/prompts/${id}/favorite`);
+      return response.json();
+    },
+    onSuccess: (data, id) => {
+      const prompt = prompts.find(p => p.id === id);
+      if (prompt) {
+        toast({
+          title: data.isFavorite ? "Added to favorites! ⭐" : "Removed from favorites",
+          description: `"${prompt.title}" ${data.isFavorite ? 'has been favorited' : 'removed from favorites'}`,
+        });
+      }
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/stats"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update favorite status",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleDeletePrompt = (id: number) => {
-    const prompt = mockPrompts.find(p => p.id === id);
+    const prompt = prompts.find(p => p.id === id);
     if (prompt) {
       setPromptToDelete(prompt);
       setShowDeleteDialog(true);
     }
   };
+
+  const deletePromptMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('DELETE', `/api/prompts/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      if (promptToDelete) {
+        toast({
+          title: "Prompt deleted successfully! 🗑️",
+          description: `"${promptToDelete.title}" has been removed`,
+        });
+      }
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/stats"] });
+      setShowDeleteDialog(false);
+      setPromptToDelete(null);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete prompt",
+        variant: "destructive"
+      });
+    }
+  });
 
   const handleViewPrompt = (prompt) => {
     setSelectedPrompt(prompt);
@@ -242,11 +385,8 @@ export default function Dashboard() {
 
   const confirmDelete = () => {
     if (promptToDelete) {
-      // Remove from mockPrompts array (this would typically be an API call)
-      const index = mockPrompts.findIndex(p => p.id === promptToDelete.id);
-      if (index > -1) {
-        mockPrompts.splice(index, 1);
-      }
+      // Real API call to delete prompt
+      deletePromptMutation.mutate(promptToDelete.id);
 
       toast({
         title: "Prompt deleted successfully! 🗑️",
@@ -261,41 +401,38 @@ export default function Dashboard() {
     }
   };
 
-  // Mock queries for development
-  const { data: stats } = useQuery({
-    queryKey: ["/api/stats"],
-    queryFn: async () => mockStats,
-  });
 
-  const { data: prompts = [], isLoading } = useQuery({
-    queryKey: ["/api/prompts", filters],
-    queryFn: async () => {
-      let filtered = mockPrompts;
+  // Filter prompts based on current filters
+  const getFilteredPrompts = () => {
+    let filtered = prompts;
       
-      if (filters.category && filters.category !== "all") {
-        filtered = filtered.filter(p => p.category === filters.category);
-      }
-      
-      if (filters.search) {
-        filtered = filtered.filter(p => 
-          p.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-          p.description.toLowerCase().includes(filters.search.toLowerCase())
-        );
-      }
-      
-      if (filters.favorites) {
-        filtered = filtered.filter(p => p.isFavorite);
-      }
-      
-      return filtered;
-    },
-  });
+    if (filters.category && filters.category !== "all") {
+      filtered = filtered.filter(p => p.category === filters.category);
+    }
+
+    if (filters.search) {
+      filtered = filtered.filter(p =>
+        p.title.toLowerCase().includes(filters.search.toLowerCase()) ||
+        p.description.toLowerCase().includes(filters.search.toLowerCase())
+      );
+    }
+
+    if (filters.favorites) {
+      filtered = filtered.filter(p => p.isFavorite);
+    }
+
+    return filtered;
+  };
+
+  const filteredPrompts = getFilteredPrompts();
 
   const handleCreateNew = () => {
     setLocation("/categories");
   };
 
   const handleQuickAction = (actionId: string) => {
+    // Track feature usage for rating system
+    trackFeatureUsage(`quick_action_${actionId}`, actionId);
     setLocation(`/questionnaire/${actionId}`);
   };
 
@@ -318,9 +455,7 @@ export default function Dashboard() {
         <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-gradient-to-r from-blue-200/20 to-cyan-200/20 rounded-full blur-xl animate-pulse" style={{ animationDelay: '2s' }}></div>
         <div className="absolute top-3/4 left-1/3 w-32 h-32 bg-gradient-to-r from-yellow-200/20 to-orange-200/20 rounded-full blur-lg animate-bounce" style={{ animationDelay: '3s' }}></div>
       </div>
-      
-      <Navigation />
-      
+
       <section className="py-8 relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
@@ -349,7 +484,7 @@ export default function Dashboard() {
                   <div>
                     <div className="flex items-center space-x-3 mb-2">
                       <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 bg-clip-text text-transparent animate-gradient">
-                        Welcome back, {currentUser.name}! 
+                        {getPersonalizedGreeting()}, {currentUser.firstName}!
                       </h1>
                       <div className="text-2xl animate-wave origin-bottom-right hover:animate-spin cursor-pointer">👋</div>
                       <div className="hidden lg:block text-xl animate-bounce hover:animate-spin cursor-pointer" style={{ animationDelay: '0.5s' }}>✨</div>
@@ -719,6 +854,9 @@ export default function Dashboard() {
 
             {/* Notifications & Quick Stats */}
             <div className="space-y-6">
+              {/* Token Balance */}
+              <TokenBalance />
+
               {/* Notifications */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <CardHeader className="pb-4">
@@ -893,7 +1031,7 @@ export default function Dashboard() {
                     <p className="text-slate-600">Loading your AI-powered content... ✨</p>
                   </div>
                 </div>
-              ) : prompts.length === 0 ? (
+              ) : filteredPrompts.length === 0 ? (
                 <div className="text-center py-16">
                   <div className="w-24 h-24 bg-gradient-to-r from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <FileText className="w-10 h-10 text-slate-400" />
@@ -931,12 +1069,12 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
-                  {prompts.map((prompt) => (
+                  {filteredPrompts.map((prompt) => (
                     <div key={prompt.id} className={`group ${viewMode === 'list' ? 'flex items-center space-x-4 p-4 bg-white/70 rounded-xl hover:shadow-lg transition-all' : ''}`}>
                       {viewMode === 'grid' ? (
                         <PromptCard
                           prompt={prompt}
-                          onToggleFavorite={handleToggleFavorite}
+                          onToggleFavorite={(id) => handleToggleFavorite.mutate(id)}
                           onDelete={handleDeletePrompt}
                           onView={handleViewPrompt}
                         />
@@ -1141,6 +1279,81 @@ export default function Dashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Prompt Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <FileText className="w-5 h-5" />
+              <span>{selectedPrompt?.title}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedPrompt && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <Badge className={getStatusColor(selectedPrompt.status)}>
+                  {selectedPrompt.status}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Created {new Date(selectedPrompt.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Description</h4>
+                <p className="text-gray-600">{selectedPrompt.description}</p>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Content</h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="whitespace-pre-wrap text-sm">{selectedPrompt.content}</pre>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(selectedPrompt.content);
+                        toast({
+                          title: "Copied to clipboard! 📋",
+                          description: "Prompt content copied successfully",
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Copy failed",
+                          description: "Unable to copy to clipboard. Please try again.",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Content
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleToggleFavorite.mutate(selectedPrompt.id)}
+                    className={selectedPrompt.isFavorite ? "text-yellow-600 border-yellow-200" : ""}
+                  >
+                    <Heart className={`w-4 h-4 mr-2 ${selectedPrompt.isFavorite ? 'fill-current' : ''}`} />
+                    {selectedPrompt.isFavorite ? 'Unfavorite' : 'Favorite'}
+                  </Button>
+                </div>
+                <Button variant="destructive" onClick={() => handleDeletePrompt(selectedPrompt.id)}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

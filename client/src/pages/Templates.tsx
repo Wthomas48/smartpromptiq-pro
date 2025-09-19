@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import Navigation from "@/components/Navigation";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,22 +10,46 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import BackButton from "@/components/BackButton";
+import TokenBalance from "@/components/TokenBalance";
 import {
   Search, Grid, List, Star, TrendingUp, Crown, Heart, Clock, Users,
   AlertCircle, CheckCircle, Settings, Zap, Eye, RefreshCw, Play,
   Briefcase, TrendingDown, DollarSign, GraduationCap, Target, Lightbulb,
   PenTool, MessageSquare, BarChart3, Rocket, Brain, Sparkles, Lock, Shield
 } from "lucide-react";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import TierIndicator from "@/components/TierIndicator";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 export default function Templates() {
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { trackFeatureUsage, trackMilestone } = useRatingSystemContext();
 
   // Mock user subscription tier - this would come from your auth/user context
   const userTier = isAuthenticated ? "free" : null; // "free", "starter", "pro", "business"
+
+  // Use feature access hook
+  const { checkFeatureAccess } = useFeatureAccess(userTier || 'free');
+  const [upgradePromptConfig, setUpgradePromptConfig] = useState<{
+    isOpen: boolean;
+    template?: any;
+  }>({ isOpen: false });
+
+  const handleRestrictedTemplateClick = (template: any) => {
+    if (!isAuthenticated) {
+      setLocation('/signin');
+      return;
+    }
+    setUpgradePromptConfig({
+      isOpen: true,
+      template
+    });
+  };
 
   // Define tier hierarchy for access checks
   const tierHierarchy = {
@@ -693,6 +716,15 @@ export default function Templates() {
       return;
     }
 
+    // Track template usage for rating system
+    trackFeatureUsage('template_use', template.categoryKey);
+
+    // Track milestone if this is user's first template
+    if (!sessionStorage.getItem('first_template_used')) {
+      sessionStorage.setItem('first_template_used', 'true');
+      trackMilestone('first_template_saved');
+    }
+
     // Store template data for questionnaire
     sessionStorage.setItem('questionnaire', JSON.stringify({
       category: template.categoryKey,
@@ -747,10 +779,15 @@ export default function Templates() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-cyan-50">
-      <Navigation />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-        <BackButton />
+        <div className="flex items-center justify-between mb-4">
+          <BackButton />
+          {isAuthenticated && (
+            <div className="hidden md:block">
+              <TokenBalance />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Spectacular Hero Section */}
@@ -946,29 +983,31 @@ export default function Templates() {
 
               {/* Access Lock Overlay */}
               {!canAccessTemplate(template) && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-2xl flex items-center justify-center z-30">
+                <div
+                  className="absolute inset-0 bg-gradient-to-br from-black/60 via-purple-900/40 to-black/60 backdrop-blur-sm rounded-2xl flex items-center justify-center z-30 cursor-pointer hover:bg-black/70 transition-all duration-300"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRestrictedTemplateClick(template);
+                  }}
+                >
                   <div className="text-center text-white p-6">
-                    <Lock className="w-16 h-16 mx-auto mb-4 text-white/80" />
-                    <h4 className="text-xl font-bold mb-2">
-                      {template.tier.charAt(0).toUpperCase() + template.tier.slice(1)} Required
+                    <div className="relative mb-4">
+                      <Lock className="w-16 h-16 mx-auto text-white/80 animate-pulse" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-xl" />
+                    </div>
+                    <h4 className="text-xl font-bold mb-2 bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+                      {template.tier?.charAt(0).toUpperCase() + template.tier?.slice(1)} Required
                     </h4>
                     <p className="text-white/90 mb-4">
-                      Upgrade to access this premium template
+                      Click to see upgrade options
                     </p>
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isAuthenticated) {
-                          setLocation('/signin');
-                        } else {
-                          // Redirect to pricing page with the required tier pre-selected
-                          setLocation(`/pricing?upgrade=${template.tier}&feature=template&template=${template.id}`);
-                        }
-                      }}
-                      className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-semibold"
-                    >
-                      {!isAuthenticated ? 'Sign In' : `Upgrade to ${template.tier.charAt(0).toUpperCase() + template.tier.slice(1)}`}
-                    </Button>
+                    <TierIndicator
+                      requiredTier={template.tier || 'starter'}
+                      currentTier={userTier || 'free'}
+                      featureName={template.name}
+                      variant="badge"
+                      size="md"
+                    />
                   </div>
                 </div>
               )}
@@ -1099,6 +1138,23 @@ export default function Templates() {
                       <Play className="w-5 h-5 mr-2" />
                       Start
                     </Button>
+                  </div>
+
+                  {/* Signup Options */}
+                  <div className="pt-2 border-t border-gray-200">
+                    <div className="flex space-x-2">
+                      <Link href="/register" className="flex-1">
+                        <Button variant="outline" className="w-full border-2 border-green-200 text-green-700 hover:bg-green-50 font-medium py-2">
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Create Account
+                        </Button>
+                      </Link>
+                      <Link href="/demo" className="flex-1">
+                        <Button variant="outline" className="w-full border-2 border-blue-200 text-blue-700 hover:bg-blue-50 font-medium py-2">
+                          Try Demo
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -1323,6 +1379,18 @@ export default function Templates() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Upgrade Prompt Modal */}
+      {upgradePromptConfig.isOpen && upgradePromptConfig.template && (
+        <UpgradePrompt
+          isOpen={upgradePromptConfig.isOpen}
+          onClose={() => setUpgradePromptConfig({ isOpen: false })}
+          currentTier={userTier || 'free'}
+          requiredTier={upgradePromptConfig.template.tier || 'starter'}
+          featureName={upgradePromptConfig.template.name}
+          featureDescription={`This premium template helps: ${upgradePromptConfig.template.solution}`}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { 
   Play, 
   Sparkles, 
@@ -46,10 +48,14 @@ export default function Demo() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [showOutput, setShowOutput] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<{title: string, content: string} | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [userResponses, setUserResponses] = useState<Record<string, string>>({});
   const [showInteractiveDemo, setShowInteractiveDemo] = useState(false);
   const [animatedStats, setAnimatedStats] = useState(false);
+  const [showEmailCapture, setShowEmailCapture] = useState(true);
+  const [email, setEmail] = useState("");
+  const [emailCaptured, setEmailCaptured] = useState(false);
 
   const demoStats = {
     promptsGenerated: 47283,
@@ -899,15 +905,87 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     setUserResponses(prev => ({ ...prev, [questionId]: value }));
   };
 
-  const handleGenerateDemo = () => {
+  const handleGenerateDemo = async () => {
+    if (!selectedTemplate) return;
+
     setIsGenerating(true);
     setShowOutput(false);
-    
-    // Simulate API call delay
-    setTimeout(() => {
+    setGeneratedContent(null);
+
+    try {
+      // Use the real demo API endpoint
+      const response = await fetch('/api/demo/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          templateType: selectedTemplate,
+          demoData: selectedTemplateData?.sampleResponses || {},
+          generateRealPrompt: true
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data?.generatedPrompt) {
+        // Set real generated content
+        setGeneratedContent({
+          title: data.data.title || selectedTemplateData?.sampleOutput?.title || 'Generated AI Prompt',
+          content: data.data.generatedPrompt
+        });
+        setShowOutput(true);
+
+        // Optionally send results to email if provided
+        if (email) {
+          try {
+            await fetch('/api/demo/send-results', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email,
+                templateName: selectedTemplateData?.name,
+                generatedPrompt: data.data.generatedPrompt
+              }),
+            });
+          } catch (emailError) {
+            console.log('Could not send email, but generation succeeded');
+          }
+        }
+      } else {
+        throw new Error(data.message || 'Generation failed');
+      }
+    } catch (error) {
+      console.error('Demo generation error:', error);
+
+      // Enhanced fallback with better error handling
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.log(`Using fallback sample output due to error: ${errorMessage}`);
+
+      // Check if we have sample output to fall back to
+      if (selectedTemplateData?.sampleOutput) {
+        setGeneratedContent({
+          title: `${selectedTemplateData.sampleOutput.title} (Sample)`,
+          content: `${selectedTemplateData.sampleOutput.content}\n\n---\n\n*Note: This is sample content. The live AI generation service is temporarily unavailable.*`
+        });
+        setShowOutput(true);
+      } else {
+        // Final fallback if no sample content exists
+        setGeneratedContent({
+          title: 'Demo Content Unavailable',
+          content: `# Demo Service Temporarily Unavailable\n\nWe're experiencing technical difficulties with the live demo service. Please try again later or create a free account to access the full AI generation capabilities.\n\nError details: ${errorMessage}`
+        });
+        setShowOutput(true);
+      }
+    } finally {
       setIsGenerating(false);
-      setShowOutput(true);
-    }, 3000);
+    }
   };
 
   const getColorClasses = (color: string) => {
@@ -924,13 +1002,76 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
 
   const selectedTemplateData = selectedTemplate ? demoTemplates[selectedTemplate as keyof typeof demoTemplates] : null;
 
+  const handleEmailSubmit = () => {
+    if (email && email.includes('@')) {
+      // Store email for later (could send to backend)
+      localStorage.setItem('demo_email', email);
+      setEmailCaptured(true);
+      setShowEmailCapture(false);
+      console.log('Demo email captured:', email);
+    }
+  };
+
+  const handleSkipEmail = () => {
+    setShowEmailCapture(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30">
       <TopNavigation
-        onGetStarted={() => setLocation('/signin')}
+        onGetStarted={() => setLocation('/register')}
         onSignIn={() => setLocation('/signin')}
       />
       <BackButton />
+
+      {/* Email Capture Modal */}
+      <Dialog open={showEmailCapture} onOpenChange={setShowEmailCapture}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              🎮 Welcome to the SmartPromptIQ Demo!
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Get the full experience and receive demo results via email (optional)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="demo-email">Email Address</Label>
+              <Input
+                id="demo-email"
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleEmailSubmit()}
+              />
+              <p className="text-xs text-muted-foreground">
+                We'll send you the demo results and updates about SmartPromptIQ
+              </p>
+            </div>
+            <div className="flex space-x-2">
+              <Button onClick={handleEmailSubmit} disabled={!email || !email.includes('@')} className="flex-1">
+                Continue with Email
+              </Button>
+              <Button variant="outline" onClick={handleSkipEmail} className="flex-1">
+                Skip for Now
+              </Button>
+            </div>
+            <div className="border-t pt-4 mt-4">
+              <p className="text-sm text-center text-gray-600 mb-3">
+                Ready to create your own prompts?
+              </p>
+              <Button
+                onClick={() => setLocation('/register')}
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                Create Free Account
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Enhanced Hero Section */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 relative overflow-hidden">
@@ -1290,17 +1431,22 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                     )}
 
                   {/* Enhanced Sample Output */}
-                  {showOutput && selectedTemplateData.sampleOutput && (
+                  {showOutput && (generatedContent || selectedTemplateData.sampleOutput) && (
                     <div className="space-y-6 animate-fade-in">
                       <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                              <CheckCircle className="w-6 h-6 text-white" />
+                              <CheckCircle className="w-6 h-6 text-white animate-pulse" />
                             </div>
-                            <h3 className="text-2xl font-bold text-green-800">
-                              AI Content Generated Successfully!
-                            </h3>
+                            <div>
+                              <h3 className="text-2xl font-bold text-green-800">
+                                🚀 Real AI Magic Generated!
+                              </h3>
+                              <p className="text-sm text-green-600">
+                                {generatedContent ? '✨ Live AI Generation' : '📝 Sample Output'}
+                              </p>
+                            </div>
                           </div>
                           <Badge className="bg-green-500 text-white px-4 py-2 text-sm font-semibold">
                             Demo Output
@@ -1314,16 +1460,22 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                       <div className="bg-white border-2 border-green-300 rounded-2xl shadow-2xl overflow-hidden">
                         <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-6">
                           <div className="flex items-center justify-between">
-                            <h4 className="text-2xl font-bold">{selectedTemplateData.sampleOutput.title}</h4>
+                            <h4 className="text-2xl font-bold">
+                              {generatedContent ? generatedContent.title : selectedTemplateData.sampleOutput.title}
+                            </h4>
                             <div className="flex items-center space-x-2 text-green-100">
                               <Star className="w-5 h-5 fill-current" />
-                              <span className="text-sm font-medium">Professional Quality</span>
+                              <span className="text-sm font-medium">
+                                {generatedContent ? 'AI Generated' : 'Professional Quality'}
+                              </span>
                             </div>
                           </div>
                         </div>
                         <div className="p-8">
                           <div className="prose prose-lg max-w-none">
-                            <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">{selectedTemplateData.sampleOutput.content}</div>
+                            <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
+                              {generatedContent ? generatedContent.content : selectedTemplateData.sampleOutput.content}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1354,18 +1506,26 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                             </div>
                           </div>
                           
-                          <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-                            <Button 
-                              size="lg" 
+                          <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                            <Button
+                              size="lg"
                               className="bg-white text-indigo-600 hover:bg-gray-100 px-8 py-3 text-lg font-medium rounded-lg"
+                              onClick={() => setLocation('/register')}
+                            >
+                              Create Free Account
+                            </Button>
+                            <Button
+                              size="lg"
+                              variant="outline"
+                              className="border-white/50 text-white hover:bg-white/10 px-6 py-3 text-lg font-medium rounded-lg"
                               onClick={() => setLocation('/signin')}
                             >
-                              Start Creating - Free
+                              Sign In
                             </Button>
-                            <Button 
-                              size="lg" 
+                            <Button
+                              size="lg"
                               variant="outline"
-                              className="border-white/50 text-white hover:bg-white/10 px-8 py-3 text-lg font-medium rounded-lg"
+                              className="border-white/30 text-white/80 hover:bg-white/5 px-6 py-3 text-base font-medium rounded-lg"
                               onClick={() => setSelectedTemplate(null)}
                             >
                               Try Another Demo

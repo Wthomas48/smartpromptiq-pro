@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Navigation from '@/components/Navigation';
+import { Link } from 'wouter';
 import BackButton from '@/components/BackButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,8 @@ import {
   AlertTriangle,
   Info,
   Star,
-  Heart,
   Sparkles,
+  Heart,
   Trophy,
   Clock,
   TrendingUp,
@@ -120,8 +120,8 @@ export default function Documentation() {
     {
       name: 'Free',
       price: '$0',
-      period: 'forever',
-      features: ['5 free prompts', 'Basic categories', 'Community support'],
+      period: '/month',
+      features: ['5 AI prompts per month', 'Basic categories', 'Standard templates', 'Community support'],
       color: 'border-gray-200',
       popular: false
     },
@@ -129,7 +129,7 @@ export default function Documentation() {
       name: 'Starter',
       price: '$14.99',
       period: '/month',
-      features: ['200 prompts/month', 'All categories', 'Email support', 'Templates', 'Basic analytics'],
+      features: ['200 AI prompts per month', 'All categories', 'Email support', 'Templates', 'Basic analytics'],
       color: 'border-blue-500',
       popular: true
     },
@@ -137,15 +137,15 @@ export default function Documentation() {
       name: 'Pro',
       price: '$49.99',
       period: '/month',
-      features: ['1000 prompts/month', 'Priority support', 'Advanced analytics', 'Team collaboration', 'API access'],
+      features: ['1000 AI prompts per month', 'Advanced customization', 'Priority support', 'Analytics dashboard', 'Export functionality'],
       color: 'border-purple-500',
       popular: false
     },
     {
-      name: 'Business',
+      name: 'Enterprise',
       price: '$149.99',
       period: '/month',
-      features: ['5000 prompts/month', '24/7 support', 'Custom categories', 'White-label options', 'Advanced integrations'],
+      features: ['Unlimited AI prompts', 'Custom categories', 'Team collaboration', 'API access', 'White-label options', 'Dedicated support', 'Custom integrations'],
       color: 'border-gold-500',
       popular: false
     }
@@ -241,7 +241,6 @@ export default function Documentation() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navigation />
       <BackButton />
 
       {/* Hero Section */}
@@ -345,7 +344,29 @@ export default function Documentation() {
                             <Icon className="w-8 h-8 text-white" />
                           </div>
                           <h3 className="text-lg font-semibold mb-2">Step {index + 1}: {step.title}</h3>
-                          <p className="text-slate-600 text-sm">{step.description}</p>
+                          <p className="text-slate-600 text-sm mb-4">{step.description}</p>
+
+                          {/* Signup Options */}
+                          <div className="space-y-2 mt-4">
+                            <Link href="/signin" className="block">
+                              <Button variant="outline" className="w-full border-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium py-2 text-sm">
+                                <Sparkles className="w-4 h-4 mr-1" />
+                                Get Started
+                              </Button>
+                            </Link>
+                            <div className="flex space-x-2">
+                              <Link href="/register" className="flex-1">
+                                <Button variant="outline" className="w-full border-2 border-green-200 text-green-700 hover:bg-green-50 font-medium py-1.5 text-xs">
+                                  Create Account
+                                </Button>
+                              </Link>
+                              <Link href="/demo" className="flex-1">
+                                <Button variant="outline" className="w-full border-2 border-blue-200 text-blue-700 hover:bg-blue-50 font-medium py-1.5 text-xs">
+                                  Try Demo
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
                         </CardContent>
                       </Card>
                     );

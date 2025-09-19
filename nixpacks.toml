@@ -1,0 +1,21 @@
+[phases.setup]
+nixPkgs = ["nodejs_18", "npm"]
+
+[phases.install]
+cmds = [
+  "npm ci --prefer-offline --no-audit --progress=false",
+  "cd client && npm ci --prefer-offline --no-audit --progress=false"
+]
+
+[phases.build]
+cmds = [
+  "npm run build"
+]
+
+[start]
+cmd = "npm run railway:start"
+
+[variables]
+NODE_ENV = "production"
+NODE_OPTIONS = "--max-old-space-size=4096"
+VITE_NODE_ENV = "production"

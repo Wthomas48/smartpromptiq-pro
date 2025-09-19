@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
-import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -169,6 +168,215 @@ const questionsByCategory: Record<string, { title: string; description: string; 
           { value: "debt_reduction", label: "Debt Reduction", description: "Eliminate high-interest debt", icon: "📉", color: "from-red-500 to-pink-500" },
           { value: "investment_growth", label: "Investment Growth", description: "Grow wealth through investments", icon: "📈", color: "from-green-500 to-emerald-500" },
           { value: "retirement", label: "Retirement Planning", description: "Long-term retirement security", icon: "🏖️", color: "from-purple-500 to-indigo-500" },
+        ]
+      }
+    ]
+  },
+  "personal-development": {
+    title: "Personal Development",
+    description: "Build habits, achieve goals, and unlock your potential",
+    icon: "💪",
+    questions: [
+      {
+        id: "development_goal",
+        title: "What's your main personal development goal?",
+        subtitle: "Focus on what matters most to you right now",
+        description: "Choose the area where you want to see the most growth",
+        type: "single",
+        required: true,
+        options: [
+          { value: "habits", label: "Build Better Habits", description: "Create positive daily routines", icon: "🔄", color: "from-green-500 to-emerald-500" },
+          { value: "productivity", label: "Boost Productivity", description: "Get more done with less stress", icon: "⚡", color: "from-blue-500 to-cyan-500" },
+          { value: "mindset", label: "Mindset Transformation", description: "Develop growth-oriented thinking", icon: "🧠", color: "from-purple-500 to-indigo-500" },
+          { value: "skills", label: "Learn New Skills", description: "Acquire valuable abilities", icon: "🎯", color: "from-orange-500 to-red-500" },
+        ]
+      },
+      {
+        id: "current_challenge",
+        title: "What's your biggest challenge right now?",
+        description: "Understanding your obstacles helps create targeted solutions",
+        type: "single",
+        required: true,
+        options: [
+          { value: "motivation", label: "Staying Motivated", description: "Maintaining consistent energy and drive", icon: "🔥" },
+          { value: "time_management", label: "Time Management", description: "Making the most of available time", icon: "⏰" },
+          { value: "procrastination", label: "Overcoming Procrastination", description: "Taking action instead of delaying", icon: "🚀" },
+          { value: "work_life_balance", label: "Work-Life Balance", description: "Finding harmony between responsibilities", icon: "⚖️" },
+        ]
+      },
+      {
+        id: "timeline",
+        title: "What's your target timeline for seeing results?",
+        description: "This helps us create a realistic and achievable plan",
+        type: "single",
+        required: true,
+        options: [
+          { value: "30_days", label: "30 Days", description: "Quick wins and immediate changes", icon: "⚡" },
+          { value: "90_days", label: "90 Days", description: "Significant habit formation", icon: "📈" },
+          { value: "6_months", label: "6 Months", description: "Major transformation", icon: "🎯" },
+          { value: "1_year", label: "1 Year", description: "Life-changing development", icon: "🏆" },
+        ]
+      }
+    ]
+  },
+  "business-strategy": {
+    title: "Business Strategy",
+    description: "Develop comprehensive business plans and growth strategies",
+    icon: "📊",
+    questions: [
+      {
+        id: "business_stage",
+        title: "What stage is your business in?",
+        subtitle: "This helps us tailor the strategy to your current needs",
+        description: "Choose the option that best describes your business situation",
+        type: "single",
+        required: true,
+        options: [
+          { value: "idea", label: "Idea Stage", description: "Concept development and validation", icon: "💡", color: "from-yellow-500 to-orange-500" },
+          { value: "startup", label: "Early Startup", description: "MVP development and initial customers", icon: "🚀", color: "from-green-500 to-emerald-500" },
+          { value: "growth", label: "Growth Stage", description: "Scaling operations and market share", icon: "📈", color: "from-blue-500 to-cyan-500" },
+          { value: "established", label: "Established Business", description: "Optimization and expansion", icon: "🏢", color: "from-purple-500 to-indigo-500" },
+        ]
+      },
+      {
+        id: "strategy_focus",
+        title: "What's your primary strategic focus?",
+        description: "Select the area where you need the most strategic guidance",
+        type: "single",
+        required: true,
+        options: [
+          { value: "market_entry", label: "Market Entry", description: "Entering new markets or segments", icon: "🎯" },
+          { value: "competitive_advantage", label: "Competitive Advantage", description: "Differentiating from competitors", icon: "⚔️" },
+          { value: "operational_efficiency", label: "Operational Efficiency", description: "Optimizing processes and costs", icon: "⚙️" },
+          { value: "digital_transformation", label: "Digital Transformation", description: "Modernizing business operations", icon: "💻" },
+        ]
+      },
+      {
+        id: "business_size",
+        title: "What's your business size?",
+        description: "This helps us scale the strategy appropriately",
+        type: "single",
+        required: true,
+        options: [
+          { value: "solo", label: "Solo Entrepreneur", description: "Just you or very small team", icon: "👤" },
+          { value: "small_team", label: "Small Team", description: "2-10 employees", icon: "👥" },
+          { value: "medium", label: "Medium Business", description: "11-50 employees", icon: "🏢" },
+          { value: "large", label: "Large Organization", description: "50+ employees", icon: "🏭" },
+        ]
+      },
+      {
+        id: "timeline_horizon",
+        title: "What's your strategic planning horizon?",
+        description: "Choose the timeframe for your strategic goals",
+        type: "single",
+        required: true,
+        options: [
+          { value: "6_months", label: "6 Months", description: "Short-term tactical planning", icon: "⚡" },
+          { value: "1_year", label: "1 Year", description: "Annual strategic planning", icon: "📅" },
+          { value: "3_years", label: "3 Years", description: "Medium-term strategic vision", icon: "🎯" },
+          { value: "5_years", label: "5+ Years", description: "Long-term strategic vision", icon: "🔮" },
+        ]
+      }
+    ]
+  },
+  "marketing-sales": {
+    title: "Marketing & Sales",
+    description: "Create compelling campaigns and sales strategies that convert",
+    icon: "📈",
+    questions: [
+      {
+        id: "primary_goal",
+        title: "What's your primary marketing/sales goal?",
+        subtitle: "Focus on your most important objective",
+        description: "Choose the main outcome you want to achieve",
+        type: "single",
+        required: true,
+        options: [
+          { value: "lead_generation", label: "Lead Generation", description: "Capture qualified prospects", icon: "🎯", color: "from-blue-500 to-cyan-500" },
+          { value: "sales_conversion", label: "Sales Conversion", description: "Turn prospects into customers", icon: "💰", color: "from-green-500 to-emerald-500" },
+          { value: "brand_awareness", label: "Brand Awareness", description: "Increase visibility and recognition", icon: "📢", color: "from-purple-500 to-indigo-500" },
+          { value: "customer_retention", label: "Customer Retention", description: "Keep existing customers engaged", icon: "❤️", color: "from-pink-500 to-rose-500" },
+        ]
+      },
+      {
+        id: "target_market",
+        title: "Who is your target market?",
+        description: "Understanding your audience helps create targeted strategies",
+        type: "single",
+        required: true,
+        options: [
+          { value: "b2b", label: "B2B (Business to Business)", description: "Selling to other businesses", icon: "🏢" },
+          { value: "b2c", label: "B2C (Business to Consumer)", description: "Selling to individual consumers", icon: "👤" },
+          { value: "both", label: "Both B2B and B2C", description: "Mixed market approach", icon: "🔄" },
+          { value: "niche", label: "Specific Niche Market", description: "Specialized target audience", icon: "🎯" },
+        ]
+      }
+    ]
+  },
+  "content-creation": {
+    title: "Content Creation",
+    description: "Create engaging content that captures attention and drives action",
+    icon: "✍️",
+    questions: [
+      {
+        id: "content_type",
+        title: "What type of content do you want to create?",
+        subtitle: "Choose your primary content focus",
+        description: "Select the content format you need help with",
+        type: "single",
+        required: true,
+        options: [
+          { value: "blog_articles", label: "Blog Articles", description: "In-depth written content", icon: "📝", color: "from-blue-500 to-cyan-500" },
+          { value: "social_posts", label: "Social Media Posts", description: "Short-form social content", icon: "📱", color: "from-purple-500 to-indigo-500" },
+          { value: "video_scripts", label: "Video Scripts", description: "YouTube, TikTok, Reels content", icon: "🎬", color: "from-red-500 to-orange-500" },
+          { value: "email_copy", label: "Email Copy", description: "Email marketing content", icon: "📧", color: "from-green-500 to-emerald-500" },
+        ]
+      },
+      {
+        id: "content_goal",
+        title: "What's your content goal?",
+        description: "Understanding your objective helps create targeted content",
+        type: "single",
+        required: true,
+        options: [
+          { value: "educate", label: "Educate Audience", description: "Provide valuable information", icon: "📚" },
+          { value: "entertain", label: "Entertain Audience", description: "Create engaging, fun content", icon: "🎭" },
+          { value: "convert", label: "Drive Conversions", description: "Persuade audience to take action", icon: "💰" },
+          { value: "build_authority", label: "Build Authority", description: "Establish expertise and credibility", icon: "👑" },
+        ]
+      }
+    ]
+  },
+  "social-media": {
+    title: "Social Media",
+    description: "Create viral social media content that engages and grows your audience",
+    icon: "📱",
+    questions: [
+      {
+        id: "platform_focus",
+        title: "Which platform is your main focus?",
+        subtitle: "Each platform has unique content strategies",
+        description: "Choose your primary social media platform",
+        type: "single",
+        required: true,
+        options: [
+          { value: "instagram", label: "Instagram", description: "Visual content and stories", icon: "📸", color: "from-pink-500 to-purple-500" },
+          { value: "tiktok", label: "TikTok", description: "Short-form video content", icon: "🎵", color: "from-red-500 to-pink-500" },
+          { value: "youtube", label: "YouTube", description: "Long-form video content", icon: "📺", color: "from-red-600 to-red-500" },
+          { value: "linkedin", label: "LinkedIn", description: "Professional networking", icon: "💼", color: "from-blue-600 to-blue-500" },
+        ]
+      },
+      {
+        id: "content_style",
+        title: "What's your preferred content style?",
+        description: "This helps us match your voice and approach",
+        type: "single",
+        required: true,
+        options: [
+          { value: "educational", label: "Educational", description: "Teaching and informative content", icon: "🎓" },
+          { value: "entertaining", label: "Entertaining", description: "Fun and engaging content", icon: "🎪" },
+          { value: "inspirational", label: "Inspirational", description: "Motivational and uplifting content", icon: "✨" },
+          { value: "behind_scenes", label: "Behind the Scenes", description: "Personal and authentic content", icon: "👀" },
         ]
       }
     ]
@@ -390,7 +598,6 @@ export default function Questionnaire() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 relative overflow-hidden">
       <ParticleField />
-      <Navigation />
       <BackButton />
 
       <div className="container mx-auto px-4 py-8 max-w-5xl relative z-10">

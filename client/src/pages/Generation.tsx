@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import Navigation from "@/components/Navigation";
 import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -153,8 +152,6 @@ export default function Generation() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navigation />
-      
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <BackButton />

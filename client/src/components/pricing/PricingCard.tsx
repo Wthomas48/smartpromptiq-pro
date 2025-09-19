@@ -21,6 +21,8 @@ interface PricingTier {
   current?: boolean;
   savings?: number;
   highlighted?: boolean;
+  badge?: string;
+  buttonLabel?: string;
 }
 
 interface PricingCardProps {
@@ -59,7 +61,7 @@ const formatPrompts = (prompts: number) => {
 };
 
 export default function PricingCard({ tier, onSelect, loading = false, showUpgrade = true }: PricingCardProps) {
-  const { id, name, description, price, billingCycle, features, limits, popular, current, savings, highlighted } = tier;
+  const { id, name, description, price, billingCycle, features, limits, popular, current, savings, highlighted, badge, buttonLabel } = tier;
 
   const handleSelect = () => {
     if (!current) {
@@ -78,7 +80,7 @@ export default function PricingCard({ tier, onSelect, loading = false, showUpgra
       {popular && !current && !highlighted && (
         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
           <Badge className="bg-indigo-600 text-white px-3 py-1 text-xs font-semibold">
-            Most Popular
+            {badge || 'Most Popular'}
           </Badge>
         </div>
       )}
@@ -199,6 +201,8 @@ export default function PricingCard({ tier, onSelect, loading = false, showUpgra
             'Current Plan'
           ) : price === 0 ? (
             'Get Started'
+          ) : buttonLabel ? (
+            buttonLabel
           ) : showUpgrade ? (
             `Upgrade to ${name}`
           ) : (

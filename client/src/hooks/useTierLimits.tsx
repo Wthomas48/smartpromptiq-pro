@@ -14,28 +14,48 @@ interface TierLimits {
 
 const TIER_LIMITS: Record<string, TierLimits> = {
   free: {
-    dailyPrompts: 3,
-    monthlyPrompts: 10,
-    categories: ["business-strategy", "marketing"],
+    dailyPrompts: 2,
+    monthlyPrompts: 5,
+    categories: ["business-strategy", "marketing", "education"],
     templates: 5,
     teamMembers: 0,
     analytics: false,
     apiAccess: false,
     prioritySupport: false
   },
+  starter: {
+    dailyPrompts: 10,
+    monthlyPrompts: 200,
+    categories: "all",
+    templates: 50,
+    teamMembers: 1,
+    analytics: true,
+    apiAccess: false,
+    prioritySupport: false
+  },
   pro: {
-    dailyPrompts: 100,
+    dailyPrompts: 35,
     monthlyPrompts: 1000,
     categories: "all",
     templates: "all",
     teamMembers: 5,
     analytics: true,
-    apiAccess: false,
+    apiAccess: true,
+    prioritySupport: true
+  },
+  business: {
+    dailyPrompts: 170,
+    monthlyPrompts: 5000,
+    categories: "all",
+    templates: "all",
+    teamMembers: 25,
+    analytics: true,
+    apiAccess: true,
     prioritySupport: true
   },
   enterprise: {
-    dailyPrompts: 1000,
-    monthlyPrompts: 10000,
+    dailyPrompts: -1, // Unlimited
+    monthlyPrompts: -1, // Unlimited
     categories: "all",
     templates: "all",
     teamMembers: "unlimited",
@@ -107,19 +127,19 @@ export function useTierLimits() {
   };
 
   const getUpgradeReason = (feature: string): string => {
-    const tierNames = { free: "Free", pro: "Pro", enterprise: "Enterprise" };
-    
+    const tierNames = { free: "Free", starter: "Starter", pro: "Pro", business: "Business", enterprise: "Enterprise" };
+
     switch (feature) {
       case "category":
-        return `Access to all categories requires ${currentTier === "free" ? "Pro" : "Enterprise"} plan`;
+        return `Access to all categories requires ${currentTier === "free" ? "Starter" : "Pro"} plan`;
       case "analytics":
-        return "Analytics dashboard requires Pro or Enterprise plan";
+        return "Analytics dashboard requires Starter, Pro, Business or Enterprise plan";
       case "teams":
-        return "Team collaboration requires Pro or Enterprise plan";
+        return "Team collaboration requires Pro, Business or Enterprise plan";
       case "api":
-        return "API access requires Enterprise plan";
+        return "API access requires Pro, Business or Enterprise plan";
       case "prompts":
-        return `You've reached your daily limit. Upgrade to ${currentTier === "free" ? "Pro" : "Enterprise"} for more prompts`;
+        return `You've reached your daily limit. Upgrade to ${currentTier === "free" ? "Starter" : currentTier === "starter" ? "Pro" : currentTier === "pro" ? "Business" : "Enterprise"} for more prompts`;
       default:
         return "This feature requires a paid plan";
     }

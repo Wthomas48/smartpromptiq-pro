@@ -1,0 +1,30 @@
+{
+  "name": "smartpromptiq-railway",
+  "version": "1.0.0",
+  "description": "Railway-optimized SmartPromptIQ SaaS Platform",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:server\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:server": "node server.js",
+    "build": "cd frontend && npm run build && npm run move-build",
+    "move-build": "cp -r frontend/dist/* ./dist/ 2>/dev/null || xcopy \"frontend\\dist\\*\" \"dist\\\" /E /I /Y 2>nul || true",
+    "start": "node server.js",
+    "railway:build": "npm run build",
+    "railway:start": "npm start",
+    "install:frontend": "cd frontend && npm install",
+    "postinstall": "npm run install:frontend"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "helmet": "^8.0.0",
+    "dotenv": "^17.2.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

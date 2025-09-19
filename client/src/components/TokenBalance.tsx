@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Coins, Crown, Zap, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 
+import { useAuth } from "@/hooks/useAuth";
+
 interface UserSubscription {
   subscriptionTier: string;
   tokenBalance: number;
@@ -12,19 +14,19 @@ interface UserSubscription {
   subscriptionEndDate: string;
 }
 
-// Mock data for demo
-const mockSubscription: UserSubscription = {
-  subscriptionTier: "pro",
-  tokenBalance: 150,
-  subscriptionStatus: "active",
-  subscriptionEndDate: "2024-12-31"
-};
-
 export default function TokenBalance() {
-  const [subscription] = useState<UserSubscription>(mockSubscription);
+  const { user, isAuthenticated } = useAuth();
   const [isLoading] = useState(false);
 
-  console.log("?? TokenBalance loaded with mock data:", subscription);
+  // Use real user data if available, fallback to mock for demo
+  const subscription: UserSubscription = {
+    subscriptionTier: user?.plan?.toLowerCase() || "free",
+    tokenBalance: user?.tokenBalance || 0,
+    subscriptionStatus: user?.subscriptionStatus || "active",
+    subscriptionEndDate: user?.subscriptionEndDate || "2024-12-31"
+  };
+
+  console.log("TokenBalance loaded with user data:", subscription);
 
   if (isLoading) {
     return (
@@ -45,23 +47,27 @@ export default function TokenBalance() {
 
   const getTierIcon = () => {
     switch (tier) {
+      case "starter":
+        return <Zap className="h-4 w-4 text-blue-500" />;
       case "pro":
         return <Crown className="h-4 w-4 text-yellow-500" />;
       case "enterprise":
         return <Crown className="h-4 w-4 text-purple-500" />;
       default:
-        return <Zap className="h-4 w-4 text-blue-500" />;
+        return <Zap className="h-4 w-4 text-gray-500" />;
     }
   };
 
   const getTierColor = () => {
     switch (tier) {
+      case "starter":
+        return "bg-blue-100 text-blue-800 border-blue-200";
       case "pro":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "enterprise":
         return "bg-purple-100 text-purple-800 border-purple-200";
       default:
-        return "bg-blue-100 text-blue-800 border-blue-200";
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 

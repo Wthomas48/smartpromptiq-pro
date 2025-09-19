@@ -9,11 +9,11 @@ export default function Home() {
   const ctaStarsRef = useRef<HTMLDivElement>(null);
   
   const handleGetStarted = () => {
-    setLocation("/signin");
+    setLocation("/signin?mode=signup");
   };
 
   const handleDemo = () => {
-    setLocation("/demo");
+    setLocation("/signin");
   };
 
   const handleSignIn = () => {
@@ -74,6 +74,9 @@ export default function Home() {
             <div className="cta-buttons">
               <button onClick={handleGetStarted} className="btn btn-primary">
                 ✨ Start Creating Magic
+              </button>
+              <button onClick={handleDemo} className="btn btn-secondary">
+                🎮 Try Demo
               </button>
             </div>
             
@@ -568,28 +571,101 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA Section */}
+        {/* Enhanced CTA Section with Signup Options */}
         <section className="cta-section">
           <div className="stars-container" ref={ctaStarsRef}></div>
-          
+
           <div className="cta-content">
             <h2 className="cta-title">Ready to Transform Your Creative Process?</h2>
             <p className="cta-description">
               Join thousands of innovative professionals, creative teams, and forward-thinking businesses who are already using Smart PromptIQ to revolutionize their workflow and achieve extraordinary results.
             </p>
-            
-            <div className="cta-buttons-group">
-              <button onClick={handleGetStarted} className="btn btn-primary pulse-animation">Start Free Trial</button>
+
+            {/* Enhanced Signup Card */}
+            <div className="signup-card-container">
+              <div className="signup-card">
+                <div className="signup-card-header">
+                  <div className="signup-badge">🚀 Get Started Today</div>
+                  <h3 className="signup-card-title">Choose Your Path</h3>
+                  <p className="signup-card-description">Start creating amazing AI prompts in seconds</p>
+                </div>
+
+                <div className="signup-options">
+                  <div className="signup-option primary">
+                    <div className="option-header">
+                      <div className="option-icon">✨</div>
+                      <div className="option-title">Create Free Account</div>
+                      <div className="option-badge">Most Popular</div>
+                    </div>
+                    <div className="option-description">Full access to all features with 10 free AI prompts</div>
+                    <div className="option-features">
+                      <div className="feature">✓ 15+ Categories</div>
+                      <div className="feature">✓ AI-Powered Generation</div>
+                      <div className="feature">✓ Save & Export</div>
+                      <div className="feature">✓ No Credit Card Required</div>
+                    </div>
+                    <button onClick={handleGetStarted} className="option-button primary">
+                      Create Free Account
+                    </button>
+                  </div>
+
+                  <div className="signup-option secondary">
+                    <div className="option-header">
+                      <div className="option-icon">🔑</div>
+                      <div className="option-title">Sign In</div>
+                      <div className="option-badge">Existing User</div>
+                    </div>
+                    <div className="option-description">Access your account and continue creating</div>
+                    <div className="option-features">
+                      <div className="feature">✓ Access Saved Prompts</div>
+                      <div className="feature">✓ View Generation History</div>
+                      <div className="feature">✓ Resume Projects</div>
+                      <div className="feature">✓ Account Dashboard</div>
+                    </div>
+                    <button onClick={handleSignIn} className="option-button secondary">
+                      Sign In to Account
+                    </button>
+                  </div>
+                </div>
+
+                <div className="signup-guarantee">
+                  <div className="guarantee-content">
+                    <div className="guarantee-icon">🛡️</div>
+                    <div className="guarantee-text">
+                      <strong>30-Day Money Back Guarantee</strong>
+                      <span>• No hidden fees • Cancel anytime • Full refund</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="demo-option">
+                  <div className="demo-divider">
+                    <span>Or try before you commit</span>
+                  </div>
+                  <button onClick={handleDemo} className="demo-button">
+                    🎮 Try Demo (No Signup Required)
+                  </button>
+                </div>
+              </div>
             </div>
-            
-            <div className="cta-features">
-              <div className="cta-feature">✓ No credit card required</div>
-              <div className="cta-feature">✓ 14-day free trial</div>
-              <div className="cta-feature">✓ Cancel anytime</div>
-            </div>
-            
-            <div className="cta-guarantee">
-              <div className="guarantee-badge">💯 30-Day Money Back Guarantee</div>
+
+            <div className="cta-trust-indicators">
+              <div className="trust-stat">
+                <div className="trust-number">25,000+</div>
+                <div className="trust-label">Active Users</div>
+              </div>
+              <div className="trust-stat">
+                <div className="trust-number">4.9/5</div>
+                <div className="trust-label">User Rating</div>
+              </div>
+              <div className="trust-stat">
+                <div className="trust-number">2.1M+</div>
+                <div className="trust-label">Prompts Created</div>
+              </div>
+              <div className="trust-stat">
+                <div className="trust-number">99.9%</div>
+                <div className="trust-label">Uptime</div>
+              </div>
             </div>
           </div>
         </section>

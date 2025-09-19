@@ -3,7 +3,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,30 +87,49 @@ export default function Billing() {
       current: billingInfo?.currentPlan === "free"
     },
     {
-      id: "pro",
-      name: "Pro",
-      price: billingCycle === "monthly" ? 19 : 190,
+      id: "starter",
+      name: "Starter",
+      price: billingCycle === "monthly" ? 14.99 : 149.9,
       billing: billingCycle,
       features: [
-        "100 AI prompts per month",
+        "200 AI prompts per month",
         "All categories",
+        "Email support",
+        "Templates",
+        "Basic analytics"
+      ],
+      limits: {
+        prompts: 200,
+        tokens: 50000,
+        categories: 15
+      },
+      popular: true,
+      current: billingInfo?.currentPlan === "starter"
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: billingCycle === "monthly" ? 49.99 : 499,
+      billing: billingCycle,
+      features: [
+        "1000 AI prompts per month",
         "Advanced customization",
         "Priority support",
         "Analytics dashboard",
         "Export functionality"
       ],
       limits: {
-        prompts: 100,
-        tokens: 25000,
-        categories: 10
+        prompts: 1000,
+        tokens: 250000,
+        categories: 15
       },
-      popular: true,
+      popular: false,
       current: billingInfo?.currentPlan === "pro"
     },
     {
       id: "enterprise",
       name: "Enterprise",
-      price: billingCycle === "monthly" ? 99 : 990,
+      price: billingCycle === "monthly" ? 149.99 : 1499,
       billing: billingCycle,
       features: [
         "Unlimited AI prompts",
@@ -181,17 +199,15 @@ export default function Billing() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navigation />
-      
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-slate-900 mb-4">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
               Billing & Subscription
             </h1>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            <p className="text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
               Choose the perfect plan for your AI prompt generation needs
             </p>
           </div>
@@ -212,9 +228,9 @@ export default function Billing() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Prompts Generated</span>
-                      <span className="text-sm text-slate-600">
-                        {billingInfo.usage.prompts} / {plans.find(p => p.current)?.limits.prompts === -1 ? "8" : plans.find(p => p.current)?.limits.prompts}
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Prompts Generated</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        {billingInfo.usage.prompts} / {plans.find(p => p.current)?.limits.prompts === -1 ? "∞" : plans.find(p => p.current)?.limits.prompts}
                       </span>
                     </div>
                     <Progress 
@@ -225,9 +241,9 @@ export default function Billing() {
                   
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Tokens Used</span>
-                      <span className="text-sm text-slate-600">
-                        {billingInfo.usage.tokens.toLocaleString()} / {plans.find(p => p.current)?.limits.tokens === -1 ? "8" : plans.find(p => p.current)?.limits.tokens?.toLocaleString()}
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Tokens Used</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        {billingInfo.usage.tokens.toLocaleString()} / {plans.find(p => p.current)?.limits.tokens === -1 ? "∞" : plans.find(p => p.current)?.limits.tokens?.toLocaleString()}
                       </span>
                     </div>
                     <Progress 
@@ -238,9 +254,9 @@ export default function Billing() {
                   
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Categories</span>
-                      <span className="text-sm text-slate-600">
-                        {billingInfo.usage.categories} / {plans.find(p => p.current)?.limits.categories === -1 ? "8" : plans.find(p => p.current)?.limits.categories}
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Categories</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        {billingInfo.usage.categories} / {plans.find(p => p.current)?.limits.categories === -1 ? "∞" : plans.find(p => p.current)?.limits.categories}
                       </span>
                     </div>
                     <Progress 
@@ -255,13 +271,13 @@ export default function Billing() {
 
           {/* Billing Cycle Toggle */}
           <div className="flex justify-center mb-8">
-            <div className="bg-white p-1 rounded-lg border">
+            <div className="bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
               <button
                 onClick={() => setBillingCycle("monthly")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingCycle === "monthly"
                     ? "bg-indigo-600 text-white"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 Monthly
@@ -271,11 +287,11 @@ export default function Billing() {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingCycle === "yearly"
                     ? "bg-indigo-600 text-white"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 Yearly
-                <Badge className="ml-2 bg-green-100 text-green-800">Save 20%</Badge>
+                <Badge className="ml-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Save 20%</Badge>
               </button>
             </div>
           </div>
@@ -296,13 +312,13 @@ export default function Billing() {
                 )}
                 
                 <CardHeader className="text-center">
-                  <div className="flex justify-center mb-4">
+                  <div className="flex justify-center mb-4 text-indigo-600 dark:text-indigo-400">
                     {getPlanIcon(plan.id)}
                   </div>
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  <CardTitle className="text-2xl text-slate-900 dark:text-slate-100">{plan.name}</CardTitle>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold">${plan.price}</span>
-                    <span className="text-slate-600">/{plan.billing === "monthly" ? "month" : "year"}</span>
+                    <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">${plan.price}</span>
+                    <span className="text-slate-600 dark:text-slate-400">/{plan.billing === "monthly" ? "month" : "year"}</span>
                   </div>
                 </CardHeader>
                 
@@ -311,7 +327,7 @@ export default function Billing() {
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-center">
                         <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -341,19 +357,19 @@ export default function Billing() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium mb-2">Payment Method</h4>
-                    <div className="flex items-center gap-2">
+                    <h4 className="font-medium mb-2 text-slate-900 dark:text-slate-100">Payment Method</h4>
+                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                       <CreditCard className="w-4 h-4" />
                       <span>{billingInfo.paymentMethod.type} ending in {billingInfo.paymentMethod.last4}</span>
                     </div>
-                    <p className="text-sm text-slate-600 mt-1">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                       Expires {billingInfo.paymentMethod.expiry}
                     </p>
                   </div>
-                  
+
                   <div>
-                    <h4 className="font-medium mb-2">Next Billing Date</h4>
-                    <div className="flex items-center gap-2">
+                    <h4 className="font-medium mb-2 text-slate-900 dark:text-slate-100">Next Billing Date</h4>
+                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                       <Calendar className="w-4 h-4" />
                       <span>{new Date(billingInfo.nextBillingDate).toLocaleDateString()}</span>
                     </div>

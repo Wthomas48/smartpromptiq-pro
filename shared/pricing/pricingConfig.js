@@ -13,6 +13,20 @@ const TOKEN_CONSUMPTION = {
 
 // Token packages for pay-per-use model
 const TOKEN_PACKAGES = {
+  addon_small: {
+    tokens: 20,
+    priceInCents: 500,    // $5.00
+    pricePerToken: 25.00, // $0.250/token in cents
+    stripeId: 'price_1QKrTdJNxVjDuJxhRtAMo2L3',  // 20 Extra Tokens - $5.00
+    label: '20 Extra Tokens'
+  },
+  addon_medium: {
+    tokens: 50,
+    priceInCents: 1000,   // $10.00
+    pricePerToken: 20.00, // $0.200/token in cents
+    stripeId: 'price_1QKrTdJNxVjDuJxhRtAMo2L4',  // 50 Extra Tokens - $10.00
+    label: '50 Extra Tokens'
+  },
   small: {
     tokens: 25,
     priceInCents: 499,    // $4.99
@@ -76,20 +90,22 @@ const SUBSCRIPTION_TIERS = {
     maxTokenRollover: 50,
     templates: true,
     apiAccess: false,
-    apiCallsPerMonth: 0,
+    apiCallsPerMonth: 100,
     teamMembers: 1,
     support: 'Email support',
     popular: true,
+    badge: 'Most Popular',
+    buttonLabel: 'Choose Plan',
     features: [
-      '200 prompts/month',
+      '200 AI prompts per month',
       'All categories',
       'Email support',
       'Templates',
       'Basic analytics'
     ],
     stripeIds: {
-      monthly: 'price_starter_monthly',
-      yearly: 'price_starter_yearly'
+      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2K7',  // Starter Monthly - $14.99
+      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2K8'   // Starter Yearly - $149.90
     },
     rateLimits: {
       promptsPerDay: 50,
@@ -101,6 +117,7 @@ const SUBSCRIPTION_TIERS = {
     id: 'pro',
     name: 'Pro',
     priceInCents: 4999,   // $49.99/month
+    yearlyPriceInCents: 49900, // $499/year
     tokensPerMonth: 1000,
     maxTokenRollover: 200,
     templates: true,
@@ -116,8 +133,8 @@ const SUBSCRIPTION_TIERS = {
       'API access'
     ],
     stripeIds: {
-      monthly: 'price_pro_monthly',
-      yearly: 'price_pro_yearly'
+      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2K9',  // Pro Monthly - $49.99
+      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2L0'   // Pro Yearly - $499.00
     },
     rateLimits: {
       promptsPerDay: 200,
@@ -129,6 +146,7 @@ const SUBSCRIPTION_TIERS = {
     id: 'business',
     name: 'Business',
     priceInCents: 14999,  // $149.99/month
+    yearlyPriceInCents: 149900, // $1499/year
     tokensPerMonth: 5000,
     maxTokenRollover: 1000,
     templates: true,
@@ -144,8 +162,8 @@ const SUBSCRIPTION_TIERS = {
       'Advanced integrations'
     ],
     stripeIds: {
-      monthly: 'price_business_monthly',
-      yearly: 'price_business_yearly'
+      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2L1',  // Business Monthly - $149.99
+      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2L2'   // Business Yearly - $1499.00
     },
     rateLimits: {
       promptsPerDay: 500,
@@ -153,6 +171,18 @@ const SUBSCRIPTION_TIERS = {
       apiCallsPerMinute: 100
     }
   },
+};
+
+// Free tier upsell configuration
+const FREE_TIER_UPSELL = {
+  trigger: {
+    promptsUsed: 4,
+    promptsLimit: 5,
+    percentage: 80 // Trigger at 80% usage
+  },
+  message: "You're almost out of free prompts. Upgrade to Starter or Pro for more!",
+  cta: "Upgrade Now",
+  recommendedTiers: ['starter', 'pro']
 };
 
 // Cost protection settings
@@ -302,10 +332,11 @@ function validateMinimumMargin(revenue, estimatedCosts) {
   return margin >= COST_PROTECTION.minimumProfitMarginMultiplier;
 }
 
-module.exports = {
+export {
   TOKEN_CONSUMPTION,
   TOKEN_PACKAGES,
   SUBSCRIPTION_TIERS,
+  FREE_TIER_UPSELL,
   COST_PROTECTION,
   API_COSTS,
   BILLING_CYCLES,

@@ -12,6 +12,7 @@ interface User {
   tokenBalance?: number;
   stripeCustomerId?: string;
   subscriptionStatus?: string;
+  role?: 'USER' | 'ADMIN';
 }
 
 interface AuthContextType {
@@ -23,6 +24,8 @@ interface AuthContextType {
   logout: () => void;
   checkAuth: () => Promise<void>;
   updateTokenBalance: (newBalance: number) => void;
+  isAdmin: () => boolean;
+  refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,14 +46,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Check for auth token in localStorage
       const storedToken = localStorage.getItem("token");
       const storedUser = localStorage.getItem("user");
-      
+
       if (storedToken && storedUser) {
-        // For demo mode, just use the stored data
+        try {
+          // Verify token with backend
+          const response = await fetch('/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${storedToken}`,
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data?.user) {
+              // Use fresh data from backend
+              const userData = data.data.user;
+              setUser(userData);
+              setToken(storedToken);
+              setIsAuthenticated(true);
+              localStorage.setItem("user", JSON.stringify(userData));
+              console.log("User authenticated with backend:", userData);
+              return;
+            }
+          }
+        } catch (backendError) {
+          console.log("Backend auth check failed, using stored data:", backendError);
+        }
+
+        // Fallback to stored data if backend is unavailable
         const userData = JSON.parse(storedUser);
         setUser(userData);
         setToken(storedToken);
         setIsAuthenticated(true);
-        console.log("User authenticated:", userData);
+        console.log("User authenticated from storage:", userData);
       } else {
         console.log("No token found");
         setIsAuthenticated(false);
@@ -74,41 +104,70 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      // Demo mode - accept any credentials
-      const userData = {
-        id: "demo-user-" + Date.now(),
-        email: email,
-        firstName: email.split("@")[0],
-        lastName: "User",
-        subscriptionTier: "free",
-        tokenBalance: 10
-      };
-      
-      const demoToken = "demo-token-" + Date.now();
-      
-      // Store token and user data
-      localStorage.setItem("token", demoToken);
-      localStorage.setItem("user", JSON.stringify(userData));
-      
-      setToken(demoToken);
-      setUser(userData);
-      setIsAuthenticated(true);
+      setIsLoading(true);
+      console.log("Attempting login:", { email });
 
-      toast({
-        title: "Welcome back!",
-        description: `Signed in as ${userData.firstName}`,
+      // Call backend API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
       });
 
-      // Redirect to dashboard
-      setLocation("/dashboard");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const { user: userData, token: authToken } = data.data;
+
+        console.log('Login debug - raw backend response:', {
+          email,
+          userData,
+          userDataRole: userData.role
+        });
+
+        // Use the backend data EXACTLY as returned - no frontend overrides
+        const enhancedUser = {
+          ...userData
+        };
+
+        console.log('Enhanced user:', enhancedUser);
+
+        // Store token and user data
+        localStorage.setItem("token", authToken);
+        localStorage.setItem("user", JSON.stringify(enhancedUser));
+
+        setToken(authToken);
+        setUser(enhancedUser);
+        setIsAuthenticated(true);
+
+        toast({
+          title: "Welcome back!",
+          description: `Signed in as ${enhancedUser.firstName || enhancedUser.email.split('@')[0]} ${enhancedUser.role === 'ADMIN' ? '(Admin)' : ''}`,
+        });
+
+        // Redirect to dashboard
+        setLocation("/dashboard");
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error: any) {
       console.error("Login failed:", error);
       toast({
         title: "Login failed",
-        description: error.message,
+        description: error.message || "Please check your credentials",
         variant: "destructive",
       });
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -141,6 +200,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const isAdmin = () => {
+    const result = user?.role === 'ADMIN';
+
+    console.log('isAdmin check:', {
+      user,
+      role: user?.role,
+      email: user?.email,
+      result
+    });
+
+    return result;
+  };
+
+  const refreshUserData = async () => {
+    try {
+      const authToken = localStorage.getItem("token");
+      if (!authToken) return;
+
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.user) {
+          const updatedUser = data.data.user;
+          setUser(updatedUser);
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
@@ -150,7 +248,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       login,
       logout,
       checkAuth,
-      updateTokenBalance
+      updateTokenBalance,
+      isAdmin,
+      refreshUserData
     }}>
       {children}
     </AuthContext.Provider>

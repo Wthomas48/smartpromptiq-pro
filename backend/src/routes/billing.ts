@@ -2,6 +2,7 @@
 import Stripe from 'stripe';
 import { authenticate } from '../middleware/auth';
 import prisma from '../config/database';
+import emailService from '../utils/emailService';
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -53,6 +54,107 @@ router.post('/subscribe', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Subscription creation failed'
+    });
+  }
+});
+
+// Purchase tokens (add-on)
+router.post('/purchase-tokens', authenticate, async (req, res) => {
+  try {
+    const { packageKey, paymentMethodId } = req.body;
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id }
+    });
+
+    // Token packages mapping (from pricingConfig.js)
+    const tokenPackages = {
+      addon_small: { tokens: 20, priceInCents: 500, stripeId: 'price_1QKrTdJNxVjDuJxhRtAMo2L3' },
+      addon_medium: { tokens: 50, priceInCents: 1000, stripeId: 'price_1QKrTdJNxVjDuJxhRtAMo2L4' },
+      small: { tokens: 25, priceInCents: 499, stripeId: 'price_tokens_25' },
+      medium: { tokens: 100, priceInCents: 1799, stripeId: 'price_tokens_100' },
+      large: { tokens: 500, priceInCents: 7999, stripeId: 'price_tokens_500' },
+      bulk: { tokens: 1000, priceInCents: 14999, stripeId: 'price_tokens_1000' }
+    };
+
+    const tokenPackage = tokenPackages[packageKey];
+    if (!tokenPackage) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid token package'
+      });
+    }
+
+    let customerId = user!.stripeCustomerId;
+
+    // Create customer if doesn't exist
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user!.email,
+        metadata: { userId: user!.id }
+      });
+      customerId = customer.id;
+
+      await prisma.user.update({
+        where: { id: user!.id },
+        data: { stripeCustomerId: customerId }
+      });
+    }
+
+    // Create payment intent for one-time token purchase
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: tokenPackage.priceInCents,
+      currency: 'usd',
+      customer: customerId,
+      payment_method: paymentMethodId,
+      confirm: true,
+      automatic_payment_methods: {
+        enabled: true,
+        allow_redirects: 'never'
+      },
+      metadata: {
+        userId: user!.id,
+        packageKey,
+        tokenCount: tokenPackage.tokens.toString(),
+        type: 'token_purchase'
+      }
+    });
+
+    if (paymentIntent.status === 'succeeded') {
+      // Add tokens to user account
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 90); // 90-day expiry
+
+      await prisma.user.update({
+        where: { id: user!.id },
+        data: {
+          tokenBalance: { increment: tokenPackage.tokens }
+        }
+      });
+
+      // Log the purchase (you might want to create a token_purchases table)
+
+      res.json({
+        success: true,
+        data: {
+          tokensAdded: tokenPackage.tokens,
+          newBalance: (user!.tokenBalance || 0) + tokenPackage.tokens,
+          paymentIntentId: paymentIntent.id,
+          expiryDate
+        }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Payment failed',
+        paymentStatus: paymentIntent.status
+      });
+    }
+
+  } catch (error) {
+    console.error('Token purchase error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Token purchase failed'
     });
   }
 });
@@ -123,6 +225,13 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const deletedSubscription = event.data.object as Stripe.Subscription;
         await handleSubscriptionCancellation(deletedSubscription);
         break;
+
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        if (paymentIntent.metadata.type === 'token_purchase') {
+          await handleTokenPurchaseSuccess(paymentIntent);
+        }
+        break;
     }
 
     res.json({ received: true });
@@ -141,9 +250,22 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
 
   if (user) {
     const planMapping: { [key: string]: string } = {
+      // New Starter Plan
+      'price_1QKrTdJNxVjDuJxhRtAMo2K7': 'STARTER',  // Monthly
+      'price_1QKrTdJNxVjDuJxhRtAMo2K8': 'STARTER',  // Yearly
+
+      // Updated Pro Plan
+      'price_1QKrTdJNxVjDuJxhRtAMo2K9': 'PRO',      // Monthly
+      'price_1QKrTdJNxVjDuJxhRtAMo2L0': 'PRO',      // Yearly
+
+      // Updated Business Plan (renamed from Enterprise)
+      'price_1QKrTdJNxVjDuJxhRtAMo2L1': 'BUSINESS', // Monthly
+      'price_1QKrTdJNxVjDuJxhRtAMo2L2': 'BUSINESS', // Yearly
+
+      // Legacy price IDs for backward compatibility
       'price_pro_monthly': 'PRO',
-      'price_team_monthly': 'TEAM',
-      'price_enterprise_monthly': 'ENTERPRISE'
+      'price_team_monthly': 'BUSINESS',
+      'price_enterprise_monthly': 'BUSINESS'
     };
 
     const priceId = subscription.items.data[0].price.id;
@@ -156,7 +278,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
         stripeSubscriptionId: subscription.id,
         subscriptionStatus: subscription.status,
         subscriptionEndDate: new Date(subscription.current_period_end * 1000),
-        generationsLimit: plan === 'PRO' ? 500 : plan === 'TEAM' ? 2000 : plan === 'ENTERPRISE' ? 10000 : 10
+        generationsLimit: plan === 'STARTER' ? 200 : plan === 'PRO' ? 1000 : plan === 'BUSINESS' ? 5000 : 5
       }
     });
   }
@@ -173,9 +295,32 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription)
       data: {
         plan: 'FREE',
         subscriptionStatus: 'canceled',
-        generationsLimit: 10
+        generationsLimit: 5
       }
     });
+  }
+}
+
+async function handleTokenPurchaseSuccess(paymentIntent: Stripe.PaymentIntent) {
+  const userId = paymentIntent.metadata.userId;
+  const tokenCount = parseInt(paymentIntent.metadata.tokenCount);
+
+  if (userId && tokenCount) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (user) {
+      // Add tokens to user account
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          tokenBalance: { increment: tokenCount }
+        }
+      });
+
+      console.log(`Added ${tokenCount} tokens to user ${userId} via webhook`);
+    }
   }
 }
 

@@ -36,11 +36,11 @@ export const PRICING_TIERS: PricingTier[] = [
       yearly: 0,
     },
     stripeIds: {
-      monthly: '',
-      yearly: '',
+      monthly: 'price_free', // Free tier - no Stripe needed
+      yearly: 'price_free',
     },
     features: [
-      '10 AI-generated prompts per month',
+      '5 AI-generated prompts per month',
       'Access to 3 basic categories',
       '5 pre-built templates',
       'Basic customization options',
@@ -48,8 +48,8 @@ export const PRICING_TIERS: PricingTier[] = [
       '7-day prompt history',
     ],
     limits: {
-      promptsPerMonth: 10,
-      tokensPerMonth: 5000,
+      promptsPerMonth: 5,
+      tokensPerMonth: 5,
       categories: 3,
       teamMembers: 1,
       templatesCustom: 0,
@@ -61,19 +61,52 @@ export const PRICING_TIERS: PricingTier[] = [
     color: 'slate',
   },
   {
+    id: 'starter',
+    name: 'Starter',
+    description: 'Perfect for individuals getting started with AI prompts',
+    price: {
+      monthly: 14.99,
+      yearly: 149.9, // 2 months free
+    },
+    stripeIds: {
+      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2K7',  // Starter Monthly - $14.99
+      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2K8',   // Starter Yearly - $149.90
+    },
+    features: [
+      '200 AI prompts per month',
+      'All categories',
+      'Email support',
+      'Templates',
+      'Basic analytics',
+    ],
+    limits: {
+      promptsPerMonth: 200,
+      tokensPerMonth: 200,
+      categories: 'unlimited',
+      teamMembers: 1,
+      templatesCustom: 50,
+      apiCalls: 100,
+      promptHistory: 30,
+      exportFormats: ['txt', 'pdf'],
+      support: 'email',
+    },
+    popular: true,
+    color: 'indigo',
+  },
+  {
     id: 'pro',
     name: 'Pro',
     description: 'Ideal for professionals and small teams',
     price: {
-      monthly: 19,
-      yearly: 190, // 2 months free
+      monthly: 49.99,
+      yearly: 499, // $499/year
     },
     stripeIds: {
-      monthly: 'price_pro_monthly',
-      yearly: 'price_pro_yearly',
+      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2K9',  // Pro Monthly - $49.99
+      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2L0',   // Pro Yearly - $499.00
     },
     features: [
-      '500 AI-generated prompts per month',
+      '1000 AI-generated prompts per month',
       'Access to all 15+ categories',
       'Unlimited custom templates',
       'Advanced customization & refinement',
@@ -85,48 +118,48 @@ export const PRICING_TIERS: PricingTier[] = [
       'Prompt versioning',
     ],
     limits: {
-      promptsPerMonth: 500,
-      tokensPerMonth: 125000,
+      promptsPerMonth: 1000,
+      tokensPerMonth: 1000,
       categories: 'unlimited',
       teamMembers: 5,
       templatesCustom: 'unlimited',
       apiCalls: 1000,
       promptHistory: 30,
       exportFormats: ['txt', 'pdf', 'doc', 'json'],
-      support: 'email',
+      support: 'priority',
     },
-    popular: true,
-    color: 'indigo',
+    popular: false,
+    color: 'purple',
   },
   {
-    id: 'team',
-    name: 'Team',
+    id: 'business',
+    name: 'Business',
     description: 'Best for growing teams and departments',
     price: {
-      monthly: 49,
-      yearly: 490, // 2 months free
+      monthly: 149.99,
+      yearly: 1499, // $1499/year
     },
     stripeIds: {
-      monthly: 'price_team_monthly',
-      yearly: 'price_team_yearly',
+      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2L1',
+      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2L2',
     },
     features: [
-      '2,000 AI-generated prompts per month',
+      '5,000 AI-generated prompts per month',
       'Access to all categories + custom categories',
       'Unlimited custom templates',
       'Advanced team collaboration (up to 25 members)',
       'Team analytics & insights',
       'Centralized billing management',
       'Advanced prompt sharing & permissions',
-      'Priority support',
+      '24/7 support',
       '90-day prompt history',
       'All export formats + API access',
       'Custom integrations',
       'White-label options',
     ],
     limits: {
-      promptsPerMonth: 2000,
-      tokensPerMonth: 500000,
+      promptsPerMonth: 5000,
+      tokensPerMonth: 5000,
       categories: 'unlimited',
       teamMembers: 25,
       templatesCustom: 'unlimited',
@@ -180,6 +213,20 @@ export const PRICING_TIERS: PricingTier[] = [
 ];
 
 export const ADDON_FEATURES = {
+  extra_tokens_20: {
+    name: '20 Extra Tokens',
+    description: 'Add 20 extra tokens to your account',
+    price: 5,
+    tokenCount: 20,
+    stripeId: 'price_addon_tokens_20',
+  },
+  extra_tokens_50: {
+    name: '50 Extra Tokens',
+    description: 'Add 50 extra tokens to your account',
+    price: 10,
+    tokenCount: 50,
+    stripeId: 'price_addon_tokens_50',
+  },
   extra_prompts: {
     name: 'Additional Prompts',
     description: 'Add 100 extra prompts to your monthly limit',

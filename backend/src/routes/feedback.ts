@@ -5,6 +5,60 @@ import prisma from '../config/database';
 
 const router = express.Router();
 
+// Submit rating (specific endpoint for rating popup)
+router.post('/rating', authenticate, async (req, res) => {
+  try {
+    const { category, feature, rating, feedback, context, timestamp } = req.body;
+    const userId = req.user!.id;
+
+    // Validate rating
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    // Create feedback entry with rating data structure
+    const feedbackEntry = await prisma.feedback.create({
+      data: {
+        rating: parseInt(rating),
+        feedback: feedback || null,
+        page: feature || category || 'general',
+        userAgent: req.headers['user-agent'] || null,
+        userId,
+        submittedAt: timestamp ? new Date(timestamp) : new Date()
+      }
+    });
+
+    // Update user feedback statistics
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        updatedAt: new Date()
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: feedbackEntry.id,
+        rating: feedbackEntry.rating,
+        category: category || 'general',
+        feature: feature || 'overall',
+        submittedAt: feedbackEntry.submittedAt
+      },
+      message: 'Rating submitted successfully'
+    });
+  } catch (error) {
+    console.error('Submit rating error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 // Submit feedback
 router.post('/', authenticate, [
   body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5'),
