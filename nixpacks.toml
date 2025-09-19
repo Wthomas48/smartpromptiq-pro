@@ -9,7 +9,10 @@ cmds = [
 
 [phases.build]
 cmds = [
-  "npm run build"
+  "npm run build",
+  "cd backend && npm run build",
+  "mkdir -p backend/dist/client",
+  "cp -r client/dist/* backend/dist/client/"
 ]
 
 [start]

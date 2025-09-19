@@ -101,6 +101,11 @@ app.use('/api/business', categoryRoutes);
 
 // Serve static files from client build
 const clientDistPath = path.join(__dirname, '../../client/dist');
+console.log('🔍 Looking for client build at:', clientDistPath);
+console.log('🔍 Client dist exists:', require('fs').existsSync(clientDistPath));
+if (require('fs').existsSync(clientDistPath)) {
+  console.log('📁 Client dist contents:', require('fs').readdirSync(clientDistPath));
+}
 app.use(express.static(clientDistPath));
 
 // SPA fallback - serve index.html for non-API routes
