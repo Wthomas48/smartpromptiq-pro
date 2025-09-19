@@ -6,3 +6,6 @@ buildCommand = "npm ci && npm run build"
 startCommand = "node server.cjs"
 healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"
+
+[variables]
+NODE_ENV = "production"
