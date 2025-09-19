@@ -1,6 +1,6 @@
 ﻿[build]
 builder = "NIXPACKS"
-buildCommand = "echo 'Starting build...' && npm ci && npm --prefix client ci && rm -rf client/dist && npm --prefix client run build && echo 'Build completed' && ls -la client/dist/"
+buildCommand = "npm ci && npm run build"
 
 [deploy]
 startCommand = "node server.cjs"
