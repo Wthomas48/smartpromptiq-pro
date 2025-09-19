@@ -15,7 +15,25 @@ console.log('🔍 Looking for frontend build at:', clientDistPath);
 // Check if the directory exists at startup
 if (fs.existsSync(clientDistPath)) {
   console.log('✅ Frontend build directory exists');
-  app.use(express.static(clientDistPath));
+
+  // Serve static assets with long-term caching (they have hash fingerprints)
+  app.use('/assets', express.static(path.join(clientDistPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true
+  }));
+
+  // Serve other static files with shorter cache
+  app.use(express.static(clientDistPath, {
+    maxAge: '1h',
+    setHeaders: (res, filePath) => {
+      // Don't cache index.html so users get new asset URLs
+      if (path.basename(filePath) === 'index.html') {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    }
+  }));
 } else {
   console.log('❌ Frontend build directory does NOT exist');
 }
@@ -136,6 +154,10 @@ app.all('/api/*', (req, res) => {
 app.get('*', (req, res) => {
   const indexPath = path.join(clientDistPath, 'index.html');
   if (fs.existsSync(indexPath)) {
+    // Ensure index.html is never cached so users get new asset URLs
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(indexPath);
   } else {
     res.status(404).send('Application not found. Please check if the build exists.');
