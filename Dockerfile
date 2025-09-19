@@ -2,14 +2,23 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy all files
+# Copy package.json first
+COPY package*.json ./
+
+# Install root dependencies
+RUN npm ci
+
+# Copy client package.json
+COPY client/package*.json ./client/
+
+# Copy all source files
 COPY . .
 
-# Install dependencies and build
-RUN npm ci && npm run build
+# Build the client
+RUN npm run build
 
 # Expose port
 EXPOSE 8080
 
-# Start server
+# Start with simple server
 CMD ["node", "server.cjs"]
