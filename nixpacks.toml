@@ -13,7 +13,7 @@ cmds = [
 ]
 
 [start]
-cmd = "npm run railway:start"
+cmd = "node server.cjs"
 
 [variables]
 NODE_ENV = "production"
