@@ -1,6 +1,6 @@
 {
     "name": "smartpromptiq-saas",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "AI-Powered Prompt Engineering SaaS Platform",
     "type": "module",
     "scripts": {

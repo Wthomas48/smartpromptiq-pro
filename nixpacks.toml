@@ -4,19 +4,18 @@ nixPkgs = ["nodejs_18", "npm"]
 [phases.install]
 cmds = [
   "npm ci --prefer-offline --no-audit --progress=false",
-  "cd client && npm ci --prefer-offline --no-audit --progress=false"
+  "cd client && npm ci --prefer-offline --no-audit --progress=false",
+  "cd backend && npm ci --prefer-offline --no-audit --progress=false"
 ]
 
 [phases.build]
 cmds = [
-  "npm run build",
-  "cd backend && npm run build",
-  "mkdir -p backend/dist/client",
-  "cp -r client/dist/* backend/dist/client/"
+  "npm run build:client",
+  "cd backend && npm run build"
 ]
 
 [start]
-cmd = "node server.cjs"
+cmd = "cd backend && npm start"
 
 [variables]
 NODE_ENV = "production"
