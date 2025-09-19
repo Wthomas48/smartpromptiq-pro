@@ -55,6 +55,9 @@ export function useRatingSystem(): RatingSystemHook {
   const [featuresUsed, setFeaturesUsed] = useState<Set<string>>(new Set());
   const [milestonesReached, setMilestonesReached] = useState<Set<string>>(new Set());
 
+  // Check if rating is enabled via environment variable
+  const ratingEnabled = import.meta.env.VITE_RATING_ENABLED === "true";
+
   // Load rating configuration
   const { data: config = defaultConfig } = useQuery<RatingConfig>({
     queryKey: ["/api/rating/config"],
@@ -66,6 +69,7 @@ export function useRatingSystem(): RatingSystemHook {
         return defaultConfig; // Fallback to default if API fails
       }
     },
+    enabled: ratingEnabled, // Only fetch if rating is enabled
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -80,6 +84,7 @@ export function useRatingSystem(): RatingSystemHook {
         return []; // Fallback to empty array
       }
     },
+    enabled: ratingEnabled, // Only fetch if rating is enabled
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
