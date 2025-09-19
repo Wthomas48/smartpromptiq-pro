@@ -23,4 +23,4 @@ ENV PORT=8080
 # copy app source + built assets + node_modules
 COPY --from=build /app /app
 EXPOSE 8080
-CMD ["node", "backend/simple-server.js"]
+CMD ["node", "server.cjs"]
