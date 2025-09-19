@@ -2,19 +2,17 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy package files
 COPY package*.json ./
-
-# Copy client package.json
 COPY client/package*.json ./client/
 
-# Install root dependencies
-RUN npm ci
+# Install all dependencies (root and client)
+RUN npm ci && cd client && npm ci
 
 # Copy all source files
 COPY . .
 
-# Stage-0: Run build
+# Stage-0: Build the client
 RUN npm run build
 
 # Expose port
