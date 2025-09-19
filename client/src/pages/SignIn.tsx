@@ -100,7 +100,7 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100 px-4">
-      <Card className="w-full max-w-md shadow-2xl" data-build="signup-canary-2025-09-19-1">
+      <Card className="w-full max-w-md shadow-2xl" data-build="signup-canary-2025-09-19-2">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold">🚀 SmartPromptIQ - FIXED SIGNUP!</CardTitle>
           <CardDescription>NEW VERSION DEPLOYED! Choose Signup, Signin, or Demo ✨</CardDescription>
@@ -257,7 +257,7 @@ export default function SignIn() {
           </div>
         </CardContent>
         <footer className="text-xs opacity-60" style={{ textAlign: 'center', fontSize: '12px', color: '#666', padding: '10px' }}>
-          build: signup-canary-2025-09-19-1 | FIXED SIGNUP DEPLOYED!
+          build: signup-canary-2025-09-19-2 | FINAL DEPLOYMENT TEST!
         </footer>
       </Card>
     </div>

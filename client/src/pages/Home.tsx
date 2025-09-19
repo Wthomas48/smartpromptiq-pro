@@ -682,7 +682,7 @@ export default function Home() {
         </div>
         <p>Trusted by industry leaders and innovative companies worldwide</p>
         <div className="text-xs opacity-60 mt-4" style={{ textAlign: 'center' }}>
-          build: signup-canary-2025-09-19-1 | SIGNUP FIXED & DEPLOYED
+          build: signup-canary-2025-09-19-2 | FINAL DEPLOYMENT TEST!
         </div>
       </footer>
     </div>
