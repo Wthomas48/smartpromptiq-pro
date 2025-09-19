@@ -91,7 +91,8 @@
       "Bash(start \"\" \"http://localhost:5173/questionnaire/business\")",
       "Bash(del \"C:\\SmartPromptiq-pro\\components\\pages\\SignIn.tsx\")",
       "Bash(start \"\" \"http://localhost:5175/signin\")",
-      "Bash(move server.js server.cjs)"
+      "Bash(move server.js server.cjs)",
+      "Bash(railway login:*)"
     ],
     "deny": [],
     "ask": []

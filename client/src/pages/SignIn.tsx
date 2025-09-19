@@ -102,8 +102,8 @@ export default function SignIn() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100 px-4">
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Welcome to SmartPromptIQ</CardTitle>
-          <CardDescription>Choose your path to unleash your creative potential ✨</CardDescription>
+          <CardTitle className="text-3xl font-bold">🚀 SmartPromptIQ - FIXED SIGNUP!</CardTitle>
+          <CardDescription>NEW VERSION DEPLOYED! Choose Signup, Signin, or Demo ✨</CardDescription>
         </CardHeader>
 
         <CardContent>
