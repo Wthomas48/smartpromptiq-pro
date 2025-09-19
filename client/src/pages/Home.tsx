@@ -681,6 +681,9 @@ export default function Home() {
           <div className="footer-badge">25,000+ Users</div>
         </div>
         <p>Trusted by industry leaders and innovative companies worldwide</p>
+        <div className="text-xs opacity-60 mt-4" style={{ textAlign: 'center' }}>
+          build: signup-canary-2025-09-19-1 | SIGNUP FIXED & DEPLOYED
+        </div>
       </footer>
     </div>
   );
