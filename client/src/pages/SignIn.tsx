@@ -256,6 +256,9 @@ export default function SignIn() {
             )}
           </div>
         </CardContent>
+        <footer style={{ textAlign: 'center', fontSize: '12px', color: '#666', padding: '10px' }}>
+          build: 2025-09-19T15:00 - Signup Fix v2
+        </footer>
       </Card>
     </div>
   );
