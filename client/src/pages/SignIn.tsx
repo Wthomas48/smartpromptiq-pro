@@ -102,8 +102,12 @@ export default function SignIn() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100 px-4">
       <Card className="w-full max-w-md shadow-2xl" data-build="signup-canary-2025-09-19-2">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">🚀 SmartPromptIQ - FIXED SIGNUP!</CardTitle>
-          <CardDescription>NEW VERSION DEPLOYED! Choose Signup, Signin, or Demo ✨</CardDescription>
+          <CardTitle className="text-2xl font-bold text-gray-900">
+            SmartPromptIQ
+          </CardTitle>
+          <CardDescription className="text-gray-600">
+            {isSignUp ? "Create your account to get started" : "Welcome back! Please sign in to continue"}
+          </CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -214,19 +218,34 @@ export default function SignIn() {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 transition-all duration-200"
                 disabled={isLoading}
               >
-                {isLoading
-                  ? (isSignUp ? "Creating account..." : "Signing in...")
-                  : (isSignUp ? "Create Account" : "Sign In")
-                }
+                {isLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    {isSignUp ? "Creating account..." : "Signing in..."}
+                  </div>
+                ) : (
+                  isSignUp ? "Create Account" : "Sign In"
+                )}
               </Button>
             </form>
 
-            <div className="text-center text-sm text-gray-500">OR</div>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/demo">Continue with Demo</Link>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">Or</span>
+              </div>
+            </div>
+            <Button asChild variant="outline" className="w-full border-gray-300 hover:bg-gray-50">
+              <Link href="/demo">
+                <span className="flex items-center justify-center">
+                  🚀 Try Demo Mode
+                </span>
+              </Link>
             </Button>
 
             {!isSignUp && (
@@ -256,9 +275,14 @@ export default function SignIn() {
             )}
           </div>
         </CardContent>
-        <footer className="text-xs opacity-60" style={{ textAlign: 'center', fontSize: '12px', color: '#666', padding: '10px' }}>
-          build: signup-canary-2025-09-19-2 | FINAL DEPLOYMENT TEST!
-        </footer>
+        <div className="px-6 py-4 border-t bg-gray-50">
+          <p className="text-xs text-center text-gray-500">
+            Secure authentication powered by SmartPromptIQ
+          </p>
+          <p className="text-xs text-center text-gray-400 mt-1">
+            build: signup-canary-2025-09-19-2
+          </p>
+        </div>
       </Card>
     </div>
   );
