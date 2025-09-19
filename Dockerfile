@@ -1,26 +1,15 @@
-﻿# ---------- deps ----------
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY backend/package*.json backend/
-RUN npm --prefix backend ci
-COPY client/package*.json client/
-RUN npm --prefix client ci
+FROM node:18-alpine
 
-# ---------- build client ----------
-FROM node:20-alpine AS build
 WORKDIR /app
-COPY --from=deps /app /app
+
+# Copy all files
 COPY . .
-RUN npm --prefix client run build
 
-# ---------- runtime ----------
-FROM node:20-alpine
-WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=8080
-# copy app source + built assets + node_modules
-COPY --from=build /app /app
+# Stage-0: Install dependencies and build
+RUN npm ci && npm run build
+
+# Expose port
 EXPOSE 8080
+
+# Start the application
 CMD ["node", "server.cjs"]
