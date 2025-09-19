@@ -76,15 +76,24 @@ app.post('/api/auth/register', (req, res) => {
   });
 });
 
-// Rating API endpoints
+// Rating API endpoints - Enhanced
 app.get('/api/rating/config', (req, res) => {
   res.json({
     success: true,
     data: {
       enabled: true,
+      defaultScale: 5,
       maxRating: 5,
+      allowHistory: true,
       categories: ['quality', 'usefulness', 'clarity']
     }
+  });
+});
+
+app.get('/api/rating/history', (req, res) => {
+  res.json({
+    success: true,
+    data: []
   });
 });
 
@@ -142,8 +151,71 @@ app.get('/api/user/profile', (req, res) => {
   });
 });
 
+// Additional API stubs for frontend functionality
+app.get('/api/auth/me', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      id: 'demo',
+      email: 'demo@example.com',
+      firstName: 'Demo',
+      lastName: 'User',
+      role: 'user'
+    }
+  });
+});
+
+app.get('/api/config', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      signupEnabled: true,
+      demoMode: true,
+      features: {
+        signup: true,
+        signin: true,
+        demo: true
+      }
+    }
+  });
+});
+
+app.get('/api/features', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      signup: true,
+      signin: true,
+      demo: true,
+      rating: true
+    }
+  });
+});
+
+// Generate API for prompts
+app.post('/api/generate', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      content: 'Demo prompt generated successfully!',
+      tokens: 150
+    }
+  });
+});
+
+// Templates API
+app.get('/api/templates', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 1, name: 'Demo Template', category: 'business' }
+    ]
+  });
+});
+
 // Catch-all for other API endpoints
 app.all('/api/*', (req, res) => {
+  console.log(`API endpoint called: ${req.method} ${req.path}`);
   res.json({
     success: false,
     message: 'API endpoint not implemented in demo mode'
