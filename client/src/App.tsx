@@ -73,7 +73,7 @@ function Router() {
         <Route path="/pricing" component={PricingPage} />
 
       {/* ALL ROUTES NOW PUBLICLY ACCESSIBLE - FULL ADMIN ACCESS */}
-      <Route path="/" component={SignIn} />
+      <Route path="/" component={Home} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/categories" component={Categories} />
       <Route path="/questionnaire/:category" component={Questionnaire} />

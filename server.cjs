@@ -203,6 +203,64 @@ app.post('/api/generate', (req, res) => {
   });
 });
 
+// Prompts API endpoints for Dashboard
+app.get('/api/prompts', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 1, title: 'Demo Business Plan', category: 'business', content: 'Sample business plan prompt...', createdAt: new Date().toISOString(), isFavorite: false },
+      { id: 2, title: 'Marketing Strategy', category: 'marketing', content: 'Sample marketing prompt...', createdAt: new Date().toISOString(), isFavorite: true }
+    ]
+  });
+});
+
+app.get('/api/prompts/stats', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      totalPrompts: 15,
+      favoritePrompts: 5,
+      totalTokens: 1250,
+      categoriesUsed: 8
+    }
+  });
+});
+
+app.get('/api/prompts/activity', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { date: '2024-01-15', count: 3 },
+      { date: '2024-01-16', count: 5 },
+      { date: '2024-01-17', count: 2 }
+    ]
+  });
+});
+
+app.get('/api/prompts/achievements', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 1, title: 'First Prompt', description: 'Created your first prompt', earned: true },
+      { id: 2, title: 'Prompt Master', description: 'Created 10 prompts', earned: false }
+    ]
+  });
+});
+
+app.patch('/api/prompts/:id/favorite', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Favorite status updated'
+  });
+});
+
+app.delete('/api/prompts/:id', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Prompt deleted successfully'
+  });
+});
+
 // Templates API
 app.get('/api/templates', (req, res) => {
   res.json({
