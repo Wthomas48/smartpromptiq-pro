@@ -25,7 +25,7 @@ const Tabs = ({ defaultValue, children, className = "" }: any) => {
   const [activeTab, setActiveTab] = useState(defaultValue);
   return (
     <div className={`w-full ${className}`} data-active-tab={activeTab}>
-      {children.map((child: any) =>
+      {(Array.isArray(children) ? children : []).map((child: any) =>
         child.type.name === 'TabsList'
           ? { ...child, props: { ...child.props, activeTab, setActiveTab } }
           : child.props.value === activeTab ? child : null
@@ -36,7 +36,7 @@ const Tabs = ({ defaultValue, children, className = "" }: any) => {
 
 const TabsList = ({ children, activeTab, setActiveTab }: any) => (
   <div className="flex space-x-1 rounded-lg bg-gray-100 p-1 mb-4">
-    {children.map((child: any) => ({
+    {(Array.isArray(children) ? children : []).map((child: any) => ({
       ...child,
       props: { ...child.props, activeTab, setActiveTab }
     }))}
@@ -403,7 +403,7 @@ export default function Teams() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {displayTeams.map((team) => (
+          {(Array.isArray(displayTeams) ? displayTeams : []).map((team) => (
             <Card key={team.id} className="cursor-pointer hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -674,7 +674,7 @@ export default function Teams() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {displayMembers.map((member) => (
+                  {(Array.isArray(displayMembers) ? displayMembers : []).map((member) => (
                     <div key={member.id} className="flex items-center justify-between p-3 rounded-lg border">
                       <div className="flex items-center space-x-3">
                         <div className="relative">
@@ -756,7 +756,12 @@ export default function Teams() {
                   { user: "Bob Smith", action: "uploaded file", item: "API_Documentation_v2.pdf", time: "4 hours ago", icon: Upload, color: "text-blue-600" },
                   { user: "Carol Davis", action: "created project", item: "Mobile App Redesign", time: "1 day ago", icon: Plus, color: "text-purple-600" },
                   { user: "David Wilson", action: "joined meeting", item: "Weekly Standup", time: "2 days ago", icon: Video, color: "text-orange-600" }
-                ].map((activity, index) => (
+                ]) ? [
+                  { user: "Alice Johnson", action: "completed task", item: "Dashboard Design Review", time: "2 hours ago", icon: CheckCircle, color: "text-green-600" },
+                  { user: "Bob Smith", action: "uploaded file", item: "API_Documentation_v2.pdf", time: "4 hours ago", icon: Upload, color: "text-blue-600" },
+                  { user: "Carol Davis", action: "created project", item: "Mobile App Redesign", time: "1 day ago", icon: Plus, color: "text-purple-600" },
+                  { user: "David Wilson", action: "joined meeting", item: "Weekly Standup", time: "2 days ago", icon: Video, color: "text-orange-600" }
+                ] : []).map((activity, index) => (
                   <div key={index} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50">
                     <activity.icon className={`w-5 h-5 mt-0.5 ${activity.color}`} />
                     <div className="flex-1">
@@ -799,7 +804,7 @@ export default function Teams() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {mockProjects.map((project) => (
+                  {(Array.isArray(mockProjects) ? mockProjects : []).map((project) => (
                     <Card key={project.id} className="border border-gray-200">
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
@@ -903,7 +908,7 @@ export default function Teams() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockProjects.map((project) => (
+                {(Array.isArray(mockProjects) ? mockProjects : []).map((project) => (
                   <Card key={project.id} className="border border-gray-200">
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between">
@@ -942,7 +947,7 @@ export default function Teams() {
                             <div>
                               <p className="text-sm font-medium text-gray-600">Team Members</p>
                               <div className="flex -space-x-2 mt-1">
-                                {project.assignedMembers.map((memberId, index) => {
+                                {(Array.isArray(project.assignedMembers) ? project.assignedMembers : []).map((memberId, index) => {
                                   const member = displayMembers.find(m => m.id === memberId);
                                   return member ? (
                                     <Avatar key={memberId} className="w-6 h-6 border-2 border-white">
@@ -1002,11 +1007,11 @@ export default function Teams() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 h-96 overflow-y-auto mb-4">
-                  {mockMessages.map((message) => (
+                  {(Array.isArray(mockMessages) ? mockMessages : []).map((message) => (
                     <div key={message.id} className="flex items-start space-x-3">
                       <Avatar className="w-8 h-8">
                         <AvatarFallback className="text-xs">
-                          {message.senderName.split(' ').map(n => n[0]).join('')}
+                          {(Array.isArray(message.senderName.split(' ')) ? message.senderName.split(' ') : []).map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
@@ -1056,7 +1061,7 @@ export default function Teams() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {displayMembers.filter(member => member.status === 'online').map((member) => (
+                  {(Array.isArray(displayMembers.filter(member => member.status === 'online')) ? displayMembers.filter(member => member.status === 'online') : []).map((member) => (
                     <div key={member.id} className="flex items-center space-x-3">
                       <div className="relative">
                         <Avatar className="w-8 h-8">
@@ -1104,7 +1109,7 @@ export default function Teams() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {mockFiles.map((file) => (
+                {(Array.isArray(mockFiles) ? mockFiles : []).map((file) => (
                   <div key={file.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50">
                     <div className="flex items-center space-x-3">
                       {file.type === 'folder' ? (
@@ -1195,7 +1200,12 @@ export default function Teams() {
                     { title: "Team Collaboration", description: "100% participation in weekly standup", date: "1 week ago", icon: Users },
                     { title: "Quality Delivery", description: "Zero bugs in last deployment", date: "1 week ago", icon: CheckCircle },
                     { title: "Innovation", description: "Implemented new AI feature", date: "2 weeks ago", icon: Sparkles }
-                  ].map((achievement, index) => (
+                  ]) ? [
+                    { title: "Project Milestone", description: "Completed Dashboard Design Phase", date: "2 days ago", icon: Target },
+                    { title: "Team Collaboration", description: "100% participation in weekly standup", date: "1 week ago", icon: Users },
+                    { title: "Quality Delivery", description: "Zero bugs in last deployment", date: "1 week ago", icon: CheckCircle },
+                    { title: "Innovation", description: "Implemented new AI feature", date: "2 weeks ago", icon: Sparkles }
+                  ] : []).map((achievement, index) => (
                     <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-green-50 border border-green-200">
                       <achievement.icon className="w-5 h-5 text-green-600 mt-0.5" />
                       <div className="flex-1">
@@ -1225,7 +1235,12 @@ export default function Teams() {
                   { time: "9:45 AM", user: "Bob Smith", action: "Deployed version 2.1.0 to staging environment", type: "deploy" },
                   { time: "9:15 AM", user: "Carol Davis", action: "Updated design specifications for mobile app", type: "design" },
                   { time: "8:30 AM", user: "David Wilson", action: "Resolved 3 critical bugs in authentication module", type: "bug" }
-                ].map((activity, index) => (
+                ]) ? [
+                  { time: "10:30 AM", user: "Alice Johnson", action: "Started code review for Dashboard component", type: "code" },
+                  { time: "9:45 AM", user: "Bob Smith", action: "Deployed version 2.1.0 to staging environment", type: "deploy" },
+                  { time: "9:15 AM", user: "Carol Davis", action: "Updated design specifications for mobile app", type: "design" },
+                  { time: "8:30 AM", user: "David Wilson", action: "Resolved 3 critical bugs in authentication module", type: "bug" }
+                ] : []).map((activity, index) => (
                   <div key={index} className="flex items-start space-x-4 pb-4 border-b border-gray-100 last:border-b-0">
                     <div className="text-xs text-gray-500 w-20 mt-1">{activity.time}</div>
                     <div className={`w-3 h-3 rounded-full mt-1.5 ${
@@ -1308,7 +1323,7 @@ export default function Teams() {
                         <span>Weekly Average: 18 tasks</span>
                       </div>
                       <div className="grid grid-cols-7 gap-1 h-20">
-                        {[65, 72, 68, 85, 90, 78, 82].map((height, index) => (
+                        {(Array.isArray([65, 72, 68, 85, 90, 78, 82]) ? [65, 72, 68, 85, 90, 78, 82] : []).map((height, index) => (
                           <div key={index} className="bg-blue-200 rounded-sm flex items-end">
                             <div
                               className="w-full bg-blue-600 rounded-sm transition-all duration-300"
@@ -1318,7 +1333,7 @@ export default function Teams() {
                         ))}
                       </div>
                       <div className="grid grid-cols-7 gap-1 text-xs text-gray-500 text-center">
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                        {(Array.isArray(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : []).map(day => (
                           <span key={day}>{day}</span>
                         ))}
                       </div>
@@ -1330,7 +1345,7 @@ export default function Teams() {
                         <span>Weekly Average: 12 reviews</span>
                       </div>
                       <div className="grid grid-cols-7 gap-1 h-16">
-                        {[45, 58, 52, 68, 75, 60, 65].map((height, index) => (
+                        {(Array.isArray([45, 58, 52, 68, 75, 60, 65]) ? [45, 58, 52, 68, 75, 60, 65] : []).map((height, index) => (
                           <div key={index} className="bg-green-200 rounded-sm flex items-end">
                             <div
                               className="w-full bg-green-600 rounded-sm transition-all duration-300"
@@ -1347,7 +1362,7 @@ export default function Teams() {
                         <span>Weekly Average: 3 bugs</span>
                       </div>
                       <div className="grid grid-cols-7 gap-1 h-12">
-                        {[25, 15, 30, 10, 5, 20, 12].map((height, index) => (
+                        {(Array.isArray([25, 15, 30, 10, 5, 20, 12]) ? [25, 15, 30, 10, 5, 20, 12] : []).map((height, index) => (
                           <div key={index} className="bg-red-200 rounded-sm flex items-end">
                             <div
                               className="w-full bg-red-600 rounded-sm transition-all duration-300"
@@ -1373,7 +1388,7 @@ export default function Teams() {
                     <div>
                       <h4 className="font-medium mb-3">Member Contributions</h4>
                       <div className="space-y-3">
-                        {displayMembers.map((member, index) => {
+                        {(Array.isArray(displayMembers) ? displayMembers : []).map((member, index) => {
                           const contributions = [85, 72, 68, 91][index] || 75;
                           return (
                             <div key={member.id}>
@@ -1397,7 +1412,13 @@ export default function Teams() {
                           { activity: "Testing", percentage: 15, color: "bg-yellow-600" },
                           { activity: "Documentation", percentage: 10, color: "bg-purple-600" },
                           { activity: "Meetings", percentage: 5, color: "bg-gray-600" }
-                        ].map((item, index) => (
+                        ]) ? [
+                          { activity: "Development", percentage: 45, color: "bg-blue-600" },
+                          { activity: "Code Review", percentage: 25, color: "bg-green-600" },
+                          { activity: "Testing", percentage: 15, color: "bg-yellow-600" },
+                          { activity: "Documentation", percentage: 10, color: "bg-purple-600" },
+                          { activity: "Meetings", percentage: 5, color: "bg-gray-600" }
+                        ] : []).map((item, index) => (
                           <div key={index} className="flex items-center space-x-3">
                             <div className={`w-3 h-3 rounded-full ${item.color}`} />
                             <span className="text-sm flex-1">{item.activity}</span>

@@ -867,7 +867,7 @@ export default function Questionnaire() {
               {/* Regular questionnaire options */}
               {(currentQuestion.type === 'single' || currentQuestion.type === 'multiple') && currentQuestion.options && (
                 <div className="space-y-3">
-                  {currentQuestion.options.map((option) => {
+                  {(Array.isArray(currentQuestion?.options) ? currentQuestion.options : []).map((option) => {
                     const isSelected = currentQuestion.type === 'single'
                       ? answers[currentQuestion.id] === option.value
                       : ((answers[currentQuestion.id] as string[]) || []).includes(option.value);

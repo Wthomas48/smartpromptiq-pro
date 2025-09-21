@@ -433,7 +433,7 @@ export default function CustomQuestionnaire() {
                               <p className="text-slate-600 text-sm mb-3">{question.description}</p>
                               {question.options && question.options.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
-                                  {question.options.map((option) => (
+                                  {(Array.isArray(question?.options) ? question.options : []).map((option) => (
                                     <Badge key={option.id} variant="secondary" className="text-xs">
                                       {option.label}
                                     </Badge>

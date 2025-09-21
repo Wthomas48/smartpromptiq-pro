@@ -129,7 +129,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({
           <div className="space-y-2">
             <h4 className="font-medium text-gray-900">What you'll get with {required.name}:</h4>
             <ul className="space-y-1 text-sm text-gray-600">
-              {required.features.slice(0, 3).map((feature, index) => (
+              {(Array.isArray(required.features) ? required.features : []).slice(0, 3).map((feature, index) => (
                 <li key={index} className="flex items-center space-x-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
                   <span>{feature}</span>

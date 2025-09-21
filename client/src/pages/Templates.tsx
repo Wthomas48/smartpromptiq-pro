@@ -646,11 +646,11 @@ export default function Templates() {
 
   // Create flat array of all templates
   const allTemplates = Object.entries(templateCategories).flatMap(([categoryKey, category]) =>
-    category.templates.map(template => ({ ...template, categoryName: category.name, categoryKey }))
+    (Array.isArray(category.templates) ? category.templates : []).map(template => ({ ...template, categoryName: category.name, categoryKey }))
   );
 
   // Get all unique tags
-  const allTags = Array.from(new Set(allTemplates.flatMap(t => t.tags)));
+  const allTags = Array.from(new Set((Array.isArray(allTemplates) ? allTemplates : []).flatMap(t => t.tags)));
 
   // Filter and sort templates
   const filteredTemplates = allTemplates
@@ -816,7 +816,12 @@ export default function Templates() {
               { label: "Featured", value: stats.featuredCount, icon: Star, color: "from-yellow-500 to-orange-500" },
               { label: "Trending Now", value: stats.trendingCount, icon: TrendingUp, color: "from-pink-500 to-rose-500" },
               { label: "Avg Rating", value: stats.avgRating, icon: Users, color: "from-emerald-500 to-teal-500" }
-            ].map((stat, index) => {
+            ]) ? [
+              { label: "Premium Templates", value: stats.totalTemplates, icon: Target, color: "from-blue-500 to-cyan-500" },
+              { label: "Featured", value: stats.featuredCount, icon: Star, color: "from-yellow-500 to-orange-500" },
+              { label: "Trending Now", value: stats.trendingCount, icon: TrendingUp, color: "from-pink-500 to-rose-500" },
+              { label: "Avg Rating", value: stats.avgRating, icon: Users, color: "from-emerald-500 to-teal-500" }
+            ] : []).map((stat, index) => {
               const Icon = stat.icon;
               return (
                 <div key={stat.label} className="group">
@@ -875,7 +880,7 @@ export default function Templates() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Tags</SelectItem>
-                    {allTags.map(tag => (
+                    {(Array.isArray(allTags) ? allTags : []).map(tag => (
                       <SelectItem key={tag} value={tag}>{tag}</SelectItem>
                     ))}
                   </SelectContent>
@@ -918,7 +923,7 @@ export default function Templates() {
               >
                 All Categories
               </Button>
-              {Object.entries(templateCategories).map(([key, category]) => {
+              {(Array.isArray(Object.entries(templateCategories)) ? Object.entries(templateCategories) : []).map(([key, category]) => {
                 const Icon = category.icon;
                 const isActive = activeCategory === key;
                 return (
@@ -946,7 +951,7 @@ export default function Templates() {
         <div className={`grid gap-8 ${
           viewMode === 'grid' ? 'md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1 max-w-4xl mx-auto'
         }`}>
-          {filteredTemplates.map((template, index) => (
+          {(Array.isArray(filteredTemplates) ? filteredTemplates : []).map((template, index) => (
             <Card
               key={`${template.categoryKey}-${template.id}`}
               className="group relative bg-white/80 backdrop-blur-sm border-white/20 shadow-xl hover:shadow-2xl transition-all duration-700 hover:scale-[1.02] cursor-pointer overflow-hidden"
@@ -1085,7 +1090,7 @@ export default function Templates() {
 
                 {/* Enhanced Tags */}
                 <div className="flex flex-wrap gap-2 mb-6">
-                  {template.tags.slice(0, 4).map(tag => (
+                  {(Array.isArray(template.tags) ? template.tags : []).slice(0, 4).map(tag => (
                     <Badge key={tag} variant="secondary" className="text-xs px-3 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors font-medium">
                       {tag}
                     </Badge>

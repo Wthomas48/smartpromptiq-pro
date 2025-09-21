@@ -742,7 +742,7 @@ export default function Documentation() {
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-slate-700">What you'll learn:</p>
                           <div className="grid grid-cols-2 gap-1">
-                            {tutorial.steps.map((step, stepIndex) => (
+                            {(Array.isArray(tutorial?.steps) ? tutorial.steps : []).map((step, stepIndex) => (
                               <div key={stepIndex} className="flex items-center gap-2">
                                 <CheckCircle className="w-3 h-3 text-green-500" />
                                 <span className="text-xs text-slate-600">{step}</span>

@@ -171,7 +171,7 @@ export default function RequestCustomCategory({ onRequestSubmitted }: RequestCus
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
                   <SelectContent>
-                    {industryTypes.map((industry) => (
+                    {(Array.isArray(industryTypes) ? industryTypes : []).map((industry) => (
                       <SelectItem key={industry} value={industry.toLowerCase()}>
                         {industry}
                       </SelectItem>
@@ -233,7 +233,7 @@ export default function RequestCustomCategory({ onRequestSubmitted }: RequestCus
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  {priorityLevels.map((priority) => (
+                  {(Array.isArray(priorityLevels) ? priorityLevels : []).map((priority) => (
                     <SelectItem key={priority.value} value={priority.value}>
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${priority.color}`}></div>

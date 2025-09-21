@@ -38,7 +38,7 @@ export default function QuestionCard({
         </div>
         
         <div className="space-y-4">
-          {options.map((option) => (
+          {(Array.isArray(options) ? options : []).map((option) => (
             <label 
               key={option.value} 
               className="flex items-start space-x-4 p-4 border-2 border-slate-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
