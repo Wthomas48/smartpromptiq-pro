@@ -34,12 +34,43 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(compression());
 
-// CORS configuration
+// CORS configuration - Support multiple origins for production
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL,
+  process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined,
+  process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined
+].filter(Boolean);
+
+console.log('🌐 CORS Allowed Origins:', allowedOrigins);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    // Check if the origin is in the allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow any Railway domain
+    if (origin.includes('.railway.app') || origin.includes('.up.railway.app')) {
+      return callback(null, true);
+    }
+
+    // Allow localhost with any port in development
+    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+      return callback(null, true);
+    }
+
+    console.warn(`🚫 CORS blocked origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
 // Logging

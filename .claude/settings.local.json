@@ -123,7 +123,14 @@
       "Bash(start \"\" \"http://localhost:5180/signin?mode=signup\")",
       "Bash(start \"\" \"http://localhost:5181/dashboard\")",
       "Bash(move postcss.config.js postcss.config.cjs)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(PORT=5002 npm run dev)",
+      "Bash(PORT=5001 npm run dev)",
+      "Bash(PORT=5000 node server.cjs)",
+      "Bash(start \"\" \"http://localhost:5175/register\")",
+      "Bash(npm ls:*)",
+      "Bash(start \"\" \"http://localhost:5001\")",
+      "Bash(move simple-frontend-server.js simple-frontend-server.cjs)"
     ],
     "deny": [],
     "ask": []

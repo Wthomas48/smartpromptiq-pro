@@ -28,7 +28,12 @@ export const getApiBaseUrl = (): string => {
       return import.meta.env.VITE_API_URL || 'http://localhost:5001';
     }
 
-    // For deployed environments, use same origin or environment variable
+    // For Railway deployment, use same origin (backend serves frontend)
+    if (hostname.includes('.railway.app') || hostname.includes('.up.railway.app')) {
+      return '';
+    }
+
+    // For other deployed environments, use environment variable or same origin
     return import.meta.env.VITE_API_URL || '';
   }
 
