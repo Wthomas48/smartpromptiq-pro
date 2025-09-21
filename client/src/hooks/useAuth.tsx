@@ -153,7 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (data.success && data.data) {
-        const { user: userData, token: authToken } = data.data;
+        const { user: userData, token: authToken } = data.data || {};
 
         console.log('Login debug - raw backend response:', {
           email,
