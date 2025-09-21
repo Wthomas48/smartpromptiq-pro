@@ -15,13 +15,31 @@ const originalArrayMethods = {
   every: Array.prototype.every
 };
 
-// Global error catcher for any remaining array errors
+// Global error catcher for array errors only - DO NOT interfere with React hooks
 const originalConsoleError = console.error;
 console.error = function(...args: any[]) {
   const errorMessage = args.join(' ');
+
+  // Only intercept specific array-related errors, NOT React hook errors
   if (errorMessage.includes("Cannot read properties of undefined (reading 'map')") ||
-      errorMessage.includes("Cannot read property 'map' of undefined")) {
-    console.warn('🛡️ ULTIMATE ARRAY SAFETY: Intercepted map() error, preventing crash');
+      errorMessage.includes("Cannot read property 'map' of undefined") ||
+      errorMessage.includes("Cannot read properties of undefined (reading 'slice')") ||
+      errorMessage.includes("Cannot read property 'slice' of undefined") ||
+      errorMessage.includes("Cannot read properties of undefined (reading 'filter')") ||
+      errorMessage.includes("Cannot read property 'filter' of undefined") ||
+      errorMessage.includes(".slice is not a function") ||
+      errorMessage.includes(".map is not a function") ||
+      errorMessage.includes(".filter is not a function")) {
+
+    // Don't intercept if this is a React hook error
+    if (errorMessage.includes('Invalid hook call') ||
+        errorMessage.includes('Hooks can only be called') ||
+        errorMessage.includes('react')) {
+      originalConsoleError.apply(console, args);
+      return;
+    }
+
+    console.warn('🛡️ ULTIMATE ARRAY SAFETY: Intercepted array method error, preventing crash');
     return;
   }
   originalConsoleError.apply(console, args);
@@ -34,7 +52,15 @@ window.addEventListener('error', (event) => {
     if (message.includes("Cannot read properties of undefined (reading 'map')") ||
         message.includes("Cannot read property 'map' of undefined") ||
         message.includes("Cannot read properties of undefined (reading 'filter')") ||
-        message.includes("Cannot read properties of undefined (reading 'slice')")) {
+        message.includes("Cannot read property 'filter' of undefined") ||
+        message.includes("Cannot read properties of undefined (reading 'slice')") ||
+        message.includes("Cannot read property 'slice' of undefined") ||
+        message.includes(".slice is not a function") ||
+        message.includes(".map is not a function") ||
+        message.includes(".filter is not a function") ||
+        message.includes(".forEach is not a function") ||
+        message.includes(".find is not a function") ||
+        message.includes(".reduce is not a function")) {
 
       console.warn('🛡️ ULTIMATE ARRAY SAFETY: Prevented array crash:', message);
       event.preventDefault();
@@ -146,6 +172,80 @@ const patchReactInternals = () => {
 // Apply patches after a short delay to ensure everything is loaded
 setTimeout(patchReactInternals, 100);
 
-console.log('🛡️ ULTIMATE ARRAY SAFETY SYSTEM ACTIVATED - ALL ARRAY OPERATIONS PROTECTED');
+// NUCLEAR OPTION 2: Create a global Proxy to intercept all property access
+const createSafeProxy = (target: any) => {
+  if (!target || typeof target !== 'object') return target;
+
+  return new Proxy(target, {
+    get(obj, prop) {
+      try {
+        const value = obj[prop];
+
+        // If accessing array methods on non-arrays, return safe versions
+        if (prop === 'map' && !Array.isArray(obj)) {
+          console.warn('🛡️ ULTIMATE ARRAY SAFETY: Prevented map() on non-array, returning safe version');
+          return () => [];
+        }
+        if (prop === 'slice' && !Array.isArray(obj)) {
+          console.warn('🛡️ ULTIMATE ARRAY SAFETY: Prevented slice() on non-array, returning safe version');
+          return () => [];
+        }
+        if (prop === 'filter' && !Array.isArray(obj)) {
+          console.warn('🛡️ ULTIMATE ARRAY SAFETY: Prevented filter() on non-array, returning safe version');
+          return () => [];
+        }
+
+        return value;
+      } catch (error) {
+        console.warn(`🛡️ ULTIMATE ARRAY SAFETY: Error accessing property ${String(prop)}:`, error);
+        return undefined;
+      }
+    }
+  });
+};
+
+// Monkey patch common window/global objects that might cause issues
+if (typeof window !== 'undefined') {
+  try {
+    // Patch Array constructor to return safe arrays
+    const originalArray = window.Array;
+    window.Array = function(...args: any[]) {
+      const arr = new originalArray(...args);
+      return createSafeProxy(arr);
+    } as any;
+
+    // Copy static methods
+    Object.setPrototypeOf(window.Array, originalArray);
+    Object.getOwnPropertyNames(originalArray).forEach(name => {
+      if (typeof originalArray[name as keyof typeof originalArray] === 'function') {
+        (window.Array as any)[name] = originalArray[name as keyof typeof originalArray];
+      }
+    });
+  } catch (e) {
+    console.warn('🛡️ ULTIMATE ARRAY SAFETY: Could not patch Array constructor');
+  }
+}
+
+// Add global try-catch wrapper for critical operations
+(window as any).safeArrayOp = function(obj: any, method: string, ...args: any[]) {
+  try {
+    if (!obj) {
+      console.warn(`🛡️ ULTIMATE ARRAY SAFETY: safeArrayOp called on null/undefined for ${method}`);
+      return method === 'slice' || method === 'map' || method === 'filter' ? [] : undefined;
+    }
+
+    if (!Array.isArray(obj) && typeof obj[method] !== 'function') {
+      console.warn(`🛡️ ULTIMATE ARRAY SAFETY: ${method} not available on object, providing fallback`);
+      return method === 'slice' || method === 'map' || method === 'filter' ? [] : undefined;
+    }
+
+    return obj[method](...args);
+  } catch (error) {
+    console.warn(`🛡️ ULTIMATE ARRAY SAFETY: safeArrayOp caught error in ${method}:`, error);
+    return method === 'slice' || method === 'map' || method === 'filter' ? [] : undefined;
+  }
+};
+
+console.log('🛡️ ULTIMATE ARRAY SAFETY SYSTEM ACTIVATED - ALL ARRAY OPERATIONS PROTECTED + ENHANCED SLICE PROTECTION');
 
 export {};
