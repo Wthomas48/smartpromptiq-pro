@@ -1297,7 +1297,7 @@ export default function Dashboard() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handleToggleFavorite(selectedPrompt.id)}
+                    onClick={() => selectedPrompt && handleToggleFavorite(selectedPrompt.id)}
                     className={selectedPrompt.isFavorite ? "text-yellow-600 border-yellow-200" : ""}
                   >
                     <Star className={`w-4 h-4 mr-2 ${selectedPrompt.isFavorite ? 'fill-current' : ''}`} />
@@ -1398,14 +1398,14 @@ export default function Dashboard() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handleToggleFavorite.mutate(selectedPrompt.id)}
+                    onClick={() => selectedPrompt && handleToggleFavorite.mutate(selectedPrompt.id)}
                     className={selectedPrompt.isFavorite ? "text-yellow-600 border-yellow-200" : ""}
                   >
                     <Heart className={`w-4 h-4 mr-2 ${selectedPrompt.isFavorite ? 'fill-current' : ''}`} />
                     {selectedPrompt.isFavorite ? 'Unfavorite' : 'Favorite'}
                   </Button>
                 </div>
-                <Button variant="destructive" onClick={() => handleDeletePrompt(selectedPrompt.id)}>
+                <Button variant="destructive" onClick={() => selectedPrompt && handleDeletePrompt(selectedPrompt.id)}>
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete
                 </Button>
