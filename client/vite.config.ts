@@ -11,10 +11,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    strictPort: true,
+    strictPort: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:3002',
+        target: 'http://localhost:5001',
         changeOrigin: true,
         secure: false
       }
@@ -22,6 +22,23 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom']
+        }
+      }
+    }
+  },
+  preview: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   }
 })

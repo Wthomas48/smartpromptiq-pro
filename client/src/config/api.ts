@@ -23,9 +23,9 @@ export const getApiBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
 
-    // If running on localhost in production, connect to backend on 3002
+    // If running on localhost in production, connect to backend on correct port
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:3002';
+      return import.meta.env.VITE_API_URL || 'http://localhost:5001';
     }
 
     // For deployed environments, use same origin or environment variable
