@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, createContext, useContext } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/config/api";
 
 interface User {
   id: string;
@@ -31,12 +32,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  // ✅ Fixed: Proper state initialization with safe defaults
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // Environment check on component mount
+  console.log('🔍 AUTH ENV CHECK:', {
+    isClient: typeof window !== 'undefined',
+    hasLocalStorage: typeof localStorage !== 'undefined',
+    currentUrl: typeof window !== 'undefined' ? window.location.href : 'SSR',
+  });
 
   const checkAuth = async () => {
     try {
@@ -50,24 +59,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (storedToken && storedUser) {
         try {
           // Verify token with backend
-          const response = await fetch('/api/auth/me', {
-            headers: {
-              'Authorization': `Bearer ${storedToken}`,
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-          });
+          const response = await apiRequest('GET', '/api/auth/me');
+          response.headers = {
+            'Authorization': `Bearer ${storedToken}`,
+            'Content-Type': 'application/json',
+          };
 
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.data?.user) {
-              // Use fresh data from backend
-              const userData = data.data.user;
+              // Merge stored user data with backend data, prioritizing stored data for names
+              const storedUserData = JSON.parse(storedUser);
+              const backendUserData = data.data.user;
+
+              const userData = {
+                ...backendUserData,
+                // Prioritize stored firstName/lastName if they exist and backend doesn't have them
+                firstName: storedUserData.firstName || backendUserData.firstName,
+                lastName: storedUserData.lastName || backendUserData.lastName,
+              };
+
               setUser(userData);
               setToken(storedToken);
               setIsAuthenticated(true);
               localStorage.setItem("user", JSON.stringify(userData));
-              console.log("User authenticated with backend:", userData);
+              console.log("User authenticated with merged data:", userData);
               return;
             }
           }
@@ -108,21 +124,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("Attempting login:", { email });
 
       // Call backend API
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
+      const response = await apiRequest('POST', '/api/auth/login', {
+        email, password
       });
+
+      console.log('🔍 LOGIN RESPONSE STATUS:', response.status);
+      console.log('🔍 LOGIN RESPONSE HEADERS:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.log('🔍 LOGIN ERROR DATA:', errorData);
         throw new Error(errorData.message || 'Login failed');
       }
 
       const data = await response.json();
+      console.log('🔍 LOGIN RESPONSE:', data);
+      console.log('🔍 LOGIN RESPONSE STRUCTURE:', Object.keys(data));
+
+      // Check for arrays that might cause map errors
+      if (data.permissions) {
+        console.log('🔍 PERMISSIONS:', data.permissions, 'Is Array:', Array.isArray(data.permissions));
+      }
+      if (data.roles) {
+        console.log('🔍 ROLES:', data.roles, 'Is Array:', Array.isArray(data.roles));
+      }
+      if (data.data && data.data.user) {
+        console.log('🔍 USER DATA:', data.data.user, 'Type:', typeof data.data.user);
+      }
 
       if (data.success && data.data) {
         const { user: userData, token: authToken } = data.data;
@@ -130,11 +158,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('Login debug - raw backend response:', {
           email,
           userData,
-          userDataRole: userData.role
+          userDataRole: userData?.role
         });
 
-        // Use the backend data EXACTLY as returned - no frontend overrides
+        // ✅ Fixed: Handle potentially undefined user data structure
         const enhancedUser = {
+          id: userData?.id || 'demo-user',
+          email: userData?.email || email,
+          firstName: userData?.firstName || 'User',
+          lastName: userData?.lastName || '',
+          role: userData?.role || 'USER',
+          // Safely handle any array properties that might be undefined
+          permissions: userData?.permissions || [],
+          roles: userData?.roles || [],
           ...userData
         };
 
@@ -218,13 +254,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const authToken = localStorage.getItem("token");
       if (!authToken) return;
 
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
+      const response = await apiRequest('GET', '/api/auth/me');
+      response.headers = {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      };
 
       if (response.ok) {
         const data = await response.json();

@@ -28,6 +28,8 @@ import TierIndicator from "@/components/TierIndicator";
 import UpgradePrompt from "@/components/UpgradePrompt";
 import AdminDashboard from "@/components/AdminDashboard";
 import { useAuth } from "@/hooks/useAuth";
+import { safeMap, safeSlice, safeFilter, ensureArray, withArraySafety } from "@/utils/arrayUtils";
+import { apiRequest, createSafeQuery } from "@/utils/apiUtils";
 
 // Mock data for development
 const mockStats = {
@@ -49,11 +51,16 @@ const getRealUserData = (user: any) => {
       avatar: '🎭',
       level: 'Demo Experience',
       email: 'demo@example.com',
-      plan: 'DEMO'
+      plan: 'DEMO',
+      totalPoints: 0,
+      qualityScore: 5.0,
+      monthlyGoal: 100,
+      completionRate: 85,
+      streak: 1
     };
   }
 
-  const firstName = user.firstName || user.email.split('@')[0];
+  const firstName = user.firstName || (user.email ? user.email.split('@')[0] : 'User');
   const fullName = user.firstName && user.lastName
     ? `${user.firstName} ${user.lastName}`
     : (user.firstName || firstName);
@@ -64,12 +71,17 @@ const getRealUserData = (user: any) => {
     role: user.role === 'ADMIN' ? '🚀 AI Prompt Master' : '✨ Creative Innovator',
     avatar: getAvatarForPlan(user.plan),
     level: getLevelFromPlan(user.plan),
-    email: user.email,
+    email: user.email || 'demo@example.com',
     plan: user.plan || 'FREE',
     tokenBalance: user.tokenBalance || 0,
     generationsUsed: user.generationsUsed || 0,
     generationsLimit: user.generationsLimit || 5,
-    joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently'
+    joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently',
+    totalPoints: user.totalPoints || 1250,
+    qualityScore: user.qualityScore || 4.8,
+    monthlyGoal: user.monthlyGoal || 2000,
+    completionRate: user.completionRate || 92,
+    streak: user.streak || 7
   };
 };
 
@@ -98,8 +110,8 @@ const getLevelFromPlan = (plan: string) => {
 
 
 
-// Quick actions data
-const quickActions = [
+// Quick actions data with array safety - Pattern 2: State Variables
+const quickActions: Array<any> = [
   { 
     id: 'marketing', 
     label: 'Marketing Campaign', 
@@ -144,8 +156,8 @@ const quickActions = [
   }
 ];
 
-// Recent activity mock data
-const recentActivity = [
+// Recent activity mock data (fallback) - Pattern 2: State Variables
+const recentActivityMock: Array<any> = [
   {
     id: 1,
     type: 'created',
@@ -180,8 +192,8 @@ const recentActivity = [
   }
 ];
 
-// Notifications
-const notifications = [
+// Notifications (fallback) - Pattern 2: State Variables
+const notificationsMock: Array<any> = [
   { id: 1, type: 'achievement', message: 'New milestone: 5,000 points earned!', time: '5 min ago', unread: true },
   { id: 2, type: 'team', message: 'Sarah invited you to "Brand Strategy 2025"', time: '1 hour ago', unread: true },
   { id: 3, type: 'update', message: 'Your Q4 Campaign prompt was approved', time: '2 hours ago', unread: false },
@@ -195,7 +207,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { trackFeatureUsage, trackMilestone } = useRatingSystemContext();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, isLoading: authLoading, isAuthenticated } = useAuth();
 
   // Component state
   const [filters, setFilters] = useState({
@@ -272,7 +284,7 @@ export default function Dashboard() {
     staleTime: 1000 * 60 * 10 // 10 minutes
   });
 
-  // Real data or fallback
+  // Pattern 1: API Response Data - Fix API response handling
   const prompts = promptsData?.data || [];
   const stats = userStats?.data || {
     totalPrompts: 0,
@@ -282,11 +294,28 @@ export default function Dashboard() {
     promptsThisWeek: 0,
     categoriesExplored: 0
   };
-  const activity = recentActivity?.data || [];
+  const activity = recentActivity?.data || recentActivityMock || [];
   const userAchievements = achievements?.data || [];
 
-  // Use real user data from authentication
-  const currentUser = getRealUserData(user);
+  // Use real user data from authentication with safety
+  const currentUser = withArraySafety(
+    () => getRealUserData(user),
+    {
+      name: 'Demo User',
+      firstName: 'Demo',
+      role: '🎮 Demo Mode',
+      avatar: '🎭',
+      level: 'Demo Experience',
+      email: 'demo@example.com',
+      plan: 'DEMO',
+      totalPoints: 0,
+      qualityScore: 0,
+      monthlyGoal: 100,
+      completionRate: 0,
+      streak: 0
+    },
+    'current user data'
+  );
 
   // Personalized greeting based on time and user data
   const getPersonalizedGreeting = () => {
@@ -302,6 +331,35 @@ export default function Dashboard() {
       return `${timeGreeting}, ${firstName}! ✨ Let's create something amazing today.`;
     }
   };
+
+  // Show loading state while auth is loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to signin if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Please sign in to access your dashboard</p>
+          <button
+            onClick={() => setLocation('/signin')}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Show admin dashboard for admin users
   if (isAdmin()) {
@@ -402,26 +460,28 @@ export default function Dashboard() {
   };
 
 
-  // Filter prompts based on current filters
+  // Filter prompts based on current filters with array safety
   const getFilteredPrompts = () => {
-    let filtered = prompts;
-      
-    if (filters.category && filters.category !== "all") {
-      filtered = filtered.filter(p => p.category === filters.category);
-    }
+    return withArraySafety(() => {
+      let filtered = ensureArray(prompts);
 
-    if (filters.search) {
-      filtered = filtered.filter(p =>
-        p.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-        p.description.toLowerCase().includes(filters.search.toLowerCase())
-      );
-    }
+      if (filters.category && filters.category !== "all") {
+        filtered = safeFilter(filtered, p => p.category === filters.category);
+      }
 
-    if (filters.favorites) {
-      filtered = filtered.filter(p => p.isFavorite);
-    }
+      if (filters.search) {
+        filtered = safeFilter(filtered, p =>
+          (p.title || '').toLowerCase().includes(filters.search.toLowerCase()) ||
+          (p.description || '').toLowerCase().includes(filters.search.toLowerCase())
+        );
+      }
 
-    return filtered;
+      if (filters.favorites) {
+        filtered = safeFilter(filtered, p => p.isFavorite);
+      }
+
+      return filtered;
+    }, [], 'filtered prompts');
   };
 
   const filteredPrompts = getFilteredPrompts();
@@ -571,7 +631,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  {quickActions.map((action, index) => (
+                  {safeMap(quickActions, (action, index) => (
                     <button
                       key={action.id}
                       onClick={() => handleQuickAction(action.id)}
@@ -816,31 +876,31 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-4">
-                    {recentActivity.map((activity, index) => (
-                      <div key={activity.id} className="flex items-center space-x-4 p-4 bg-gradient-to-r from-slate-50 to-blue-50/50 rounded-xl hover:shadow-md transition-all group cursor-pointer">
+                    {safeMap(activity, (activityItem, index) => (
+                      <div key={activityItem.id} className="flex items-center space-x-4 p-4 bg-gradient-to-r from-slate-50 to-blue-50/50 rounded-xl hover:shadow-md transition-all group cursor-pointer">
                         <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                          {activity.type === 'created' && <Plus className="w-5 h-5 text-white" />}
-                          {activity.type === 'joined' && <Users className="w-5 h-5 text-white" />}
-                          {activity.type === 'completed' && <CheckCircle className="w-5 h-5 text-white" />}
-                          {activity.type === 'updated' && <RefreshCw className="w-5 h-5 text-white" />}
+                          {activityItem.type === 'created' && <Plus className="w-5 h-5 text-white" />}
+                          {activityItem.type === 'joined' && <Users className="w-5 h-5 text-white" />}
+                          {activityItem.type === 'completed' && <CheckCircle className="w-5 h-5 text-white" />}
+                          {activityItem.type === 'updated' && <RefreshCw className="w-5 h-5 text-white" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
                             <p className="text-sm font-semibold text-slate-900 truncate">
-                              {activity.type === 'created' && 'Created'}
-                              {activity.type === 'joined' && 'Joined'}
-                              {activity.type === 'completed' && 'Completed'}
-                              {activity.type === 'updated' && 'Updated'}
-                              <span className="text-indigo-600 ml-1">{activity.item}</span>
+                              {activityItem.type === 'created' && 'Created'}
+                              {activityItem.type === 'joined' && 'Joined'}
+                              {activityItem.type === 'completed' && 'Completed'}
+                              {activityItem.type === 'updated' && 'Updated'}
+                              <span className="text-indigo-600 ml-1">{activityItem.item}</span>
                             </p>
-                            <Badge className={`${getStatusColor(activity.status)} text-xs px-2 py-0.5`}>
-                              {activity.status}
+                            <Badge className={`${getStatusColor(activityItem.status)} text-xs px-2 py-0.5`}>
+                              {activityItem.status}
                             </Badge>
                           </div>
                           <div className="flex items-center space-x-3">
-                            <p className="text-xs text-slate-500">{activity.time}</p>
+                            <p className="text-xs text-slate-500">{activityItem.time}</p>
                             <Badge variant="secondary" className="text-xs bg-slate-100">
-                              {activity.category}
+                              {activityItem.category}
                             </Badge>
                           </div>
                         </div>
@@ -868,13 +928,13 @@ export default function Dashboard() {
                       <CardTitle className="text-lg font-bold text-slate-900">Notifications 🔔</CardTitle>
                     </div>
                     <Badge className="bg-red-100 text-red-800 text-xs">
-                      {notifications.filter(n => n.unread).length} new
+                      {safeFilter(ensureArray(notificationsMock), n => n.unread).length} new
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3">
-                    {notifications.slice(0, 4).map((notification) => (
+                    {safeMap(safeSlice(ensureArray(notificationsMock), 0, 4), (notification) => (
                       <div key={notification.id} className={`p-3 rounded-xl transition-all cursor-pointer hover:shadow-md ${
                         notification.unread ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100' : 'bg-slate-50 hover:bg-slate-100'
                       }`}>
@@ -1024,7 +1084,7 @@ export default function Dashboard() {
             </CardHeader>
 
             <CardContent className="pt-0">
-              {isLoading ? (
+              {promptsLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="flex items-center space-x-3">
                     <div className="w-6 h-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full animate-spin"></div>
@@ -1069,7 +1129,7 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
-                  {filteredPrompts.map((prompt) => (
+                  {safeMap(filteredPrompts, (prompt) => (
                     <div key={prompt.id} className={`group ${viewMode === 'list' ? 'flex items-center space-x-4 p-4 bg-white/70 rounded-xl hover:shadow-lg transition-all' : ''}`}>
                       {viewMode === 'grid' ? (
                         <PromptCard
@@ -1096,7 +1156,7 @@ export default function Dashboard() {
                                 <span>{prompt.quality}</span>
                               </span>
                               <div className="flex space-x-1">
-                                {prompt.tags.map(tag => (
+                                {safeMap(prompt?.tags, tag => (
                                   <Badge key={tag} variant="secondary" className="text-xs bg-slate-100">
                                     {tag}
                                   </Badge>
@@ -1192,7 +1252,7 @@ export default function Dashboard() {
                 <div>
                   <div className="text-sm font-semibold text-slate-700 mb-2">Tags</div>
                   <div className="flex flex-wrap gap-2">
-                    {selectedPrompt.tags.map(tag => (
+                    {safeMap(selectedPrompt?.tags, tag => (
                       <Badge key={tag} variant="secondary" className="bg-indigo-50 text-indigo-700">
                         {tag}
                       </Badge>

@@ -35,11 +35,14 @@
         "db:utils": "tsx scripts/db-utils.ts"
     },
     "dependencies": {
+        "@prisma/client": "^6.16.2",
         "@types/react": "^19.1.13",
         "@types/react-dom": "^19.1.9",
+        "dotenv": "^17.2.2",
         "express": "^4.18.2",
         "react": "^19.1.1",
-        "react-dom": "^19.1.1"
+        "react-dom": "^19.1.1",
+        "stripe": "^18.5.0"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.10",

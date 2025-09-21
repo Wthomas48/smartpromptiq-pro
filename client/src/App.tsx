@@ -1,3 +1,6 @@
+// ULTIMATE Array Safety - must be imported first to protect against crashes
+import "@/utils/ultimateArraySafety";
+
 import React from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -37,8 +40,12 @@ import Register from "@/pages/Register";
 import AdminLogin from "@/pages/AdminLogin";
 import StripeKeyManager from "@/pages/StripeKeyManager";
 import LogoutPage from "@/pages/LogoutPage";
+import VerifyEmail from "@/pages/VerifyEmail";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 import Navigation from "@/components/Navigation";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,6 +78,9 @@ function Router() {
         <Route path="/logout" component={LogoutPage} />
         <Route path="/templates" component={Templates} />
         <Route path="/pricing" component={PricingPage} />
+        <Route path="/verify-email/:token" component={VerifyEmail} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password/:token" component={ResetPassword} />
 
       {/* ALL ROUTES NOW PUBLICLY ACCESSIBLE - FULL ADMIN ACCESS */}
       <Route path="/" component={Home} />
@@ -105,14 +115,16 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <RatingSystemProvider>
-            <Toaster />
-            <Router />
-          </RatingSystemProvider>
-        </TooltipProvider>
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <TooltipProvider>
+            <RatingSystemProvider>
+              <Toaster />
+              <Router />
+            </RatingSystemProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }

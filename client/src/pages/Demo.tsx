@@ -40,8 +40,6 @@ import {
   Award
 } from "lucide-react";
 import AnimatedCounter from "@/components/AnimatedCounter";
-import TopNavigation from "@/components/TopNavigation";
-import BackButton from "@/components/BackButton";
 
 export default function Demo() {
   const [, setLocation] = useLocation();
@@ -1018,11 +1016,6 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30">
-      <TopNavigation
-        onGetStarted={() => setLocation('/register')}
-        onSignIn={() => setLocation('/signin')}
-      />
-      <BackButton />
 
       {/* Email Capture Modal */}
       <Dialog open={showEmailCapture} onOpenChange={setShowEmailCapture}>

@@ -5,9 +5,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Sparkles, Rocket, Crown, Eye, EyeOff, Lock, Mail, User, AlertCircle } from "lucide-react";
+import { Sparkles, Rocket, Crown, Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/config/api";
 
 export default function SignIn() {
+  // Enable production debugging
+  if (typeof window !== 'undefined') {
+    window.DEBUG_AUTH = true;
+  }
+
+  const debugLog = (label, data) => {
+    if (typeof window !== 'undefined' && window.DEBUG_AUTH) {
+      console.log(`🔍 AUTH DEBUG - ${label}:`, data);
+      console.log(`🔍 AUTH DEBUG - ${label} type:`, typeof data);
+      console.log(`🔍 AUTH DEBUG - ${label} isArray:`, Array.isArray(data));
+    }
+  };
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,10 +32,12 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [userName, setUserName] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [, setLocation] = useLocation();
+  const { login } = useAuth();
 
   // Check URL parameters to determine initial mode
   useEffect(() => {
@@ -37,25 +54,18 @@ export default function SignIn() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
+      debugLog("Signin Request", { email });
+      console.log('🔍 Attempting signin with auth hook');
 
-      if (!response.ok) {
-        throw new Error(`Login failed`);
-      }
+      const result = await login(email, password);
+      debugLog("Signin Result", result);
 
-      const data = await response.json();
-      if (data.success && data.data) {
-        localStorage.setItem("token", data.data.token);
-        localStorage.setItem("user", JSON.stringify(data.data.user));
-        setLocation("/dashboard");
-      }
+      console.log('✅ Signin successful via auth hook');
+      // The auth hook will handle the redirect to dashboard
     } catch (err: any) {
-      setError("Login failed. Please try again.");
+      debugLog("Signin Error", err);
+      console.error('❌ Signin error via auth hook:', err);
+      setError(err.message || "Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -73,30 +83,91 @@ export default function SignIn() {
     }
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, firstName, lastName }),
+      debugLog("Signup Request", { email, firstName, lastName });
+
+      const response = await apiRequest("POST", "/api/auth/register", {
+        email, password, firstName, lastName
       });
 
+      debugLog("Signup Response Status", response.status);
+
       const data = await response.json();
-      if (response.ok) {
-        if (data.token) {
-          localStorage.setItem("token", data.token);
-          localStorage.setItem("user", JSON.stringify(data.user));
-          setLocation("/dashboard");
+      debugLog("Signup Response Data", data);
+      console.log('🔍 Signup response:', data);
+
+      if (data.success) {
+        if (data.data && data.data.token) {
+          console.log('✅ Successful signup, logging in user');
+          setUserName(`${data.data.user.firstName} ${data.data.user.lastName}`);
+          setShowWelcome(true);
+
+          // Auto-login the user after successful registration
+          setTimeout(async () => {
+            try {
+              await login(email, password);
+              console.log('✅ Auto-login successful after signup');
+            } catch (loginError) {
+              console.error('❌ Auto-login failed, redirecting to signin');
+              setLocation('/signin');
+            }
+          }, 2000);
         } else {
+          console.log('❌ No token in response, switching to signin');
           setIsSignUp(false);
         }
       } else {
+        console.log('❌ Response not ok or not successful');
         throw new Error(data.message || "Registration failed");
       }
     } catch (err: any) {
+      console.error('❌ Signup error:', err);
       setError(err.message || "Failed to create account");
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Show welcome screen after successful signup
+  if (showWelcome) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 px-4">
+        <div className="text-center max-w-lg mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl p-12 border border-green-100">
+            <div className="mb-8">
+              <div className="w-24 h-24 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-12 h-12 text-white" />
+              </div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                🎉 Welcome to SmartPromptIQ!
+              </h1>
+              <h2 className="text-2xl font-semibold text-green-600 mb-2">
+                Hello {userName}! 👋
+              </h2>
+              <p className="text-gray-600 text-lg leading-relaxed">
+                Your account has been created successfully!<br/>
+                Get excited - you're about to experience the power of AI-driven prompts!
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center space-y-4">
+              <div className="flex items-center space-x-2 text-blue-600">
+                <Sparkles className="w-5 h-5" />
+                <span className="font-medium">Preparing your dashboard...</span>
+              </div>
+
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full animate-pulse" style={{width: '100%'}}></div>
+              </div>
+
+              <p className="text-sm text-gray-500 mt-4">
+                Redirecting you to your personalized dashboard in a few seconds...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100 px-4">
@@ -153,6 +224,7 @@ export default function SignIn() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+
 
               {/* NAME FIELDS FOR SIGNUP */}
               {isSignUp && (

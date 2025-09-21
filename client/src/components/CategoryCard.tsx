@@ -1,6 +1,7 @@
-﻿import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LucideIcon } from "lucide-react";
+import { safeMap, ensureArray } from "@/utils/arrayUtils";
 
 interface CategoryCardProps {
   icon: LucideIcon;
@@ -39,7 +40,7 @@ export default function CategoryCard({
           {description}
         </p>
         <div className="flex flex-wrap gap-2">
-          {tags.map((tag, index) => (
+          {safeMap(ensureArray(tags), (tag, index) => (
             <Badge key={index} variant="secondary" className={badgeColor}>
               {tag}
             </Badge>

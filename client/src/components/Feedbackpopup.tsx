@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Star, X, MessageSquare, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { safeMap, ensureArray } from "@/utils/arrayUtils";
 
 interface FeedbackPopupProps {
   isOpen: boolean;
@@ -113,7 +114,7 @@ export default function FeedbackPopup({ isOpen, onClose }: FeedbackPopupProps) {
               Rate your experience *
             </Label>
             <div className="flex justify-center space-x-1 p-2 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg transition-colors duration-200 hover:border-yellow-400 star-rating-container">
-              {[1, 2, 3, 4, 5].map((star) => (
+              {safeMap(ensureArray([1, 2, 3, 4, 5]), (star) => (
                 <button
                   key={star}
                   type="button"

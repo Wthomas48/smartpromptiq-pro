@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Briefcase, Palette, Code, Zap, Copy, Eye, Plus } from "lucide-react";
+import { safeMap, ensureArray } from "@/utils/arrayUtils";
 
 interface TemplateItem {
  id: string;
@@ -71,7 +72,7 @@ export default function PromptTemplates({ onSelectTemplate, selectedCategory }: 
      </div>
 
      <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-4">
-       {filteredTemplates.map((template) => (
+       {safeMap(ensureArray(filteredTemplates), (template) => (
          <Card key={template.id} className="template-card hover:shadow-lg transition-all">
            <CardHeader className="pb-3">
              <div className="flex items-start justify-between">
@@ -103,7 +104,7 @@ export default function PromptTemplates({ onSelectTemplate, selectedCategory }: 
              </div>
 
              <div className="flex flex-wrap gap-2 mb-4">
-               {template.tags.map((tag) => (
+               {safeMap(ensureArray(template.tags), (tag) => (
                  <Badge key={tag} variant="outline" className="text-xs">
                    {tag}
                  </Badge>

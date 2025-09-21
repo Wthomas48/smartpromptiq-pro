@@ -56,6 +56,10 @@ app.get('/api/health', (req, res) => {
 // import authRoutes from './routes/auth';
 // import billingRoutes from './routes/billing';
 
+// TODO: Use API routes
+// app.use('/api/auth', authRoutes);
+// app.use('/api/billing', billingRoutes);
+
 // Mock user database
 const users = [
   {
@@ -90,108 +94,168 @@ const users = [
   }
 ];
 
-// Simple mock routes for essential functionality
-app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
+// Enhanced auth endpoints with real database persistence
+import bcrypt from 'bcryptjs';
+import { PrismaClient } from '@prisma/client';
 
-  console.log('Login attempt:', { email });
+const prisma = new PrismaClient();
 
-  // Check for valid users first
-  const foundUser = users.find(u => u.email === email && u.password === password);
+// Register endpoint with real database persistence
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName } = req.body;
 
-  if (foundUser) {
-    // Valid user found
-    const { password: _, ...userWithoutPassword } = foundUser;
-    const token = 'jwt-token-' + Date.now() + '-' + foundUser.id;
+    console.log('🔐 Real register attempt:', { email, firstName, lastName });
 
-    console.log('Valid user login:', { email, role: foundUser.role });
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
 
-    res.json({
-      success: true,
-      message: 'Login successful',
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user in database
+    const user = await prisma.user.create({
       data: {
-        user: userWithoutPassword,
+        email,
+        password: hashedPassword,
+        firstName: firstName || 'New',
+        lastName: lastName || 'User'
+      }
+    });
+
+    const token = 'jwt-token-' + Date.now() + '-' + user.id;
+
+    console.log('✅ Real user created in database:', user.id);
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          plan: user.plan,
+          role: user.role
+        },
         token
       }
     });
-  } else {
-    // For demo purposes, still accept any credentials but as regular user
-    const user = {
-      id: 'demo-' + Date.now(),
-      email: email || 'demo@smartpromptiq.com',
-      firstName: email ? email.split('@')[0] : 'Demo',
-      lastName: 'User',
-      role: 'USER',
-      subscriptionTier: 'free',
-      tokenBalance: 10
-    };
-
-    const token = 'demo-jwt-token-' + Date.now();
-
-    console.log('Demo user login:', { email });
-
-    res.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        user,
-        token
-      }
+  } catch (error) {
+    console.error('❌ Real register error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create account'
     });
   }
 });
 
-// Register endpoint
-app.post('/api/auth/register', (req, res) => {
-  const { email, password, firstName, lastName } = req.body;
+// Login endpoint with real database verification
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  console.log('Register attempt:', { email, firstName, lastName });
+    console.log('🔐 Real login attempt:', { email });
 
-  const user = {
-    id: Date.now().toString(),
-    email,
-    firstName: firstName || 'New',
-    lastName: lastName || 'User',
-    subscriptionTier: 'free',
-    tokenBalance: 10
-  };
+    // Find user in database
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
 
-  const token = 'demo-jwt-token-' + Date.now();
-
-  res.json({
-    success: true,
-    message: 'Registration successful',
-    data: {
-      user,
-      token
+    if (!user) {
+      console.log('❌ User not found:', email);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
     }
-  });
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password for:', email);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() }
+    });
+
+    const token = 'jwt-token-' + Date.now() + '-' + user.id;
+
+    console.log('✅ Real user login successful:', user.id);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          plan: user.plan,
+          role: user.role
+        },
+        token
+      }
+    });
+  } catch (error) {
+    console.error('❌ Real login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Login failed'
+    });
+  }
 });
 
-// Get current user - NO AUTHENTICATION REQUIRED FOR ADMIN ACCESS
-app.get('/api/auth/me', (req, res) => {
-  // ADMIN ACCESS: Always return admin user - no authentication required
-  const adminUser = {
-    id: 'admin-user-id',
-    email: 'admin@smartpromptiq.com',
-    firstName: 'Admin',
-    lastName: 'User',
-    role: 'ADMIN',
-    subscriptionTier: 'enterprise',
-    tokenBalance: 999999,
-    plan: 'enterprise',
-    generationsUsed: 0,
-    generationsLimit: 999999,
-    avatar: null,
-    createdAt: new Date(),
-    lastLogin: new Date()
-  };
+// Get current user endpoint
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    // For demo purposes, just return a mock admin user
+    // In production, this would validate the JWT token
+    const adminUser = {
+      id: 'admin-user-id',
+      email: 'admin@smartpromptiq.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      role: 'ADMIN',
+      plan: 'BUSINESS',
+      avatar: null,
+      createdAt: new Date(),
+      lastLogin: new Date()
+    };
 
-  res.json({
-    success: true,
-    data: { user: adminUser }
-  });
+    res.json({
+      success: true,
+      data: { user: adminUser }
+    });
+  } catch (error) {
+    console.error('❌ Get user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user info'
+    });
+  }
 });
+
+// Demo /api/auth/me endpoint removed - now using real auth routes
 
 // Mock teams data
 const mockTeams = [

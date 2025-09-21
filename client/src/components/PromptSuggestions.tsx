@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { safeMap, ensureArray } from "@/utils/arrayUtils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -298,7 +299,7 @@ export default function PromptSuggestions({
                     </Badge>
                   </div>
                   <div className="grid gap-3">
-                    {generatedSuggestions.map((suggestion: PromptSuggestion) => 
+                    {safeMap(ensureArray(generatedSuggestions), (suggestion: PromptSuggestion) =>
                       renderSuggestionCard(suggestion, "generated")
                     )}
                   </div>
@@ -332,7 +333,7 @@ export default function PromptSuggestions({
                     </Badge>
                   </div>
                   <div className="grid gap-3">
-                    {trendingSuggestions.suggestions.map((suggestion: PromptSuggestion) => 
+                    {safeMap(ensureArray(trendingSuggestions.suggestions), (suggestion: PromptSuggestion) =>
                       renderSuggestionCard(suggestion, "trending")
                     )}
                   </div>
@@ -364,7 +365,7 @@ export default function PromptSuggestions({
                     </Badge>
                   </div>
                   <div className="grid gap-3">
-                    {personalizedSuggestions.suggestions.map((suggestion: PromptSuggestion) => 
+                    {safeMap(ensureArray(personalizedSuggestions.suggestions), (suggestion: PromptSuggestion) =>
                       renderSuggestionCard(suggestion, "personalized")
                     )}
                   </div>

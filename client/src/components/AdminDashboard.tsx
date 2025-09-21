@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { safeMap, ensureArray } from '@/utils/arrayUtils';
 import {
   Users, Activity, DollarSign, TrendingUp, Crown, Shield, Database,
   Settings, BarChart3, PieChart, UserCheck, AlertTriangle, CheckCircle,
@@ -161,9 +162,9 @@ const AdminDashboard: React.FC = () => {
         const usersData = await usersRes.json();
         console.log('👥 Admin users loaded:', usersData);
 
-        if (usersData.success && usersData.data?.users) {
+        if (usersData.success && usersData.data) {
           // Map real user data
-          const realUsers = usersData.data.users.map((user: any) => ({
+          const realUsers = safeMap(ensureArray(usersData.data), (user: any) => ({
             id: user.id,
             email: user.email,
             firstName: user.firstName || 'N/A',
@@ -190,7 +191,7 @@ const AdminDashboard: React.FC = () => {
       // Process logs with fallback
       if (logsRes?.ok) {
         const logsData = await logsRes.json();
-        setLogs(logsData.data?.logs || logsData.logs || []);
+        setLogs(logsData.success ? logsData.data : []);
       } else {
         setLogs([]);
       }
@@ -198,7 +199,7 @@ const AdminDashboard: React.FC = () => {
       // Process user activities
       if (activitiesRes?.ok) {
         const activitiesData = await activitiesRes.json();
-        setUserActivities(activitiesData.data?.activities || activitiesData.activities || []);
+        setUserActivities(activitiesData.success ? activitiesData.data : []);
       } else {
         // Demo activity data
         setUserActivities([
@@ -213,7 +214,7 @@ const AdminDashboard: React.FC = () => {
       // Process active sessions
       if (sessionsRes?.ok) {
         const sessionsData = await sessionsRes.json();
-        setActiveSessions(sessionsData.data?.sessions || sessionsData.sessions || []);
+        setActiveSessions(sessionsData.success ? sessionsData.data : []);
       } else {
         // Demo session data
         setActiveSessions([
@@ -462,6 +463,25 @@ const AdminDashboard: React.FC = () => {
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span>{refreshing ? 'Updating...' : 'Refresh'}</span>
           </Button>
+          <Badge variant="outline" className="flex items-center space-x-2 px-3 py-1 border-green-500 text-green-700">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>LIVE DATA</span>
+          </Badge>
+          {stats.systemInfo?.revenueSource && (
+            <Badge
+              variant={stats.systemInfo.revenueSource === 'LIVE_STRIPE_DATA' ? 'default' : 'secondary'}
+              className={`flex items-center space-x-2 px-3 py-1 ${
+                stats.systemInfo.revenueSource === 'LIVE_STRIPE_DATA'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
+                  : 'bg-gradient-to-r from-orange-400 to-yellow-500 text-white'
+              }`}
+            >
+              <Database className="w-4 h-4" />
+              <span>
+                {stats.systemInfo.revenueSource === 'LIVE_STRIPE_DATA' ? 'LIVE STRIPE' : 'DEMO REVENUE'}
+              </span>
+            </Badge>
+          )}
           <Badge variant="default" className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500">
             <Crown className="w-4 h-4 text-white" />
             <span className="text-white font-bold">SUPER ADMIN</span>
@@ -633,31 +653,55 @@ const AdminDashboard: React.FC = () => {
         <TabsContent value="users" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>Manage user accounts and permissions</CardDescription>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="w-5 h-5" />
+                <span>Live User Management</span>
+                <Badge variant="secondary">{users.length} Users</Badge>
+              </CardTitle>
+              <CardDescription>Real-time user accounts and activity monitoring</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Total Registered Users</p>
-                    <p className="text-sm text-muted-foreground">{stats.totalUsers} accounts</p>
+                {users.length > 0 ? (
+                  safeMap(ensureArray(users), (user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                          {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium">{user.firstName} {user.lastName}</p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>
+                              {user.role}
+                            </Badge>
+                            <Badge variant="outline">{user.subscriptionTier}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">{user.tokenBalance} tokens</p>
+                        {user.lastActive && (
+                          <p className="text-xs text-muted-foreground">
+                            Last active: {new Date(user.lastActive).toLocaleDateString()}
+                          </p>
+                        )}
+                        {user.activityScore && (
+                          <div className="flex items-center space-x-1 mt-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs text-muted-foreground">Score: {user.activityScore}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No users data available</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => executeAdminAction('view-users')}>
-                    <UserCheck className="w-4 h-4 mr-2" />
-                    View All
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Active Sessions</p>
-                    <p className="text-sm text-muted-foreground">{stats.activeUsers} users online</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => executeAdminAction('monitor-sessions')}>
-                    <Activity className="w-4 h-4 mr-2" />
-                    Monitor
-                  </Button>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -720,7 +764,7 @@ const AdminDashboard: React.FC = () => {
                         <p className="text-xs">Check console for debugging info</p>
                       </div>
                     ) : (
-                      users.slice(0, 20).map((user) => (
+                      safeMap(ensureArray(users.slice(0, 20)), (user) => (
                       <div key={user.id} className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors">
                         <div className="flex items-center space-x-3">
                           <div className={`w-3 h-3 rounded-full ${
@@ -780,7 +824,7 @@ const AdminDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {userActivities.slice(0, 10).map((activity) => (
+                  {safeMap(ensureArray(userActivities.slice(0, 10)), (activity) => (
                     <div key={activity.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -811,14 +855,27 @@ const AdminDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { page: '/dashboard', visits: 847, percentage: 95 },
-                    { page: '/templates', visits: 623, percentage: 70 },
-                    { page: '/teams', visits: 412, percentage: 46 },
-                    { page: '/categories', visits: 389, percentage: 44 },
-                    { page: '/billing', visits: 234, percentage: 26 },
-                    { page: '/documentation', visits: 156, percentage: 18 }
-                  ].map((item) => (
+                  {(() => {
+                    // Calculate page statistics from live activity data
+                    const pageStats = userActivities.reduce((acc, activity) => {
+                      const page = activity.page || '/unknown';
+                      acc[page] = (acc[page] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>);
+
+                    const sortedPages = safeMap(ensureArray(Object.entries(pageStats)
+                      .sort(([,a], [,b]) => b - a)
+                      .slice(0, 6)), ([page, visits]) => ({
+                        page,
+                        visits,
+                        percentage: Math.round((visits / Math.max(1, Math.max(...Object.values(pageStats)))) * 100)
+                      }));
+
+                    return sortedPages.length > 0 ? sortedPages : [
+                      { page: '/dashboard', visits: 0, percentage: 0 },
+                      { page: 'No activity data', visits: 0, percentage: 0 }
+                    ];
+                  })(), (item) => (
                     <div key={item.page} className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{item.page}</span>
@@ -851,7 +908,7 @@ const AdminDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {activeSessions.map((session) => {
+                {safeMap(ensureArray(activeSessions), (session) => {
                   const sessionDuration = Math.floor((Date.now() - new Date(session.sessionStart).getTime()) / 60000);
                   const lastActivityMinutes = Math.floor((Date.now() - new Date(session.lastActivity).getTime()) / 60000);
 
@@ -1103,7 +1160,7 @@ const AdminDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {Object.entries(stats.subscriptions).map(([tier, count]) => (
+                {safeMap(ensureArray(Object.entries(stats.subscriptions)), ([tier, count]) => (
                   <div key={tier} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <Badge variant="outline" className="capitalize">

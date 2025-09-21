@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
-import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +22,6 @@ import {
   Save,
   Settings as SettingsIcon
 } from "lucide-react";
-import BackButton from "@/components/BackButton";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -97,8 +95,6 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navigation />
-      <BackButton />
 
       <div className="container mx-auto px-4 pt-20 pb-16">
         {/* Header */}
