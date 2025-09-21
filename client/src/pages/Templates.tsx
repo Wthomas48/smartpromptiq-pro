@@ -816,12 +816,7 @@ export default function Templates() {
               { label: "Featured", value: stats.featuredCount, icon: Star, color: "from-yellow-500 to-orange-500" },
               { label: "Trending Now", value: stats.trendingCount, icon: TrendingUp, color: "from-pink-500 to-rose-500" },
               { label: "Avg Rating", value: stats.avgRating, icon: Users, color: "from-emerald-500 to-teal-500" }
-            ]) ? [
-              { label: "Premium Templates", value: stats.totalTemplates, icon: Target, color: "from-blue-500 to-cyan-500" },
-              { label: "Featured", value: stats.featuredCount, icon: Star, color: "from-yellow-500 to-orange-500" },
-              { label: "Trending Now", value: stats.trendingCount, icon: TrendingUp, color: "from-pink-500 to-rose-500" },
-              { label: "Avg Rating", value: stats.avgRating, icon: Users, color: "from-emerald-500 to-teal-500" }
-            ] : []).map((stat, index) => {
+            ].map((stat, index) => {
               const Icon = stat.icon;
               return (
                 <div key={stat.label} className="group">

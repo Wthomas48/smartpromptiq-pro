@@ -905,14 +905,7 @@ export default function TeamDashboard() {
                       { id: 4, name: "User Research", status: "planning", progress: 20, dueDate: "2024-02-28", members: 2, priority: "low" },
                       { id: 5, name: "API Documentation", status: "in_progress", progress: 60, dueDate: "2024-02-10", members: 2, priority: "medium" },
                       { id: 6, name: "Performance Optimization", status: "planning", progress: 10, dueDate: "2024-03-15", members: 3, priority: "high" }
-                    ]) ? [
-                      { id: 1, name: "Website Redesign", status: "in_progress", progress: 75, dueDate: "2024-02-15", members: 4, priority: "high" },
-                      { id: 2, name: "Mobile App Development", status: "in_progress", progress: 45, dueDate: "2024-03-01", members: 6, priority: "high" },
-                      { id: 3, name: "Marketing Campaign", status: "completed", progress: 100, dueDate: "2024-01-20", members: 3, priority: "medium" },
-                      { id: 4, name: "User Research", status: "planning", progress: 20, dueDate: "2024-02-28", members: 2, priority: "low" },
-                      { id: 5, name: "API Documentation", status: "in_progress", progress: 60, dueDate: "2024-02-10", members: 2, priority: "medium" },
-                      { id: 6, name: "Performance Optimization", status: "planning", progress: 10, dueDate: "2024-03-15", members: 3, priority: "high" }
-                    ] : []).map((project) => (
+                    ].map((project) => (
                       <Card key={project.id} className="bg-white/10 border-white/20 hover:bg-white/15 transition-all duration-300 group">
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
@@ -1218,14 +1211,7 @@ export default function TeamDashboard() {
                       { id: 4, name: "David Wilson", role: "member", email: "david@company.com", avatar: "DW", status: "offline", lastActive: "3h ago", projects: 2 },
                       { id: 5, name: "Emma Thompson", role: "viewer", email: "emma@company.com", avatar: "ET", status: "online", lastActive: "5m ago", projects: 1 },
                       { id: 6, name: "Frank Miller", role: "member", email: "frank@company.com", avatar: "FM", status: "away", lastActive: "30m ago", projects: 3 }
-                    ]) ? [
-                      { id: 1, name: "Alice Johnson", role: "owner", email: "alice@company.com", avatar: "AJ", status: "online", lastActive: "now", projects: 5 },
-                      { id: 2, name: "Bob Smith", role: "admin", email: "bob@company.com", avatar: "BS", status: "online", lastActive: "2m ago", projects: 3 },
-                      { id: 3, name: "Carol Davis", role: "member", email: "carol@company.com", avatar: "CD", status: "away", lastActive: "1h ago", projects: 4 },
-                      { id: 4, name: "David Wilson", role: "member", email: "david@company.com", avatar: "DW", status: "offline", lastActive: "3h ago", projects: 2 },
-                      { id: 5, name: "Emma Thompson", role: "viewer", email: "emma@company.com", avatar: "ET", status: "online", lastActive: "5m ago", projects: 1 },
-                      { id: 6, name: "Frank Miller", role: "member", email: "frank@company.com", avatar: "FM", status: "away", lastActive: "30m ago", projects: 3 }
-                    ] : []).map((member) => {
+                    ].map((member) => {
                       const RoleIcon = roleIcons[member.role as keyof typeof roleIcons];
                       return (
                         <Card key={member.id} className="bg-white/10 border-white/20 hover:bg-white/15 transition-all group">
@@ -1311,14 +1297,7 @@ export default function TeamDashboard() {
                       { id: 4, type: "task_completed", user: "Carol Davis", action: "completed task", target: "User Interface Design", time: "5 hours ago", color: "emerald" },
                       { id: 5, type: "comment_added", user: "David Wilson", action: "commented on", target: "Mobile App Development", time: "1 day ago", color: "orange" },
                       { id: 6, type: "project_updated", user: "Frank Miller", action: "updated project", target: "API Documentation", time: "2 days ago", color: "pink" }
-                    ]) ? [
-                      { id: 1, type: "project_created", user: "Alice Johnson", action: "created new project", target: "Website Redesign", time: "2 minutes ago", color: "blue" },
-                      { id: 2, type: "member_joined", user: "Emma Thompson", action: "joined the team", target: "", time: "1 hour ago", color: "green" },
-                      { id: 3, type: "file_uploaded", user: "Bob Smith", action: "uploaded file", target: "Team_Photos.zip", time: "3 hours ago", color: "purple" },
-                      { id: 4, type: "task_completed", user: "Carol Davis", action: "completed task", target: "User Interface Design", time: "5 hours ago", color: "emerald" },
-                      { id: 5, type: "comment_added", user: "David Wilson", action: "commented on", target: "Mobile App Development", time: "1 day ago", color: "orange" },
-                      { id: 6, type: "project_updated", user: "Frank Miller", action: "updated project", target: "API Documentation", time: "2 days ago", color: "pink" }
-                    ] : []).map((activity, index) => {
+                    ].map((activity, index) => {
                       const ActivityIcon = getActivityIcon(activity.type);
                       return (
                         <Card key={activity.id} className="bg-white/10 border-white/20 hover:bg-white/15 transition-all group">
@@ -1376,12 +1355,7 @@ export default function TeamDashboard() {
                       { title: "Team Satisfaction", value: "87%", change: "+12%", icon: Heart, color: "from-pink-500 to-rose-500" },
                       { title: "Project Velocity", value: "2.4x", change: "+15%", icon: Rocket, color: "from-purple-500 to-indigo-500" },
                       { title: "Collaboration Index", value: "91%", change: "+6%", icon: Users, color: "from-emerald-500 to-teal-500" }
-                    ]) ? [
-                      { title: "Productivity Score", value: "94%", change: "+8%", icon: TrendingUp, color: "from-blue-500 to-cyan-500" },
-                      { title: "Team Satisfaction", value: "87%", change: "+12%", icon: Heart, color: "from-pink-500 to-rose-500" },
-                      { title: "Project Velocity", value: "2.4x", change: "+15%", icon: Rocket, color: "from-purple-500 to-indigo-500" },
-                      { title: "Collaboration Index", value: "91%", change: "+6%", icon: Users, color: "from-emerald-500 to-teal-500" }
-                    ] : []).map((metric, index) => {
+                    ].map((metric, index) => {
                       const Icon = metric.icon;
                       return (
                         <Card key={index} className={`bg-gradient-to-br ${metric.color}/20 border border-white/20 text-white backdrop-blur-sm hover:scale-105 transition-all duration-300 group overflow-hidden`}>
@@ -1418,13 +1392,7 @@ export default function TeamDashboard() {
                             { metric: "Communication", score: 95, color: "bg-purple-500" },
                             { metric: "Innovation", score: 76, color: "bg-orange-500" },
                             { metric: "Problem Solving", score: 91, color: "bg-pink-500" }
-                          ]) ? [
-                            { metric: "Code Quality", score: 92, color: "bg-blue-500" },
-                            { metric: "Task Completion", score: 88, color: "bg-green-500" },
-                            { metric: "Communication", score: 95, color: "bg-purple-500" },
-                            { metric: "Innovation", score: 76, color: "bg-orange-500" },
-                            { metric: "Problem Solving", score: 91, color: "bg-pink-500" }
-                          ] : []).map((item, index) => (
+                          ].map((item, index) => (
                             <div key={index} className="space-y-2">
                               <div className="flex justify-between text-sm">
                                 <span className="text-white/70">{item.metric}</span>

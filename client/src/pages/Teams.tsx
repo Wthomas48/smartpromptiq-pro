@@ -756,12 +756,7 @@ export default function Teams() {
                   { user: "Bob Smith", action: "uploaded file", item: "API_Documentation_v2.pdf", time: "4 hours ago", icon: Upload, color: "text-blue-600" },
                   { user: "Carol Davis", action: "created project", item: "Mobile App Redesign", time: "1 day ago", icon: Plus, color: "text-purple-600" },
                   { user: "David Wilson", action: "joined meeting", item: "Weekly Standup", time: "2 days ago", icon: Video, color: "text-orange-600" }
-                ]) ? [
-                  { user: "Alice Johnson", action: "completed task", item: "Dashboard Design Review", time: "2 hours ago", icon: CheckCircle, color: "text-green-600" },
-                  { user: "Bob Smith", action: "uploaded file", item: "API_Documentation_v2.pdf", time: "4 hours ago", icon: Upload, color: "text-blue-600" },
-                  { user: "Carol Davis", action: "created project", item: "Mobile App Redesign", time: "1 day ago", icon: Plus, color: "text-purple-600" },
-                  { user: "David Wilson", action: "joined meeting", item: "Weekly Standup", time: "2 days ago", icon: Video, color: "text-orange-600" }
-                ] : []).map((activity, index) => (
+                ].map((activity, index) => (
                   <div key={index} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50">
                     <activity.icon className={`w-5 h-5 mt-0.5 ${activity.color}`} />
                     <div className="flex-1">
@@ -1200,12 +1195,7 @@ export default function Teams() {
                     { title: "Team Collaboration", description: "100% participation in weekly standup", date: "1 week ago", icon: Users },
                     { title: "Quality Delivery", description: "Zero bugs in last deployment", date: "1 week ago", icon: CheckCircle },
                     { title: "Innovation", description: "Implemented new AI feature", date: "2 weeks ago", icon: Sparkles }
-                  ]) ? [
-                    { title: "Project Milestone", description: "Completed Dashboard Design Phase", date: "2 days ago", icon: Target },
-                    { title: "Team Collaboration", description: "100% participation in weekly standup", date: "1 week ago", icon: Users },
-                    { title: "Quality Delivery", description: "Zero bugs in last deployment", date: "1 week ago", icon: CheckCircle },
-                    { title: "Innovation", description: "Implemented new AI feature", date: "2 weeks ago", icon: Sparkles }
-                  ] : []).map((achievement, index) => (
+                  ].map((achievement, index) => (
                     <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-green-50 border border-green-200">
                       <achievement.icon className="w-5 h-5 text-green-600 mt-0.5" />
                       <div className="flex-1">
@@ -1235,12 +1225,7 @@ export default function Teams() {
                   { time: "9:45 AM", user: "Bob Smith", action: "Deployed version 2.1.0 to staging environment", type: "deploy" },
                   { time: "9:15 AM", user: "Carol Davis", action: "Updated design specifications for mobile app", type: "design" },
                   { time: "8:30 AM", user: "David Wilson", action: "Resolved 3 critical bugs in authentication module", type: "bug" }
-                ]) ? [
-                  { time: "10:30 AM", user: "Alice Johnson", action: "Started code review for Dashboard component", type: "code" },
-                  { time: "9:45 AM", user: "Bob Smith", action: "Deployed version 2.1.0 to staging environment", type: "deploy" },
-                  { time: "9:15 AM", user: "Carol Davis", action: "Updated design specifications for mobile app", type: "design" },
-                  { time: "8:30 AM", user: "David Wilson", action: "Resolved 3 critical bugs in authentication module", type: "bug" }
-                ] : []).map((activity, index) => (
+                ].map((activity, index) => (
                   <div key={index} className="flex items-start space-x-4 pb-4 border-b border-gray-100 last:border-b-0">
                     <div className="text-xs text-gray-500 w-20 mt-1">{activity.time}</div>
                     <div className={`w-3 h-3 rounded-full mt-1.5 ${
@@ -1412,13 +1397,7 @@ export default function Teams() {
                           { activity: "Testing", percentage: 15, color: "bg-yellow-600" },
                           { activity: "Documentation", percentage: 10, color: "bg-purple-600" },
                           { activity: "Meetings", percentage: 5, color: "bg-gray-600" }
-                        ]) ? [
-                          { activity: "Development", percentage: 45, color: "bg-blue-600" },
-                          { activity: "Code Review", percentage: 25, color: "bg-green-600" },
-                          { activity: "Testing", percentage: 15, color: "bg-yellow-600" },
-                          { activity: "Documentation", percentage: 10, color: "bg-purple-600" },
-                          { activity: "Meetings", percentage: 5, color: "bg-gray-600" }
-                        ] : []).map((item, index) => (
+                        ].map((item, index) => (
                           <div key={index} className="flex items-center space-x-3">
                             <div className={`w-3 h-3 rounded-full ${item.color}`} />
                             <span className="text-sm flex-1">{item.activity}</span>

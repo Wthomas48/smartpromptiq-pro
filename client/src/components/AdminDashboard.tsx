@@ -875,7 +875,7 @@ const AdminDashboard: React.FC = () => {
                       { page: '/dashboard', visits: 0, percentage: 0 },
                       { page: 'No activity data', visits: 0, percentage: 0 }
                     ];
-                  })(), (item) => (
+                  })().map((item) => (
                     <div key={item.page} className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="font-medium">{item.page}</span>

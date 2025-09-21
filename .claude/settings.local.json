@@ -121,7 +121,9 @@
       "Bash(start \"\" \"http://localhost:5179/signin?mode=signup\")",
       "Bash(start \"\" \"http://localhost:5179/dashboard\")",
       "Bash(start \"\" \"http://localhost:5180/signin?mode=signup\")",
-      "Bash(start \"\" \"http://localhost:5181/dashboard\")"
+      "Bash(start \"\" \"http://localhost:5181/dashboard\")",
+      "Bash(move postcss.config.js postcss.config.cjs)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []
