@@ -623,6 +623,21 @@ app.post('/api/generate-prompt', (req, res) => {
   });
 });
 
+// Alternative generate endpoint (for different client calls)
+app.post('/api/generate', (req, res) => {
+  console.log('🚀 Alternative generate endpoint accessed:', req.body);
+
+  const { category, answers, customization } = req.body;
+  const demoPrompt = generateDemoPrompt(category, answers, customization);
+
+  res.json({
+    success: true,
+    prompt: demoPrompt,
+    category: category || 'general',
+    generatedAt: new Date()
+  });
+});
+
 // Demo refinement endpoint
 app.post('/api/demo-refine', (req, res) => {
   console.log('🔧 Demo refinement request received:', req.body);
