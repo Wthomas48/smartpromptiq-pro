@@ -130,7 +130,18 @@
       "Bash(start \"\" \"http://localhost:5175/register\")",
       "Bash(npm ls:*)",
       "Bash(start \"\" \"http://localhost:5001\")",
-      "Bash(move simple-frontend-server.js simple-frontend-server.cjs)"
+      "Bash(move simple-frontend-server.js simple-frontend-server.cjs)",
+      "Bash(NODE_ENV=production npm run dev)",
+      "Bash(tee:*)",
+      "Bash(NODE_ENV=production PORT=5003 npm run dev)",
+      "Bash(PORT=5004 npm run dev)",
+      "Bash(start \"\" \"http://localhost:5173/generation\")",
+      "Bash(start \"\" \"http://localhost:5173/analytics\")",
+      "Bash(move:*)",
+      "Bash(start \"\" \"http://localhost:5175\")",
+      "Bash(start \"\" \"http://localhost:5175/dashboard\")",
+      "Bash(PORT=8080 npm run dev)",
+      "Bash(PORT=8081 npm run dev)"
     ],
     "deny": [],
     "ask": []

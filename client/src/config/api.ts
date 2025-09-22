@@ -2,7 +2,31 @@
  * API Configuration for different environments
  */
 
-// Determine the API base URL based on environment
+// ✅ ENHANCED: Comprehensive environment configuration with host validation
+const config = {
+  // Allowed hosts for different environments
+  allowedHosts: [
+    'localhost',
+    '127.0.0.1',
+    'smartpromptiq.up.railway.app',
+    'smartpromptiq-pro.up.railway.app',
+    'smartpromptiq.railway.app',
+    'smartpromptiq-pro.railway.app'
+  ],
+
+  // Development ports
+  devPorts: [3000, 5000, 5001, 5002, 5004, 5173, 8080],
+
+  // Production API patterns
+  productionPatterns: [
+    '.railway.app',
+    '.vercel.app',
+    '.netlify.app',
+    '.herokuapp.com'
+  ]
+};
+
+// Determine the API base URL based on environment with enhanced validation
 export const getApiBaseUrl = (): string => {
   // Check environment variables
   console.log('🔍 ENV CHECK:', {
@@ -19,28 +43,50 @@ export const getApiBaseUrl = (): string => {
     return '';
   }
 
-  // In production, determine backend URL
+  // In production, determine backend URL with enhanced validation
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+    const origin = window.location.origin;
+
+    console.log('🌐 Host validation:', {
+      hostname,
+      origin,
+      isAllowedHost: config.allowedHosts.includes(hostname)
+    });
+
+    // Check if hostname is in allowed hosts
+    if (config.allowedHosts.includes(hostname)) {
+      console.log('✅ Host validation passed for:', hostname);
+    }
 
     // If running on localhost in production, connect to backend on correct port
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5004';
+      console.log('🔗 Using localhost API URL:', apiUrl);
+      return apiUrl;
     }
 
-    // For Railway deployment, use same origin (backend serves frontend)
-    if (hostname.includes('.railway.app') || hostname.includes('.up.railway.app')) {
-      return '';
+    // For production deployments, check patterns
+    const isProductionDomain = config.productionPatterns.some(pattern =>
+      hostname.includes(pattern)
+    );
+
+    if (isProductionDomain) {
+      console.log('✅ Production domain detected:', hostname);
+      // For Railway/Vercel/Netlify deployment, use same origin (backend serves frontend)
+      return import.meta.env.VITE_API_URL || '';
     }
 
     // For other deployed environments, use environment variable or same origin
-    return import.meta.env.VITE_API_URL || '';
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    console.log('🔗 Using configured API URL:', apiUrl);
+    return apiUrl;
   }
 
   return '';
 };
 
-// Create a fetch wrapper that uses the correct base URL
+// ✅ ENHANCED: Robust API request wrapper with comprehensive data validation
 export const apiRequest = async (method: string, url: string, body?: any) => {
   const baseUrl = getApiBaseUrl();
   const fullUrl = `${baseUrl}${url}`;
@@ -54,12 +100,16 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       method,
       headers: {
         'Content-Type': 'application/json',
-        // Add CORS headers for production
         'Accept': 'application/json',
+        'Origin': typeof window !== 'undefined' ? window.location.origin : '',
+        // Add production headers for better compatibility
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
       },
       credentials: 'include',
+      mode: 'cors',
       // Add timeout and other robust options
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      signal: AbortSignal.timeout(15000), // 15 second timeout for better reliability
     };
 
     // Add auth token if available
@@ -77,7 +127,8 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
     }
 
     const response = await fetch(fullUrl, options);
-    console.log(`🌐 Response Status: ${response.status}`);
+    console.log(`🌐 Response Status: ${response.status} ${response.statusText}`);
+    console.log(`🌐 Response Headers:`, Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({
@@ -86,12 +137,21 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
         statusText: response.statusText
       }));
       console.error(`❌ API Error Response:`, errorData);
-      throw new Error(errorData.message || `HTTP ${response.status}`);
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
     }
 
     return response;
   } catch (error) {
     console.error(`❌ API Error for ${fullUrl}:`, error);
+
+    // Enhanced error handling with network detection
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - please check your connection');
+    }
+
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error - please check your internet connection');
+    }
 
     // In production, if the API call fails, provide fallback behavior
     if (!import.meta.env.DEV && (error.message.includes('fetch') || error.message.includes('network'))) {
@@ -110,7 +170,9 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
                 email: body?.email || 'demo@example.com',
                 firstName: body?.firstName || 'Demo',
                 lastName: body?.lastName || 'User',
-                role: 'USER'
+                role: 'USER',
+                roles: [],
+                permissions: []
               },
               token: 'demo-token-' + Date.now()
             }
@@ -120,6 +182,97 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
     }
 
     throw error;
+  }
+};
+
+// Import safe utilities
+import { ensureSafeUser } from '../utils/safeDataUtils';
+
+// ✅ ENHANCED: Authentication-specific API functions with safe data validation
+export const authAPI = {
+  signin: async (credentials: { email: string; password: string }) => {
+    try {
+      const response = await apiRequest('POST', '/api/auth/login', credentials);
+      const data = await response.json();
+
+      console.log('🔍 Raw signin response:', data);
+
+      // ✅ USE SAFE UTILITY: Process user data safely
+      const safeResponse = {
+        ...data,
+        data: data.data ? {
+          ...data.data,
+          user: data.data.user ? ensureSafeUser({
+            ...data.data.user,
+            email: data.data.user.email || credentials.email, // Ensure email from credentials
+          }) : null,
+          token: data.data.token || null
+        } : null
+      };
+
+      console.log('🔍 Safe signin response:', safeResponse);
+      return safeResponse;
+
+    } catch (error) {
+      console.error('❌ Signin API error:', error);
+      throw error;
+    }
+  },
+
+  signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
+    try {
+      const response = await apiRequest('POST', '/api/auth/register', userData);
+      const data = await response.json();
+
+      console.log('🔍 Raw signup response:', data);
+
+      // ✅ USE SAFE UTILITY: Process user data safely
+      const safeResponse = {
+        ...data,
+        data: data.data ? {
+          ...data.data,
+          user: data.data.user ? ensureSafeUser({
+            ...data.data.user,
+            email: data.data.user.email || userData.email,
+            firstName: data.data.user.firstName || userData.firstName || '',
+            lastName: data.data.user.lastName || userData.lastName || '',
+          }) : null,
+          token: data.data.token || null
+        } : null
+      };
+
+      console.log('🔍 Safe signup response:', safeResponse);
+      return safeResponse;
+
+    } catch (error) {
+      console.error('❌ Signup API error:', error);
+      throw error;
+    }
+  },
+
+  me: async () => {
+    try {
+      const response = await apiRequest('GET', '/api/auth/me');
+      const data = await response.json();
+
+      console.log('🔍 Raw me response:', data);
+
+      // ✅ USE SAFE UTILITY: Process user data safely
+      const safeResponse = {
+        ...data,
+        data: data.data ? {
+          ...data.data,
+          user: data.data.user ? ensureSafeUser(data.data.user) : null
+        } : null
+      };
+
+      console.log('🔍 Safe me response:', safeResponse);
+      return safeResponse;
+
+    } catch (error) {
+      console.error('❌ Me API error:', error);
+      throw error;
+    }
   }
 };
 

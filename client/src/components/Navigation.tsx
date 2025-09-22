@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Shield, Star } from "lucide-react";
+import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Logo from "@/components/Logo";
@@ -129,7 +129,7 @@ export default function Navigation() {
             {isAuthenticated && (
               <div className="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2 rounded-lg border border-indigo-200">
                 <Coins className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm font-medium text-indigo-700">47 tokens</span>
+                <span className="text-sm font-medium text-indigo-700">{user?.tokenBalance || 0} tokens</span>
               </div>
             )}
 
@@ -194,14 +194,6 @@ export default function Navigation() {
                     Rate App Performance
                   </DropdownMenuItem>
 
-                  {isAdmin() && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <Shield className="w-4 h-4 mr-2 text-amber-600" />
-                        Admin Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
 
                   <DropdownMenuItem
                     onClick={handleGiveFeedback}

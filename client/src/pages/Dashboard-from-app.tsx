@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import Navigation from "@/components/Navigation";
 import PromptCard from "@/components/PromptCard";
 import TokenBalance from "@/components/TokenBalance";
 import UsageTracker from "@/components/UsageTracker";
@@ -179,8 +178,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navigation />
-      
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">

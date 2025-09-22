@@ -2,21 +2,28 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Set build environment
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
+# Copy package files first for better caching
 COPY package*.json ./
 COPY client/package*.json ./client/
+COPY backend/package*.json ./backend/
 
-# Install all dependencies (root and client)
-RUN npm ci && cd client && npm ci
+# Install dependencies with npm ci for faster, reliable builds
+RUN npm ci
+RUN cd client && npm ci
+RUN cd backend && npm ci
 
-# Copy all source files
+# Copy source code
 COPY . .
 
-# Stage-0: Build the client
-RUN npm run build
+# Build client application
+RUN cd client && timeout 600 npm run build
 
 # Expose port
 EXPOSE 8080
 
 # Start the application
-CMD ["node", "server.cjs"]
+CMD ["npm", "start"]

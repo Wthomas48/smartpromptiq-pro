@@ -37,7 +37,15 @@ export default function SignIn() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [, setLocation] = useLocation();
-  const { login } = useAuth();
+  const { login, signup, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // ✅ FIXED: Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      console.log('✅ User already authenticated, redirecting to dashboard');
+      setLocation('/dashboard');
+    }
+  }, [isAuthenticated, authLoading, setLocation]);
 
   // Check URL parameters to determine initial mode
   useEffect(() => {
@@ -84,43 +92,14 @@ export default function SignIn() {
 
     try {
       debugLog("Signup Request", { email, firstName, lastName });
+      console.log('🔍 Attempting signup with auth hook');
 
-      const response = await apiRequest("POST", "/api/auth/register", {
-        email, password, firstName, lastName
-      });
-
-      debugLog("Signup Response Status", response.status);
-
-      const data = await response.json();
-      debugLog("Signup Response Data", data);
-      console.log('🔍 Signup response:', data);
-
-      if (data.success) {
-        if (data.data && data.data.token) {
-          console.log('✅ Successful signup, logging in user');
-          setUserName(`${data.data.user.firstName} ${data.data.user.lastName}`);
-          setShowWelcome(true);
-
-          // Auto-login the user after successful registration
-          setTimeout(async () => {
-            try {
-              await login(email, password);
-              console.log('✅ Auto-login successful after signup');
-            } catch (loginError) {
-              console.error('❌ Auto-login failed, redirecting to signin');
-              setLocation('/signin');
-            }
-          }, 2000);
-        } else {
-          console.log('❌ No token in response, switching to signin');
-          setIsSignUp(false);
-        }
-      } else {
-        console.log('❌ Response not ok or not successful');
-        throw new Error(data.message || "Registration failed");
-      }
+      await signup(email, password, firstName, lastName);
+      console.log('✅ Signup successful via auth hook');
+      // The auth hook will handle the redirect to dashboard
     } catch (err: any) {
-      console.error('❌ Signup error:', err);
+      debugLog("Signup Error", err);
+      console.error('❌ Signup error via auth hook:', err);
       setError(err.message || "Failed to create account");
     } finally {
       setIsLoading(false);

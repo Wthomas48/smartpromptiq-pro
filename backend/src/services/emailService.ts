@@ -387,18 +387,10 @@ This prompt was generated for {{email}}`
                 </div>
 
                 <p style="text-align: center;">
-                  <a href="{{dashboardUrl}}" class="dashboard-button">Start Using Premium Features</a>
+                  <a href="{{dashboardUrl}}" class="cta-button">Get Started Now</a>
                 </p>
 
-                <p><strong>Billing Information:</strong></p>
-                <ul>
-                  <li>Plan: {{planName}}</li>
-                  <li>Amount: ${{amount}}</li>
-                  <li>Billing Cycle: {{billingCycle}}</li>
-                  <li>Next Billing Date: {{nextBillingDate}}</li>
-                </ul>
-
-                <p>Thank you for upgrading! We're excited to help you create amazing prompts with our premium features.</p>
+                <p>We're excited to help you create amazing AI prompts with our platform!</p>
 
                 <p>Best regards,<br>The SmartPromptIQ Pro Team</p>
               </div>
@@ -423,15 +415,9 @@ Your New Features:
 ✓ Priority customer support
 ✓ Export and save unlimited prompts
 
-Start using premium features: {{dashboardUrl}}
+Get started now: {{dashboardUrl}}
 
-Billing Information:
-- Plan: {{planName}}
-- Amount: ${{amount}}
-- Billing Cycle: {{billingCycle}}
-- Next Billing Date: {{nextBillingDate}}
-
-Thank you for upgrading! We're excited to help you create amazing prompts with our premium features.
+We're excited to help you create amazing AI prompts with our platform!
 
 Best regards,
 The SmartPromptIQ Pro Team

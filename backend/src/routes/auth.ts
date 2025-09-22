@@ -51,9 +51,6 @@ router.post('/register', [
 
     // Hash password and create user
     const hashedPassword = await hashPassword(password);
-    
-    // Generate email verification token
-    const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
     const user = await prisma.user.create({
       data: {
@@ -61,12 +58,18 @@ router.post('/register', [
         password: hashedPassword,
         firstName,
         lastName,
-        emailVerificationToken: verificationToken,
-        emailVerified: false
+        role: 'USER',
+        plan: 'FREE',
+        subscriptionTier: 'FREE',
+        tokenBalance: 0,
+        generationsUsed: 0,
+        generationsLimit: 5,
+        isActive: true
       }
     });
 
     const token = generateToken(user);
+    const verificationToken = generateToken({ userId: user.id, type: 'email_verification' });
 
     // Send welcome email and verification email
     try {
@@ -96,18 +99,25 @@ router.post('/register', [
       // Don't fail registration if email fails
     }
 
+    // ✅ FIXED: Ensure role is always properly set and validated for REGISTER
+    const userData = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      plan: user.plan || user.subscriptionTier || 'free',
+      role: user.role || 'USER',
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
+      roles: Array.isArray(user.roles) ? user.roles : []
+    };
+
+    console.log('🔍 BACKEND REGISTER RESPONSE:', userData);
+
     res.status(201).json({
       success: true,
       message: 'User created successfully',
       data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          plan: user.plan,
-          role: user.role
-        },
+        user: userData,
         token
       }
     });
@@ -175,18 +185,25 @@ router.post('/login', [
 
     const token = generateToken(user);
 
+    // ✅ FIXED: Ensure role is always properly set and validated for LOGIN
+    const userData = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      plan: user.plan || user.subscriptionTier || 'free',
+      role: user.role || 'USER',
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
+      roles: Array.isArray(user.roles) ? user.roles : []
+    };
+
+    console.log('🔍 BACKEND USER RESPONSE:', userData);
+
     res.json({
       success: true,
       message: 'Login successful',
       data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          plan: user.plan,
-          role: user.role
-        },
+        user: userData,
         token
       }
     });
@@ -209,7 +226,10 @@ router.get('/me', authenticate, async (req: AuthRequest, res: express.Response) 
         email: true,
         firstName: true,
         lastName: true,
-        createdAt: true
+        role: true,
+        plan: true,
+        createdAt: true,
+        lastLogin: true
       }
     });
 
@@ -220,9 +240,25 @@ router.get('/me', authenticate, async (req: AuthRequest, res: express.Response) 
       });
     }
 
+    // ✅ FIXED: Ensure role is always properly set and validated for /ME endpoint
+    const userData = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role || 'USER',
+      plan: user.plan || user.subscriptionTier || 'free',
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
+      roles: Array.isArray(user.roles) ? user.roles : [],
+      createdAt: user.createdAt,
+      lastLogin: user.lastLogin
+    };
+
+    console.log('🔍 BACKEND /ME RESPONSE:', userData);
+
     res.json({
       success: true,
-      data: { user }
+      data: { user: userData }
     });
   } catch (error) {
     console.error('Get user error:', error);

@@ -20,29 +20,51 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      // Check admin credentials (use stored password or default)
-      const adminPassword = sessionStorage.getItem('admin-password') || 'Admin123!';
+      // Use the proper authentication API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password
+        })
+      });
 
-      if ((credentials.email === "admin@smartpromptiq.net" || credentials.email === "admin@admin.com") && credentials.password === adminPassword) {
-        // Store admin session with login time
-        sessionStorage.setItem('admin-authenticated', 'true');
-        sessionStorage.setItem('admin-login-time', new Date().toISOString());
+      const data = await response.json();
 
-        toast({
-          title: "Admin Access Granted",
-          description: "Welcome back, Administrator!",
-        });
+      if (response.ok && data.success) {
+        // Check if user has admin role
+        if (data.data.user.role === 'ADMIN') {
+          // Store token and user data
+          localStorage.setItem('token', data.data.token);
+          localStorage.setItem('user', JSON.stringify(data.data.user));
 
-        // Redirect to admin dashboard
-        setLocation('/admin');
+          toast({
+            title: "Admin Access Granted",
+            description: "Welcome back, Administrator!",
+          });
+
+          // Redirect to admin dashboard
+          setLocation('/admin');
+        } else {
+          toast({
+            title: "Access Denied",
+            description: "Admin role required.",
+            variant: "destructive"
+          });
+        }
       } else {
         toast({
           title: "Access Denied",
-          description: "Invalid admin credentials.",
+          description: data.message || "Invalid credentials.",
           variant: "destructive"
         });
       }
     } catch (error) {
+      console.error('Admin login error:', error);
       toast({
         title: "Error",
         description: "Failed to verify admin credentials.",

@@ -1,8 +1,5 @@
-// ULTIMATE Array Safety - must be imported first to protect against crashes
-import "@/utils/ultimateArraySafety";
-
 import React from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,6 +12,8 @@ import Categories from "@/pages/Categories";
 import Questionnaire from "@/pages/Questionnaire";
 import Generation from "@/pages/Generation";
 import Dashboard from "@/pages/Dashboard";
+import DashboardSimple from "@/pages/DashboardSimple";
+import DashboardWorking from "@/pages/DashboardWorking";
 import Teams from "@/pages/Teams";
 import TeamDashboard from "@/pages/TeamDashboard";
 import Templates from "@/pages/Templates";
@@ -46,17 +45,34 @@ import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 import Navigation from "@/components/Navigation";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import AdminRoute from "@/components/AdminRoute";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
+  const [forceLoad, setForceLoad] = React.useState(false);
 
-  // Show loading state while checking authentication
-  if (isLoading) {
+  // Force load after 3 seconds to prevent infinite loading
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('🚨 Force loading app after timeout');
+      setForceLoad(true);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Check if current route is admin route
+  const isAdminRoute = location.startsWith('/admin');
+
+  // Show loading state while checking authentication (with timeout)
+  if (isLoading && !forceLoad) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-2 text-sm text-gray-500">If this takes too long, we'll load the app anyway</p>
         </div>
       </div>
     );
@@ -64,15 +80,24 @@ function Router() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
+      {/* Only show Navigation for non-admin routes */}
+      {!isAdminRoute && <Navigation />}
       <Switch>
         {/* Public routes - always accessible */}
         <Route path="/demo" component={Demo} />
         <Route path="/signin" component={SignIn} />
         <Route path="/register" component={Register} />
         <Route path="/admin/login" component={AdminLogin} />
-        <Route path="/admin" component={AdminDashboard} />
-        <Route path="/admin/dashboard" component={AdminDashboard} />
+        <Route path="/admin">
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        </Route>
+        <Route path="/admin/dashboard">
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        </Route>
         <Route path="/stripe-keys" component={StripeKeyManager} />
         <Route path="/landing" component={Home} />
         <Route path="/logout" component={LogoutPage} />

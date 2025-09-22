@@ -109,7 +109,19 @@ function createSuperSafeArrayMethod<T, R>(
         return defaultReturn;
       }
 
-      // Call the original method
+      // Enhanced safety check for originalMethod
+      if (!originalMethod || typeof originalMethod !== 'function') {
+        console.warn(`🛡️ ULTIMATE ARRAY SAFETY: ${methodName}() originalMethod is invalid, returning fallback`);
+        return defaultReturn;
+      }
+
+      // Enhanced safety check for apply method
+      if (!originalMethod.apply || typeof originalMethod.apply !== 'function') {
+        console.warn(`🛡️ ULTIMATE ARRAY SAFETY: ${methodName}() originalMethod.apply is invalid, returning fallback`);
+        return defaultReturn;
+      }
+
+      // Call the original method with extra safety
       return originalMethod.apply(this, args);
     } catch (error) {
       console.warn(`🛡️ ULTIMATE ARRAY SAFETY: ${methodName}() error caught:`, error);

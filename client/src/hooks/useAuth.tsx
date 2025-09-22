@@ -1,7 +1,8 @@
 ﻿import React, { useState, useEffect, createContext, useContext } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/config/api";
+import { apiRequest, authAPI } from "@/config/api";
+import { ensureSafeUser, isValidUser } from "@/utils/safeDataUtils";
 
 interface User {
   id: string;
@@ -22,9 +23,11 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
   updateTokenBalance: (newBalance: number) => void;
+  updateUser: (userData: any) => void;
   isAdmin: () => boolean;
   refreshUserData: () => Promise<void>;
 }
@@ -39,6 +42,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // ✅ NEW: Comprehensive debugging function for user data validation
+  const debugUserData = (user: any, location: string) => {
+    console.log(`🔍 User data at ${location}:`, {
+      user,
+      hasUser: !!user,
+      userType: typeof user,
+      hasRole: !!user?.role,
+      roleValue: user?.role,
+      roleType: typeof user?.role,
+      hasRoles: !!user?.roles,
+      rolesValue: user?.roles,
+      rolesType: typeof user?.roles,
+      rolesIsArray: Array.isArray(user?.roles),
+      rolesLength: Array.isArray(user?.roles) ? user.roles.length : 'N/A',
+      hasPermissions: !!user?.permissions,
+      permissionsValue: user?.permissions,
+      permissionsType: typeof user?.permissions,
+      permissionsIsArray: Array.isArray(user?.permissions),
+      permissionsLength: Array.isArray(user?.permissions) ? user.permissions.length : 'N/A',
+      email: user?.email,
+      firstName: user?.firstName,
+      lastName: user?.lastName
+    });
+  };
 
   // Environment check on component mount
   console.log('🔍 AUTH ENV CHECK:', {
@@ -57,46 +85,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const storedUser = localStorage.getItem("user");
 
       if (storedToken && storedUser) {
+        const storedUserData = JSON.parse(storedUser);
+        debugUserData(storedUserData, 'checkAuth - STORED user data');
+
         try {
-          // Verify token with backend
-          const response = await apiRequest('GET', '/api/auth/me');
-          response.headers = {
-            'Authorization': `Bearer ${storedToken}`,
-            'Content-Type': 'application/json',
-          };
+          // ✅ ENHANCED: Verify token with backend using authAPI.me
+          console.log('🔍 checkAuth: Verifying token with backend...');
+          const data = await authAPI.me();
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data?.user) {
-              // Merge stored user data with backend data, prioritizing stored data for names
-              const storedUserData = JSON.parse(storedUser);
-              const backendUserData = data.data.user;
+          if (data.success && data.data?.user) {
+            const backendUserData = data.data.user;
+            debugUserData(backendUserData, 'checkAuth - BACKEND user data');
 
-              const userData = {
-                ...backendUserData,
-                // Prioritize stored firstName/lastName if they exist and backend doesn't have them
-                firstName: storedUserData.firstName || backendUserData.firstName,
-                lastName: storedUserData.lastName || backendUserData.lastName,
-              };
+            // Merge stored user data with backend data, prioritizing stored data for names
+            const mergedUserData = {
+              ...backendUserData,
+              // Prioritize stored firstName/lastName if they exist and backend doesn't have them
+              firstName: storedUserData.firstName || backendUserData.firstName,
+              lastName: storedUserData.lastName || backendUserData.lastName,
+            };
 
-              setUser(userData);
-              setToken(storedToken);
-              setIsAuthenticated(true);
-              localStorage.setItem("user", JSON.stringify(userData));
-              console.log("User authenticated with merged data:", userData);
-              return;
-            }
+            debugUserData(mergedUserData, 'checkAuth - MERGED user data');
+
+            setToken(storedToken);
+            setIsAuthenticated(true);
+
+            // Use centralized updateUser for consistent data processing
+            updateUser(mergedUserData);
+
+            console.log("✅ User authenticated with merged data:", mergedUserData);
+            debugUserData(mergedUserData, 'checkAuth - AFTER updateUser (merged)');
+            return;
           }
-        } catch (backendError) {
-          console.log("Backend auth check failed, using stored data:", backendError);
+        } catch (backendError: any) {
+          console.log("⚠️ Backend auth check failed:", backendError);
+
+          // Check if it's an invalid token error
+          if (backendError.message && backendError.message.includes('Invalid token')) {
+            console.log("🧹 Invalid token detected, clearing auth data...");
+            // Clear invalid token and user data
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            setIsAuthenticated(false);
+            setUser(null);
+            setToken(null);
+            setIsLoading(false);
+            return;
+          }
+
+          debugUserData(storedUserData, 'checkAuth - BACKEND ERROR, using stored');
         }
 
-        // Fallback to stored data if backend is unavailable
-        const userData = JSON.parse(storedUser);
-        setUser(userData);
+        // ✅ ENHANCED: Fallback to stored data if backend is unavailable
+        debugUserData(storedUserData, 'checkAuth - FALLBACK to stored data');
         setToken(storedToken);
         setIsAuthenticated(true);
-        console.log("User authenticated from storage:", userData);
+
+        // Use centralized updateUser for consistent data processing
+        updateUser(storedUserData);
+
+        console.log("✅ User authenticated from storage:", storedUserData);
+        debugUserData(storedUserData, 'checkAuth - AFTER updateUser (stored)');
       } else {
         console.log("No token found");
         setIsAuthenticated(false);
@@ -113,92 +162,181 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Check for auth token on mount
+  // Clear any invalid tokens on app startup
   useEffect(() => {
+    const clearInvalidTokens = () => {
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+
+      // If we have a token but no user data, or vice versa, clear both
+      if ((storedToken && !storedUser) || (!storedToken && storedUser)) {
+        console.log("🧹 Inconsistent auth data detected, clearing...");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
+        return;
+      }
+
+      // If we have both but the token looks invalid (too short, malformed, etc.)
+      if (storedToken && storedToken.length < 20) {
+        console.log("🧹 Invalid token format detected, clearing...");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
+        return;
+      }
+    };
+
+    clearInvalidTokens();
     checkAuth();
   }, []);
 
+  // ✅ ENHANCED: Login using the new authAPI with comprehensive data validation
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log("Attempting login:", { email });
+      console.log("🔐 Attempting login:", { email });
 
-      // Call backend API
-      const response = await apiRequest('POST', '/api/auth/login', {
-        email, password
-      });
+      // Use enhanced authAPI.signin with built-in data validation
+      const data = await authAPI.signin({ email, password });
 
-      console.log('🔍 LOGIN RESPONSE STATUS:', response.status);
-      console.log('🔍 LOGIN RESPONSE HEADERS:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.log('🔍 LOGIN ERROR DATA:', errorData);
-        throw new Error(errorData.message || 'Login failed');
-      }
-
-      const data = await response.json();
-      console.log('🔍 LOGIN RESPONSE:', data);
-      console.log('🔍 LOGIN RESPONSE STRUCTURE:', Object.keys(data));
-
-      // Check for arrays that might cause map errors
-      if (data.permissions) {
-        console.log('🔍 PERMISSIONS:', data.permissions, 'Is Array:', Array.isArray(data.permissions));
-      }
-      if (data.roles) {
-        console.log('🔍 ROLES:', data.roles, 'Is Array:', Array.isArray(data.roles));
-      }
-      if (data.data && data.data.user) {
-        console.log('🔍 USER DATA:', data.data.user, 'Type:', typeof data.data.user);
-      }
+      console.log('🔍 LOGIN RESPONSE (validated):', data);
 
       if (data.success && data.data) {
-        const { user: userData, token: authToken } = data.data || {};
+        const { user: userData, token: authToken } = data.data;
 
-        console.log('Login debug - raw backend response:', {
+        debugUserData(userData, 'login - RAW userData from API');
+
+        if (!authToken) {
+          console.error('❌ Login failed: No authentication token received');
+          throw new Error('No authentication token received');
+        }
+
+        if (!userData) {
+          console.error('❌ Login failed: No user data received');
+          throw new Error('No user data received');
+        }
+
+        console.log('🔍 Login debug - validated backend response:', {
           email,
           userData,
-          userDataRole: userData?.role
+          userDataRole: userData.role,
+          userDataRoles: userData.roles,
+          userDataPermissions: userData.permissions,
+          timestamp: new Date().toISOString()
         });
 
-        // ✅ Fixed: Handle potentially undefined user data structure
-        const enhancedUser = {
-          id: userData?.id || 'demo-user',
-          email: userData?.email || email,
-          firstName: userData?.firstName || 'User',
-          lastName: userData?.lastName || '',
-          role: userData?.role || 'USER',
-          // Safely handle any array properties that might be undefined
-          permissions: userData?.permissions || [],
-          roles: userData?.roles || [],
-          ...userData
-        };
+        debugUserData(userData, 'login - BEFORE updateUser call');
 
-        console.log('Enhanced user:', enhancedUser);
-
-        // Store token and user data
+        // Store token and use updateUser for consistent data processing
         localStorage.setItem("token", authToken);
-        localStorage.setItem("user", JSON.stringify(enhancedUser));
-
         setToken(authToken);
-        setUser(enhancedUser);
         setIsAuthenticated(true);
+
+        // Use the centralized updateUser function for consistent validation
+        updateUser(userData);
+
+        debugUserData(userData, 'login - AFTER updateUser call');
 
         toast({
           title: "Welcome back!",
-          description: `Signed in as ${enhancedUser.firstName || enhancedUser.email.split('@')[0]} ${enhancedUser.role === 'ADMIN' ? '(Admin)' : ''}`,
+          description: `Signed in as ${userData.firstName || userData.email.split('@')[0]} ${userData.role === 'ADMIN' ? '(Admin)' : ''}`,
         });
 
-        // Redirect to dashboard
-        setLocation("/dashboard");
+        // Add a small delay to see final state before redirect
+        setTimeout(() => {
+          debugUserData(user, 'login - FINAL STATE before redirect');
+          // Redirect to dashboard
+          setLocation("/dashboard");
+        }, 100);
       } else {
-        throw new Error('Invalid response format');
+        console.error('❌ Login failed: Invalid response format', data);
+        throw new Error(data.message || 'Login failed - invalid response format');
       }
     } catch (error: any) {
-      console.error("Login failed:", error);
+      console.error("❌ Login failed:", error);
       toast({
         title: "Login failed",
         description: error.message || "Please check your credentials",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ✅ ENHANCED: Signup function using authAPI with comprehensive data validation
+  const signup = async (email: string, password: string, firstName?: string, lastName?: string) => {
+    try {
+      setIsLoading(true);
+      console.log("🔐 Attempting signup:", { email, firstName, lastName });
+
+      // Use enhanced authAPI.signup with built-in data validation
+      const data = await authAPI.signup({ email, password, firstName, lastName });
+
+      console.log('🔍 SIGNUP RESPONSE (validated):', data);
+
+      if (data.success && data.data) {
+        const { user: userData, token: authToken } = data.data;
+
+        debugUserData(userData, 'signup - RAW userData from API');
+
+        if (!authToken) {
+          console.error('❌ Signup failed: No authentication token received');
+          throw new Error('No authentication token received');
+        }
+
+        if (!userData) {
+          console.error('❌ Signup failed: No user data received');
+          throw new Error('No user data received');
+        }
+
+        console.log('🔍 Signup debug - validated backend response:', {
+          email,
+          userData,
+          userDataRole: userData.role,
+          userDataRoles: userData.roles,
+          userDataPermissions: userData.permissions,
+          timestamp: new Date().toISOString()
+        });
+
+        debugUserData(userData, 'signup - BEFORE updateUser call');
+
+        // Store token and use updateUser for consistent data processing
+        localStorage.setItem("token", authToken);
+        setToken(authToken);
+        setIsAuthenticated(true);
+
+        // Use the centralized updateUser function for consistent validation
+        updateUser(userData);
+
+        debugUserData(userData, 'signup - AFTER updateUser call');
+
+        toast({
+          title: "Welcome to SmartPromptIQ!",
+          description: `Account created for ${userData.firstName || userData.email.split('@')[0]}! 🎉`,
+        });
+
+        // Add a small delay to see final state before redirect
+        setTimeout(() => {
+          debugUserData(user, 'signup - FINAL STATE before redirect');
+          // Redirect to dashboard
+          setLocation("/dashboard");
+        }, 100);
+      } else {
+        console.error('❌ Signup failed: Invalid response format', data);
+        throw new Error(data.message || 'Signup failed - invalid response format');
+      }
+    } catch (error: any) {
+      console.error("❌ Signup failed:", error);
+      toast({
+        title: "Signup failed",
+        description: error.message || "Please check your information",
         variant: "destructive",
       });
       throw error;
@@ -228,25 +366,65 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // ✅ ENHANCED: Centralized user data update using safe utilities
+  const updateUser = (userData: any) => {
+    debugUserData(userData, 'updateUser - BEFORE processing');
+
+    if (!userData) {
+      console.warn('⚠️ updateUser called with null/undefined userData');
+      debugUserData(userData, 'updateUser - NULL/UNDEFINED userData');
+      return;
+    }
+
+    // ✅ USE SAFE UTILITY: Ensure safe data structure with comprehensive validation
+    const safeUser = ensureSafeUser(userData);
+
+    if (!safeUser) {
+      console.error('❌ updateUser: ensureSafeUser returned null');
+      return;
+    }
+
+    // ✅ VALIDATE: Ensure the user object is valid
+    if (!isValidUser(safeUser)) {
+      console.error('❌ updateUser: Invalid user object after safety processing:', safeUser);
+      return;
+    }
+
+    debugUserData(safeUser, 'updateUser - AFTER processing (safeUser)');
+
+    console.log('🔍 Setting safe user data:', safeUser);
+    setUser(safeUser);
+    localStorage.setItem("user", JSON.stringify(safeUser));
+
+    // Debug the state immediately after setting
+    setTimeout(() => {
+      debugUserData(safeUser, 'updateUser - AFTER setState (immediate)');
+    }, 0);
+  };
+
   const updateTokenBalance = (newBalance: number) => {
     if (user) {
       const updatedUser = { ...user, tokenBalance: newBalance };
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      updateUser(updatedUser);
     }
   };
 
+  // ✅ STREAMLINED: Safe isAdmin function as requested by user
   const isAdmin = () => {
-    const result = user?.role === 'ADMIN';
+    if (!user) return false;
 
-    console.log('isAdmin check:', {
-      user,
-      role: user?.role,
-      email: user?.email,
-      result
+    // Safe single role check
+    if (user.role) {
+      return user.role === 'admin' || user.role === 'ADMIN' || user.role?.name === 'admin';
+    }
+
+    // Safe multiple roles check
+    const roles = user.roles || [];
+    return roles.some(role => {
+      if (typeof role === 'string') return role === 'admin' || role === 'ADMIN';
+      if (role && typeof role === 'object') return role.name === 'admin' || role.name === 'ADMIN';
+      return false;
     });
-
-    return result;
   };
 
   const refreshUserData = async () => {
@@ -254,22 +432,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const authToken = localStorage.getItem("token");
       if (!authToken) return;
 
-      const response = await apiRequest('GET', '/api/auth/me');
-      response.headers = {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      };
+      const data = await authAPI.me();
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.user) {
-          const updatedUser = data.data.user;
-          setUser(updatedUser);
-          localStorage.setItem("user", JSON.stringify(updatedUser));
-        }
+      if (data.success && data.data?.user) {
+        const updatedUser = data.data.user;
+        updateUser(updatedUser);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to refresh user data:", error);
+
+      // If it's an invalid token error, clear auth data
+      if (error.message && error.message.includes('Invalid token')) {
+        console.log("🧹 Invalid token in refreshUserData, clearing auth data...");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
+      }
     }
   };
 
@@ -280,9 +460,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       user,
       token,
       login,
+      signup,
       logout,
       checkAuth,
       updateTokenBalance,
+      updateUser,
       isAdmin,
       refreshUserData
     }}>

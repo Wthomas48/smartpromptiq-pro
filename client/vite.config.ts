@@ -14,7 +14,7 @@ export default defineConfig({
     strictPort: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false
       }
@@ -23,19 +23,27 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    minify: true,
+    target: 'esnext',
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom']
         }
-      }
-    }
+      },
+      maxParallelFileOps: 2
+    },
+    chunkSizeWarningLimit: 1000
+  },
+  esbuild: {
+    target: 'esnext',
+    minify: true
   },
   preview: {
     port: 5173,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        target: process.env.VITE_API_URL || 'http://localhost:3001',
         changeOrigin: true,
         secure: false
       }

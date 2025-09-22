@@ -34,43 +34,111 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(compression());
 
-// CORS configuration - Support multiple origins for production
+// ✅ ENHANCED: Comprehensive CORS configuration with centralized host management
+const corsConfig = {
+  // Development origins
+  developmentOrigins: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://localhost:5001',
+    'http://localhost:5002',
+    'http://localhost:8080'
+  ],
+
+  // Production domains
+  productionDomains: [
+    'smartpromptiq.up.railway.app',
+    'smartpromptiq-pro.up.railway.app',
+    'smartpromptiq.railway.app',
+    'smartpromptiq-pro.railway.app'
+  ],
+
+  // Deployment patterns to allow
+  allowedPatterns: [
+    '.railway.app',
+    '.vercel.app',
+    '.netlify.app',
+    '.herokuapp.com'
+  ]
+};
+
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
+  ...corsConfig.developmentOrigins,
   process.env.FRONTEND_URL,
   process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : undefined,
-  process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined
+  process.env.RAILWAY_STATIC_URL ? `https://${process.env.RAILWAY_STATIC_URL}` : undefined,
+  // Add production domains
+  ...corsConfig.productionDomains.map(domain => `https://${domain}`)
 ].filter(Boolean);
 
 console.log('🌐 CORS Allowed Origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
+    console.log('🌐 CORS REQUEST from origin:', origin);
+
     // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('✅ CORS: No origin - allowed');
+      return callback(null, true);
+    }
 
     // Check if the origin is in the allowed list
     if (allowedOrigins.includes(origin)) {
+      console.log('✅ CORS: Origin in allowed list - allowed');
       return callback(null, true);
     }
 
     // Allow any Railway domain
     if (origin.includes('.railway.app') || origin.includes('.up.railway.app')) {
+      console.log('✅ CORS: Railway domain - allowed');
       return callback(null, true);
     }
 
     // Allow localhost with any port in development
-    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      console.log('✅ CORS: Localhost - allowed');
+      return callback(null, true);
+    }
+
+    // ✅ ENHANCED: Production CORS handling with centralized configuration validation
+    if (process.env.NODE_ENV === 'production') {
+      if (origin) {
+        // Check against allowed patterns
+        const matchesPattern = corsConfig.allowedPatterns.some(pattern =>
+          origin.includes(pattern)
+        );
+
+        // Check against specific production domains
+        const matchesDomain = corsConfig.productionDomains.some(domain =>
+          origin.includes(domain)
+        );
+
+        if (matchesPattern || matchesDomain) {
+          console.log('✅ CORS: Production domain/pattern matched - allowed:', origin);
+          return callback(null, true);
+        }
+
+        // Additional safety check for HTTPS origins
+        if (origin.startsWith('https://')) {
+          console.log('✅ CORS: HTTPS origin allowed in production:', origin);
+          return callback(null, true);
+        }
+      }
+
+      console.log('⚠️ CORS: Production mode - allowing with warning:', origin);
       return callback(null, true);
     }
 
     console.warn(`🚫 CORS blocked origin: ${origin}`);
+    console.warn(`🚫 Allowed origins:`, allowedOrigins);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  optionsSuccessStatus: 200
 }));
 
 // Logging

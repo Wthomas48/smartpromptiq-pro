@@ -1055,7 +1055,7 @@ router.get('/active-sessions', authenticate, requireAdmin, async (req, res) => {
         email: true,
         firstName: true,
         lastName: true,
-        lastLoginAt: true,
+        lastLogin: true,
         updatedAt: true,
         role: true,
         subscriptionTier: true
@@ -1073,9 +1073,9 @@ router.get('/active-sessions', authenticate, requireAdmin, async (req, res) => {
       role: user.role,
       tier: user.subscriptionTier,
       lastActivity: user.updatedAt,
-      lastLogin: user.lastLoginAt,
+      lastLogin: user.lastLogin,
       status: new Date(user.updatedAt).getTime() > Date.now() - 30 * 60 * 1000 ? 'active' : 'inactive',
-      duration: Math.floor((Date.now() - new Date(user.lastLoginAt || user.updatedAt).getTime()) / 1000 / 60) // minutes
+      duration: Math.floor((Date.now() - new Date(user.lastLogin || user.updatedAt).getTime()) / 1000 / 60) // minutes
     }));
 
     res.json({
