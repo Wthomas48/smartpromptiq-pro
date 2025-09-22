@@ -42,7 +42,22 @@ export default function AdminLogin() {
         })
       });
 
-      const data = await response.json();
+      // Check if response has content before parsing JSON
+      const responseText = await response.text();
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response text:', responseText);
+
+      if (!responseText) {
+        throw new Error('Empty response from server');
+      }
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('🔍 JSON parse error:', parseError);
+        throw new Error('Invalid JSON response from server');
+      }
 
       if (response.ok && data.success) {
         // Check if user has admin role
