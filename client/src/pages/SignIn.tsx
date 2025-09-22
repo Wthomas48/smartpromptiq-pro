@@ -150,7 +150,7 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100 px-4">
-      <Card className="w-full max-w-md shadow-2xl" data-build="signup-canary-2025-09-19-2">
+      <Card className="w-full max-w-md shadow-2xl" data-build="signup-fix-2025-09-22-1">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-900">
             SmartPromptIQ
@@ -359,7 +359,7 @@ export default function SignIn() {
             Secure authentication powered by SmartPromptIQ
           </p>
           <p className="text-xs text-center text-gray-400 mt-1">
-            build: signup-canary-2025-09-19-2
+            build: signup-fix-2025-09-22-1
           </p>
         </div>
       </Card>
