@@ -27,6 +27,10 @@ export default defineConfig({
     target: 'esnext',
     rollupOptions: {
       output: {
+        // Force new file hashes to bust cache
+        entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+        chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
+        assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`,
         manualChunks: {
           vendor: ['react', 'react-dom']
         }
