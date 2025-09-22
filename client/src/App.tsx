@@ -37,6 +37,7 @@ import Demo from "@/pages/Demo";
 import SignIn from "@/pages/SignIn";
 import Register from "@/pages/Register";
 import AdminLogin from "@/pages/AdminLogin";
+import AuthFormTest from "@/pages/AuthFormTest";
 import StripeKeyManager from "@/pages/StripeKeyManager";
 import LogoutPage from "@/pages/LogoutPage";
 import VerifyEmail from "@/pages/VerifyEmail";
@@ -88,6 +89,7 @@ function Router() {
         <Route path="/signin" component={SignIn} />
         <Route path="/register" component={Register} />
         <Route path="/admin/login" component={AdminLogin} />
+        <Route path="/auth-test" component={AuthFormTest} />
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/dashboard" component={AdminDashboard} />
         <Route path="/stripe-keys" component={StripeKeyManager} />
