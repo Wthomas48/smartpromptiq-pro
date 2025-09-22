@@ -244,7 +244,7 @@ const AdminDashboard: React.FC = () => {
       console.log('👥 Live users data:', usersData);
 
       if (usersData.success) {
-        const formattedUsers = usersData.data.users.map((user: any) => ({
+        const formattedUsers = usersData.data.map((user: any) => ({
           id: user.id,
           email: user.email,
           firstName: user.firstName || '',
