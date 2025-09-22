@@ -206,8 +206,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       console.log('🔍 LOGIN RESPONSE (validated):', data);
 
-      if (data.success && data.data) {
-        const { user: userData, token: authToken } = data.data;
+      // ✅ FIXED: Handle both response formats - direct and nested data
+      if (data.success) {
+        // Handle direct format: {success: true, token: 'xxx', user: {...}}
+        let userData, authToken;
+
+        if (data.data) {
+          // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
+          userData = data.data.user;
+          authToken = data.data.token;
+        } else {
+          // Direct format: {success: true, user: {...}, token: 'xxx'}
+          userData = data.user;
+          authToken = data.token;
+        }
 
         debugUserData(userData, 'login - RAW userData from API');
 
@@ -283,8 +295,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       console.log('🔍 SIGNUP RESPONSE (validated):', data);
 
-      if (data.success && data.data) {
-        const { user: userData, token: authToken } = data.data;
+      // ✅ FIXED: Handle both response formats - direct and nested data
+      if (data.success) {
+        // Handle direct format: {success: true, token: 'xxx', user: {...}}
+        let userData, authToken;
+
+        if (data.data) {
+          // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
+          userData = data.data.user;
+          authToken = data.data.token;
+        } else {
+          // Direct format: {success: true, user: {...}, token: 'xxx'}
+          userData = data.user;
+          authToken = data.token;
+        }
 
         debugUserData(userData, 'signup - RAW userData from API');
 
