@@ -10,7 +10,7 @@ cmds = [
 ]
 
 [phases.start]
-cmd = "cd backend && npm start"
+cmd = "npm start"
 
 [variables]
 NODE_ENV = "production"
