@@ -1,9 +1,0 @@
-[build]
-builder = "nixpacks"
-buildCommand = "npm install && cd client && npm install && npm run build && cd .."
-
-[deploy]
-startCommand = "npm start"
-healthcheckPath = "/api/health"
-healthcheckTimeout = 300
-port = 8080

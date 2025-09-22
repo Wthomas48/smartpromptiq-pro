@@ -141,7 +141,19 @@
       "Bash(start \"\" \"http://localhost:5175\")",
       "Bash(start \"\" \"http://localhost:5175/dashboard\")",
       "Bash(PORT=8080 npm run dev)",
-      "Bash(PORT=8081 npm run dev)"
+      "Bash(PORT=8081 npm run dev)",
+      "Bash(PORT=9005 node minimal-server.cjs)",
+      "Bash(NODE_ENV=production PORT=9006 npm start)",
+      "Bash(PORT=9007 node railway-server.cjs)",
+      "Bash(PORT=9008 node server.cjs)",
+      "Bash(PORT=9007 node railway-deployment-test.cjs)",
+      "Bash(railway logs:*)",
+      "Bash(PORT=9999 node railway-server-minimal.cjs)",
+      "Bash(PORT=7777 timeout 5s node railway-bulletproof.cjs)",
+      "Bash(PORT=3333 node index.js)",
+      "Bash(PORT=3333 node index.cjs)",
+      "Bash(PORT=8080 node server.cjs)",
+      "Bash(start \"\" \"http://localhost:8080/generate\")"
     ],
     "deny": [],
     "ask": []

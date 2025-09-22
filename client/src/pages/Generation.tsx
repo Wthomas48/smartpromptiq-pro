@@ -19,10 +19,12 @@ export default function Generation() {
   const [generatedContent, setGeneratedContent] = useState<string>("");
   const [customization, setCustomization] = useState({
     tone: "professional",
-    detailLevel: "comprehensive", 
+    detailLevel: "comprehensive",
     format: "structured"
   });
   const [promptTitle, setPromptTitle] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("business");
+  const [directMode, setDirectMode] = useState(false);
 
   // Get questionnaire data from session storage
   const questionnaireData = JSON.parse(sessionStorage.getItem('questionnaire') || '{}');
@@ -38,8 +40,9 @@ export default function Generation() {
     console.log('isQuestionnaireFlow:', isQuestionnaireFlow);
 
     if (!isTemplateFlow && !isQuestionnaireFlow) {
-      console.log('No template or questionnaire data found, redirecting to categories');
-      setLocation("/categories");
+      console.log('No template or questionnaire data found, enabling direct generation mode');
+      setDirectMode(true);
+      setPromptTitle("Direct Generation");
       return;
     }
 
@@ -59,8 +62,8 @@ export default function Generation() {
       }
 
       const response = await apiRequest("POST", "/api/generate-prompt", {
-        category: questionnaireData.category,
-        answers: questionnaireData.responses,
+        category: directMode ? selectedCategory : (questionnaireData.category || "business"),
+        answers: directMode ? {} : (questionnaireData.responses || {}),
         customization
       });
       const result = await response.json();
@@ -69,11 +72,14 @@ export default function Generation() {
     onSuccess: (data) => {
       setGeneratedContent(data.prompt);
       
-      // Set title based on template or questionnaire flow
+      // Set title based on mode
       if (questionnaireData.isTemplate && questionnaireData.templateData) {
         setPromptTitle(questionnaireData.templateData.name);
+      } else if (directMode) {
+        setPromptTitle(`${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Prompt`);
       } else {
-        setPromptTitle(`${questionnaireData.category.charAt(0).toUpperCase() + questionnaireData.category.slice(1)} Strategy Prompt`);
+        const category = questionnaireData.category || "business";
+        setPromptTitle(`${category.charAt(0).toUpperCase() + category.slice(1)} Strategy Prompt`);
       }
     },
     onError: (error) => {
@@ -87,10 +93,12 @@ export default function Generation() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Determine category for saving based on template or questionnaire flow
-      const category = questionnaireData.isTemplate && questionnaireData.templateData 
-        ? questionnaireData.templateData.category || questionnaireData.category
-        : questionnaireData.category;
+      // Determine category for saving based on mode
+      const category = directMode
+        ? selectedCategory
+        : (questionnaireData.isTemplate && questionnaireData.templateData
+          ? questionnaireData.templateData.category || questionnaireData.category
+          : questionnaireData.category);
 
       const response = await apiRequest("POST", "/api/prompts", {
         title: promptTitle,
@@ -146,7 +154,7 @@ export default function Generation() {
     setLocation("/categories");
   };
 
-  if (!questionnaireData.category) {
+  if (!questionnaireData.category && !directMode) {
     return null;
   }
 
@@ -218,8 +226,8 @@ export default function Generation() {
               <PromptRefinement
                 currentPrompt={generatedContent}
                 onPromptUpdate={setGeneratedContent}
-                category={questionnaireData.category}
-                originalAnswers={questionnaireData.responses}
+                category={directMode ? selectedCategory : questionnaireData.category}
+                originalAnswers={directMode ? {} : questionnaireData.responses}
               />
 
               {/* Action Buttons */}
@@ -283,8 +291,29 @@ export default function Generation() {
                           Ready to Generate
                         </h3>
                         <p className="text-slate-600 mb-6">
-                          Click below to create your customized AI prompt based on your questionnaire responses and preferences.
+                          {directMode
+                            ? "Choose a category and click below to generate an AI prompt with default settings."
+                            : "Click below to create your customized AI prompt based on your questionnaire responses and preferences."
+                          }
                         </p>
+                        {directMode && (
+                          <div className="mb-6">
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                              Select Category
+                            </label>
+                            <select
+                              value={selectedCategory}
+                              onChange={(e) => setSelectedCategory(e.target.value)}
+                              className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                              <option value="business">Business Strategy</option>
+                              <option value="marketing">Marketing & Growth</option>
+                              <option value="product">Product Development</option>
+                              <option value="education">Education & Training</option>
+                              <option value="personal">Personal Development</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                     <Button
                       onClick={() => generateMutation.mutate()}

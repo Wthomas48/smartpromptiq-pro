@@ -46,8 +46,9 @@ export default function Navigation() {
   // Navigation items for better organization
   const mainNavItems = [
     { href: "/dashboard", label: "Dashboard", icon: null, badge: null },
-    { href: "/teams", label: "Teams 🚀", icon: Users, badge: "4 Active", special: true },
-    { href: "/categories", label: "Create New", icon: null, badge: null },
+    { href: "/generate", label: "Generate", icon: null, badge: "New!", special: true },
+    { href: "/categories", label: "Categories", icon: null, badge: null },
+    { href: "/teams", label: "Teams", icon: Users, badge: "4 Active" },
     { href: "/documentation", label: "Docs", icon: null, badge: null }
   ];
 

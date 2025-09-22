@@ -61,7 +61,7 @@ export const getApiBaseUrl = (): string => {
 
     // If running on localhost in production, connect to backend on correct port
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5004';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
       console.log('🔗 Using localhost API URL:', apiUrl);
       return apiUrl;
     }

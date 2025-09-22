@@ -2,147 +2,475 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 
-// Live Revenue Connector - integrated directly
-let stripe = null;
-let prisma = null;
+// Helper functions for demo generation
+function generateDemoPrompt(category, answers, customization) {
+  const categoryTemplates = {
+    business: `
+## Business Strategy Blueprint
 
-async function initializeConnections() {
-  try {
-    // Load environment variables from backend
-    const backendEnvPath = path.join(__dirname, 'backend', '.env');
-    if (fs.existsSync(backendEnvPath)) {
-      require('dotenv').config({ path: backendEnvPath });
-      console.log('📊 Loaded backend environment variables');
-    }
+### Executive Summary
+Based on your requirements, here's a comprehensive business strategy framework:
 
-    // Initialize Stripe if available
-    if (process.env.STRIPE_SECRET_KEY) {
-      try {
-        const Stripe = require('stripe');
-        stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-        console.log('💳 Stripe initialized for live revenue tracking');
-      } catch (stripeError) {
-        console.log('💳 Stripe not available:', stripeError.message);
-      }
-    }
+**Target Market:** ${answers?.targetMarket || 'B2B professionals and enterprises'}
+**Budget Range:** ${answers?.budget || '$10k-50k initial investment'}
+**Timeline:** ${answers?.timeline || '6-12 months implementation'}
 
-    // Initialize Prisma if available
-    try {
-      const { PrismaClient } = require('@prisma/client');
-      const dbPath = path.join(__dirname, 'backend', 'prisma', 'dev.db');
+### Strategic Framework
+1. **Market Analysis & Positioning**
+   - Competitive landscape assessment
+   - Unique value proposition development
+   - Market opportunity sizing
 
-      if (fs.existsSync(dbPath)) {
-        prisma = new PrismaClient({
-          datasources: {
-            db: {
-              url: `file:${dbPath}`
-            }
-          }
-        });
-        await prisma.$connect();
-        console.log('🗄️ Connected to live database');
-      }
-    } catch (prismaError) {
-      console.log('📊 Prisma not available:', prismaError.message);
-    }
+2. **Implementation Roadmap**
+   - Phase 1: Foundation & Setup (Months 1-2)
+   - Phase 2: Launch & Growth (Months 3-6)
+   - Phase 3: Scale & Optimize (Months 7-12)
 
-  } catch (error) {
-    console.log('📊 Using demo data due to connection issues:', error.message);
-  }
+3. **Key Performance Indicators**
+   - Revenue targets and milestones
+   - Customer acquisition metrics
+   - Market penetration goals
+
+4. **Risk Management**
+   - Potential challenges and mitigation strategies
+   - Contingency planning
+   - Success monitoring framework
+
+### Next Steps
+${customization?.tone === 'detailed' ? 'Detailed action items and specific deliverables for each phase.' : 'High-level implementation priorities and immediate actions.'}
+`,
+    marketing: `
+## Marketing Campaign Strategy
+
+### Campaign Overview
+**Product/Service:** ${answers?.product || 'Your innovative solution'}
+**Target Audience:** ${answers?.audience || 'Tech-savvy professionals aged 25-45'}
+**Campaign Goals:** ${answers?.goals || 'Increase brand awareness and drive conversions'}
+
+### Multi-Channel Approach
+1. **Digital Marketing Mix**
+   - Social media strategy (LinkedIn, Twitter, Facebook)
+   - Content marketing and SEO optimization
+   - Email marketing automation sequences
+   - Paid advertising campaigns (Google Ads, Facebook Ads)
+
+2. **Content Strategy**
+   - Educational blog posts and whitepapers
+   - Video testimonials and product demos
+   - Interactive webinars and workshops
+   - Case studies and success stories
+
+3. **Engagement Tactics**
+   - Influencer partnerships
+   - Community building and forums
+   - User-generated content campaigns
+   - Referral and loyalty programs
+
+### Campaign Metrics
+- Reach and impressions
+- Engagement rates and click-through rates
+- Conversion rates and ROI
+- Customer lifetime value
+
+${customization?.focus === 'roi' ? '### ROI Projections\n- Expected 3:1 return on marketing investment\n- 25% increase in qualified leads within 90 days\n- 15% improvement in conversion rates' : ''}
+`,
+    product: `
+## Product Development & Launch Strategy
+
+### Product Vision
+**Product Name:** ${answers?.productName || 'InnovateX Solution'}
+**Target Market:** ${answers?.market || 'Enterprise software users'}
+**Core Value Proposition:** ${answers?.value || 'Streamline workflows and increase productivity by 40%'}
+
+### Development Roadmap
+1. **MVP Development (8-12 weeks)**
+   - Core feature set prioritization
+   - User experience design
+   - Technical architecture planning
+   - Prototype development and testing
+
+2. **Beta Testing Phase (4-6 weeks)**
+   - Closed beta with select customers
+   - Feedback collection and analysis
+   - Feature refinement and bug fixes
+   - Performance optimization
+
+3. **Market Launch (2-4 weeks)**
+   - Go-to-market strategy execution
+   - Marketing campaign launch
+   - Sales enablement and training
+   - Customer support infrastructure
+
+### Success Metrics
+- User adoption rates
+- Feature utilization analytics
+- Customer satisfaction scores
+- Revenue and growth metrics
+
+${customization?.detail === 'technical' ? '### Technical Specifications\n- Scalable cloud infrastructure\n- API-first architecture\n- Enterprise security standards\n- Integration capabilities' : ''}
+`,
+    education: `
+## Educational Program Development
+
+### Learning Objectives
+**Program Focus:** ${answers?.subject || 'Professional Development & Skills Enhancement'}
+**Target Learners:** ${answers?.audience || 'Working professionals seeking career advancement'}
+**Duration:** ${answers?.duration || '12-week comprehensive program'}
+
+### Curriculum Structure
+1. **Foundation Modules (Weeks 1-4)**
+   - Core concepts and principles
+   - Fundamental skills development
+   - Assessment and baseline establishment
+   - Learning path customization
+
+2. **Intermediate Application (Weeks 5-8)**
+   - Practical exercises and projects
+   - Real-world case studies
+   - Peer collaboration activities
+   - Skill reinforcement workshops
+
+3. **Advanced Mastery (Weeks 9-12)**
+   - Complex problem-solving scenarios
+   - Capstone project development
+   - Portfolio creation and review
+   - Certification preparation
+
+### Learning Delivery Methods
+- Interactive online modules
+- Live virtual workshops
+- Hands-on practice sessions
+- Mentorship and coaching support
+
+### Assessment Framework
+- Regular progress evaluations
+- Peer reviews and feedback
+- Final project presentations
+- Certification requirements
+
+${customization?.format === 'hybrid' ? '### Hybrid Learning Approach\n- 60% online self-paced modules\n- 30% live virtual sessions\n- 10% in-person workshops (optional)' : ''}
+`,
+    personal: `
+## Personal Development Action Plan
+
+### Goal Setting Framework
+**Primary Objective:** ${answers?.goal || 'Achieve better work-life balance and career growth'}
+**Timeline:** ${answers?.timeframe || '6 months focused development'}
+**Success Metrics:** ${answers?.metrics || 'Measurable improvements in productivity and satisfaction'}
+
+### Development Areas
+1. **Skill Enhancement**
+   - Identify core competencies to develop
+   - Create learning schedule and milestones
+   - Seek mentorship and guidance opportunities
+   - Practice and application strategies
+
+2. **Habit Formation**
+   - Morning routine optimization
+   - Productivity system implementation
+   - Health and wellness integration
+   - Mindfulness and stress management
+
+3. **Relationship Building**
+   - Network expansion strategies
+   - Communication skills improvement
+   - Leadership development activities
+   - Community involvement opportunities
+
+### Implementation Strategy
+- Weekly goal setting and review
+- Daily habit tracking and accountability
+- Monthly progress assessment
+- Quarterly strategy adjustment
+
+### Support System
+- Accountability partners
+- Professional coaching or mentoring
+- Peer support groups
+- Resource libraries and tools
+
+${customization?.approach === 'holistic' ? '### Holistic Wellness Integration\n- Physical health and fitness goals\n- Mental wellness and mindfulness practices\n- Emotional intelligence development\n- Social connection and community engagement' : ''}
+`
+  };
+
+  return categoryTemplates[category] || categoryTemplates.business;
 }
 
-async function getLiveRevenueData() {
-  try {
-    let totalRevenue = 0;
-    let totalUsers = 0;
-    let subscriptionStats = {
-      free: 0,
-      starter: 0,
-      pro: 0,
-      business: 0,
-      enterprise: 0
-    };
+function refinePromptDemo(currentPrompt, refinementQuery, category) {
+  const queryLower = refinementQuery.toLowerCase();
 
-    // Get real revenue from database if available
-    if (prisma) {
-      try {
-        // Get total revenue from successful token purchases
-        const revenueResult = await prisma.tokenTransaction.aggregate({
-          where: {
-            type: 'purchase',
-            costInCents: { gt: 0 }
-          },
-          _sum: {
-            costInCents: true
-          }
-        });
+  if (queryLower.includes('detailed') || queryLower.includes('specific')) {
+    return `${currentPrompt}
 
-        if (revenueResult._sum.costInCents) {
-          totalRevenue = revenueResult._sum.costInCents / 100;
-          console.log(`💰 Live revenue calculated: $${totalRevenue}`);
-        }
+## Enhanced Details & Specifications
 
-        // Get real user count
-        const userCount = await prisma.user.count();
-        totalUsers = userCount;
-        console.log(`👥 Live user count: ${totalUsers}`);
+Based on your request for more detailed information:
 
-        // Get subscription distribution
-        const subscriptions = await prisma.user.groupBy({
-          by: ['subscriptionTier'],
-          _count: true
-        });
+### Detailed Implementation Steps
+1. **Phase 1: Planning & Analysis**
+   - Stakeholder interviews and requirements gathering
+   - Market research and competitive analysis
+   - Resource assessment and team formation
+   - Risk identification and mitigation planning
 
-        subscriptions.forEach(sub => {
-          const tier = sub.subscriptionTier.toLowerCase();
-          if (subscriptionStats.hasOwnProperty(tier)) {
-            subscriptionStats[tier] = sub._count;
-          }
-        });
+2. **Phase 2: Development & Execution**
+   - Pilot program launch with limited scope
+   - Iterative development and testing cycles
+   - Quality assurance and performance monitoring
+   - Feedback collection and incorporation
 
-        console.log('📊 Live subscription stats:', subscriptionStats);
+3. **Phase 3: Scaling & Optimization**
+   - Full-scale implementation and rollout
+   - Performance optimization and fine-tuning
+   - Training and change management programs
+   - Success measurement and reporting
 
-      } catch (dbError) {
-        console.log('📊 Database query failed:', dbError.message);
-      }
-    }
+### Resource Requirements
+- **Human Resources:** Project manager, 2-3 specialists, support team
+- **Technology:** Cloud infrastructure, software licenses, development tools
+- **Budget Allocation:** 40% personnel, 30% technology, 20% marketing, 10% contingency
+- **Timeline:** 3-6 months for full implementation
 
-    return {
-      revenue: totalRevenue || 24579.50,
-      totalUsers: totalUsers || 1247,
-      subscriptions: Object.values(subscriptionStats).some(v => v > 0) ? subscriptionStats : {
-        free: 892, starter: 245, pro: 87, business: 18, enterprise: 5
-      },
-      isLiveData: totalRevenue > 0 || totalUsers > 0
-    };
-
-  } catch (error) {
-    console.error('📊 Error getting live revenue data:', error);
-    return {
-      revenue: 24579.50,
-      totalUsers: 1247,
-      subscriptions: { free: 892, starter: 245, pro: 87, business: 18, enterprise: 5 },
-      isLiveData: false
-    };
+### Success Metrics & KPIs
+- **Quantitative:** Revenue growth, user adoption, efficiency gains
+- **Qualitative:** User satisfaction, team engagement, stakeholder feedback
+- **Timeline:** Weekly progress reviews, monthly milestone assessments`;
   }
+
+  if (queryLower.includes('example') || queryLower.includes('case')) {
+    return `${currentPrompt}
+
+## Real-World Examples & Case Studies
+
+### Case Study 1: TechCorp Implementation
+**Challenge:** Needed to modernize their customer service operations
+**Solution:** Implemented AI-powered chatbot system with human handoff
+**Results:**
+- 60% reduction in response time
+- 85% customer satisfaction improvement
+- $2M annual cost savings
+- ROI achieved within 8 months
+
+### Case Study 2: StartupX Growth Strategy
+**Challenge:** Scaling from 10 to 100 employees while maintaining culture
+**Solution:** Structured onboarding, mentorship program, and culture documentation
+**Results:**
+- 95% employee retention rate
+- 40% faster time-to-productivity
+- Maintained 4.8/5 culture satisfaction score
+- Successful $50M Series B funding
+
+### Best Practices & Lessons Learned
+- **Start Small:** Begin with pilot programs before full rollout
+- **Measure Everything:** Establish baseline metrics and track progress
+- **Communicate Often:** Keep all stakeholders informed throughout process
+- **Be Flexible:** Adapt strategy based on feedback and results
+- **Celebrate Wins:** Recognize milestones and team achievements`;
+  }
+
+  if (queryLower.includes('roi') || queryLower.includes('business value') || queryLower.includes('financial')) {
+    return `${currentPrompt}
+
+## Financial Impact & ROI Analysis
+
+### Investment Breakdown
+**Initial Investment:** $75,000 - $125,000
+- Technology & Infrastructure: $30,000 - $45,000
+- Personnel & Training: $25,000 - $40,000
+- Marketing & Launch: $15,000 - $25,000
+- Contingency Buffer: $5,000 - $15,000
+
+### Revenue Projections
+**Year 1:** $200,000 - $350,000
+- Month 1-3: $10,000 - $20,000/month (ramp-up phase)
+- Month 4-6: $25,000 - $40,000/month (growth phase)
+- Month 7-12: $35,000 - $60,000/month (optimization phase)
+
+**Year 2-3:** 150-300% growth trajectory
+- Year 2: $500,000 - $800,000
+- Year 3: $1,200,000 - $2,000,000
+
+### ROI Calculations
+- **Break-even Point:** Month 6-8
+- **First Year ROI:** 180-250%
+- **Three-Year ROI:** 800-1,200%
+- **Payback Period:** 6-9 months
+
+### Cost Savings & Efficiency Gains
+- **Operational Efficiency:** 35-50% improvement
+- **Time Savings:** 20-30 hours per week
+- **Error Reduction:** 60-80% decrease
+- **Customer Satisfaction:** 25-40% improvement`;
+  }
+
+  if (queryLower.includes('timeline') || queryLower.includes('schedule') || queryLower.includes('milestone')) {
+    return `${currentPrompt}
+
+## Detailed Timeline & Milestones
+
+### Phase 1: Foundation & Setup (Weeks 1-4)
+**Week 1:**
+- Stakeholder alignment meeting
+- Project charter and scope definition
+- Team formation and role assignments
+- Budget approval and resource allocation
+
+**Week 2:**
+- Requirements gathering and documentation
+- Market research and competitive analysis
+- Technical architecture planning
+- Risk assessment and mitigation strategies
+
+**Week 3:**
+- Design mockups and user experience planning
+- Vendor selection and contract negotiations
+- Development environment setup
+- Communication plan establishment
+
+**Week 4:**
+- Prototype development initiation
+- Initial testing framework setup
+- Stakeholder review and feedback collection
+- Phase 1 milestone review and approval
+
+### Phase 2: Development & Testing (Weeks 5-10)
+**Weeks 5-6:** Core development and feature implementation
+**Weeks 7-8:** Integration testing and quality assurance
+**Weeks 9-10:** User acceptance testing and refinements
+
+### Phase 3: Launch & Optimization (Weeks 11-12)
+**Week 11:** Production deployment and soft launch
+**Week 12:** Full launch, monitoring, and optimization
+
+### Key Milestones & Deliverables
+- ✅ Week 4: Project foundation complete
+- ✅ Week 8: MVP ready for testing
+- ✅ Week 10: All testing completed
+- ✅ Week 12: Full production launch
+
+### Success Checkpoints
+- Weekly progress reviews with team
+- Bi-weekly stakeholder updates
+- Monthly milestone assessments
+- Quarterly strategy reviews`;
+  }
+
+  // Default refinement
+  return `${currentPrompt}
+
+## Enhanced Content & Improvements
+
+Based on your refinement request, here are the key enhancements:
+
+### Additional Considerations
+- **Implementation Flexibility:** Multiple approaches to achieve the same goals
+- **Scalability Planning:** Framework designed to grow with your needs
+- **Quality Assurance:** Built-in checkpoints and validation processes
+- **Continuous Improvement:** Regular review and optimization cycles
+
+### Action Items & Next Steps
+1. **Immediate Actions (Next 7 days)**
+   - Finalize project scope and requirements
+   - Secure necessary approvals and budget
+   - Begin team formation and resource allocation
+
+2. **Short-term Goals (Next 30 days)**
+   - Complete initial planning and design phase
+   - Establish key partnerships and vendor relationships
+   - Launch pilot program or initial implementation
+
+3. **Medium-term Objectives (Next 90 days)**
+   - Achieve first major milestone
+   - Collect and analyze initial performance data
+   - Refine strategy based on early results
+
+### Risk Mitigation & Contingencies
+- **Technical Risks:** Backup solutions and alternative approaches
+- **Resource Risks:** Flexible team structure and external support options
+- **Market Risks:** Adaptive strategy and pivot capabilities
+- **Timeline Risks:** Buffer periods and prioritized feature rollout
+
+This enhanced framework provides greater depth while maintaining practical applicability for your specific situation.`;
 }
 
 const app = express();
-const PORT = process.env.PORT || 5173;
+const PORT = process.env.PORT || 5001;
 
-// Simple in-memory user storage for demo
-let currentUser = {
-  id: 'demo',
-  email: 'demo@example.com',
-  firstName: 'Demo',
-  lastName: 'User',
-  role: 'user',
-  subscriptionTier: 'free',
-  tokenBalance: 100
-};
+// Try to load optional middleware, fallback gracefully if not available
+let cors, helmet, compression, morgan;
+try {
+  cors = require('cors');
+} catch (e) {
+  console.log('CORS not available, using basic headers');
+}
+try {
+  helmet = require('helmet');
+} catch (e) {
+  console.log('Helmet not available, skipping security headers');
+}
+try {
+  compression = require('compression');
+} catch (e) {
+  console.log('Compression not available, skipping');
+}
+try {
+  morgan = require('morgan');
+} catch (e) {
+  console.log('Morgan not available, skipping request logging');
+}
 
-// Middleware
+// 🚀 RAILWAY DEPLOYMENT DEBUGGING
+console.log('='.repeat(50));
+console.log('🚀 RAILWAY SERVER STARTUP DEBUG');
+console.log('='.repeat(50));
+console.log('📍 Current working directory:', process.cwd());
+console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+console.log('🔌 PORT from env:', process.env.PORT);
+console.log('📡 Server will start on PORT:', PORT);
+console.log('🏗️ Railway environment variables:');
+console.log('   RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
+console.log('   RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME);
+console.log('   RAILWAY_SERVICE_NAME:', process.env.RAILWAY_SERVICE_NAME);
+console.log('   RAILWAY_PUBLIC_DOMAIN:', process.env.RAILWAY_PUBLIC_DOMAIN);
+console.log('='.repeat(50));
+
+// Essential middleware
 app.use(express.json());
+
+// Apply middleware conditionally
+if (helmet) {
+  app.use(helmet());
+}
+
+if (compression) {
+  app.use(compression());
+}
+
+if (morgan) {
+  app.use(morgan('dev'));
+}
+
+// CORS configuration - use library if available, otherwise use basic headers
+if (cors) {
+  app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  }));
+} else {
+  // Fallback CORS headers
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+    } else {
+      next();
+    }
+  });
+}
 
 // Serve static files from the React app build directory
 const clientDistPath = path.join(__dirname, 'client', 'dist');
@@ -151,45 +479,75 @@ console.log('🔍 Looking for frontend build at:', clientDistPath);
 // Check if the directory exists at startup
 if (fs.existsSync(clientDistPath)) {
   console.log('✅ Frontend build directory exists');
-
-  // Serve static assets with long-term caching (they have hash fingerprints)
-  app.use('/assets', express.static(path.join(clientDistPath, 'assets'), {
-    maxAge: '1y',
-    immutable: true
-  }));
-
-  // Serve other static files with shorter cache
-  app.use(express.static(clientDistPath, {
-    maxAge: '1h',
-    setHeaders: (res, filePath) => {
-      // Don't cache index.html so users get new asset URLs
-      if (path.basename(filePath) === 'index.html') {
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-      }
-    }
-  }));
+  const files = fs.readdirSync(clientDistPath);
+  console.log('📁 Build directory contents:', files);
+  app.use(express.static(clientDistPath));
 } else {
   console.log('❌ Frontend build directory does NOT exist');
+  console.log('📂 Current directory contents:', fs.readdirSync(__dirname));
 }
 
-// Health check endpoint
+// Enhanced health check endpoint for Railway - INSTANT RESPONSE
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'Server is healthy',
-    timestamp: new Date().toISOString(),
-    port: PORT
-  });
+  console.log('🏥 Health check requested at:', new Date().toISOString());
+  try {
+    // Immediate response for Railway - NO JSON PARSING DELAYS
+    res.status(200).send('OK');
+    console.log('✅ Health check response sent');
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(503).send('ERROR');
+  }
+});
+
+// Detailed health check for debugging
+app.get('/health/detailed', (req, res) => {
+  console.log('🔍 Detailed health check accessed');
+  try {
+    const healthData = {
+      status: 'healthy',
+      success: true,
+      message: 'Server is healthy',
+      timestamp: new Date().toISOString(),
+      port: PORT,
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      memory: process.memoryUsage(),
+      railway: {
+        environment: process.env.RAILWAY_ENVIRONMENT,
+        projectName: process.env.RAILWAY_PROJECT_NAME,
+        serviceName: process.env.RAILWAY_SERVICE_NAME,
+        publicDomain: process.env.RAILWAY_PUBLIC_DOMAIN
+      },
+      frontend: {
+        buildExists: fs.existsSync(clientDistPath),
+        buildPath: clientDistPath
+      }
+    };
+
+    res.status(200).json(healthData);
+    console.log('✅ Detailed health check successful');
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(503).json({
+      status: 'unhealthy',
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // API health check
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
+  console.log('🔍 API health check accessed');
+  res.status(200).json({
+    status: 'healthy',
+    success: true,
     message: 'API is healthy',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    endpoints: ['/health', '/api/health', '/api/auth/login', '/api/auth/register']
   });
 });
 
@@ -205,773 +563,217 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 app.post('/api/auth/register', (req, res) => {
-  // Update the current user with registration data
-  currentUser = {
-    ...currentUser,
-    email: req.body.email,
-    firstName: req.body.firstName,
-    lastName: req.body.lastName
-  };
-
   res.json({
     success: true,
     token: 'demo-token',
-    user: currentUser
+    user: { id: 'demo', email: req.body.email, firstName: req.body.firstName, lastName: req.body.lastName }
   });
 });
 
-// Rating API endpoints - Enhanced
-app.get('/api/rating/config', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      enabled: true,
-      defaultScale: 5,
-      maxRating: 5,
-      allowHistory: true,
-      categories: ['quality', 'usefulness', 'clarity']
-    }
-  });
-});
-
-app.get('/api/rating/history', (req, res) => {
-  res.json({
-    success: true,
-    data: []
-  });
-});
-
-app.post('/api/rating', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Rating submitted successfully'
-  });
-});
-
-// Categories API
-app.get('/api/categories', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { id: 1, name: 'Business Strategy', description: 'Strategic planning and business development' },
-      { id: 2, name: 'Marketing', description: 'Marketing campaigns and content' },
-      { id: 3, name: 'Technology', description: 'Technical documentation and development' }
-    ]
-  });
-});
-
-// Demo API
-app.get('/api/demo/categories', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { id: 'demo-1', name: 'Demo Category', description: 'Demo category for testing' }
-    ]
-  });
-});
-
-// Billing API
-app.get('/api/billing/subscription', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      tier: 'free',
-      status: 'active',
-      tokensRemaining: 100
-    }
-  });
-});
-
-app.get('/api/billing/info', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      currentPlan: 'free',
-      billingCycle: 'monthly',
-      nextBillingDate: '2024-02-20',
-      usage: {
-        prompts: 45,
-        tokens: 15000,
-        categories: 3
-      },
-      paymentMethod: {
-        type: 'Visa',
-        last4: '4242',
-        expiry: '12/25'
-      }
-    }
-  });
-});
-
-app.post('/api/billing/upgrade', (req, res) => {
-  const { planId, billingCycle } = req.body;
-  res.json({
-    success: true,
-    data: {
-      checkoutUrl: `https://checkout.stripe.com/demo/${planId}/${billingCycle}`,
-      sessionId: 'cs_demo_' + Math.random().toString(36).substr(2, 9)
-    }
-  });
-});
-
-app.post('/api/billing/create-checkout-session', (req, res) => {
-  const { priceId, planType } = req.body;
-  res.json({
-    success: true,
-    data: {
-      checkoutUrl: `https://checkout.stripe.com/demo/${priceId}`,
-      sessionId: 'cs_demo_' + Math.random().toString(36).substr(2, 9)
-    }
-  });
-});
-
-app.post('/api/billing/manage-subscription', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      portalUrl: 'https://billing.stripe.com/demo/portal'
-    }
-  });
-});
-
-app.get('/api/billing/plans', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      {
-        id: 'free',
-        name: 'Free',
-        price: 0,
-        features: ['50 AI prompts', 'Basic templates', 'Community support'],
-        limits: { prompts: 50, tokens: 10000, categories: 5 }
-      },
-      {
-        id: 'starter',
-        name: 'Starter',
-        price: 19.99,
-        features: ['200 AI prompts', 'Premium templates', 'Email support'],
-        limits: { prompts: 200, tokens: 50000, categories: 15 }
-      },
-      {
-        id: 'pro',
-        name: 'Pro',
-        price: 49.99,
-        features: ['1000 AI prompts', 'Advanced customization', 'Priority support'],
-        limits: { prompts: 1000, tokens: 250000, categories: 15 }
-      }
-    ]
-  });
-});
-
-// Stripe webhook endpoint
-app.post('/api/stripe/webhook', (req, res) => {
-  console.log('Stripe webhook received:', req.body);
-  res.json({
-    success: true,
-    message: 'Webhook processed successfully'
-  });
-});
-
-// Token/Credit purchase endpoints
-app.get('/api/tokens/balance', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      available: 850,
-      used: 150,
-      total: 1000,
-      resetDate: '2024-02-01'
-    }
-  });
-});
-
-app.post('/api/tokens/purchase', (req, res) => {
-  const { packageId, amount } = req.body;
-  res.json({
-    success: true,
-    data: {
-      checkoutUrl: `https://checkout.stripe.com/demo/tokens/${packageId}`,
-      sessionId: 'cs_demo_tokens_' + Math.random().toString(36).substr(2, 9)
-    }
-  });
-});
-
-// User API
-app.get('/api/user/profile', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      id: 'demo',
-      email: 'demo@example.com',
-      firstName: 'Demo',
-      lastName: 'User'
-    }
-  });
-});
-
-// Email verification endpoints
-app.get('/api/auth/verify-email/:token', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Email verified successfully'
-  });
-});
-
-app.post('/api/auth/forgot-password', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Password reset email sent successfully'
-  });
-});
-
-app.post('/api/auth/reset-password/:token', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Password reset successfully'
-  });
-});
-
-// Additional API stubs for frontend functionality
+// Auth me endpoint
 app.get('/api/auth/me', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      user: currentUser
-    }
-  });
-});
+  console.log('🔍 Auth me request received');
 
-app.get('/api/config', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({
+      success: false,
+      message: 'No authorization header'
+    });
+  }
+
+  // Demo user response
   res.json({
     success: true,
     data: {
-      signupEnabled: true,
-      demoMode: true,
-      features: {
-        signup: true,
-        signin: true,
-        demo: true
+      user: {
+        id: 'demo-user',
+        email: 'demo@smartpromptiq.com',
+        firstName: 'Demo',
+        lastName: 'User',
+        role: 'USER',
+        roles: [],
+        permissions: [],
+        subscriptionTier: 'pro',
+        tokenBalance: 1000,
+        generationsUsed: 47283,
+        generationsLimit: 50000
       }
     }
   });
 });
 
-app.get('/api/features', (req, res) => {
+// Demo generation endpoint
+app.post('/api/generate-prompt', (req, res) => {
+  console.log('🚀 Demo generation request received:', req.body);
+
+  const { category, answers, customization } = req.body;
+
+  // Demo prompt generation
+  const demoPrompt = generateDemoPrompt(category, answers, customization);
+
   res.json({
     success: true,
     data: {
-      signup: true,
-      signin: true,
-      demo: true,
-      rating: true
+      prompt: demoPrompt,
+      category: category || 'general',
+      generatedAt: new Date(),
+      usage: { type: 'demo', tokens: 0 }
     }
   });
 });
 
-// Generate API for prompts
-app.post('/api/generate', (req, res) => {
+// Demo refinement endpoint
+app.post('/api/demo-refine', (req, res) => {
+  console.log('🔧 Demo refinement request received:', req.body);
+
+  const { currentPrompt, refinementQuery, category = 'general' } = req.body;
+
+  // Demo refinement
+  const refinedPrompt = refinePromptDemo(currentPrompt, refinementQuery, category);
+
   res.json({
     success: true,
     data: {
-      content: 'Demo prompt generated successfully!',
-      tokens: 150
+      refinedPrompt,
+      refinementApplied: refinementQuery,
+      timestamp: new Date(),
+      usage: { type: 'demo', tokens: 0 }
     }
   });
 });
 
-// Prompts API endpoints for Dashboard
+// Generation stats endpoint
+app.get('/api/stats', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      generationsUsed: 47283,
+      generationsLimit: 50000,
+      totalPrompts: 8947,
+      recentPrompts: [
+        { id: '1', title: 'Business Strategy Prompt', category: 'business', createdAt: new Date() },
+        { id: '2', title: 'Marketing Campaign', category: 'marketing', createdAt: new Date() },
+        { id: '3', title: 'Product Launch Plan', category: 'product', createdAt: new Date() }
+      ],
+      categoryBreakdown: [
+        { category: 'business', count: 2547 },
+        { category: 'marketing', count: 1892 },
+        { category: 'product', count: 1634 },
+        { category: 'education', count: 1298 },
+        { category: 'personal', count: 876 }
+      ],
+      aiProvider: 'OpenAI GPT-4',
+      aiConfigured: true
+    }
+  });
+});
+
+// Prompts list endpoint
 app.get('/api/prompts', (req, res) => {
   res.json({
     success: true,
     data: [
-      { id: 1, title: 'Demo Business Plan', category: 'business', content: 'Sample business plan prompt...', createdAt: new Date().toISOString(), isFavorite: false },
-      { id: 2, title: 'Marketing Strategy', category: 'marketing', content: 'Sample marketing prompt...', createdAt: new Date().toISOString(), isFavorite: true }
+      {
+        id: '1',
+        title: 'Business Strategy Blueprint',
+        category: 'business',
+        content: 'Create a comprehensive business strategy...',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: '2',
+        title: 'Marketing Campaign Generator',
+        category: 'marketing',
+        content: 'Design an effective marketing campaign...',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
     ]
   });
 });
 
-app.get('/api/prompts/stats', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      totalPrompts: 15,
-      favoritePrompts: 5,
-      totalTokens: 1250,
-      categoriesUsed: 8
-    }
-  });
-});
-
-app.get('/api/prompts/activity', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { date: '2024-01-15', count: 3 },
-      { date: '2024-01-16', count: 5 },
-      { date: '2024-01-17', count: 2 }
-    ]
-  });
-});
-
-app.get('/api/prompts/achievements', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { id: 1, title: 'First Prompt', description: 'Created your first prompt', earned: true },
-      { id: 2, title: 'Prompt Master', description: 'Created 10 prompts', earned: false }
-    ]
-  });
-});
-
-app.patch('/api/prompts/:id/favorite', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Favorite status updated'
-  });
-});
-
-app.delete('/api/prompts/:id', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Prompt deleted successfully'
-  });
-});
-
-// Templates API
+// Templates endpoint
 app.get('/api/templates', (req, res) => {
   res.json({
     success: true,
     data: [
-      { id: 1, name: 'Demo Template', category: 'business' }
-    ]
-  });
-});
-
-// ============================================================================
-// ADMIN DASHBOARD API ENDPOINTS - COMPREHENSIVE MONITORING & MANAGEMENT
-// ============================================================================
-
-// Admin Stats - LIVE Dashboard Data with Real Stripe Revenue
-app.get('/api/admin/stats', async (req, res) => {
-  try {
-    // Get live revenue data from database and Stripe
-    const liveData = await getLiveRevenueData();
-
-    res.json({
-      success: true,
-      data: {
-        totalUsers: liveData.totalUsers,
-        activeUsers: Math.floor(liveData.totalUsers * 0.071), // ~7.1% active ratio
-        totalPrompts: Math.floor(liveData.totalUsers * 36.5), // Estimate based on user count
-        revenue: liveData.revenue,
-        systemHealth: 'healthy',
-        apiCalls: Math.floor(liveData.totalUsers * 125), // Estimate based on users
-        subscriptions: liveData.subscriptions,
-        systemInfo: {
-          uptime: process.uptime ? Math.floor(process.uptime() / 86400) + ' days' : '0 days',
-          version: '2.1.4',
-          lastBackup: new Date().toISOString(),
-          environment: process.env.NODE_ENV || 'production',
-          revenueSource: liveData.isLiveData ? 'LIVE_STRIPE_DATA' : 'DEMO_DATA',
-          databaseConnected: liveData.isLiveData
-        }
-      }
-    });
-  } catch (error) {
-    console.error('❌ Admin stats error:', error);
-    // Fallback to demo data on any error
-    res.json({
-      success: true,
-      data: {
-        totalUsers: 1247,
-        activeUsers: 89,
-        totalPrompts: 45672,
-        revenue: 24579.50,
-        systemHealth: 'healthy',
-        apiCalls: 156789,
-        subscriptions: {
-          free: 892,
-          starter: 245,
-          pro: 87,
-          business: 18,
-          enterprise: 5
-        },
-        systemInfo: {
-          uptime: '14 days, 7 hours',
-          version: '2.1.4',
-          lastBackup: '2024-01-19 03:00:00',
-          environment: 'demo',
-          revenueSource: 'DEMO_DATA',
-          databaseConnected: false
-        }
-      }
-    });
-  }
-});
-
-// Admin Users Management
-app.get('/api/admin/users', (req, res) => {
-  res.json({
-    success: true,
-    data: [
       {
-        id: 'usr_001',
-        email: 'john.doe@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-        role: 'user',
-        subscriptionTier: 'pro',
-        tokenBalance: 850,
-        lastActive: '2024-01-19 14:30:00',
-        currentPage: '/dashboard',
-        sessionDuration: 45,
-        activityScore: 87
+        id: '1',
+        name: 'Business Strategy Template',
+        category: 'business',
+        questions: [
+          { id: '1', text: 'What is your target market?', type: 'text' },
+          { id: '2', text: 'What is your budget range?', type: 'select', options: ['$0-10k', '$10k-50k', '$50k+'] }
+        ]
       },
       {
-        id: 'usr_002',
-        email: 'jane.smith@company.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        role: 'user',
-        subscriptionTier: 'starter',
-        tokenBalance: 120,
-        lastActive: '2024-01-19 14:25:00',
-        currentPage: '/generation',
-        sessionDuration: 23,
-        activityScore: 94
-      },
-      {
-        id: 'usr_003',
-        email: 'admin@smartpromptiq.com',
-        firstName: 'Admin',
-        lastName: 'User',
-        role: 'admin',
-        subscriptionTier: 'enterprise',
-        tokenBalance: 9999,
-        lastActive: '2024-01-19 14:35:00',
-        currentPage: '/admin',
-        sessionDuration: 120,
-        activityScore: 100
+        id: '2',
+        name: 'Marketing Campaign Template',
+        category: 'marketing',
+        questions: [
+          { id: '1', text: 'What product/service are you promoting?', type: 'text' },
+          { id: '2', text: 'Who is your target audience?', type: 'textarea' }
+        ]
       }
     ]
   });
-});
-
-// Admin System Logs
-app.get('/api/admin/logs', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      {
-        id: 1,
-        timestamp: '2024-01-19 14:30:15',
-        level: 'INFO',
-        message: 'Payment processed successfully',
-        details: { userId: 'usr_001', amount: 49.99, plan: 'pro' }
-      },
-      {
-        id: 2,
-        timestamp: '2024-01-19 14:28:42',
-        level: 'WARNING',
-        message: 'High API usage detected',
-        details: { userId: 'usr_002', requests: 95, limit: 100 }
-      },
-      {
-        id: 3,
-        timestamp: '2024-01-19 14:25:33',
-        level: 'INFO',
-        message: 'New user registration',
-        details: { email: 'newuser@example.com', plan: 'free' }
-      },
-      {
-        id: 4,
-        timestamp: '2024-01-19 14:20:18',
-        level: 'ERROR',
-        message: 'Payment failed - insufficient funds',
-        details: { userId: 'usr_004', amount: 19.99, error: 'card_declined' }
-      }
-    ]
-  });
-});
-
-// User Activities Monitoring
-app.get('/api/admin/activities', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      {
-        id: 'act_001',
-        userId: 'usr_001',
-        userName: 'John Doe',
-        action: 'prompt_generated',
-        page: '/generation',
-        timestamp: '2024-01-19 14:30:00',
-        details: { category: 'business', tokens: 45 }
-      },
-      {
-        id: 'act_002',
-        userId: 'usr_002',
-        userName: 'Jane Smith',
-        action: 'subscription_upgrade',
-        page: '/billing',
-        timestamp: '2024-01-19 14:25:00',
-        details: { from: 'free', to: 'starter', amount: 19.99 }
-      },
-      {
-        id: 'act_003',
-        userId: 'usr_001',
-        userName: 'John Doe',
-        action: 'login',
-        page: '/signin',
-        timestamp: '2024-01-19 13:45:00',
-        details: { method: 'email', success: true }
-      }
-    ]
-  });
-});
-
-// Active Sessions Monitoring
-app.get('/api/admin/active-sessions', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      {
-        id: 'sess_001',
-        userId: 'usr_001',
-        userName: 'John Doe',
-        email: 'john.doe@example.com',
-        currentPage: '/dashboard',
-        lastActivity: '2024-01-19 14:30:00',
-        sessionStart: '2024-01-19 13:45:00',
-        ipAddress: '192.168.1.100',
-        userAgent: 'Chrome/120.0.0.0'
-      },
-      {
-        id: 'sess_002',
-        userId: 'usr_002',
-        userName: 'Jane Smith',
-        email: 'jane.smith@company.com',
-        currentPage: '/generation',
-        lastActivity: '2024-01-19 14:25:00',
-        sessionStart: '2024-01-19 14:00:00',
-        ipAddress: '192.168.1.101',
-        userAgent: 'Safari/17.0'
-      }
-    ]
-  });
-});
-
-// Admin Actions - User Management, Refunds, etc.
-app.post('/api/admin/actions/:action', (req, res) => {
-  const { action } = req.params;
-  const { userId, data } = req.body;
-
-  console.log(`Admin action: ${action}`, { userId, data });
-
-  res.json({
-    success: true,
-    message: `Action ${action} executed successfully`,
-    data: { actionId: 'act_' + Math.random().toString(36).substr(2, 9) }
-  });
-});
-
-// Payment Monitoring & Management
-app.get('/api/admin/payments', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      {
-        id: 'pay_001',
-        userId: 'usr_001',
-        userEmail: 'john.doe@example.com',
-        amount: 49.99,
-        currency: 'USD',
-        status: 'succeeded',
-        plan: 'pro',
-        stripeId: 'pi_1234567890',
-        timestamp: '2024-01-19 14:30:00',
-        refundable: true
-      },
-      {
-        id: 'pay_002',
-        userId: 'usr_002',
-        userEmail: 'jane.smith@company.com',
-        amount: 19.99,
-        currency: 'USD',
-        status: 'succeeded',
-        plan: 'starter',
-        stripeId: 'pi_0987654321',
-        timestamp: '2024-01-19 14:25:00',
-        refundable: true
-      },
-      {
-        id: 'pay_003',
-        userId: 'usr_004',
-        userEmail: 'failed@example.com',
-        amount: 19.99,
-        currency: 'USD',
-        status: 'failed',
-        plan: 'starter',
-        stripeId: 'pi_failed123',
-        timestamp: '2024-01-19 14:20:00',
-        refundable: false,
-        error: 'card_declined'
-      }
-    ]
-  });
-});
-
-// Process Refunds
-app.post('/api/admin/refund/:paymentId', (req, res) => {
-  const { paymentId } = req.params;
-  const { amount, reason } = req.body;
-
-  res.json({
-    success: true,
-    data: {
-      refundId: 'rf_' + Math.random().toString(36).substr(2, 9),
-      paymentId,
-      amount: amount || 'full',
-      reason: reason || 'admin_refund',
-      status: 'processing',
-      estimatedTime: '3-5 business days'
-    }
-  });
-});
-
-// Revenue Analytics
-app.get('/api/admin/revenue', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      today: 245.97,
-      thisWeek: 1789.45,
-      thisMonth: 7234.56,
-      total: 24579.50,
-      growth: {
-        daily: 12.5,
-        weekly: 8.3,
-        monthly: 15.7
-      },
-      breakdown: {
-        subscriptions: 18234.50,
-        tokens: 4567.89,
-        upgrades: 1777.11
-      }
-    }
-  });
-});
-
-// System Health Monitoring
-app.get('/api/admin/health', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      status: 'healthy',
-      uptime: '14 days, 7 hours, 23 minutes',
-      memory: { used: '45%', available: '55%' },
-      cpu: { usage: '23%', cores: 8 },
-      database: { status: 'connected', latency: '12ms' },
-      stripe: { status: 'operational', lastCheck: '2024-01-19 14:30:00' },
-      backup: { lastBackup: '2024-01-19 03:00:00', status: 'success' }
-    }
-  });
-});
-
-// Catch-all for other API endpoints
-app.all('/api/*', (req, res) => {
-  console.log(`API endpoint called: ${req.method} ${req.path}`);
-  res.json({
-    success: false,
-    message: 'API endpoint not implemented in demo mode'
-  });
-});
-
-// Dashboard route
-app.get('/dashboard', (req, res) => {
-  const dashboardPath = path.join(clientDistPath, 'dashboard.html');
-  if (fs.existsSync(dashboardPath)) {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.sendFile(dashboardPath);
-  } else {
-    res.status(404).send('Dashboard not found.');
-  }
-});
-
-// Pricing route
-app.get('/pricing', (req, res) => {
-  const pricingPath = path.join(clientDistPath, 'pricing.html');
-  if (fs.existsSync(pricingPath)) {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.sendFile(pricingPath);
-  } else {
-    res.status(404).send('Pricing page not found.');
-  }
-});
-
-// Demo route
-app.get('/demo', (req, res) => {
-  const demoPath = path.join(clientDistPath, 'demo.html');
-  if (fs.existsSync(demoPath)) {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.sendFile(demoPath);
-  } else {
-    res.status(404).send('Demo page not found.');
-  }
-});
-
-// Admin route
-app.get('/admin', (req, res) => {
-  const adminPath = path.join(clientDistPath, 'admin.html');
-  if (fs.existsSync(adminPath)) {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.sendFile(adminPath);
-  } else {
-    res.status(404).send('Admin page not found.');
-  }
-});
-
-// Generate route
-app.get('/generate', (req, res) => {
-  const generatePath = path.join(clientDistPath, 'generate.html');
-  if (fs.existsSync(generatePath)) {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.sendFile(generatePath);
-  } else {
-    res.status(404).send('Generate page not found.');
-  }
 });
 
 // Catch all handler: send back React's index.html file for any non-API routes
 app.get('*', (req, res) => {
   const indexPath = path.join(clientDistPath, 'index.html');
   if (fs.existsSync(indexPath)) {
-    // Ensure index.html is never cached so users get new asset URLs
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
     res.sendFile(indexPath);
   } else {
     res.status(404).send('Application not found. Please check if the build exists.');
   }
 });
 
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+// Start server with Railway-compatible binding
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log('='.repeat(50));
+  console.log('🚀 SERVER SUCCESSFULLY STARTED');
+  console.log('='.repeat(50));
+  console.log(`📡 Server running on port ${PORT}`);
+  console.log(`🌐 Server bound to 0.0.0.0:${PORT} for Railway compatibility`);
   console.log(`📱 Frontend served from: ${clientDistPath}`);
+  console.log(`🔗 Health check available at: http://localhost:${PORT}/health`);
+  console.log(`🔗 API health check: http://localhost:${PORT}/api/health`);
+  console.log(`🏠 Root endpoint: http://localhost:${PORT}/`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 
-  // Initialize live revenue connections
-  console.log('🔄 Initializing live revenue tracking...');
-  await initializeConnections();
-  console.log('✅ Server ready with live data connections!');
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    console.log(`🚀 Railway URL: https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+  }
+
+  console.log('='.repeat(50));
+  console.log('✅ Ready to receive requests!');
+  console.log('='.repeat(50));
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('❌ Server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use`);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
 });

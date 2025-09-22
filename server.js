@@ -1,74 +1,61 @@
-const express = require('express');
+﻿const express = require('express');
+const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from the React app build directory
-const clientDistPath = path.join(__dirname, 'client', 'dist');
-console.log('🔍 Looking for frontend build at:', clientDistPath);
-
-// Check if the directory exists at startup
-if (fs.existsSync(clientDistPath)) {
-  console.log('✅ Frontend build directory exists');
-  app.use(express.static(clientDistPath));
-} else {
-  console.log('❌ Frontend build directory does NOT exist');
-}
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'Server is healthy',
-    timestamp: new Date().toISOString(),
-    port: PORT
-  });
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(${new Date().toISOString()} -  );
+  next();
 });
 
-// API health check
+// Health endpoint for Railway
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'API is healthy',
-    timestamp: new Date().toISOString()
+  console.log('Health check called');
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    service: 'SmartPromptiq-pro',
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Demo API endpoints (simplified)
-app.post('/api/auth/login', (req, res) => {
+// API info endpoint
+app.get('/api/info', (req, res) => {
+  console.log('Info endpoint called');
+  res.status(200).json({
+    name: 'SmartPromptiq Pro API',
+    version: '1.0.0',
+    description: 'AI-powered prompt optimization platform',
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
   res.json({
-    success: true,
-    data: {
-      token: 'demo-token',
-      user: { id: 'demo', email: 'demo@example.com', firstName: 'Demo', lastName: 'User' }
+    message: 'SmartPromptiq Pro API Server',
+    status: 'Running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      info: '/api/info'
     }
   });
 });
 
-app.post('/api/auth/register', (req, res) => {
-  res.json({
-    success: true,
-    token: 'demo-token',
-    user: { id: 'demo', email: req.body.email, firstName: req.body.firstName, lastName: req.body.lastName }
-  });
-});
-
-// Catch all handler: send back React's index.html file for any non-API routes
-app.get('*', (req, res) => {
-  const indexPath = path.join(clientDistPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.status(404).send('Application not found. Please check if the build exists.');
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Frontend served from: ${clientDistPath}`);
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('SmartPromptiq Pro Server Started');
+  console.log('Port: ' + PORT);
+  console.log('Health: http://localhost:' + PORT + '/api/health');
+  console.log('Info: http://localhost:' + PORT + '/api/info');
 });
