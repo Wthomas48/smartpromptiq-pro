@@ -250,8 +250,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Add a small delay to see final state before redirect
         setTimeout(() => {
           debugUserData(user, 'login - FINAL STATE before redirect');
-          // Redirect to dashboard
-          setLocation("/dashboard");
+          // Don't redirect if user is admin (let admin login handle redirect)
+          if (userData.role !== 'ADMIN') {
+            setLocation("/dashboard");
+          }
         }, 100);
       } else {
         console.error('❌ Login failed: Invalid response format', data);

@@ -108,8 +108,8 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       },
       credentials: 'include',
       mode: 'cors',
-      // Add timeout and other robust options
-      signal: AbortSignal.timeout(15000), // 15 second timeout for better reliability
+      // Add timeout and other robust options - Fixed AbortSignal timeout issue
+      // signal: AbortSignal.timeout(15000), // Removed - causes timeout issues in some environments
     };
 
     // Add auth token if available

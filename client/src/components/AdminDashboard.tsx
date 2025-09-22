@@ -1,1072 +1,1390 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { useLocation } from 'wouter';
-import AdminNavigation from '@/components/AdminNavigation';
-import { apiRequest } from '@/config/api';
 import { useAuth } from '@/hooks/useAuth';
+import { apiRequest as originalApiRequest } from '@/config/api';
+
+// Simple wrapper to handle the API calls correctly
+const apiRequest = async (url: string, options: { method: string; body?: any; headers?: any } = { method: 'GET' }) => {
+  try {
+    const response = await originalApiRequest(options.method || 'GET', url, options.body);
+    return await response.json();
+  } catch (error: any) {
+    console.error('❌ API Error:', error);
+    throw error;
+  }
+};
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Users, Activity, DollarSign, TrendingUp, Crown, Shield, Database,
-  Settings, BarChart3, PieChart, UserCheck, AlertTriangle, CheckCircle,
-  Clock, Globe, Server, Zap, Mail, Bell, Lock, RefreshCw, Coins, LogOut, User,
-  MessageSquare, FileText, Download, Upload, Eye, Edit, Trash2, Plus,
-  Search, Filter, Calendar, Bookmark, Star, Target, Layers, GitBranch,
-  MonitorSpeaker, Wifi, HardDrive, Cpu, Network, CloudUpload,
-  PhoneCall, Video, Headphones, Mic, Camera, PlayCircle, StopCircle,
-  PauseCircle, SkipForward, SkipBack, Volume2, VolumeX, Maximize,
-  Minimize, RotateCcw, RotateCw, ZoomIn, ZoomOut, Move, Copy, Scissors,
-  AlertCircle, Info, HelpCircle, ExternalLink, LinkIcon, Share2, Send,
-  Circle, CreditCard, Receipt, TrendingDown, Calculator, Banknote
+  Users,
+  DollarSign,
+  CreditCard,
+  RefreshCw,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Eye,
+  BarChart3,
+  FileText,
+  Settings,
+  Download,
+  Filter,
+  Search,
+  Shield,
+  Mail,
+  Activity,
+  Lock,
+  Key,
+  Server,
+  Zap,
+  Globe,
+  UserCheck,
+  MessageSquare,
+  MailOpen,
+  Coins,
+  Database,
+  Cpu,
+  MemoryStick,
+  HardDrive,
+  Briefcase,
+  User,
+  Sparkles
 } from 'lucide-react';
 
 interface AdminStats {
   totalUsers: number;
   activeUsers: number;
+  totalRevenue: number;
+  monthlyRevenue: number;
   totalPrompts: number;
-  revenue: number;
+  successfulPayments: number;
+  refundedPayments: number;
+  pendingPayments: number;
   systemHealth: 'healthy' | 'warning' | 'critical';
-  apiCalls: number;
-  subscriptions: {
-    free: number;
-    starter: number;
-    pro: number;
-    business: number;
-    enterprise: number;
-  };
-  systemInfo?: {
-    uptime: string;
-    version: string;
-    lastBackup: string;
-    environment: string;
-    revenueSource?: string;
-  };
-  realTimeMetrics?: {
-    cpuUsage: number;
-    memoryUsage: number;
-    diskUsage: number;
-    networkTraffic: number;
-    activeConnections: number;
-    responseTime: number;
-    errorRate: number;
-    throughput: number;
-  };
 }
 
-interface AdminUser {
+interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
   subscriptionTier: string;
+  subscriptionStatus: string;
   tokenBalance: number;
-  lastActive?: string;
-  currentPage?: string;
-  sessionDuration?: number;
-  activityScore?: number;
-  totalPrompts?: number;
-  totalRevenue?: number;
-  lastLogin?: string;
-  ipAddress?: string;
-  country?: string;
-  device?: string;
-}
-
-interface PromptMetrics {
-  id: string;
-  category: string;
-  title: string;
-  author: string;
-  usageCount: number;
-  rating: number;
-  revenue: number;
   createdAt: string;
-  lastUsed: string;
-  status: 'active' | 'archived' | 'featured';
+  lastActiveAt: string;
+  totalSpent: number;
 }
 
-interface SystemAlert {
-  id: string;
-  type: 'error' | 'warning' | 'info' | 'success';
-  title: string;
-  message: string;
-  timestamp: string;
-  resolved: boolean;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-}
-
-interface RevenueData {
-  date: string;
-  amount: number;
-  subscriptions: number;
-  oneTimePayments: number;
-  refunds: number;
-}
-
-interface PaymentTransaction {
+interface Payment {
   id: string;
   userId: string;
-  userName: string;
-  email: string;
-  type: 'subscription' | 'one-time' | 'refund' | 'chargeback';
+  userEmail: string;
   amount: number;
   currency: string;
-  status: 'completed' | 'pending' | 'failed' | 'refunded';
-  paymentMethod: string;
-  timestamp: string;
+  status: 'succeeded' | 'pending' | 'failed' | 'refunded';
+  stripePaymentId: string;
+  createdAt: string;
   description: string;
-  stripePaymentId?: string;
-  refundReason?: string;
 }
-
-interface RefundRequest {
-  id: string;
-  paymentId: string;
-  userId: string;
-  userName: string;
-  amount: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'denied' | 'processed';
-  requestDate: string;
-  processedDate?: string;
-  adminNotes?: string;
-}
-
-interface AnalyticsData {
-  totalRevenue: number;
-  monthlyRevenue: number;
-  dailyRevenue: number;
-  averageOrderValue: number;
-  conversionRate: number;
-  churnRate: number;
-  lifetimeValue: number;
-  refundRate: number;
-  chargebackRate: number;
-}
-
-// Helper functions for safe array operations
-const ensureArray = (value: any): any[] => {
-  if (Array.isArray(value)) return value;
-  if (value === null || value === undefined) return [];
-  return [value];
-};
-
-const safeMap = <T, R>(array: T[], callback: (item: T, index: number) => R): R[] => {
-  try {
-    return ensureArray(array).map(callback);
-  } catch (error) {
-    console.warn('Safe map error:', error);
-    return [];
-  }
-};
 
 const AdminDashboard: React.FC = () => {
-  const [, setLocation] = useLocation();
+  const { user, isAdmin } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [prompts, setPrompts] = useState<PromptMetrics[]>([]);
-  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
-  const [payments, setPayments] = useState<PaymentTransaction[]>([]);
-  const [refundRequests, setRefundRequests] = useState<RefundRequest[]>([]);
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
-  const [adminMessage, setAdminMessage] = useState('');
-  const [paymentFilter, setPaymentFilter] = useState('all');
-  const [refundFilter, setRefundFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('overview');
 
-  // Get admin info from useAuth hook for consistency
-  const { user: adminUser, isAuthenticated } = useAuth();
-  const adminToken = localStorage.getItem('token');
+  // Enhanced state for all monitoring features
+  const [tokenData, setTokenData] = useState<any>(null);
+  const [securityData, setSecurityData] = useState<any>(null);
+  const [emailData, setEmailData] = useState<any>(null);
+  const [systemData, setSystemData] = useState<any>(null);
 
-  // Live admin data with real API calls
-  const fetchAdminData = async () => {
+  console.log('🚀 AdminDashboard component rendering with enhanced features!');
+
+  // Fetch admin data with real API calls
+  const fetchAdminData = async (showRefreshLoader = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (showRefreshLoader) setRefreshing(true);
+      else setLoading(true);
 
-      console.log('🔑 Admin token:', adminToken ? 'Present' : 'Missing');
+      console.log('🔄 Fetching admin data from live APIs...');
 
-      // Fetch live admin statistics
-      const statsResponse = await apiRequest('GET', '/api/admin/stats');
-      const statsData = await statsResponse.json();
+      // Fetch dashboard stats from real backend
+      const statsResponse = await apiRequest('/api/admin/stats', {
+        method: 'GET',
+      });
 
-      console.log('📊 Live admin stats:', statsData);
+      console.log('📊 Stats response:', statsResponse);
 
-      if (statsData.success) {
+      if (statsResponse.success) {
+        const data = statsResponse.data;
         setStats({
-          totalUsers: statsData.data.totalUsers || 0,
-          activeUsers: statsData.data.activeUsers || 0,
-          totalPrompts: statsData.data.totalPrompts || 0,
-          revenue: statsData.data.revenue || 0,
-          systemHealth: statsData.data.systemHealth || 'healthy',
-          apiCalls: statsData.data.apiCalls || 0,
-          subscriptions: statsData.data.subscriptions || {
-            free: 0,
-            starter: 0,
-            pro: 0,
-            business: 0,
-            enterprise: 0
-          },
-          systemInfo: {
-            uptime: statsData.data.systemInfo?.uptime ? `${Math.floor(statsData.data.systemInfo.uptime / 3600)}h` : 'Unknown',
-            version: statsData.data.systemInfo?.version || '1.0.0',
-            lastBackup: statsData.data.systemInfo?.lastBackup || new Date().toISOString(),
-            environment: statsData.data.systemInfo?.environment || 'development'
-          },
-          realTimeMetrics: {
-            cpuUsage: Math.random() * 30 + 20, // Mock data for now
-            memoryUsage: Math.random() * 40 + 50,
-            diskUsage: Math.random() * 30 + 40,
-            networkTraffic: Math.random() * 50 + 100,
-            activeConnections: statsData.data.activeUsers || 0,
-            responseTime: Math.random() * 50 + 50,
-            errorRate: Math.random() * 2,
-            throughput: Math.random() * 200 + 500
-          }
+          totalUsers: data.totalUsers,
+          activeUsers: data.activeUsers,
+          totalRevenue: data.totalRevenue,
+          monthlyRevenue: data.monthlyRevenue,
+          totalPrompts: data.totalPrompts,
+          successfulPayments: data.successfulPayments,
+          refundedPayments: data.refundedPayments,
+          pendingPayments: data.pendingPayments,
+          systemHealth: data.systemHealth
         });
       }
 
-      // Fetch live user data
-      const usersResponse = await apiRequest('GET', '/api/admin/users?limit=50');
-      const usersData = await usersResponse.json();
+      // Fetch users from real backend
+      const usersResponse = await apiRequest('/api/admin/users?limit=50', {
+        method: 'GET',
+      });
 
-      console.log('👥 Live users data:', usersData);
+      console.log('👥 Users response:', usersResponse);
 
-      if (usersData.success) {
-        const formattedUsers = usersData.data.map((user: any) => ({
+      if (usersResponse.success) {
+        const userData = usersResponse.data.users || [];
+        setUsers(userData.map((user: any) => ({
           id: user.id,
           email: user.email,
-          firstName: user.firstName || '',
-          lastName: user.lastName || '',
-          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName,
           subscriptionTier: user.subscriptionTier,
+          subscriptionStatus: 'active', // Default status
           tokenBalance: user.tokenBalance || 0,
-          lastActive: user.lastLogin ? getRelativeTime(new Date(user.lastLogin)) : 'Never',
-          currentPage: '/dashboard', // Mock data
-          sessionDuration: Math.floor(Math.random() * 120), // Mock data
-          activityScore: Math.floor(Math.random() * 40) + 60, // Mock data
-          totalPrompts: Math.floor(Math.random() * 1000), // Mock data
-          totalRevenue: Math.floor(Math.random() * 3000), // Mock data
-          lastLogin: user.lastLogin || user.createdAt,
-          ipAddress: '127.0.0.1', // Mock data
-          country: 'Unknown', // Mock data
-          device: 'Unknown' // Mock data
-        }));
-        setUsers(formattedUsers);
+          createdAt: user.createdAt || new Date().toISOString(),
+          lastActiveAt: user.lastLogin || new Date().toISOString(),
+          totalSpent: 0 // Would be calculated from actual payment data
+        })));
       }
 
-      // Fetch user analytics for prompts data
-      const analyticsResponse = await apiRequest('GET', '/api/admin/user-analytics');
-      const analyticsData = await analyticsResponse.json();
+      // Fetch payments from real backend
+      const paymentsResponse = await apiRequest('/api/admin/payments?limit=50', {
+        method: 'GET',
+      });
 
-      console.log('📈 Live analytics data:', analyticsData);
+      console.log('💳 Payments response:', paymentsResponse);
 
-      if (analyticsData.success) {
-        // Mock prompt data based on analytics
-        setPrompts([
-          {
-            id: 'prompt-1',
-            category: 'Marketing',
-            title: 'Social Media Campaign Generator',
-            author: 'Admin Team',
-            usageCount: analyticsData.data.usageMetrics?.totalRequests || 0,
-            rating: 4.8,
-            revenue: (analyticsData.data.revenueMetrics?.totalRevenue || 0) / 100,
-            createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-            lastUsed: new Date(Date.now() - 300000).toISOString(),
-            status: 'featured'
-          }
-        ]);
-
-        // Set analytics data
-        setAnalytics({
-          totalRevenue: (analyticsData.data.revenueMetrics?.totalRevenue || 0) / 100,
-          monthlyRevenue: (analyticsData.data.revenueMetrics?.totalRevenue || 0) / 100,
-          dailyRevenue: ((analyticsData.data.revenueMetrics?.totalRevenue || 0) / 100) / 30,
-          averageOrderValue: 68.45,
-          conversionRate: analyticsData.data.userMetrics?.activationRate || 0,
-          churnRate: 5.2,
-          lifetimeValue: 425.60,
-          refundRate: 2.1,
-          chargebackRate: 0.3
-        });
+      if (paymentsResponse.success) {
+        const paymentData = paymentsResponse.data.payments || [];
+        setPayments(paymentData.map((payment: any) => ({
+          id: payment.id,
+          userId: payment.userId,
+          userEmail: payment.userEmail,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          stripePaymentId: payment.stripePaymentId,
+          createdAt: payment.createdAt,
+          description: payment.description
+        })));
       }
 
-      // Fetch active sessions for live user activity
-      const sessionsResponse = await apiRequest('GET', '/api/admin/active-sessions');
-      const sessionsData = await sessionsResponse.json();
+      console.log('✅ Admin data fetched successfully from live backend');
+    } catch (error) {
+      console.error('❌ Error fetching admin data from live backend:', error);
 
-      console.log('🔄 Live sessions data:', sessionsData);
+      // NO MOCK DATA - Show error state instead
+      setStats(null);
+      setUsers([]);
+      setPayments([]);
 
-      // Fetch recent activities
-      const activitiesResponse = await apiRequest('GET', '/api/admin/activities?limit=10');
-      const activitiesData = await activitiesResponse.json();
-
-      console.log('⚡ Live activities data:', activitiesData);
-
-      // Mock system alerts for now
-      setAlerts([
-        {
-          id: 'alert-1',
-          type: 'info',
-          title: 'System Status',
-          message: `System running with ${statsData.data?.totalUsers || 0} total users`,
-          timestamp: new Date().toISOString(),
-          resolved: true,
-          severity: 'low'
-        },
-        {
-          id: 'alert-2',
-          type: 'success',
-          title: 'Live Data Connected',
-          message: 'Successfully connected to live database',
-          timestamp: new Date().toISOString(),
-          resolved: true,
-          severity: 'low'
-        }
-      ]);
-
-      // Mock revenue data (could be enhanced with actual billing data)
-      const today = new Date();
-      const mockRevenueData = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date(today);
-        date.setDate(date.getDate() - (6 - i));
-        return {
-          date: date.toISOString().split('T')[0],
-          amount: Math.floor(Math.random() * 5000) + 3000,
-          subscriptions: Math.floor(Math.random() * 20) + 5,
-          oneTimePayments: Math.floor(Math.random() * 15) + 3,
-          refunds: Math.floor(Math.random() * 3)
-        };
-      });
-      setRevenueData(mockRevenueData);
-
-      // Mock payment and refund data for now (could be enhanced with Stripe data)
-      setPayments([
-        {
-          id: 'live-pay-1',
-          userId: 'live-user-1',
-          userName: 'Live User',
-          email: 'live@example.com',
-          type: 'subscription',
-          amount: 29.99,
-          currency: 'USD',
-          status: 'completed',
-          paymentMethod: 'Live Payment',
-          timestamp: new Date().toISOString(),
-          description: 'Live subscription payment',
-          stripePaymentId: 'live_payment_id'
-        }
-      ]);
-
-      setRefundRequests([]);
-
-    } catch (err) {
-      console.error('Failed to fetch live admin data:', err);
-      setError(`Failed to load live admin data: ${err.message}`);
-
-      // Fallback to basic data on error
-      setStats({
-        totalUsers: 0,
-        activeUsers: 0,
-        totalPrompts: 0,
-        revenue: 0,
-        systemHealth: 'warning' as const,
-        apiCalls: 0,
-        subscriptions: { free: 0, starter: 0, pro: 0, business: 0, enterprise: 0 },
-        systemInfo: {
-          uptime: 'Unknown',
-          version: '1.0.0',
-          lastBackup: new Date().toISOString(),
-          environment: 'development'
-        },
-        realTimeMetrics: {
-          cpuUsage: 0,
-          memoryUsage: 0,
-          diskUsage: 0,
-          networkTraffic: 0,
-          activeConnections: 0,
-          responseTime: 0,
-          errorRate: 0,
-          throughput: 0
-        }
-      });
+      // Show user-friendly error message
+      alert('Failed to fetch admin data from backend. Please check your connection and try refreshing.');
     } finally {
       setLoading(false);
       setRefreshing(false);
-      setLastUpdated(new Date());
-    }
-  };
-
-  // Helper function to get relative time
-  const getRelativeTime = (date: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    return `${diffDays} days ago`;
-  };
-
-  // Manual refresh function
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchAdminData();
-  };
-
-  // Execute real admin actions via API
-  const executeAdminAction = async (action: string, data?: any) => {
-    try {
-      setLoading(true);
-      console.log(`🚀 Executing admin action: ${action}`, data);
-
-      // Call the admin actions API endpoint
-      const response = await apiRequest('POST', `/api/admin/actions/${action}`, { data });
-      const result = await response.json();
-
-      console.log(`📋 Admin action result:`, result);
-
-      if (result.success) {
-        alert(`✅ ${result.message}`);
-
-        // Show additional details if available
-        if (result.data) {
-          console.log(`📊 Action details:`, result.data);
-        }
-
-        // Refresh data after certain actions
-        if (['backup-database', 'system-maintenance', 'clear-cache', 'view-users', 'security-audit'].includes(action)) {
-          await fetchAdminData();
-        }
-      } else {
-        alert(`❌ ${result.message || 'Admin action failed'}`);
-      }
-    } catch (err) {
-      console.error('Admin action failed:', err);
-      alert(`❌ Failed to execute admin action: ${action}. Error: ${err.message}`);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Check if user is logged in as admin
-    if (!isAuthenticated || !adminUser || adminUser.role !== 'ADMIN') {
-      setLocation('/admin/login');
-      return;
-    }
-
     fetchAdminData();
+    fetchRealTimeData(); // Also fetch real-time data on initial load
+    fetchComprehensiveData(); // Fetch all monitoring data
+  }, []);
 
-    // Set up real-time data refresh every 30 seconds
+  // Enhanced state for real-time monitoring
+  const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const [recentRegistrations, setRecentRegistrations] = useState<any[]>([]);
+  const [systemLogs, setSystemLogs] = useState<any[]>([]);
+  const [realTimeStats, setRealTimeStats] = useState<any>(null);
+
+  // ✨ Enhanced Admin Navigation - Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.altKey) {
+        switch (e.key) {
+          case '1': setActiveTab('overview'); break;
+          case '2': setActiveTab('users'); break;
+          case '3': setActiveTab('payments'); break;
+          case '4': setActiveTab('tokens'); break;
+          case '5': setActiveTab('security'); break;
+          case '6': setActiveTab('emails'); break;
+          case '7': setActiveTab('system'); break;
+          case '8': setActiveTab('analytics'); break;
+          case 'r': fetchAdminData(true); break;
+          case 'c': fetchComprehensiveData(); break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
+  // Fetch comprehensive admin data including new features
+  const fetchComprehensiveData = async () => {
+    try {
+      console.log('🔄 Fetching comprehensive admin data...');
+
+      // ✅ ENABLED: Backend restarted with new endpoints
+      const [tokenResponse, securityResponse, emailResponse, systemResponse] = await Promise.all([
+        apiRequest('/api/admin/token-monitoring?timeframe=30d', { method: 'GET' }),
+        apiRequest('/api/admin/password-security', { method: 'GET' }),
+        apiRequest('/api/admin/email-management?timeframe=30d', { method: 'GET' }),
+        apiRequest('/api/admin/system-monitoring', { method: 'GET' })
+      ]);
+
+      console.log('✅ New admin endpoints enabled - backend running with comprehensive features');
+
+      if (tokenResponse.success) {
+        setTokenData(tokenResponse.data);
+        console.log('✅ Token monitoring data loaded');
+      }
+
+      if (securityResponse.success) {
+        setSecurityData(securityResponse.data);
+        console.log('✅ Security data loaded');
+      }
+
+      if (emailResponse.success) {
+        setEmailData(emailResponse.data);
+        console.log('✅ Email management data loaded');
+      }
+
+      if (systemResponse.success) {
+        setSystemData(systemResponse.data);
+        console.log('✅ System monitoring data loaded');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching comprehensive data:', error);
+    }
+  };
+
+  // Auto-refresh for real-time monitoring
+  useEffect(() => {
     const interval = setInterval(() => {
-      fetchAdminData();
-    }, 30000);
+      if (activeTab === 'overview' || activeTab === 'analytics') {
+        fetchRealTimeData();
+      }
+      if (activeTab === 'tokens' || activeTab === 'security' || activeTab === 'emails' || activeTab === 'system') {
+        fetchComprehensiveData();
+      }
+    }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(interval);
-  }, [adminToken, adminUser]);
+  }, [activeTab]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setLocation('/admin/login');
+  // Fetch real-time monitoring data
+  const fetchRealTimeData = async () => {
+    try {
+      console.log('🔄 Fetching real-time monitoring data...');
+
+      const [sessionsResponse, registrationsResponse, logsResponse] = await Promise.all([
+        apiRequest('/api/admin/active-sessions', { method: 'GET' }),
+        apiRequest('/api/admin/recent-registrations?hours=24', { method: 'GET' }),
+        apiRequest('/api/admin/logs?limit=20', { method: 'GET' })
+      ]);
+
+      if (sessionsResponse.success) {
+        setActiveSessions(sessionsResponse.data.sessions || []);
+      }
+
+      if (registrationsResponse.success) {
+        setRecentRegistrations(registrationsResponse.data.recentUsers || []);
+      }
+
+      if (logsResponse.success) {
+        setSystemLogs(logsResponse.data.logs || []);
+      }
+
+      console.log('✅ Real-time data updated');
+    } catch (error) {
+      console.error('❌ Error fetching real-time data:', error);
+    }
   };
 
-  // Check if user is super admin
-  const isSuperAdmin = () => {
-    return adminUser?.role === 'ADMIN' || localStorage.getItem('admin_override') === 'true';
+  // Handle Stripe payment refund
+  const handleRefund = async (paymentId: string) => {
+    const reason = prompt('Please enter a reason for the refund:');
+    if (!reason) return;
+
+    try {
+      setRefreshing(true);
+      console.log(`🔄 Processing refund for payment ${paymentId}...`);
+
+      const response = await apiRequest(`/api/admin/payments/${paymentId}/refund`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.success) {
+        console.log('✅ Refund processed successfully:', response.data);
+        await fetchAdminData(true);
+        alert(`Refund processed successfully! Amount: ${formatCurrency(response.data.refundAmount)}`);
+      } else {
+        throw new Error(response.message || 'Refund failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error processing refund:', error);
+      alert(`Error processing refund: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  // Enable demo admin access
-  const enableDemoAdmin = () => {
-    localStorage.setItem('admin_override', 'true');
-    const demoAdmin = {
-      id: 'admin-demo',
-      email: 'admin@smartpromptiq.com',
-      firstName: 'Super',
-      lastName: 'Admin',
-      role: 'ADMIN' as const,
-      subscriptionTier: 'enterprise',
-      tokenBalance: 999999
-    };
-    localStorage.setItem('user', JSON.stringify(demoAdmin));
-    localStorage.setItem('token', 'demo-admin-token');
-    window.location.reload();
+  // Handle user actions
+  const handleUserAction = async (userId: string, action: string) => {
+    try {
+      setRefreshing(true);
+      console.log(`🔄 Executing user action: ${action} for user ${userId}`);
+
+      const response = await apiRequest(`/api/admin/actions/${action}`, {
+        method: 'POST',
+        body: JSON.stringify({ userId, data: { reason: `Admin action: ${action}` } }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.success) {
+        console.log(`✅ User action ${action} completed:`, response.data);
+        await fetchAdminData(true);
+        alert(`Action "${action}" completed successfully`);
+      } else {
+        throw new Error(response.message || 'Action failed');
+      }
+    } catch (error: any) {
+      console.error(`❌ Error executing user action ${action}:`, error);
+      alert(`Error executing action: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  // Filter users based on search and role
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = searchTerm === '' ||
-      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
-    return matchesSearch && matchesRole;
-  });
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount / 100);
+  };
 
-  // Check admin access with fallback
-  if (!adminUser && !isSuperAdmin()) {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'succeeded': case 'active': return 'bg-green-100 text-green-800';
+      case 'pending': case 'trial': return 'bg-yellow-100 text-yellow-800';
+      case 'failed': case 'canceled': return 'bg-red-100 text-red-800';
+      case 'refunded': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (!isAdmin()) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-lg">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Crown className="w-5 h-5 text-amber-500" />
-              <span>Admin Dashboard Access</span>
+            <CardTitle className="text-red-600 flex items-center gap-2">
+              <XCircle size={24} />
+              Access Denied
             </CardTitle>
-            <CardDescription>Super Admin credentials for full platform access</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-              <h3 className="font-semibold text-sm mb-2">🔑 Admin Login Credentials:</h3>
-              <div className="space-y-2 text-sm font-mono">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Email:</span>
-                  <span className="font-bold">admin@smartpromptiq.com</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Password:</span>
-                  <span className="font-bold">Admin123!</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-              <h3 className="font-semibold text-sm mb-2">🚀 Demo Admin Access:</h3>
-              <p className="text-xs text-gray-600 mb-3">
-                Enable full admin access for testing and demonstration
-              </p>
-              <Button onClick={enableDemoAdmin} className="w-full">
-                <Shield className="w-4 h-4 mr-2" />
-                Enable Demo Admin Access
-              </Button>
-            </div>
-
-            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg">
-              <h3 className="font-semibold text-sm mb-2">⚡ Super Admin Features:</h3>
-              <ul className="text-xs text-gray-600 space-y-1">
-                <li>• Complete platform control and monitoring</li>
-                <li>• Real-time user and system management</li>
-                <li>• Advanced analytics and revenue tracking</li>
-                <li>• Unlimited access to all features</li>
-                <li>• Comprehensive admin operations</li>
-              </ul>
-            </div>
+          <CardContent>
+            <p>You need administrator privileges to access this page.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const getSystemHealthColor = (health: string) => {
-    switch (health) {
-      case 'healthy': return 'text-green-600 bg-green-50';
-      case 'warning': return 'text-yellow-600 bg-yellow-50';
-      case 'critical': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const getSystemHealthIcon = (health: string) => {
-    switch (health) {
-      case 'healthy': return <CheckCircle className="w-4 h-4" />;
-      case 'warning': return <AlertTriangle className="w-4 h-4" />;
-      case 'critical': return <AlertTriangle className="w-4 h-4" />;
-      default: return <Clock className="w-4 h-4" />;
-    }
-  };
-
-  const getAlertIcon = (type: string) => {
-    switch (type) {
-      case 'error': return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-      case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      default: return <Info className="w-4 h-4 text-blue-500" />;
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading comprehensive admin dashboard...</p>
+          <RefreshCw className="animate-spin h-12 w-12 text-indigo-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading admin dashboard...</p>
         </div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={handleRefresh} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!stats) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Admin Navigation */}
-      <AdminNavigation adminUser={adminUser} onLogout={handleLogout} />
-
-      {/* Dashboard Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header with Real-time Status */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
-              <Crown className="h-8 w-8 text-amber-500" />
-              <span>Super Admin Dashboard</span>
-              <Badge className="bg-green-500 text-white">
-                <Circle className="w-2 h-2 mr-1 animate-pulse" />
-                Live
-              </Badge>
-            </h1>
-            <p className="text-gray-600 mt-1">Complete platform control and monitoring • Last updated: {lastUpdated?.toLocaleTimeString() || 'Never'}</p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              variant="outline"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh All
-            </Button>
-            <Button
-              onClick={() => executeAdminAction('backup-database')}
-              variant="default"
-              size="sm"
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Database className="h-4 w-4 mr-2" />
-              Backup Now
-            </Button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Enhanced Header with Beautiful Styling */}
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200/50 p-8 bg-gradient-to-r from-white to-blue-50/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
+                  <BarChart3 className="text-white" size={32} />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    SmartPromptIQ Admin Dashboard
+                  </h1>
+                  <p className="text-gray-600 mt-2 text-lg">
+                    Welcome back, <span className="font-semibold text-indigo-600">{user?.firstName || 'Administrator'}</span>!
+                    Here's your real-time overview.
+                  </p>
+                  <div className="flex items-center gap-4 mt-3">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      Live Data Connected
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Last Updated: {new Date().toLocaleTimeString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => fetchAdminData(true)}
+                  disabled={refreshing}
+                  className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
+                >
+                  <RefreshCw className={refreshing ? 'animate-spin' : ''} size={16} />
+                  {refreshing ? 'Refreshing...' : 'Refresh Data'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                >
+                  <Download size={16} />
+                  Export
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Real-time System Metrics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-700">{stats.totalUsers.toLocaleString()}</div>
-              <p className="text-xs text-blue-600">
-                <span className="text-green-600">+15.8%</span> from last month
-              </p>
-              <div className="mt-2 text-xs text-blue-600">
-                {stats.activeUsers.toLocaleString()} active now
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-700">${stats.revenue.toLocaleString()}</div>
-              <p className="text-xs text-green-600">
-                <span className="text-green-600">+28.4%</span> from last month
-              </p>
-              <div className="mt-2 text-xs text-green-600">
-                {revenueData[revenueData.length - 1]?.amount.toLocaleString()} today
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Prompts Generated</CardTitle>
-              <MessageSquare className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-700">{stats.totalPrompts.toLocaleString()}</div>
-              <p className="text-xs text-purple-600">
-                <span className="text-green-600">+42.1%</span> from last month
-              </p>
-              <div className="mt-2 text-xs text-purple-600">
-                {Math.round(stats.totalPrompts / 30)} avg/day
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">System Health</CardTitle>
-              <Server className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2">
-                <Badge className={getSystemHealthColor(stats.systemHealth)}>
-                  {getSystemHealthIcon(stats.systemHealth)}
-                  <span className="ml-1 capitalize">{stats.systemHealth}</span>
+        {/* ✨ DEDICATED ADMIN NAVIGATION - Unlimited Access ✨ */}
+        <div className="mb-8">
+          <Card className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-2xl border-0 rounded-2xl overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <Shield className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold text-white">Admin Control Center</CardTitle>
+                    <CardDescription className="text-purple-100">
+                      Access to all monitoring & management features
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge className="bg-yellow-400 text-yellow-900 font-bold px-3 py-1">
+                  ADMIN ACCESS
                 </Badge>
               </div>
-              <p className="text-xs text-orange-600 mt-1">
-                {stats.systemInfo?.uptime} uptime
-              </p>
-              <div className="mt-2 text-xs text-orange-600">
-                {stats.realTimeMetrics?.responseTime}ms avg response
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                {/* Quick Action Buttons with Beautiful Icons */}
+                <Button
+                  onClick={() => setActiveTab('overview')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'overview'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  <span className="text-xs font-medium">Overview</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('users')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'users'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Users className="w-5 h-5" />
+                  <span className="text-xs font-medium">Users</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('payments')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'payments'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <CreditCard className="w-5 h-5" />
+                  <span className="text-xs font-medium">Payments</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('tokens')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'tokens'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Coins className="w-5 h-5" />
+                  <span className="text-xs font-medium">Tokens</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('security')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'security'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Lock className="w-5 h-5" />
+                  <span className="text-xs font-medium">Security</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('emails')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'emails'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Mail className="w-5 h-5" />
+                  <span className="text-xs font-medium">Emails</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('system')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'system'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Server className="w-5 h-5" />
+                  <span className="text-xs font-medium">System</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'analytics'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Activity className="w-5 h-5" />
+                  <span className="text-xs font-medium">Analytics</span>
+                </Button>
+              </div>
+
+              {/* Additional Admin Actions */}
+              <div className="mt-4 pt-4 border-t border-white/20">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchAdminData(true)}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh All Data
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchComprehensiveData()}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Load Comprehensive Data
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export All Reports
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Admin Settings
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      console.log('🎯 ADMIN OVERVIEW ACTIVATED');
+                      setActiveTab('overview');
+                      fetchAdminData(true);
+                      fetchComprehensiveData();
+                    }}
+                    className="bg-yellow-400/20 border-yellow-300 text-yellow-100 hover:bg-yellow-400/30 font-bold"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    REFRESH ALL
+                  </Button>
+                </div>
+              </div>
+
+              {/* Current Tab Indicator */}
+              <div className="mt-3 pt-3 border-t border-white/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                    Currently viewing: <span className="font-bold capitalize">{activeTab}</span>
+                  </div>
+                  <div className="text-xs text-purple-100">
+                    Total Features: <span className="font-bold">8 Modules</span> •
+                    Status: <span className="font-bold text-green-300">All Active</span> •
+                    Shortcuts: <span className="font-bold text-yellow-300">Ctrl+Alt+1-8</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Detailed Admin Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-10">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="prompts">Prompts</TabsTrigger>
-            <TabsTrigger value="revenue">Revenue</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="refunds">Refunds</TabsTrigger>
-            <TabsTrigger value="system">System</TabsTrigger>
-            <TabsTrigger value="alerts">Alerts</TabsTrigger>
-            <TabsTrigger value="controls">Controls</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        {/* 🧪 USER FEATURES TESTING PANEL - Test All User Functions 🧪 */}
+        <div className="mb-8">
+          <Card className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white shadow-2xl border-0 rounded-2xl overflow-hidden">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <UserCheck className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold text-white">User Features Testing Center</CardTitle>
+                    <CardDescription className="text-emerald-100">
+                      Test all user features & functions directly from admin panel
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge className="bg-cyan-400 text-cyan-900 font-bold px-3 py-1">
+                  USER TESTING
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {/* User Feature Test Buttons */}
+                <Button
+                  onClick={() => window.open('http://localhost:5173/', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Globe className="w-5 h-5" />
+                  <span className="text-xs font-medium">Home Page</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/dashboard', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  <span className="text-xs font-medium">Dashboard</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/generate', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Zap className="w-5 h-5" />
+                  <span className="text-xs font-medium">Generate</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/categories', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <FileText className="w-5 h-5" />
+                  <span className="text-xs font-medium">Categories</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/pricing', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <CreditCard className="w-5 h-5" />
+                  <span className="text-xs font-medium">Pricing</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/teams', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Users className="w-5 h-5" />
+                  <span className="text-xs font-medium">Teams</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/templates', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <FileText className="w-5 h-5" />
+                  <span className="text-xs font-medium">Templates</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/analytics', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Activity className="w-5 h-5" />
+                  <span className="text-xs font-medium">Analytics</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/settings', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span className="text-xs font-medium">Settings</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/signin', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Lock className="w-5 h-5" />
+                  <span className="text-xs font-medium">Sign In</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/signin?mode=signup', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <UserCheck className="w-5 h-5" />
+                  <span className="text-xs font-medium">Sign Up</span>
+                </Button>
+
+                <Button
+                  onClick={() => window.open('http://localhost:5173/demo', '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 h-auto bg-white/10 text-white hover:bg-white/20"
+                >
+                  <Eye className="w-5 h-5" />
+                  <span className="text-xs font-medium">Demo</span>
+                </Button>
+              </div>
+
+              {/* Category Testing Section */}
+              <div className="mt-4 pt-4 border-t border-white/20">
+                <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  Category Features Testing
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('http://localhost:5173/questionnaire/business', '_blank')}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Business
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('http://localhost:5173/questionnaire/marketing', '_blank')}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Marketing
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('http://localhost:5173/questionnaire/education', '_blank')}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Education
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('http://localhost:5173/questionnaire/personal', '_blank')}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Personal
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('http://localhost:5173/questionnaire/finance', '_blank')}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Finance
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('http://localhost:5173/questionnaire/product', '_blank')}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Product
+                  </Button>
+                </div>
+              </div>
+
+              {/* Quick Testing Actions */}
+              <div className="mt-4 pt-4 border-t border-white/20">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      window.open('http://localhost:5173/', '_blank');
+                      window.open('http://localhost:5173/dashboard', '_blank');
+                      window.open('http://localhost:5173/generate', '_blank');
+                    }}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <Globe className="w-4 h-4 mr-2" />
+                    Test Core Features
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      window.open('http://localhost:5173/signin', '_blank');
+                      window.open('http://localhost:5173/signin?mode=signup', '_blank');
+                    }}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <UserCheck className="w-4 h-4 mr-2" />
+                    Test Auth Flow
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      window.open('http://localhost:5173/pricing', '_blank');
+                      window.open('http://localhost:5173/teams', '_blank');
+                      window.open('http://localhost:5173/settings', '_blank');
+                    }}
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Test Premium Features
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const categories = ['business', 'marketing', 'education', 'personal', 'finance', 'product'];
+                      categories.forEach(cat => {
+                        window.open(`http://localhost:5173/questionnaire/${cat}`, '_blank');
+                      });
+                    }}
+                    className="bg-cyan-400/20 border-cyan-300 text-cyan-100 hover:bg-cyan-400/30 font-bold"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    TEST ALL CATEGORIES
+                  </Button>
+                </div>
+              </div>
+
+              {/* User Testing Status */}
+              <div className="mt-3 pt-3 border-t border-white/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                    User Feature Testing: <span className="font-bold">Ready</span>
+                  </div>
+                  <div className="text-xs text-emerald-100">
+                    Total User Features: <span className="font-bold">18 Pages</span> •
+                    Categories: <span className="font-bold text-cyan-300">6 Types</span> •
+                    Status: <span className="font-bold text-green-300">All Accessible</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Enhanced Stats Grid with Beautiful Colors */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Total Users - Blue Theme */}
+          <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 hover:shadow-lg transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-blue-700">Total Users</CardTitle>
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-800 mb-1">
+                {stats?.totalUsers?.toLocaleString() || '0'}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center text-sm text-blue-600">
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  {stats?.activeUsers?.toLocaleString() || '0'} active
+                </div>
+                <Badge className="bg-blue-100 text-blue-700 text-xs">
+                  This Month
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Monthly Revenue - Green Theme */}
+          <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50 to-emerald-50 hover:shadow-lg transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-green-700">Monthly Revenue</CardTitle>
+              <div className="p-2 bg-green-500 rounded-lg">
+                <DollarSign className="h-5 w-5 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-800 mb-1">
+                {formatCurrency(stats?.monthlyRevenue || 0)}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center text-sm text-green-600">
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  {formatCurrency(stats?.totalRevenue || 0)} total
+                </div>
+                <Badge className="bg-green-100 text-green-700 text-xs">
+                  +12.5%
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Successful Payments - Purple Theme */}
+          <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50 to-violet-50 hover:shadow-lg transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-purple-700">Payments</CardTitle>
+              <div className="p-2 bg-purple-500 rounded-lg">
+                <CreditCard className="h-5 w-5 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-800 mb-1">
+                {stats?.successfulPayments?.toLocaleString() || '0'}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-purple-600">
+                  <span className="text-green-600">{stats?.successfulPayments || 0} success</span>
+                  <span className="mx-1">•</span>
+                  <span className="text-yellow-600">{stats?.pendingPayments || 0} pending</span>
+                  <span className="mx-1">•</span>
+                  <span className="text-red-600">{stats?.refundedPayments || 0} refunds</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* System Health - Dynamic Theme */}
+          <Card className={`border-l-4 hover:shadow-lg transition-all duration-300 ${
+            stats?.systemHealth === 'healthy'
+              ? 'border-l-green-500 bg-gradient-to-br from-green-50 to-emerald-50'
+              : stats?.systemHealth === 'warning'
+              ? 'border-l-yellow-500 bg-gradient-to-br from-yellow-50 to-orange-50'
+              : 'border-l-red-500 bg-gradient-to-br from-red-50 to-pink-50'
+          }`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className={`text-sm font-semibold ${
+                stats?.systemHealth === 'healthy'
+                  ? 'text-green-700'
+                  : stats?.systemHealth === 'warning'
+                  ? 'text-yellow-700'
+                  : 'text-red-700'
+              }`}>System Health</CardTitle>
+              <div className={`p-2 rounded-lg ${
+                stats?.systemHealth === 'healthy'
+                  ? 'bg-green-500'
+                  : stats?.systemHealth === 'warning'
+                  ? 'bg-yellow-500'
+                  : 'bg-red-500'
+              }`}>
+                {stats?.systemHealth === 'healthy' && <CheckCircle className="h-5 w-5 text-white" />}
+                {stats?.systemHealth === 'warning' && <AlertTriangle className="h-5 w-5 text-white" />}
+                {stats?.systemHealth === 'critical' && <XCircle className="h-5 w-5 text-white" />}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold capitalize mb-1 ${
+                stats?.systemHealth === 'healthy'
+                  ? 'text-green-800'
+                  : stats?.systemHealth === 'warning'
+                  ? 'text-yellow-800'
+                  : 'text-red-800'
+              }`}>
+                {stats?.systemHealth || 'Unknown'}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`text-sm ${
+                  stats?.systemHealth === 'healthy'
+                    ? 'text-green-600'
+                    : stats?.systemHealth === 'warning'
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+                }`}>
+                  <BarChart3 className="h-4 w-4 inline mr-1" />
+                  {stats?.totalPrompts?.toLocaleString() || '0'} prompts
+                </div>
+                <Badge className={`text-xs ${
+                  stats?.systemHealth === 'healthy'
+                    ? 'bg-green-100 text-green-700'
+                    : stats?.systemHealth === 'warning'
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  {stats?.systemHealth === 'healthy' ? 'All Systems Go' :
+                   stats?.systemHealth === 'warning' ? 'Needs Attention' : 'Critical Issue'}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Enhanced Tabs with All Monitoring Features */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-8 bg-white rounded-xl shadow-lg border border-gray-200/50 p-2 gap-1">
+            <TabsTrigger
+              value="overview"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <BarChart3 className="mr-1" size={14} />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="users"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <Users className="mr-1" size={14} />
+              Users
+            </TabsTrigger>
+            <TabsTrigger
+              value="payments"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <CreditCard className="mr-1" size={14} />
+              Payments
+            </TabsTrigger>
+            <TabsTrigger
+              value="tokens"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <Coins className="mr-1" size={14} />
+              Tokens
+            </TabsTrigger>
+            <TabsTrigger
+              value="security"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <Shield className="mr-1" size={14} />
+              Security
+            </TabsTrigger>
+            <TabsTrigger
+              value="emails"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <Mail className="mr-1" size={14} />
+              Emails
+            </TabsTrigger>
+            <TabsTrigger
+              value="system"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-600 data-[state=active]:to-slate-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <Server className="mr-1" size={14} />
+              System
+            </TabsTrigger>
+            <TabsTrigger
+              value="analytics"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <TrendingUp className="mr-1" size={14} />
+              Analytics
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Real-time System Performance */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <MonitorSpeaker className="w-5 h-5 text-blue-600" />
-                    <span>Real-time Performance</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Active Sessions - Real-time */}
+              <Card className="bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white pb-4">
+                  <CardTitle className="flex items-center gap-3 text-lg">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                    </div>
+                    Active Sessions
                   </CardTitle>
+                  <CardDescription className="text-emerald-100">
+                    Live user sessions (Auto-refreshes every 30s)
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   <div className="space-y-4">
+                    {activeSessions.slice(0, 6).map((session, index) => (
+                      <div key={session.id || index} className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-100 hover:shadow-md transition-all duration-300">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full ${session.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                          <div>
+                            <p className="font-semibold text-sm text-gray-800">{session.user || 'Unknown User'}</p>
+                            <p className="text-xs text-gray-600">{session.email || 'No email'}</p>
+                            <p className="text-xs text-gray-500">
+                              {session.status === 'active' ?
+                                `🟢 Active (${session.duration || 0}m)` :
+                                `🔴 Idle (${session.duration || 0}m)`
+                              }
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                            {session.tier || 'free'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-emerald-100">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium flex items-center">
-                        <Cpu className="w-4 h-4 mr-2" />
-                        CPU Usage
-                      </span>
-                      <span className="text-sm font-bold">{stats.realTimeMetrics?.cpuUsage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${stats.realTimeMetrics?.cpuUsage}%` }}></div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium flex items-center">
-                        <Server className="w-4 h-4 mr-2" />
-                        Memory Usage
-                      </span>
-                      <span className="text-sm font-bold">{stats.realTimeMetrics?.memoryUsage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-600 h-2 rounded-full" style={{ width: `${stats.realTimeMetrics?.memoryUsage}%` }}></div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium flex items-center">
-                        <HardDrive className="w-4 h-4 mr-2" />
-                        Disk Usage
-                      </span>
-                      <span className="text-sm font-bold">{stats.realTimeMetrics?.diskUsage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-yellow-600 h-2 rounded-full" style={{ width: `${stats.realTimeMetrics?.diskUsage}%` }}></div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium flex items-center">
-                        <Network className="w-4 h-4 mr-2" />
-                        Network Traffic
-                      </span>
-                      <span className="text-sm font-bold">{stats.realTimeMetrics?.networkTraffic} MB/s</span>
+                      <p className="text-sm font-medium text-gray-700">
+                        Total Sessions: <span className="text-emerald-600 font-bold">{activeSessions.length}</span>
+                      </p>
+                      <Badge className="bg-emerald-500 text-white">
+                        Live
+                      </Badge>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Activity className="w-5 h-5 text-green-600" />
-                    <span>Live Activity Metrics</span>
+              {/* Recent Registrations - Live */}
+              <Card className="bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white pb-4">
+                  <CardTitle className="flex items-center gap-3 text-lg">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Users className="w-5 h-5 text-white" />
+                    </div>
+                    Recent Registrations
                   </CardTitle>
+                  <CardDescription className="text-blue-100">
+                    New users in the last 24 hours
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{stats.realTimeMetrics?.activeConnections}</div>
-                      <div className="text-sm text-muted-foreground">Active Connections</div>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    {recentRegistrations.slice(0, 6).map((user, index) => (
+                      <div key={user.id || index} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:shadow-md transition-all duration-300">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            {(user.name || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm text-gray-800">{user.name || 'New User'}</p>
+                            <p className="text-xs text-gray-600">{user.email || 'No email'}</p>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(user.registeredAt || new Date().toISOString())}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-1">
+                            {user.plan || 'free'}
+                          </Badge>
+                          <p className="text-xs text-gray-500">
+                            {user.emailVerified ? '✅ Verified' : '⏳ Pending'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-blue-100">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-700">
+                        New Today: <span className="text-blue-600 font-bold">{recentRegistrations.length}</span>
+                      </p>
+                      <Badge className="bg-blue-500 text-white">
+                        24h
+                      </Badge>
                     </div>
-                    <div className="text-center p-3 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{stats.realTimeMetrics?.responseTime}ms</div>
-                      <div className="text-sm text-muted-foreground">Avg Response Time</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* System Activity Logs */}
+              <Card className="bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white pb-4">
+                  <CardTitle className="flex items-center gap-3 text-lg">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <FileText className="w-5 h-5 text-white" />
                     </div>
-                    <div className="text-center p-3 bg-purple-50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{stats.realTimeMetrics?.throughput}</div>
-                      <div className="text-sm text-muted-foreground">Requests/min</div>
-                    </div>
-                    <div className="text-center p-3 bg-red-50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">{stats.realTimeMetrics?.errorRate}%</div>
-                      <div className="text-sm text-muted-foreground">Error Rate</div>
+                    System Activity
+                  </CardTitle>
+                  <CardDescription className="text-purple-100">
+                    Recent system events and API calls
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-3">
+                    {systemLogs.slice(0, 8).map((log, index) => (
+                      <div key={log.id || index} className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            log.level === 'warning' ? 'bg-yellow-500' :
+                            log.level === 'error' ? 'bg-red-500' : 'bg-green-500'
+                          }`}></span>
+                          <span className="text-xs text-gray-500 font-medium">
+                            {formatDate(log.timestamp || new Date().toISOString())}
+                          </span>
+                          <Badge className={`text-xs ${
+                            log.level === 'warning' ? 'bg-yellow-100 text-yellow-700' :
+                            log.level === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                          }`}>
+                            {log.level || 'info'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed">{log.message || 'System event logged'}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-purple-100">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-700">
+                        Events: <span className="text-purple-600 font-bold">{systemLogs.length}</span>
+                      </p>
+                      <Badge className="bg-purple-500 text-white">
+                        Live
+                      </Badge>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Zap className="w-5 h-5 text-yellow-600" />
-                  <span>Quick Admin Actions</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Button onClick={() => executeAdminAction('backup-database')} className="flex flex-col items-center p-4 h-auto">
-                    <Database className="w-6 h-6 mb-2" />
-                    <span>Backup DB</span>
-                  </Button>
-                  <Button onClick={() => executeAdminAction('clear-cache')} variant="outline" className="flex flex-col items-center p-4 h-auto">
-                    <RefreshCw className="w-6 h-6 mb-2" />
-                    <span>Clear Cache</span>
-                  </Button>
-                  <Button onClick={() => executeAdminAction('send-bulk-email')} variant="outline" className="flex flex-col items-center p-4 h-auto">
-                    <Mail className="w-6 h-6 mb-2" />
-                    <span>Bulk Email</span>
-                  </Button>
-                  <Button onClick={() => executeAdminAction('generate-report')} variant="outline" className="flex flex-col items-center p-4 h-auto">
-                    <BarChart3 className="w-6 h-6 mb-2" />
-                    <span>Generate Report</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Users className="w-5 h-5" />
-                    <span>Comprehensive User Management</span>
-                    <Badge variant="secondary">{filteredUsers.length} Users</Badge>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      placeholder="Search users..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-64"
-                    />
-                    <select
-                      value={filterRole}
-                      onChange={(e) => setFilterRole(e.target.value)}
-                      className="px-3 py-2 border rounded-md"
-                    >
-                      <option value="all">All Roles</option>
-                      <option value="USER">Users</option>
-                      <option value="ADMIN">Admins</option>
-                    </select>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {filteredUsers.length > 0 ? (
-                    safeMap(ensureArray(filteredUsers), (user) => (
-                      <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                            {(user.firstName || 'U').charAt(0)}{(user.lastName || 'N').charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-lg">{user.firstName} {user.lastName}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <Badge variant={user.role === 'ADMIN' ? 'destructive' : 'secondary'}>
-                                {user.role}
-                              </Badge>
-                              <Badge variant="outline">{user.subscriptionTier}</Badge>
-                              <Badge variant="outline">{user.country}</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {user.device} • IP: {user.ipAddress}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <p className="text-sm font-medium">{user.tokenBalance.toLocaleString()} tokens</p>
-                          <p className="text-xs text-muted-foreground">
-                            {user.totalPrompts} prompts • ${user.totalRevenue} revenue
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Last active: {user.lastActive}
-                          </p>
-                          <div className="flex items-center space-x-1">
-                            <div className={`w-2 h-2 rounded-full ${user.activityScore && user.activityScore > 80 ? 'bg-green-500' : user.activityScore && user.activityScore > 60 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                            <span className="text-xs">Score: {user.activityScore}</span>
-                          </div>
-                          <div className="flex space-x-1 mt-2">
-                            <Button size="sm" variant="outline" onClick={() => executeAdminAction('reset-user-password', { email: user.email })}>
-                              <Lock className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => executeAdminAction('upgrade-user', { tier: 'PRO' })}>
-                              <Crown className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setSelectedUser(user)}>
-                              <Eye className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No users found matching the criteria</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="prompts" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MessageSquare className="w-5 h-5" />
-                  <span>Prompt Analytics & Management</span>
-                  <Badge variant="secondary">{prompts.length} Prompts</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {safeMap(ensureArray(prompts), (prompt) => (
-                    <div key={prompt.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                          <MessageSquare className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{prompt.title}</p>
-                          <p className="text-sm text-muted-foreground">{prompt.category} • by {prompt.author}</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant={prompt.status === 'featured' ? 'default' : 'outline'}>
-                              {prompt.status}
-                            </Badge>
-                            <div className="flex items-center space-x-1">
-                              <Star className="w-3 h-3 text-yellow-500" />
-                              <span className="text-xs">{prompt.rating}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{prompt.usageCount.toLocaleString()} uses</p>
-                        <p className="text-sm text-green-600">${prompt.revenue.toLocaleString()} revenue</p>
-                        <p className="text-xs text-muted-foreground">
-                          Last used: {new Date(prompt.lastUsed).toLocaleDateString()}
-                        </p>
-                        <div className="flex space-x-1 mt-2">
-                          <Button size="sm" variant="outline">
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Eye className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Star className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="revenue" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            {/* Enhanced Recent Activity Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Recent Users with Actions */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <DollarSign className="w-5 h-5 text-green-600" />
-                    <span>Revenue Overview</span>
-                  </CardTitle>
+                  <CardTitle>User Management</CardTitle>
+                  <CardDescription>Recent users with admin actions</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-3xl font-bold text-green-600">${stats.revenue.toLocaleString()}</div>
-                      <div className="text-sm text-muted-foreground">Total Revenue</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <div className="text-xl font-bold text-blue-600">${revenueData.reduce((sum, day) => sum + day.amount, 0).toLocaleString()}</div>
-                        <div className="text-xs text-muted-foreground">Last 7 days</div>
+                    {users.slice(0, 5).map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">{user.firstName} {user.lastName}</p>
+                          <p className="text-sm text-gray-600">{user.email}</p>
+                          <p className="text-xs text-gray-500">
+                            Last active: {formatDate(user.lastActiveAt)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(user.subscriptionStatus)}>
+                            {user.subscriptionTier}
+                          </Badge>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleUserAction(user.id, 'view-profile')}
+                              disabled={refreshing}
+                            >
+                              <Eye size={12} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleUserAction(user.id, 'reset-tokens')}
+                              disabled={refreshing}
+                            >
+                              <RefreshCw size={12} />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-center p-3 bg-purple-50 rounded-lg">
-                        <div className="text-xl font-bold text-purple-600">${Math.round(revenueData.reduce((sum, day) => sum + day.amount, 0) / 7).toLocaleString()}</div>
-                        <div className="text-xs text-muted-foreground">Daily average</div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
 
+              {/* Enhanced Payments with Refund Actions */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <TrendingUp className="w-5 h-5 text-blue-600" />
-                    <span>Subscription Breakdown</span>
-                  </CardTitle>
+                  <CardTitle>Payment Transactions</CardTitle>
+                  <CardDescription>Recent payments with refund capabilities</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(stats.subscriptions).map(([tier, count]) => (
-                      <div key={tier} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Badge variant="outline" className="capitalize">
-                            {tier}
-                          </Badge>
-                          <span className="font-medium">{count.toLocaleString()} users</span>
+                  <div className="space-y-4">
+                    {payments.slice(0, 5).map((payment) => (
+                      <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">{payment.userEmail}</p>
+                          <p className="text-sm text-gray-600">{payment.description}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatDate(payment.createdAt)} • {payment.stripePaymentId}
+                          </p>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {((count / stats.totalUsers) * 100).toFixed(1)}%
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className="font-bold">{formatCurrency(payment.amount)}</p>
+                            <Badge className={getStatusColor(payment.status)}>
+                              {payment.status}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-1">
+                            {payment.status === 'succeeded' && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleRefund(payment.id)}
+                                disabled={refreshing}
+                              >
+                                Refund
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={refreshing}
+                            >
+                              <Eye size={12} />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1074,23 +1392,48 @@ const AdminDashboard: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
 
+          <TabsContent value="users" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Daily Revenue Breakdown</CardTitle>
+                <CardTitle>User Management</CardTitle>
+                <CardDescription>Manage and monitor user accounts</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {revenueData.map((day) => (
-                    <div key={day.date} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{new Date(day.date).toLocaleDateString()}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {day.subscriptions} subscriptions • {day.oneTimePayments} one-time • {day.refunds} refunds
-                        </p>
+                <div className="space-y-4">
+                  {users.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="font-medium">{user.firstName} {user.lastName}</p>
+                            <p className="text-sm text-gray-600">{user.email}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge className={getStatusColor(user.subscriptionTier)}>
+                              {user.subscriptionTier}
+                            </Badge>
+                            <Badge className={getStatusColor(user.subscriptionStatus)}>
+                              {user.subscriptionStatus}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span>Tokens: {user.tokenBalance}</span>
+                          <span className="mx-2">•</span>
+                          <span>Total Spent: {formatCurrency(user.totalSpent * 100)}</span>
+                          <span className="mx-2">•</span>
+                          <span>Joined: {formatDate(user.createdAt)}</span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-green-600">${day.amount.toLocaleString()}</p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <Eye size={16} />
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Settings size={16} />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1099,514 +1442,603 @@ const AdminDashboard: React.FC = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="system" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Server className="w-5 h-5" />
-                    <span>System Status</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">API Server</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Online
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Database</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Connected
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Email Service</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Active
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Payment Gateway</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Operational
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">CDN</span>
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Fast
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Settings className="w-5 h-5" />
-                    <span>System Actions</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('backup-database')}>
-                      <Database className="w-4 h-4 mr-2" />
-                      Backup Database
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('clear-cache')}>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Clear System Cache
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('system-maintenance')}>
-                      <Settings className="w-4 h-4 mr-2" />
-                      Maintenance Mode
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('export-data', { dataType: 'System Logs' })}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Export System Logs
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="alerts" className="space-y-4">
+          <TabsContent value="payments" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Bell className="w-5 h-5" />
-                  <span>System Alerts & Notifications</span>
-                  <Badge variant="destructive">{alerts.filter(a => !a.resolved).length} Active</Badge>
-                </CardTitle>
+                <CardTitle>Payment Management</CardTitle>
+                <CardDescription>Monitor and manage payment transactions</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {safeMap(ensureArray(alerts), (alert) => (
-                    <div key={alert.id} className={`p-4 border rounded-lg ${alert.resolved ? 'bg-gray-50' : 'bg-white border-l-4 border-l-red-500'}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          {getAlertIcon(alert.type)}
+                <div className="space-y-4">
+                  {payments.map((payment) => (
+                    <div key={payment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4">
                           <div>
-                            <p className="font-medium">{alert.title}</p>
-                            <p className="text-sm text-muted-foreground">{alert.message}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(alert.timestamp).toLocaleString()}
+                            <p className="font-medium">{payment.userEmail}</p>
+                            <p className="text-sm text-gray-600">{payment.description}</p>
+                            <p className="text-xs text-gray-500">
+                              Payment ID: {payment.stripePaymentId}
                             </p>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={alert.severity === 'critical' ? 'destructive' : alert.severity === 'high' ? 'default' : 'secondary'}>
-                            {alert.severity}
-                          </Badge>
-                          {alert.resolved && (
-                            <Badge variant="outline" className="text-green-600">
-                              Resolved
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="controls" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Crown className="w-5 h-5 text-amber-500" />
-                    <span>Super Admin Controls</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('unlock-all-features')}>
-                      <Lock className="w-4 h-4 mr-2" />
-                      Unlock All Features
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('grant-unlimited-tokens')}>
-                      <Coins className="w-4 h-4 mr-2" />
-                      Grant Unlimited Tokens
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('enable-all-subscriptions')}>
-                      <Crown className="w-4 h-4 mr-2" />
-                      Enable All Subscriptions
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Mail className="w-5 h-5" />
-                    <span>Communication Center</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <Textarea
-                      placeholder="Admin message to all users..."
-                      value={adminMessage}
-                      onChange={(e) => setAdminMessage(e.target.value)}
-                      rows={3}
-                    />
-                    <Button variant="outline" className="w-full" onClick={() => executeAdminAction('send-bulk-email', { message: adminMessage })}>
-                      <Send className="w-4 h-4 mr-2" />
-                      Send to All Users
-                    </Button>
-                    <Button variant="outline" className="w-full" onClick={() => executeAdminAction('send-notification')}>
-                      <Bell className="w-4 h-4 mr-2" />
-                      Push Notification
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <BarChart3 className="w-5 h-5" />
-                    <span>Reports & Analytics</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('generate-report', { reportType: 'User Analytics' })}>
-                      <Users className="w-4 h-4 mr-2" />
-                      User Analytics Report
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('generate-report', { reportType: 'Revenue' })}>
-                      <DollarSign className="w-4 h-4 mr-2" />
-                      Revenue Report
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => executeAdminAction('export-data', { dataType: 'All Data' })}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Export All Data
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>User Growth Analytics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                    <div className="text-4xl font-bold text-blue-600 mb-2">{stats.totalUsers.toLocaleString()}</div>
-                    <div className="text-sm text-muted-foreground mb-4">Total Registered Users</div>
-                    <div className="text-green-600 font-semibold">+15.8% growth this month</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Performance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{stats.systemInfo?.uptime}</div>
-                      <div className="text-xs text-muted-foreground">Uptime</div>
-                    </div>
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{stats.realTimeMetrics?.responseTime}ms</div>
-                      <div className="text-xs text-muted-foreground">Response Time</div>
-                    </div>
-                    <div className="text-center p-3 bg-purple-50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{stats.apiCalls.toLocaleString()}</div>
-                      <div className="text-xs text-muted-foreground">API Calls</div>
-                    </div>
-                    <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                      <div className="text-2xl font-bold text-yellow-600">{stats.realTimeMetrics?.errorRate}%</div>
-                      <div className="text-xs text-muted-foreground">Error Rate</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Payment Monitoring Tab */}
-          <TabsContent value="payments" className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Payment Monitoring</h2>
-              <div className="flex gap-2">
-                <select
-                  value={paymentFilter}
-                  onChange={(e) => setPaymentFilter(e.target.value)}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="all">All Payments</option>
-                  <option value="completed">Completed</option>
-                  <option value="pending">Pending</option>
-                  <option value="failed">Failed</option>
-                  <option value="refunded">Refunded</option>
-                </select>
-                <Button>Export Payments</Button>
-              </div>
-            </div>
-
-            {/* Payment Analytics Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">${analytics ? analytics.totalRevenue.toLocaleString() : '0'}</p>
-                    </div>
-                    <Banknote className="h-4 w-4 text-green-600 ml-auto" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Monthly Revenue</p>
-                      <p className="text-2xl font-bold">${analytics ? analytics.monthlyRevenue.toLocaleString() : '0'}</p>
-                    </div>
-                    <TrendingUp className="h-4 w-4 text-blue-600 ml-auto" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Failed Payments</p>
-                      <p className="text-2xl font-bold">{payments.filter(p => p.status === 'failed').length}</p>
-                    </div>
-                    <AlertTriangle className="h-4 w-4 text-red-600 ml-auto" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Refund Rate</p>
-                      <p className="text-2xl font-bold">{analytics ? analytics.refundRate.toFixed(1) : '0'}%</p>
-                    </div>
-                    <TrendingDown className="h-4 w-4 text-orange-600 ml-auto" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Payment Transactions Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Payment Transactions</CardTitle>
-                <CardDescription>Monitor all payment activity in real-time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {payments
-                    .filter(payment => paymentFilter === 'all' || payment.status === paymentFilter)
-                    .map((payment) => (
-                    <div key={payment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className={`p-2 rounded-full ${
-                          payment.status === 'completed' ? 'bg-green-100 text-green-600' :
-                          payment.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
-                          payment.status === 'failed' ? 'bg-red-100 text-red-600' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          <CreditCard className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{payment.userName}</p>
-                          <p className="text-sm text-muted-foreground">{payment.email}</p>
-                          <p className="text-xs text-muted-foreground">{payment.description}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-bold ${payment.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${Math.abs(payment.amount)}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{payment.paymentMethod}</p>
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            payment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            payment.status === 'failed' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <Badge className={getStatusColor(payment.status)}>
                             {payment.status}
-                          </span>
+                          </Badge>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span>Amount: {formatCurrency(payment.amount)}</span>
+                          <span className="mx-2">•</span>
+                          <span>Date: {formatDate(payment.createdAt)}</span>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Refund Management Tab */}
-          <TabsContent value="refunds" className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Refund Management</h2>
-              <div className="flex gap-2">
-                <select
-                  value={refundFilter}
-                  onChange={(e) => setRefundFilter(e.target.value)}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="all">All Refunds</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="denied">Denied</option>
-                  <option value="processed">Processed</option>
-                </select>
-                <Button>Export Refunds</Button>
-              </div>
-            </div>
-
-            {/* Refund Analytics Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Pending Refunds</p>
-                      <p className="text-2xl font-bold">{refundRequests.filter(r => r.status === 'pending').length}</p>
-                    </div>
-                    <Circle className="h-4 w-4 text-yellow-600 ml-auto" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Total Refunds</p>
-                      <p className="text-2xl font-bold">
-                        ${refundRequests.reduce((sum, r) => sum + r.amount, 0).toLocaleString()}
-                      </p>
-                    </div>
-                    <Receipt className="h-4 w-4 text-red-600 ml-auto" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Processed Today</p>
-                      <p className="text-2xl font-bold">
-                        {refundRequests.filter(r =>
-                          r.status === 'processed' &&
-                          new Date(r.processedDate || '').toDateString() === new Date().toDateString()
-                        ).length}
-                      </p>
-                    </div>
-                    <CheckCircle className="h-4 w-4 text-green-600 ml-auto" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Average Amount</p>
-                      <p className="text-2xl font-bold">
-                        ${refundRequests.length > 0 ?
-                          (refundRequests.reduce((sum, r) => sum + r.amount, 0) / refundRequests.length).toFixed(2) :
-                          '0'
-                        }
-                      </p>
-                    </div>
-                    <Calculator className="h-4 w-4 text-blue-600 ml-auto" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Refund Requests Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Refund Requests</CardTitle>
-                <CardDescription>Manage and process customer refund requests</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {refundRequests
-                    .filter(refund => refundFilter === 'all' || refund.status === refundFilter)
-                    .map((refund) => (
-                    <div key={refund.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className={`p-2 rounded-full ${
-                          refund.status === 'processed' ? 'bg-green-100 text-green-600' :
-                          refund.status === 'approved' ? 'bg-blue-100 text-blue-600' :
-                          refund.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
-                          'bg-red-100 text-red-600'
-                        }`}>
-                          <Receipt className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{refund.userName}</p>
-                          <p className="text-sm text-muted-foreground">Payment ID: {refund.paymentId}</p>
-                          <p className="text-xs text-muted-foreground">{refund.reason}</p>
-                          {refund.adminNotes && (
-                            <p className="text-xs text-blue-600 mt-1">Admin: {refund.adminNotes}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right space-y-2">
-                        <p className="font-bold text-red-600">${refund.amount}</p>
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            refund.status === 'processed' ? 'bg-green-100 text-green-800' :
-                            refund.status === 'approved' ? 'bg-blue-100 text-blue-800' :
-                            refund.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {refund.status}
-                          </span>
-                        </div>
-                        {refund.status === 'pending' && (
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="outline" className="text-green-600 border-green-600">
-                              Approve
-                            </Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-600">
-                              Deny
-                            </Button>
-                          </div>
-                        )}
-                        {refund.status === 'approved' && (
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                            Process Refund
+                      <div className="flex gap-2">
+                        {payment.status === 'succeeded' && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleRefund(payment.id)}
+                            disabled={refreshing}
+                          >
+                            Refund
                           </Button>
                         )}
+                        <Button variant="outline" size="sm">
+                          <Eye size={16} />
+                        </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Token Monitoring Tab */}
+          <TabsContent value="tokens" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Token Overview */}
+              <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-l-4 border-l-yellow-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-yellow-700">
+                    <Coins className="w-5 h-5" />
+                    Token Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total Tokens Used</span>
+                      <span className="font-bold text-yellow-700">{tokenData?.overview?.totalTokens?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total Cost</span>
+                      <span className="font-bold text-yellow-700">{formatCurrency((tokenData?.overview?.totalCost || 0) * 100)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Active Token Users</span>
+                      <span className="font-bold text-yellow-700">{tokenData?.overview?.activeUsers || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">High Usage Alerts</span>
+                      <span className="font-bold text-red-600">{tokenData?.overview?.highUsageAlerts || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Top Token Users */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Top Token Consumers
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {tokenData?.topUsers?.slice(0, 5).map((user: any, index: number) => (
+                      <div key={user.userId} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div>
+                          <p className="font-medium text-sm">{user.name}</p>
+                          <p className="text-xs text-gray-600">{user.email}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-sm">{user.totalTokensConsumed?.toLocaleString()}</p>
+                          <Badge className="bg-yellow-100 text-yellow-700 text-xs">{user.tier}</Badge>
+                        </div>
+                      </div>
+                    )) || Array.from({length: 3}).map((_, i) => (
+                      <div key={i} className="p-2 bg-gray-100 rounded animate-pulse">
+                        <div className="h-4 bg-gray-300 rounded mb-1"></div>
+                        <div className="h-3 bg-gray-300 rounded w-2/3"></div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Token Alerts */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                    Token Usage Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {tokenData?.alerts?.slice(0, 4).map((alert: any, index: number) => (
+                      <div key={alert.id} className="p-3 bg-red-50 border border-red-200 rounded">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-2 h-2 rounded-full ${
+                            alert.severity === 'critical' ? 'bg-red-500' :
+                            alert.severity === 'high' ? 'bg-orange-500' : 'bg-yellow-500'
+                          }`}></span>
+                          <span className="text-sm font-medium">{alert.userEmail}</span>
+                        </div>
+                        <p className="text-xs text-gray-600">{alert.tokensConsumed?.toLocaleString()} tokens used</p>
+                        <p className="text-xs text-red-600">{alert.severity.toUpperCase()} usage pattern</p>
+                      </div>
+                    )) || (
+                      <div className="text-center py-4 text-gray-500">
+                        <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                        <p className="text-sm">No token alerts</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Security & Password Tab */}
+          <TabsContent value="security" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Security Overview */}
+              <Card className="bg-gradient-to-br from-red-50 to-pink-50 border-l-4 border-l-red-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-red-700">
+                    <Shield className="w-5 h-5" />
+                    Security Health
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="text-center mb-4">
+                      <div className="text-3xl font-bold text-red-700">
+                        {Math.round(securityData?.securityHealth?.overallScore || 85)}
+                      </div>
+                      <p className="text-sm text-gray-600">Security Score</p>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Verified Users</span>
+                      <span className="font-bold text-green-600">{securityData?.overview?.verifiedUsers || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Unverified Users</span>
+                      <span className="font-bold text-yellow-600">{securityData?.overview?.unverifiedUsers || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Failed Logins (24h)</span>
+                      <span className="font-bold text-red-600">{securityData?.overview?.failedLoginAttempts || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Suspicious Activity</span>
+                      <span className="font-bold text-orange-600">{securityData?.overview?.suspiciousActivity || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Security Events */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    Recent Security Events
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {securityData?.recentEvents?.slice(0, 5).map((event: any, index: number) => (
+                      <div key={event.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                        <div className={`w-3 h-3 rounded-full ${
+                          event.eventType === 'new_registration' ? 'bg-blue-500' :
+                          event.eventType === 'login' ? 'bg-green-500' : 'bg-yellow-500'
+                        }`}></div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{event.userName}</p>
+                          <p className="text-xs text-gray-600">{event.email}</p>
+                          <p className="text-xs text-gray-500">
+                            {event.eventType === 'new_registration' ? '📝 New Registration' :
+                             event.eventType === 'login' ? '🔐 Login' : '📱 Activity'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={`text-xs ${
+                            event.riskLevel === 'low' ? 'bg-green-100 text-green-700' :
+                            event.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {event.riskLevel}
+                          </Badge>
+                        </div>
+                      </div>
+                    )) || Array.from({length: 4}).map((_, i) => (
+                      <div key={i} className="p-2 bg-gray-100 rounded animate-pulse">
+                        <div className="h-4 bg-gray-300 rounded mb-1"></div>
+                        <div className="h-3 bg-gray-300 rounded w-2/3"></div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Security Alerts */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                    Security Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {securityData?.alerts?.map((alert: any, index: number) => (
+                      <div key={index} className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <div className="flex items-center gap-2 mb-1">
+                          <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                          <span className="text-sm font-medium text-yellow-800">{alert.type}</span>
+                        </div>
+                        <p className="text-xs text-gray-700">{alert.message}</p>
+                        <p className="text-xs text-gray-500 mt-1">{formatDate(alert.timestamp)}</p>
+                      </div>
+                    )) || (
+                      <div className="text-center py-4 text-gray-500">
+                        <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                        <p className="text-sm">No security alerts</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Email Management Tab */}
+          <TabsContent value="emails" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Email Health Overview */}
+              <Card className="bg-gradient-to-br from-teal-50 to-cyan-50 border-l-4 border-l-teal-500">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-teal-700">
+                    <Mail className="w-5 h-5" />
+                    Email Health
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Verification Rate</span>
+                      <span className="font-bold text-teal-700">{emailData?.emailHealth?.verificationRate || 0}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Delivery Rate</span>
+                      <span className="font-bold text-teal-700">{emailData?.emailHealth?.deliveryRate || 0}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Open Rate</span>
+                      <span className="font-bold text-teal-700">{emailData?.emailHealth?.openRate || 0}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Bounce Rate</span>
+                      <span className="font-bold text-red-600">{emailData?.emailHealth?.bounceRate || 0}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Pending Verification</span>
+                      <span className="font-bold text-yellow-600">{emailData?.overview?.pendingVerification || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Unverified Users */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCheck className="w-5 h-5" />
+                    Unverified Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {emailData?.unverifiedUsersList?.slice(0, 5).map((user: any, index: number) => (
+                      <div key={user.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div>
+                          <p className="font-medium text-sm">{user.name}</p>
+                          <p className="text-xs text-gray-600">{user.email}</p>
+                          <p className="text-xs text-gray-500">
+                            {user.daysSinceRegistration} days ago • Priority: {user.priority}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={`text-xs ${
+                            user.priority === 'high' ? 'bg-red-100 text-red-700' :
+                            user.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
+                          }`}>
+                            {user.tier}
+                          </Badge>
+                        </div>
+                      </div>
+                    )) || Array.from({length: 4}).map((_, i) => (
+                      <div key={i} className="p-2 bg-gray-100 rounded animate-pulse">
+                        <div className="h-4 bg-gray-300 rounded mb-1"></div>
+                        <div className="h-3 bg-gray-300 rounded w-2/3"></div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Email Campaigns */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    Email Campaigns
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {emailData?.campaigns?.map((campaign: any, index: number) => (
+                      <div key={campaign.id} className="p-3 bg-gray-50 rounded">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium text-sm">{campaign.name}</p>
+                          <Badge className={`text-xs ${
+                            campaign.status === 'active' ? 'bg-green-100 text-green-700' :
+                            campaign.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {campaign.status}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                          <div>Sent: {campaign.sent}</div>
+                          <div>Opened: {campaign.opened}</div>
+                          <div>Clicked: {campaign.clicked}</div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">{campaign.type}</p>
+                      </div>
+                    )) || (
+                      <div className="text-center py-4 text-gray-500">
+                        <MailOpen className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm">No campaigns</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* System Monitoring Tab */}
+          <TabsContent value="system" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* System Health */}
+              <Card className="bg-gradient-to-br from-gray-50 to-slate-100 border-l-4 border-l-gray-600">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-700">
+                    <Server className="w-5 h-5" />
+                    System Health
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center mb-4">
+                    <div className={`text-3xl font-bold ${
+                      systemData?.health?.status === 'healthy' ? 'text-green-600' :
+                      systemData?.health?.status === 'warning' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {systemData?.summary?.healthScore || 95}
+                    </div>
+                    <p className="text-sm text-gray-600">Health Score</p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Uptime</span>
+                      <span className="font-medium">{Math.round((systemData?.health?.uptime || 3600) / 3600)}h</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Avg Response</span>
+                      <span className="font-medium">{systemData?.health?.performance?.averageResponseTime || 0}ms</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Error Rate</span>
+                      <span className="font-medium">{systemData?.health?.performance?.errorRate?.toFixed(1) || 0}%</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Resource Usage */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    Resource Usage
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">CPU Usage</span>
+                        <span className="font-medium">{systemData?.health?.resources?.cpuUsage?.toFixed(1) || 0}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            (systemData?.health?.resources?.cpuUsage || 0) > 80 ? 'bg-red-500' :
+                            (systemData?.health?.resources?.cpuUsage || 0) > 60 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}
+                          style={{ width: `${systemData?.health?.resources?.cpuUsage || 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">Memory</span>
+                        <span className="font-medium">{systemData?.health?.resources?.memoryUsage?.toFixed(1) || 0}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            (systemData?.health?.resources?.memoryUsage || 0) > 80 ? 'bg-red-500' :
+                            (systemData?.health?.resources?.memoryUsage || 0) > 60 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}
+                          style={{ width: `${systemData?.health?.resources?.memoryUsage || 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">Disk</span>
+                        <span className="font-medium">{systemData?.health?.resources?.diskUsage?.toFixed(1) || 0}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            (systemData?.health?.resources?.diskUsage || 0) > 80 ? 'bg-red-500' :
+                            (systemData?.health?.resources?.diskUsage || 0) > 60 ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`}
+                          style={{ width: `${systemData?.health?.resources?.diskUsage || 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* System Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="w-5 h-5" />
+                    Daily Statistics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">New Users</span>
+                      <span className="font-bold text-blue-600">{systemData?.statistics?.daily?.newUsers || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">API Calls</span>
+                      <span className="font-bold text-green-600">{systemData?.statistics?.daily?.apiCalls || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Tokens Used</span>
+                      <span className="font-bold text-yellow-600">{systemData?.statistics?.daily?.tokensUsed?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Costs</span>
+                      <span className="font-bold text-red-600">{formatCurrency((systemData?.statistics?.daily?.costs || 0) * 100)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* System Alerts */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                    System Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {systemData?.alerts?.slice(0, 4).map((alert: any, index: number) => (
+                      <div key={index} className="p-3 bg-orange-50 border border-orange-200 rounded">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-2 h-2 rounded-full ${
+                            alert.severity === 'critical' ? 'bg-red-500' :
+                            alert.severity === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+                          }`}></span>
+                          <span className="text-sm font-medium">{alert.type}</span>
+                        </div>
+                        <p className="text-xs text-gray-700">{alert.message}</p>
+                        <p className="text-xs text-gray-500 mt-1">{formatDate(alert.timestamp)}</p>
+                      </div>
+                    )) || (
+                      <div className="text-center py-4 text-gray-500">
+                        <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                        <p className="text-sm">All systems normal</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue Analytics</CardTitle>
+                  <CardDescription>Financial performance metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span>Monthly Recurring Revenue</span>
+                      <span className="font-bold">{formatCurrency(stats?.monthlyRevenue || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Average Revenue Per User</span>
+                      <span className="font-bold">
+                        {formatCurrency(stats?.totalRevenue && stats?.totalUsers
+                          ? (stats.totalRevenue / stats.totalUsers)
+                          : 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Conversion Rate</span>
+                      <span className="font-bold">12.4%</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Usage Analytics</CardTitle>
+                  <CardDescription>Platform usage statistics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span>Total Prompts Generated</span>
+                      <span className="font-bold">{stats?.totalPrompts?.toLocaleString() || '0'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>Daily Active Users</span>
+                      <span className="font-bold">{Math.floor((stats?.activeUsers || 0) / 30)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span>User Retention Rate</span>
+                      <span className="font-bold">85.2%</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

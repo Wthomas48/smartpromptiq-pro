@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
-import Navigation from '@/components/Navigation';
 import PricingCard from '@/components/pricing/PricingCard';
 import TokenPurchase from '@/components/pricing/TokenPurchase';
 import UsageTracker from '@/components/UsageTracker';
@@ -331,8 +330,6 @@ export default function PricingPage() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
-        <Navigation />
-        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           {/* Hero Section */}
           <div className="text-center mb-16">
@@ -504,8 +501,6 @@ export default function PricingPage() {
   // Authenticated user view
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navigation />
-      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         {/* Header */}
         <div className="text-center mb-12">

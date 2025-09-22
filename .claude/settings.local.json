@@ -153,7 +153,11 @@
       "Bash(PORT=3333 node index.js)",
       "Bash(PORT=3333 node index.cjs)",
       "Bash(PORT=8080 node server.cjs)",
-      "Bash(start \"\" \"http://localhost:8080/generate\")"
+      "Bash(start \"\" \"http://localhost:8080/generate\")",
+      "Bash(start \"\" \"http://localhost:8080/admin/login\")",
+      "Bash(start \"\" \"http://localhost:5174/admin/login\")",
+      "Bash(start \"\" \"http://localhost:5173/pricing\")",
+      "Bash(start \"\" \"http://localhost:5174/register\")"
     ],
     "deny": [],
     "ask": []

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { authAPI } from "@/config/api";
 import { Sparkles, Rocket, Crown, Eye, EyeOff, Lock, Mail, User, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function Register() {
@@ -82,22 +83,18 @@ export default function Register() {
     }
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-        }),
+      console.log('🔍 Register: Attempting signup with authAPI...');
+
+      const data = await authAPI.signup({
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
       });
 
-      const data = await response.json();
+      console.log('🔍 Register: Signup response:', data);
 
-      if (!response.ok) {
+      if (!data.success) {
         throw new Error(data.message || "Registration failed");
       }
 
@@ -106,7 +103,7 @@ export default function Register() {
       setShowSuccess(true);
 
       // If registration successful, log them in automatically
-      if (data.token) {
+      if (data.data && data.data.token) {
         setTimeout(async () => {
           await login(formData.email, formData.password);
           toast({

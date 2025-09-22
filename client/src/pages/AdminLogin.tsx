@@ -29,7 +29,7 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      // Use the proper authentication API
+      // Use the proper authentication API for admin login
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -38,7 +38,8 @@ export default function AdminLogin() {
         credentials: 'include',
         body: JSON.stringify({
           email: credentials.email,
-          password: credentials.password
+          password: credentials.password,
+          isAdminLogin: true  // Flag to indicate this is admin login
         })
       });
 
@@ -66,16 +67,19 @@ export default function AdminLogin() {
           localStorage.setItem('token', data.data.token);
           localStorage.setItem('user', JSON.stringify(data.data.user));
 
-          // Refresh auth context state
-          await checkAuth();
-
           toast({
             title: "Admin Access Granted",
             description: "Welcome back, Administrator!",
           });
 
-          // Redirect to admin dashboard
+          // Force immediate redirect to admin dashboard
+          console.log('🚀 Admin login successful, redirecting to /admin');
           setLocation('/admin');
+
+          // Update auth context after redirect to prevent useAuth from overriding
+          setTimeout(() => {
+            checkAuth();
+          }, 100);
         } else {
           toast({
             title: "Access Denied",

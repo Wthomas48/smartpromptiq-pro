@@ -41,6 +41,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 console.log('📡 Server will start on PORT:', PORT);
+console.log('🔄 Admin routes updated - force restart');
 
 // Security middleware
 app.use(helmet());

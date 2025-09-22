@@ -7,44 +7,70 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Root route - Fixed to show proper webpage
+// Root route - Clean version without health page reference
 app.get('/', (req, res) => {
   res.send(`
+    <!DOCTYPE html>
     <html>
-    <head><title>SmartPromptiq Pro</title></head>
-    <body style="font-family: Arial; margin: 50px; background: #f0f2f5;">
-      <h1>🚀 SmartPromptiq Pro</h1>
-      <p><strong>Status:</strong> ✅ Server Running</p>
-      <p><strong>Time:</strong> ${new Date()}</p>
-      <h3>API Endpoints:</h3>
-      <ul>
-        <li><a href="/api/health">Health Check</a></li>
-        <li><a href="/api/info">API Info</a></li>
-      </ul>
+    <head>
+      <title>SmartPromptiq Pro</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .container { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; max-width: 600px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 30px; }
+        .status { background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .feature { background: rgba(255,255,255,0.15); padding: 15px; margin: 10px 0; border-radius: 8px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🚀 SmartPromptiq Pro</h1>
+        <div class="status">
+          <strong>Status:</strong> ✅ Live and Running<br>
+          <strong>Version:</strong> 2.0.0<br>
+          <strong>Updated:</strong> ${new Date().toLocaleString()}
+        </div>
+        
+        <h3>🎯 AI-Powered Prompt Optimization</h3>
+        <div class="feature">
+          <strong>✨ Smart Prompts</strong><br>
+          Generate optimized prompts for better AI responses
+        </div>
+        <div class="feature">
+          <strong>🔧 Prompt Refinement</strong><br>
+          Automatically enhance your prompts for maximum effectiveness  
+        </div>
+        <div class="feature">
+          <strong>📊 Performance Analytics</strong><br>
+          Track and measure your prompt performance
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+          <p>🎉 Your SmartPromptiq Pro platform is ready!</p>
+        </div>
+      </div>
     </body>
     </html>
   `);
 });
 
-// Health endpoint  
+// Keep health endpoint for Railway but don't show it on main page
 app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// API info endpoint  
+app.get('/api/info', (req, res) => {
   res.json({
-    status: 'OK',
-    message: 'Server is healthy',
+    name: 'SmartPromptiq Pro API',
+    version: '2.0.0',
+    description: 'AI-powered prompt optimization platform',
+    status: 'operational',
     timestamp: new Date().toISOString()
   });
 });
 
-// Info endpoint
-app.get('/api/info', (req, res) => {
-  res.json({
-    name: 'SmartPromptiq Pro',
-    version: '1.0.0',
-    status: 'running'
-  });
-});
-
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🌐 Visit: http://localhost:${PORT}`);
+  console.log(`✅ SmartPromptiq Pro running on port ${PORT}`);
+  console.log(`🌐 Version 2.0.0 deployed successfully`);
 });
