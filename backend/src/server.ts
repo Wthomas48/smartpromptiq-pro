@@ -208,6 +208,39 @@ app.get('/api/health', (req, res) => {
   }
 });
 
+// Frontend health check - verifies that static files are properly served
+app.get('/frontend-health', (req, res) => {
+  console.log('🔍 Frontend health check accessed');
+  try {
+    const fs = require('fs');
+    const path = require('path');
+
+    // Check if client build directory exists
+    const clientDistPath = path.join(__dirname, '../../client/dist');
+    const indexExists = fs.existsSync(path.join(clientDistPath, 'index.html'));
+    const healthExists = fs.existsSync(path.join(clientDistPath, 'health.json'));
+
+    res.status(200).json({
+      status: indexExists ? 'healthy' : 'unhealthy',
+      frontend: {
+        buildExists: fs.existsSync(clientDistPath),
+        indexHtml: indexExists,
+        healthJson: healthExists,
+        buildPath: clientDistPath
+      },
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
+    });
+  } catch (error) {
+    console.error('❌ Frontend health check error:', error);
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 app.get('/api', (req, res) => {
   res.json({
     message: 'SmartPromptIQ Pro Backend API',

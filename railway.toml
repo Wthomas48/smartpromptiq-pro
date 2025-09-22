@@ -1,6 +1,9 @@
-﻿[build]
-builder = "DOCKERFILE"
+[build]
+builder = "nixpacks"
+buildCommand = "npm install && cd client && npm install && npm run build && cd .."
 
 [deploy]
-healthcheckPath = "/health"
-restartPolicyType = "ON_FAILURE"
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+port = 8080
