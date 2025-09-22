@@ -27,8 +27,20 @@ import categoryRoutes from './routes/categories';
 
 dotenv.config();
 
+// 🔍 DEBUG: Enhanced startup logging for Railway deployment
+console.log('🚀 STARTUP DEBUG INFO:');
+console.log('📍 Current working directory:', process.cwd());
+console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+console.log('🔌 PORT from env:', process.env.PORT);
+console.log('🏗️ Railway environment variables:');
+console.log('   RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
+console.log('   RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME);
+console.log('   RAILWAY_SERVICE_NAME:', process.env.RAILWAY_SERVICE_NAME);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+console.log('📡 Server will start on PORT:', PORT);
 
 // Security middleware
 app.use(helmet());
@@ -148,18 +160,52 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
+// Health check endpoint - Enhanced for Railway deployment debugging
 app.get('/health', (req, res) => {
+  console.log('🔍 Health check accessed via /health');
   res.status(200).json({
+    status: 'healthy',
     success: true,
     message: 'Backend is healthy',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV,
+    port: PORT,
+    memory: process.memoryUsage(),
+    railway: {
+      environment: process.env.RAILWAY_ENVIRONMENT,
+      projectName: process.env.RAILWAY_PROJECT_NAME,
+      serviceName: process.env.RAILWAY_SERVICE_NAME
+    }
   });
 });
 
-// API info
+// API health check endpoint - Enhanced for Railway deployment debugging
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
+  console.log('🔍 Health check accessed via /api/health');
+  try {
+    res.status(200).json({
+      status: 'healthy',
+      success: true,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV,
+      port: PORT,
+      version: '1.0.0',
+      endpoints: {
+        health: '/health',
+        apiHealth: '/api/health',
+        apiInfo: '/api'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.get('/api', (req, res) => {
@@ -239,10 +285,13 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
 });
 
 // Start server
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
+  console.log(`🔗 Health check available at: http://localhost:${PORT}/api/health`);
+  console.log(`🏠 Root endpoint available at: http://localhost:${PORT}/`);
+  console.log(`🛡️ Server bound to 0.0.0.0:${PORT} for Railway compatibility`);
   console.log(`🔗 Health Check: http://localhost:${PORT}/health`);
   console.log(`🔗 API Info: http://localhost:${PORT}/api`);
 
