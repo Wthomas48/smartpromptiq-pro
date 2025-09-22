@@ -553,13 +553,45 @@ app.get('/api/health', (req, res) => {
 
 // Demo API endpoints (simplified)
 app.post('/api/auth/login', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      token: 'demo-token',
-      user: { id: 'demo', email: 'demo@example.com', firstName: 'Demo', lastName: 'User' }
-    }
-  });
+  console.log('🔐 Auth login request:', req.body);
+
+  const { email, password } = req.body;
+
+  // Check for admin credentials
+  const isAdmin = email === 'admin@smartpromptiq.com' || email === 'admin@example.com';
+
+  // Demo authentication logic
+  if (email && password) {
+    const userData = isAdmin ? {
+      id: 'admin-demo',
+      email: email,
+      firstName: 'Admin',
+      lastName: 'User',
+      role: 'ADMIN',
+      tokenBalance: 10000,
+      permissions: ['all']
+    } : {
+      id: 'demo',
+      email: email,
+      firstName: 'Demo',
+      lastName: 'User',
+      role: 'USER',
+      tokenBalance: 1000
+    };
+
+    res.json({
+      success: true,
+      data: {
+        token: 'demo-token',
+        user: userData
+      }
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      message: 'Email and password are required'
+    });
+  }
 });
 
 app.post('/api/auth/register', (req, res) => {
@@ -600,6 +632,207 @@ app.get('/api/auth/me', (req, res) => {
         generationsLimit: 50000
       }
     }
+  });
+});
+
+// ===== ADMIN ENDPOINTS =====
+
+// Admin stats endpoint
+app.get('/api/admin/stats', (req, res) => {
+  console.log('📊 Admin stats request');
+
+  const demoStats = {
+    totalUsers: 8947,
+    activeUsers: 2341,
+    totalPrompts: 47283,
+    revenue: 125840,
+    systemHealth: 'healthy',
+    apiCalls: 156789,
+    subscriptions: {
+      free: 6847,
+      starter: 1200,
+      pro: 650,
+      business: 180,
+      enterprise: 70
+    },
+    systemInfo: {
+      uptime: '15 days, 7 hours',
+      version: '2.1.4',
+      lastBackup: '2 hours ago',
+      environment: 'production'
+    },
+    realTimeMetrics: {
+      cpuUsage: 45,
+      memoryUsage: 68,
+      diskUsage: 23,
+      networkTraffic: 1250,
+      activeConnections: 234,
+      responseTime: 180,
+      errorRate: 0.3,
+      throughput: 450
+    }
+  };
+
+  res.json({
+    success: true,
+    data: demoStats
+  });
+});
+
+// Admin users endpoint
+app.get('/api/admin/users', (req, res) => {
+  console.log('👥 Admin users request');
+
+  const demoUsers = [
+    {
+      id: 'user-1',
+      email: 'john.doe@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+      role: 'USER',
+      subscriptionTier: 'pro',
+      tokenBalance: 850,
+      lastActive: '2 hours ago',
+      totalPrompts: 45,
+      lastLogin: '2025-09-22',
+      country: 'USA'
+    },
+    {
+      id: 'user-2',
+      email: 'sarah.wilson@company.com',
+      firstName: 'Sarah',
+      lastName: 'Wilson',
+      role: 'USER',
+      subscriptionTier: 'business',
+      tokenBalance: 2340,
+      lastActive: '1 hour ago',
+      totalPrompts: 127,
+      lastLogin: '2025-09-22',
+      country: 'Canada'
+    },
+    {
+      id: 'admin-demo',
+      email: 'admin@smartpromptiq.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      role: 'ADMIN',
+      subscriptionTier: 'enterprise',
+      tokenBalance: 10000,
+      lastActive: 'Now',
+      totalPrompts: 0,
+      lastLogin: '2025-09-22',
+      country: 'USA'
+    }
+  ];
+
+  res.json({
+    success: true,
+    data: demoUsers
+  });
+});
+
+// Admin user analytics endpoint
+app.get('/api/admin/user-analytics', (req, res) => {
+  console.log('📈 Admin analytics request');
+
+  const demoAnalytics = {
+    totalUsers: 8947,
+    newUsersToday: 23,
+    activeUsersToday: 1567,
+    avgSessionDuration: '12 minutes',
+    topCountries: ['USA', 'Canada', 'UK', 'Germany', 'France'],
+    userGrowth: [
+      { month: 'Jan', users: 5200 },
+      { month: 'Feb', users: 6100 },
+      { month: 'Mar', users: 7300 },
+      { month: 'Apr', users: 8947 }
+    ]
+  };
+
+  res.json({
+    success: true,
+    data: demoAnalytics
+  });
+});
+
+// Admin active sessions endpoint
+app.get('/api/admin/active-sessions', (req, res) => {
+  console.log('🔗 Admin sessions request');
+
+  const demoSessions = [
+    {
+      id: 'session-1',
+      userId: 'user-1',
+      email: 'john.doe@example.com',
+      currentPage: '/generate',
+      sessionDuration: 145,
+      activityScore: 85,
+      ipAddress: '192.168.1.1',
+      device: 'Chrome/Windows'
+    },
+    {
+      id: 'session-2',
+      userId: 'user-2',
+      email: 'sarah.wilson@company.com',
+      currentPage: '/dashboard',
+      sessionDuration: 67,
+      activityScore: 92,
+      ipAddress: '10.0.0.1',
+      device: 'Safari/macOS'
+    }
+  ];
+
+  res.json({
+    success: true,
+    data: demoSessions
+  });
+});
+
+// Admin activities endpoint
+app.get('/api/admin/activities', (req, res) => {
+  console.log('📋 Admin activities request');
+
+  const demoActivities = [
+    {
+      id: 'act-1',
+      type: 'user_registration',
+      message: 'New user registered: alice@example.com',
+      timestamp: new Date().toISOString(),
+      userId: 'user-3'
+    },
+    {
+      id: 'act-2',
+      type: 'prompt_generated',
+      message: 'High-value prompt generated by john.doe@example.com',
+      timestamp: new Date(Date.now() - 1800000).toISOString(),
+      userId: 'user-1'
+    },
+    {
+      id: 'act-3',
+      type: 'subscription_upgrade',
+      message: 'User upgraded to Pro plan: sarah.wilson@company.com',
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      userId: 'user-2'
+    }
+  ];
+
+  res.json({
+    success: true,
+    data: demoActivities
+  });
+});
+
+// Admin actions endpoint
+app.post('/api/admin/actions/:action', (req, res) => {
+  console.log('⚡ Admin action request:', req.params.action, req.body);
+
+  const { action } = req.params;
+  const { data } = req.body;
+
+  res.json({
+    success: true,
+    message: `Admin action '${action}' executed successfully`,
+    data: { action, processed: data }
   });
 });
 
