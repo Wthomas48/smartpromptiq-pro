@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,14 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Eye, EyeOff, Lock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import Logo from "@/components/Logo";
 
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { login, isAuthenticated, user, checkAuth } = useAuth();
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already authenticated as admin
+  React.useEffect(() => {
+    if (isAuthenticated && user?.role === 'ADMIN') {
+      setLocation('/admin');
+    }
+  }, [isAuthenticated, user, setLocation]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +51,9 @@ export default function AdminLogin() {
           localStorage.setItem('token', data.data.token);
           localStorage.setItem('user', JSON.stringify(data.data.user));
 
+          // Refresh auth context state
+          await checkAuth();
+
           toast({
             title: "Admin Access Granted",
             description: "Welcome back, Administrator!",
@@ -65,14 +77,23 @@ export default function AdminLogin() {
       }
     } catch (error) {
       console.error('Admin login error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to verify admin credentials.",
-        variant: "destructive"
-      });
+
+      // Check if the user was authenticated but doesn't have admin role
+      if (isAuthenticated && user && user.role !== 'ADMIN') {
+        toast({
+          title: "Access Denied",
+          description: "Admin role required.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to verify admin credentials.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
-      setCredentials({ email: "", password: "" });
     }
   };
 
