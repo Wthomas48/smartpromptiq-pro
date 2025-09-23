@@ -153,8 +153,8 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       throw new Error('Network error - please check your internet connection');
     }
 
-    // In production, if the API call fails, provide fallback behavior
-    if (!import.meta.env.DEV && (error.message.includes('fetch') || error.message.includes('network'))) {
+    // TEMPORARILY DISABLED: In production, if the API call fails, provide fallback behavior
+    if (false && !import.meta.env.DEV && (error.message.includes('fetch') || error.message.includes('network'))) {
       console.warn(`🔄 Production API fallback for ${url}`);
 
       // Return mock responses for auth endpoints in production when backend is unavailable
