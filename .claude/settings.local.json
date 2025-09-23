@@ -161,7 +161,8 @@
       "Bash(start \"\" \"http://localhost:5174/signin?mode=signup\")",
       "Bash(supabase:*)",
       "Bash(npx supabase:*)",
-      "Bash(PORT=5173 npm run dev)"
+      "Bash(PORT=5173 npm run dev)",
+      "WebFetch(domain:smartpromptiq.com)"
     ],
     "deny": [],
     "ask": []

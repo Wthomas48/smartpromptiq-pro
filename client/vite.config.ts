@@ -9,6 +9,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src')
     }
   },
+  define: {
+    // Explicitly define Supabase environment variables for production
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || 'https://ycpvdoktcoejmywqfwwy.supabase.co'),
+    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljcHZkb2t0Y29lam15d3Fmd3d5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjcxMjkzNTEsImV4cCI6MjA0MjcwNTM1MX0.VQNqWP5PjNpYJVBHH2g0HTpKAhW1dE1Kg-T_lI-7huw')
+  },
   server: {
     port: 5173,
     strictPort: false,
