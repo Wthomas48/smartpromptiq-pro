@@ -242,6 +242,8 @@ export const authAPI = {
       const response = await apiRequest('POST', '/api/auth/register', userData);
       const data = await response.json();
 
+      console.log('🔍 Raw response:', response);
+      console.log('🔍 Response data:', data);
       console.log('🔍 Raw signup response:', data);
 
       // ✅ USE SAFE UTILITY: Process user data safely
