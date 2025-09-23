@@ -1,6 +1,6 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "deploy": {
-    "startCommand": "node server.cjs"
+    "startCommand": "cd backend && npm install && npx ts-node src/server.ts"
   }
 }

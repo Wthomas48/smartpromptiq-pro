@@ -1,308 +1,508 @@
-/**
- * API Configuration for different environments
- */
+﻿import React, { useState, useEffect, createContext, useContext } from "react";
+import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, authAPI } from "@/config/api";
+import { ensureSafeUser, isValidUser } from "@/utils/safeDataUtils";
 
-// Enhanced: Comprehensive environment configuration with host validation
-const config = {
-  // Allowed hosts for different environments
-  allowedHosts: [
-    'localhost',
-    '127.0.0.1',
-    'smartpromptiq.up.railway.app',
-    'smartpromptiq-pro.up.railway.app',
-    'smartpromptiq.railway.app',
-    'smartpromptiq-pro.railway.app'
-  ],
+interface User {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+  subscriptionTier?: string;
+  tokenBalance?: number;
+  stripeCustomerId?: string;
+  subscriptionStatus?: string;
+  role?: 'USER' | 'ADMIN';
+}
 
-  // Development ports
-  devPorts: [3000, 5000, 5001, 5002, 5004, 5173, 8080],
+interface AuthContextType {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: User | null;
+  token: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
+  logout: () => void;
+  checkAuth: () => Promise<void>;
+  updateTokenBalance: (newBalance: number) => void;
+  updateUser: (userData: any) => void;
+  isAdmin: () => boolean;
+  refreshUserData: () => Promise<void>;
+}
 
-  // Production API patterns
-  productionPatterns: [
-    '.railway.app',
-    '.vercel.app',
-    '.netlify.app',
-    '.herokuapp.com'
-  ]
-};
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Determine the API base URL based on environment with enhanced validation
-export const getApiBaseUrl = (): string => {
-  // Check environment variables
-  console.log('🔍 ENV CHECK:', {
-    VITE_API_URL: import.meta.env.VITE_API_URL,
-    NODE_ENV: import.meta.env.NODE_ENV,
-    DEV: import.meta.env.DEV,
-    PROD: import.meta.env.PROD,
-    BASE_URL: import.meta.env.BASE_URL,
-    MODE: import.meta.env.MODE
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  // ✅ Fixed: Proper state initialization with safe defaults
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  // ✅ NEW: Comprehensive debugging function for user data validation
+  const debugUserData = (user: any, location: string) => {
+    console.log(`🔍 User data at ${location}:`, {
+      user,
+      hasUser: !!user,
+      userType: typeof user,
+      hasRole: !!user?.role,
+      roleValue: user?.role,
+      roleType: typeof user?.role,
+      hasRoles: !!user?.roles,
+      rolesValue: user?.roles,
+      rolesType: typeof user?.roles,
+      rolesIsArray: Array.isArray(user?.roles),
+      rolesLength: Array.isArray(user?.roles) ? user.roles.length : 'N/A',
+      hasPermissions: !!user?.permissions,
+      permissionsValue: user?.permissions,
+      permissionsType: typeof user?.permissions,
+      permissionsIsArray: Array.isArray(user?.permissions),
+      permissionsLength: Array.isArray(user?.permissions) ? user.permissions.length : 'N/A',
+      email: user?.email,
+      firstName: user?.firstName,
+      lastName: user?.lastName
+    });
+  };
+
+  // Environment check on component mount
+  console.log('🔍 AUTH ENV CHECK:', {
+    isClient: typeof window !== 'undefined',
+    hasLocalStorage: typeof localStorage !== 'undefined',
+    currentUrl: typeof window !== 'undefined' ? window.location.href : 'SSR',
   });
 
-  // In development, use the current origin (Vite proxy handles /api routes)
-  if (import.meta.env.DEV) {
-    return '';
-  }
+  const checkAuth = async () => {
+    try {
+      setIsLoading(true);
+      console.log("Checking auth...");
 
-  // In production, determine backend URL with enhanced validation
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const origin = window.location.origin;
+      // Check for auth token in localStorage
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
 
-    console.log('🌐 Host validation:', {
-      hostname,
-      origin,
-      isAllowedHost: config.allowedHosts.includes(hostname)
-    });
+      if (storedToken && storedUser) {
+        const storedUserData = JSON.parse(storedUser);
+        debugUserData(storedUserData, 'checkAuth - STORED user data');
 
-    // Check if hostname is in allowed hosts
-    if (config.allowedHosts.includes(hostname)) {
-      console.log('✅ Host validation passed for:', hostname);
+        try {
+          // ✅ ENHANCED: Verify token with backend using authAPI.me
+          console.log('🔍 checkAuth: Verifying token with backend...');
+          const data = await authAPI.me();
+
+          if (data.success && (data.data?.user || data.user)) {
+            const backendUserData = data.data?.user || data.user;
+            debugUserData(backendUserData, 'checkAuth - BACKEND user data');
+
+            // Merge stored user data with backend data, prioritizing stored data for names
+            const mergedUserData = {
+              ...backendUserData,
+              // Prioritize stored firstName/lastName if they exist and backend doesn't have them
+              firstName: storedUserData.firstName || backendUserData.firstName,
+              lastName: storedUserData.lastName || backendUserData.lastName,
+            };
+
+            debugUserData(mergedUserData, 'checkAuth - MERGED user data');
+
+            setToken(storedToken);
+            setIsAuthenticated(true);
+
+            // Use centralized updateUser for consistent data processing
+            updateUser(mergedUserData);
+
+            console.log("✅ User authenticated with merged data:", mergedUserData);
+            debugUserData(mergedUserData, 'checkAuth - AFTER updateUser (merged)');
+            return;
+          }
+        } catch (backendError: any) {
+          console.log("⚠️ Backend auth check failed:", backendError);
+
+          // Check if it's an invalid token error
+          if (backendError.message && backendError.message.includes('Invalid token')) {
+            console.log("🧹 Invalid token detected, clearing auth data...");
+            // Clear invalid token and user data
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            setIsAuthenticated(false);
+            setUser(null);
+            setToken(null);
+            setIsLoading(false);
+            return;
+          }
+
+          debugUserData(storedUserData, 'checkAuth - BACKEND ERROR, using stored');
+        }
+
+        // ✅ ENHANCED: Fallback to stored data if backend is unavailable
+        debugUserData(storedUserData, 'checkAuth - FALLBACK to stored data');
+        setToken(storedToken);
+        setIsAuthenticated(true);
+
+        // Use centralized updateUser for consistent data processing
+        updateUser(storedUserData);
+
+        console.log("✅ User authenticated from storage:", storedUserData);
+        debugUserData(storedUserData, 'checkAuth - AFTER updateUser (stored)');
+      } else {
+        console.log("No token found");
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      setIsAuthenticated(false);
+      setUser(null);
+      setToken(null);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    // If running on localhost in production, connect to backend on correct port
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-      console.log('🔗 Using localhost API URL:', apiUrl);
-      return apiUrl;
-    }
+  // Clear any invalid tokens on app startup
+  useEffect(() => {
+    const clearInvalidTokens = () => {
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
 
-    // For production deployments, check patterns
-    const isProductionDomain = config.productionPatterns.some(pattern =>
-      hostname.includes(pattern)
-    );
+      // If we have a token but no user data, or vice versa, clear both
+      if ((storedToken && !storedUser) || (!storedToken && storedUser)) {
+        console.log("🧹 Inconsistent auth data detected, clearing...");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
+        return;
+      }
 
-    if (isProductionDomain) {
-      console.log('✅ Production domain detected:', hostname);
-      // For Railway/Vercel/Netlify deployment, use same origin (backend serves frontend)
-      return import.meta.env.VITE_API_URL || '';
-    }
-
-    // For other deployed environments, use environment variable or same origin
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    console.log('🔗 Using configured API URL:', apiUrl);
-    return apiUrl;
-  }
-
-  return '';
-};
-
-// Enhanced: Robust API request wrapper with comprehensive data validation
-export const apiRequest = async (method: string, url: string, body?: any) => {
-  const baseUrl = getApiBaseUrl();
-  const fullUrl = `${baseUrl}${url}`;
-
-  console.log(`🌐 API Request: ${method} ${fullUrl}`);
-  console.log(`🌐 Environment: ${import.meta.env.DEV ? 'Development' : 'Production'}`);
-  console.log(`🌐 Base URL: ${baseUrl}`);
-
-  try {
-    const options: RequestInit = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Origin': typeof window !== 'undefined' ? window.location.origin : '',
-        // Add production headers for better compatibility
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-      },
-      credentials: 'include',
-      mode: 'cors',
+      // If we have both but the token looks invalid (too short, malformed, etc.)
+      if (storedToken && storedToken.length < 20) {
+        console.log("🧹 Invalid token format detected, clearing...");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
+        return;
+      }
     };
 
-    // Add auth token if available
-    const token = localStorage.getItem('token');
-    if (token) {
-      options.headers = {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`,
-      };
+    clearInvalidTokens();
+    checkAuth();
+  }, []);
+
+  // ✅ ENHANCED: Login using the new authAPI with comprehensive data validation
+  const login = async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      console.log("🔐 Attempting login:", { email });
+
+      // Use enhanced authAPI.signin with built-in data validation
+      const data = await authAPI.signin({ email, password });
+
+      console.log('🔍 LOGIN RESPONSE (validated):', data);
+
+      // ✅ FIXED: Handle both response formats - direct and nested data
+      if (data.success) {
+        // Handle direct format: {success: true, token: 'xxx', user: {...}}
+        let userData, authToken;
+
+        if (data.data) {
+          // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
+          userData = data.data.user;
+          authToken = data.data.token;
+        } else {
+          // Direct format: {success: true, user: {...}, token: 'xxx'}
+          userData = data.user;
+          authToken = data.token;
+        }
+
+        debugUserData(userData, 'login - RAW userData from API');
+
+        if (!authToken) {
+          console.error('❌ Login failed: No authentication token received');
+          throw new Error('No authentication token received');
+        }
+
+        if (!userData) {
+          console.error('❌ Login failed: No user data received');
+          throw new Error('No user data received');
+        }
+
+        console.log('🔍 Login debug - validated backend response:', {
+          email,
+          userData,
+          userDataRole: userData.role,
+          userDataRoles: userData.roles,
+          userDataPermissions: userData.permissions,
+          timestamp: new Date().toISOString()
+        });
+
+        debugUserData(userData, 'login - BEFORE updateUser call');
+
+        // Store token and use updateUser for consistent data processing
+        localStorage.setItem("token", authToken);
+        setToken(authToken);
+        setIsAuthenticated(true);
+
+        // Use the centralized updateUser function for consistent validation
+        updateUser(userData);
+
+        debugUserData(userData, 'login - AFTER updateUser call');
+
+        toast({
+          title: "Welcome back!",
+          description: `Signed in as ${userData.firstName || userData.email.split('@')[0]} ${userData.role === 'ADMIN' ? '(Admin)' : ''}`,
+        });
+
+        // Add a small delay to see final state before redirect
+        setTimeout(() => {
+          debugUserData(user, 'login - FINAL STATE before redirect');
+          // Don't redirect if user is admin (let admin login handle redirect)
+          if (userData.role !== 'ADMIN') {
+            setLocation("/dashboard");
+          }
+        }, 100);
+      } else {
+        console.error('❌ Login failed: Invalid response format', data);
+        throw new Error(data.message || 'Login failed - invalid response format');
+      }
+    } catch (error: any) {
+      console.error("❌ Login failed:", error);
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ✅ ENHANCED: Signup function using authAPI with comprehensive data validation
+  const signup = async (email: string, password: string, firstName?: string, lastName?: string) => {
+    try {
+      setIsLoading(true);
+      console.log("🔐 Attempting signup:", { email, firstName, lastName });
+
+      // Use enhanced authAPI.signup with built-in data validation
+      const data = await authAPI.signup({ email, password, firstName, lastName });
+
+      console.log('🔍 SIGNUP RESPONSE (validated):', data);
+
+      // ✅ FIXED: Handle both response formats - direct and nested data
+      if (data.success) {
+        // Handle direct format: {success: true, token: 'xxx', user: {...}}
+        let userData, authToken;
+
+        if (data.data) {
+          // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
+          userData = data.data.user;
+          authToken = data.data.token;
+        } else {
+          // Direct format: {success: true, user: {...}, token: 'xxx'}
+          userData = data.user;
+          authToken = data.token;
+        }
+
+        debugUserData(userData, 'signup - RAW userData from API');
+
+        if (!authToken) {
+          console.error('❌ Signup failed: No authentication token received');
+          throw new Error('No authentication token received');
+        }
+
+        if (!userData) {
+          console.error('❌ Signup failed: No user data received');
+          throw new Error('No user data received');
+        }
+
+        console.log('🔍 Signup debug - validated backend response:', {
+          email,
+          userData,
+          userDataRole: userData.role,
+          userDataRoles: userData.roles,
+          userDataPermissions: userData.permissions,
+          timestamp: new Date().toISOString()
+        });
+
+        debugUserData(userData, 'signup - BEFORE updateUser call');
+
+        // Store token and use updateUser for consistent data processing
+        localStorage.setItem("token", authToken);
+        setToken(authToken);
+        setIsAuthenticated(true);
+
+        // Use the centralized updateUser function for consistent validation
+        updateUser(userData);
+
+        debugUserData(userData, 'signup - AFTER updateUser call');
+
+        toast({
+          title: "Welcome to SmartPromptIQ!",
+          description: `Account created for ${userData.firstName || userData.email.split('@')[0]}! 🎉`,
+        });
+
+        // Add a small delay to see final state before redirect
+        setTimeout(() => {
+          debugUserData(user, 'signup - FINAL STATE before redirect');
+          // Redirect to dashboard
+          setLocation("/dashboard");
+        }, 100);
+      } else {
+        console.error('❌ Signup failed: Invalid response format', data);
+        throw new Error(data.message || 'Signup failed - invalid response format');
+      }
+    } catch (error: any) {
+      console.error("❌ Signup failed:", error);
+      toast({
+        title: "Signup failed",
+        description: error.message || "Please check your information",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      // Clear local state
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setIsAuthenticated(false);
+      setUser(null);
+      setToken(null);
+
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+
+      // Redirect to home
+      setLocation("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  // ✅ ENHANCED: Centralized user data update using safe utilities
+  const updateUser = (userData: any) => {
+    debugUserData(userData, 'updateUser - BEFORE processing');
+
+    if (!userData) {
+      console.warn('⚠️ updateUser called with null/undefined userData');
+      debugUserData(userData, 'updateUser - NULL/UNDEFINED userData');
+      return;
     }
 
-    if (body) {
-      options.body = JSON.stringify(body);
-      console.log(`🌐 Request Body:`, body);
+    // ✅ USE SAFE UTILITY: Ensure safe data structure with comprehensive validation
+    const safeUser = ensureSafeUser(userData);
+
+    if (!safeUser) {
+      console.error('❌ updateUser: ensureSafeUser returned null');
+      return;
     }
 
-    const response = await fetch(fullUrl, options);
-    console.log(`🌐 Response Status: ${response.status} ${response.statusText}`);
-    console.log(`🌐 Response Headers:`, Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({
-        message: `Request failed with status ${response.status}`,
-        status: response.status,
-        statusText: response.statusText
-      }));
-      console.error(`❌ API Error Response:`, errorData);
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    // ✅ VALIDATE: Ensure the user object is valid
+    if (!isValidUser(safeUser)) {
+      console.error('❌ updateUser: Invalid user object after safety processing:', safeUser);
+      return;
     }
 
-    return response;
-  } catch (error) {
-    console.error(`❌ API Error for ${fullUrl}:`, error);
+    debugUserData(safeUser, 'updateUser - AFTER processing (safeUser)');
 
-    // Enhanced error handling with network detection
-    if (error.name === 'AbortError') {
-      throw new Error('Request timeout - please check your connection');
+    console.log('🔍 Setting safe user data:', safeUser);
+    setUser(safeUser);
+    localStorage.setItem("user", JSON.stringify(safeUser));
+
+    // Debug the state immediately after setting
+    setTimeout(() => {
+      debugUserData(safeUser, 'updateUser - AFTER setState (immediate)');
+    }, 0);
+  };
+
+  const updateTokenBalance = (newBalance: number) => {
+    if (user) {
+      const updatedUser = { ...user, tokenBalance: newBalance };
+      updateUser(updatedUser);
+    }
+  };
+
+  // ✅ STREAMLINED: Safe isAdmin function as requested by user
+  const isAdmin = () => {
+    if (!user) return false;
+
+    // Safe single role check
+    if (user.role) {
+      return user.role === 'admin' || user.role === 'ADMIN' || user.role?.name === 'admin';
     }
 
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('Network error - please check your internet connection');
-    }
+    // Safe multiple roles check
+    const roles = user.roles || [];
+    return roles.some(role => {
+      if (typeof role === 'string') return role === 'admin' || role === 'ADMIN';
+      if (role && typeof role === 'object') return role.name === 'admin' || role.name === 'ADMIN';
+      return false;
+    });
+  };
 
-    // In production, if the API call fails, provide fallback behavior
-    if (!import.meta.env.DEV && (error.message.includes('fetch') || error.message.includes('network'))) {
-      console.warn(`🔄 Production API fallback for ${url}`);
+  const refreshUserData = async () => {
+    try {
+      const authToken = localStorage.getItem("token");
+      if (!authToken) return;
 
-      // Return mock responses for auth endpoints in production when backend is unavailable
-      if (url.includes('/api/auth/login') || url.includes('/api/auth/register')) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            success: true,
-            data: {
-              user: {
-                id: 'demo-user',
-                email: body?.email || 'demo@example.com',
-                firstName: body?.firstName || 'Demo',
-                lastName: body?.lastName || 'User',
-                role: 'USER',
-                roles: [],
-                permissions: []
-              },
-              token: 'demo-token-' + Date.now()
-            }
-          })
-        };
+      const data = await authAPI.me();
+
+      if (data.success && (data.data?.user || data.user)) {
+        const updatedUser = data.data?.user || data.user;
+        updateUser(updatedUser);
+      }
+    } catch (error: any) {
+      console.error("Failed to refresh user data:", error);
+
+      // If it's an invalid token error, clear auth data
+      if (error.message && error.message.includes('Invalid token')) {
+        console.log("🧹 Invalid token in refreshUserData, clearing auth data...");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setIsAuthenticated(false);
+        setUser(null);
+        setToken(null);
       }
     }
+  };
 
-    throw error;
-  }
+  return (
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      isLoading,
+      user,
+      token,
+      login,
+      signup,
+      logout,
+      checkAuth,
+      updateTokenBalance,
+      updateUser,
+      isAdmin,
+      refreshUserData
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-// Import safe utilities
-import { ensureSafeUser } from '../utils/safeDataUtils';
-
-// Enhanced: Authentication-specific API functions with safe data validation
-export const authAPI = {
-  signin: async (credentials: { email: string; password: string }) => {
-    try {
-      const response = await apiRequest('POST', '/api/auth/login', credentials);
-      const data = await response.json();
-
-      console.log('🔍 Raw signin response:', data);
-
-      // Handle both direct format {success, user, token} and nested format {success, data: {user, token}}
-      let user, token;
-      
-      if (data.data) {
-        // Nested format
-        user = data.data.user;
-        token = data.data.token;
-      } else {
-        // Direct format (what your backend actually returns)
-        user = data.user;
-        token = data.token;
-      }
-
-      const safeResponse = {
-        ...data,
-        data: {
-          user: user ? ensureSafeUser({
-            ...user,
-            email: user.email || credentials.email,
-          }) : null,
-          token: token || null
-        }
-      };
-
-      console.log('🔍 Safe signin response:', safeResponse);
-      return safeResponse;
-
-    } catch (error) {
-      console.error('❌ Signin API error:', error);
-      throw error;
-    }
-  },
-
-  signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
-    try {
-      const response = await apiRequest('POST', '/api/auth/register', userData);
-      const data = await response.json();
-
-      console.log('🔍 Raw signup response:', data);
-
-      // Handle both direct format {success, user, token} and nested format {success, data: {user, token}}
-      let user, token;
-      
-      if (data.data) {
-        // Nested format
-        user = data.data.user;
-        token = data.data.token;
-      } else {
-        // Direct format (what your backend actually returns)
-        user = data.user;
-        token = data.token;
-      }
-
-      const safeResponse = {
-        ...data,
-        data: {
-          user: user ? ensureSafeUser({
-            ...user,
-            email: user.email || userData.email,
-            firstName: user.firstName || userData.firstName || '',
-            lastName: user.lastName || userData.lastName || '',
-          }) : null,
-          token: token || null
-        }
-      };
-
-      console.log('🔍 Safe signup response:', safeResponse);
-      return safeResponse;
-
-    } catch (error) {
-      console.error('❌ Signup API error:', error);
-      throw error;
-    }
-  },
-
-  me: async () => {
-    try {
-      const response = await apiRequest('GET', '/api/auth/me');
-      const data = await response.json();
-
-      console.log('🔍 Raw me response:', data);
-
-      // Handle both direct format {success, user} and nested format {success, data: {user}}
-      let user;
-      
-      if (data.data) {
-        // Nested format
-        user = data.data.user;
-      } else {
-        // Direct format
-        user = data.user;
-      }
-
-      const safeResponse = {
-        ...data,
-        data: {
-          user: user ? ensureSafeUser(user) : null
-        }
-      };
-
-      console.log('🔍 Safe me response:', safeResponse);
-      return safeResponse;
-
-    } catch (error) {
-      console.error('❌ Me API error:', error);
-      throw error;
-    }
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
   }
+  return context;
 };
-
-export default { getApiBaseUrl, apiRequest };

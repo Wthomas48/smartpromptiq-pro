@@ -2,7 +2,7 @@
  * API Configuration for different environments
  */
 
-// ✅ ENHANCED: Comprehensive environment configuration with host validation
+// Enhanced: Comprehensive environment configuration with host validation
 const config = {
   // Allowed hosts for different environments
   allowedHosts: [
@@ -86,7 +86,7 @@ export const getApiBaseUrl = (): string => {
   return '';
 };
 
-// ✅ ENHANCED: Robust API request wrapper with comprehensive data validation
+// Enhanced: Robust API request wrapper with comprehensive data validation
 export const apiRequest = async (method: string, url: string, body?: any) => {
   const baseUrl = getApiBaseUrl();
   const fullUrl = `${baseUrl}${url}`;
@@ -108,8 +108,6 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       },
       credentials: 'include',
       mode: 'cors',
-      // Add timeout and other robust options - Fixed AbortSignal timeout issue
-      // signal: AbortSignal.timeout(15000), // Removed - causes timeout issues in some environments
     };
 
     // Add auth token if available
@@ -188,7 +186,7 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
 // Import safe utilities
 import { ensureSafeUser } from '../utils/safeDataUtils';
 
-// ✅ ENHANCED: Authentication-specific API functions with safe data validation
+// Enhanced: Authentication-specific API functions with safe data validation
 export const authAPI = {
   signin: async (credentials: { email: string; password: string }) => {
     try {
@@ -197,36 +195,29 @@ export const authAPI = {
 
       console.log('🔍 Raw signin response:', data);
 
-      // ✅ USE SAFE UTILITY: Process user data safely
-      // Handle both response formats consistently
-      let safeResponse;
-
+      // Handle both direct format {success, user, token} and nested format {success, data: {user, token}}
+      let user, token;
+      
       if (data.data) {
-        // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
-        safeResponse = {
-          ...data,
-          data: {
-            user: data.data.user ? ensureSafeUser({
-              ...data.data.user,
-              email: data.data.user.email || credentials.email,
-              firstName: data.data.user.firstName || '',
-              lastName: data.data.user.lastName || '',
-            }) : null,
-            token: data.data.token || null
-          }
-        };
+        // Nested format
+        user = data.data.user;
+        token = data.data.token;
       } else {
-        // Direct format: {success: true, user: {...}, token: 'xxx'} - keep as is
-        safeResponse = {
-          ...data,
-          user: data.user ? ensureSafeUser({
-            ...data.user,
-            email: data.user.email || credentials.email,
-            firstName: data.user.firstName || '',
-            lastName: data.user.lastName || '',
-          }) : null
-        };
+        // Direct format (what your backend actually returns)
+        user = data.user;
+        token = data.token;
       }
+
+      const safeResponse = {
+        ...data,
+        data: {
+          user: user ? ensureSafeUser({
+            ...user,
+            email: user.email || credentials.email,
+          }) : null,
+          token: token || null
+        }
+      };
 
       console.log('🔍 Safe signin response:', safeResponse);
       return safeResponse;
@@ -244,37 +235,31 @@ export const authAPI = {
 
       console.log('🔍 Raw signup response:', data);
 
-      // ✅ USE SAFE UTILITY: Process user data safely
-      // Handle both response formats consistently
-      let safeResponse;
-
+      // Handle both direct format {success, user, token} and nested format {success, data: {user, token}}
+      let user, token;
+      
       if (data.data) {
-        // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
-        safeResponse = {
-          ...data,
-          data: {
-            ...data.data,
-            user: data.data.user ? ensureSafeUser({
-              ...data.data.user,
-              email: data.data.user.email || userData.email,
-              firstName: data.data.user.firstName || userData.firstName || '',
-              lastName: data.data.user.lastName || userData.lastName || '',
-            }) : null,
-            token: data.data.token || null
-          }
-        };
+        // Nested format
+        user = data.data.user;
+        token = data.data.token;
       } else {
-        // Direct format: {success: true, user: {...}, token: 'xxx'} - keep as is
-        safeResponse = {
-          ...data,
-          user: data.user ? ensureSafeUser({
-            ...data.user,
-            email: data.user.email || userData.email,
-            firstName: data.user.firstName || userData.firstName || '',
-            lastName: data.user.lastName || userData.lastName || '',
-          }) : null
-        };
+        // Direct format (what your backend actually returns)
+        user = data.user;
+        token = data.token;
       }
+
+      const safeResponse = {
+        ...data,
+        data: {
+          user: user ? ensureSafeUser({
+            ...user,
+            email: user.email || userData.email,
+            firstName: user.firstName || userData.firstName || '',
+            lastName: user.lastName || userData.lastName || '',
+          }) : null,
+          token: token || null
+        }
+      };
 
       console.log('🔍 Safe signup response:', safeResponse);
       return safeResponse;
@@ -292,26 +277,23 @@ export const authAPI = {
 
       console.log('🔍 Raw me response:', data);
 
-      // ✅ USE SAFE UTILITY: Process user data safely
-      // Handle both response formats consistently
-      let safeResponse;
-
+      // Handle both direct format {success, user} and nested format {success, data: {user}}
+      let user;
+      
       if (data.data) {
-        // Nested format: {success: true, data: {user: {...}}}
-        safeResponse = {
-          ...data,
-          data: {
-            ...data.data,
-            user: data.data.user ? ensureSafeUser(data.data.user) : null
-          }
-        };
+        // Nested format
+        user = data.data.user;
       } else {
-        // Direct format: {success: true, user: {...}} - keep as is
-        safeResponse = {
-          ...data,
-          user: data.user ? ensureSafeUser(data.user) : null
-        };
+        // Direct format
+        user = data.user;
       }
+
+      const safeResponse = {
+        ...data,
+        data: {
+          user: user ? ensureSafeUser(user) : null
+        }
+      };
 
       console.log('🔍 Safe me response:', safeResponse);
       return safeResponse;
