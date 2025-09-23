@@ -1,7 +1,7 @@
 {
   "name": "smartpromptiqpro",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1758587431914",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173",
