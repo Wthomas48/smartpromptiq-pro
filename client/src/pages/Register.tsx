@@ -102,8 +102,11 @@ export default function Register() {
       setUserName(formData.firstName || formData.email.split('@')[0]);
       setShowSuccess(true);
 
-      // If registration successful, log them in automatically
-      if (data.data && data.data.token) {
+      // ✅ FIXED: Handle both response formats - nested {data: {token}} and direct {token}
+      const authToken = data.data?.token || data.token;
+
+      if (authToken) {
+        // If registration successful, log them in automatically
         setTimeout(async () => {
           await login(formData.email, formData.password);
           toast({

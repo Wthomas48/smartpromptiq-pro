@@ -70,6 +70,7 @@ export const ensureSafeUser = (userData: any) => {
     return null;
   }
 
+  // ✅ FIXED: Create safe user object without overwriting response properties
   const safeUser = {
     // Core user properties with fallbacks
     id: userData?.id || 'demo-user',
@@ -91,8 +92,13 @@ export const ensureSafeUser = (userData: any) => {
     stripeCustomerId: userData?.stripeCustomerId || '',
     subscriptionStatus: userData?.subscriptionStatus || 'active',
 
-    // Preserve any additional properties
-    ...userData
+    // ✅ FIXED: Only preserve safe additional user properties, not response metadata
+    ...(userData && typeof userData === 'object' ? Object.fromEntries(
+      Object.entries(userData).filter(([key]) =>
+        // Exclude response metadata properties that should not be copied
+        !['success', 'message', 'data', 'token', 'error'].includes(key)
+      )
+    ) : {})
   };
 
   console.log('🔍 ensureSafeUser: processed user data:', {
