@@ -28,7 +28,7 @@ const config = {
 
 // Determine the API base URL based on environment with enhanced validation
 export const getApiBaseUrl = (): string => {
-  // Check environment variables
+  // Check environment variables - Force deployment for signup fix
   console.log('🔍 ENV CHECK:', {
     VITE_API_URL: import.meta.env.VITE_API_URL,
     NODE_ENV: import.meta.env.NODE_ENV,
