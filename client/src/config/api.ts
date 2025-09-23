@@ -199,16 +199,15 @@ export const authAPI = {
 
       // ✅ USE SAFE UTILITY: Process user data safely
       const safeResponse = {
-        ...data,
-        data: data.data ? {
-          ...data.data,
-          user: data.data.user ? ensureSafeUser({
-            ...data.data.user,
-            email: data.data.user.email || credentials.email, // Ensure email from credentials
-          }) : null,
-          token: data.data.token || null
-        } : null
-      };
+     data: {
+  user: (data.data?.user || data.user) ? ensureSafeUser({
+    ...(data.data?.user || data.user),
+    email: (data.data?.user || data.user)?.email || userData.email,
+    firstName: (data.data?.user || data.user)?.firstName || userData.firstName || '',
+    lastName: (data.data?.user || data.user)?.lastName || userData.lastName || '',
+  }) : null,
+  token: data.data?.token || data.token || null
+} 
 
       console.log('🔍 Safe signin response:', safeResponse);
       return safeResponse;
