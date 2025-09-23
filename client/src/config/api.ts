@@ -188,48 +188,40 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
 // Import safe utilities
 import { ensureSafeUser } from '../utils/safeDataUtils';
 
-// ✅ ENHANCED: Authentication-specific API functions with safe data validation
+// Import Supabase auth
+import { auth } from '../lib/supabase';
+
+// ✅ SUPABASE: Authentication functions using Supabase
 export const authAPI = {
   signin: async (credentials: { email: string; password: string }) => {
     try {
-      const response = await apiRequest('POST', '/api/auth/login', credentials);
-      const data = await response.json();
+      console.log('🔍 Supabase signin attempt:', { email: credentials.email });
 
-      console.log('🔍 Raw signin response:', data);
+      const { data, error } = await auth.signIn(credentials.email, credentials.password);
 
-      // ✅ USE SAFE UTILITY: Process user data safely
-      // Handle both response formats consistently
-      let safeResponse;
-
-      if (data.data && typeof data.data === 'object' && data.data !== null) {
-        // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
-        safeResponse = {
-          ...data,
-          data: {
-            user: data.data.user ? ensureSafeUser({
-              ...data.data.user,
-              email: data.data.user.email || credentials.email,
-              firstName: data.data.user.firstName || '',
-              lastName: data.data.user.lastName || '',
-            }) : null,
-            token: data.data.token || null
-          }
-        };
-      } else {
-        // Direct format: {success: true, user: {...}, token: 'xxx'} OR {success: true, token: 'xxx', user: {...}, data: null}
-        safeResponse = {
-          ...data,
-          user: data.user ? ensureSafeUser({
-            ...data.user,
-            email: data.user.email || credentials.email,
-            firstName: data.user.firstName || '',
-            lastName: data.user.lastName || '',
-          }) : null
-        };
+      if (error) {
+        console.error('❌ Supabase signin error:', error);
+        throw new Error(error.message);
       }
 
-      console.log('🔍 Safe signin response:', safeResponse);
-      return safeResponse;
+      console.log('✅ Supabase signin success:', data);
+
+      // Return in expected format for compatibility
+      return {
+        success: true,
+        data: {
+          user: {
+            id: data.user?.id,
+            email: data.user?.email,
+            firstName: data.user?.user_metadata?.firstName || '',
+            lastName: data.user?.user_metadata?.lastName || '',
+            role: 'USER',
+            roles: [],
+            permissions: []
+          },
+          token: data.session?.access_token
+        }
+      };
 
     } catch (error) {
       console.error('❌ Signin API error:', error);
@@ -239,47 +231,36 @@ export const authAPI = {
 
   signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
     try {
-      const response = await apiRequest('POST', '/api/auth/register', userData);
-      const data = await response.json();
+      console.log('🔍 Supabase signup attempt:', { email: userData.email });
 
-      console.log('🔍 Raw response:', response);
-      console.log('🔍 Response data:', data);
-      console.log('🔍 Raw signup response:', data);
+      const { data, error } = await auth.signUp(userData.email, userData.password, {
+        firstName: userData.firstName,
+        lastName: userData.lastName
+      });
 
-      // ✅ USE SAFE UTILITY: Process user data safely
-      // Handle both response formats consistently
-      let safeResponse;
-
-      if (data.data && typeof data.data === 'object' && data.data !== null) {
-        // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
-        safeResponse = {
-          ...data,
-          data: {
-            ...data.data,
-            user: data.data.user ? ensureSafeUser({
-              ...data.data.user,
-              email: data.data.user.email || userData.email,
-              firstName: data.data.user.firstName || userData.firstName || '',
-              lastName: data.data.user.lastName || userData.lastName || '',
-            }) : null,
-            token: data.data.token || null
-          }
-        };
-      } else {
-        // Direct format: {success: true, user: {...}, token: 'xxx'} OR {success: true, token: 'xxx', user: {...}, data: null}
-        safeResponse = {
-          ...data,
-          user: data.user ? ensureSafeUser({
-            ...data.user,
-            email: data.user.email || userData.email,
-            firstName: data.user.firstName || userData.firstName || '',
-            lastName: data.user.lastName || userData.lastName || '',
-          }) : null
-        };
+      if (error) {
+        console.error('❌ Supabase signup error:', error);
+        throw new Error(error.message);
       }
 
-      console.log('🔍 Safe signup response:', safeResponse);
-      return safeResponse;
+      console.log('✅ Supabase signup success:', data);
+
+      // Return in expected format for compatibility
+      return {
+        success: true,
+        data: {
+          user: {
+            id: data.user?.id,
+            email: data.user?.email,
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            role: 'USER',
+            roles: [],
+            permissions: []
+          },
+          token: data.session?.access_token
+        }
+      };
 
     } catch (error) {
       console.error('❌ Signup API error:', error);
@@ -289,34 +270,36 @@ export const authAPI = {
 
   me: async () => {
     try {
-      const response = await apiRequest('GET', '/api/auth/me');
-      const data = await response.json();
+      console.log('🔍 Supabase getCurrentUser attempt');
 
-      console.log('🔍 Raw me response:', data);
+      const { user, error } = await auth.getCurrentUser();
 
-      // ✅ USE SAFE UTILITY: Process user data safely
-      // Handle both response formats consistently
-      let safeResponse;
-
-      if (data.data && typeof data.data === 'object' && data.data !== null) {
-        // Nested format: {success: true, data: {user: {...}}}
-        safeResponse = {
-          ...data,
-          data: {
-            ...data.data,
-            user: data.data.user ? ensureSafeUser(data.data.user) : null
-          }
-        };
-      } else {
-        // Direct format: {success: true, user: {...}} OR {success: true, user: {...}, data: null}
-        safeResponse = {
-          ...data,
-          user: data.user ? ensureSafeUser(data.user) : null
-        };
+      if (error) {
+        console.error('❌ Supabase getCurrentUser error:', error);
+        throw new Error(error.message);
       }
 
-      console.log('🔍 Safe me response:', safeResponse);
-      return safeResponse;
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+
+      console.log('✅ Supabase getCurrentUser success:', user);
+
+      // Return in expected format for compatibility
+      return {
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.user_metadata?.firstName || '',
+            lastName: user.user_metadata?.lastName || '',
+            role: 'USER',
+            roles: [],
+            permissions: []
+          }
+        }
+      };
 
     } catch (error) {
       console.error('❌ Me API error:', error);
