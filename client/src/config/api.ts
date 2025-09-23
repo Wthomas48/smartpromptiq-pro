@@ -201,7 +201,7 @@ export const authAPI = {
       // Handle both response formats consistently
       let safeResponse;
 
-      if (data.data) {
+      if (data.data && typeof data.data === 'object' && data.data !== null) {
         // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
         safeResponse = {
           ...data,
@@ -216,7 +216,7 @@ export const authAPI = {
           }
         };
       } else {
-        // Direct format: {success: true, user: {...}, token: 'xxx'} - keep as is
+        // Direct format: {success: true, user: {...}, token: 'xxx'} OR {success: true, token: 'xxx', user: {...}, data: null}
         safeResponse = {
           ...data,
           user: data.user ? ensureSafeUser({
@@ -250,7 +250,7 @@ export const authAPI = {
       // Handle both response formats consistently
       let safeResponse;
 
-      if (data.data) {
+      if (data.data && typeof data.data === 'object' && data.data !== null) {
         // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
         safeResponse = {
           ...data,
@@ -266,7 +266,7 @@ export const authAPI = {
           }
         };
       } else {
-        // Direct format: {success: true, user: {...}, token: 'xxx'} - keep as is
+        // Direct format: {success: true, user: {...}, token: 'xxx'} OR {success: true, token: 'xxx', user: {...}, data: null}
         safeResponse = {
           ...data,
           user: data.user ? ensureSafeUser({
@@ -298,7 +298,7 @@ export const authAPI = {
       // Handle both response formats consistently
       let safeResponse;
 
-      if (data.data) {
+      if (data.data && typeof data.data === 'object' && data.data !== null) {
         // Nested format: {success: true, data: {user: {...}}}
         safeResponse = {
           ...data,
@@ -308,7 +308,7 @@ export const authAPI = {
           }
         };
       } else {
-        // Direct format: {success: true, user: {...}} - keep as is
+        // Direct format: {success: true, user: {...}} OR {success: true, user: {...}, data: null}
         safeResponse = {
           ...data,
           user: data.user ? ensureSafeUser(data.user) : null
