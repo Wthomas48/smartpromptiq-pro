@@ -431,7 +431,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           token = response.data.token;
           user = response.data.user;
         } else if (response.token && response.user) {
-          // Format: {success: true, token, user}
+          // Format: {success: true, token, user} or {success: true, token, user, data: null}
           console.log("🔍 Using token/user format");
           token = response.token;
           user = response.user;
@@ -444,7 +444,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             dataHasUser: response.data?.user,
             fullResponse: response
           });
-          throw new Error(`Signup failed - invalid response format: ${JSON.stringify(response)}`);
+          throw new Error(`Signup failed - invalid response format`);
         }
 
         localStorage.setItem("token", token);
