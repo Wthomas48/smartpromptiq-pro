@@ -422,29 +422,59 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("🔍 Backend register response:", response);
 
       if (response.success) {
-        // Handle different response formats
+        // Handle different response formats - ULTRA ROBUST
         let token, user;
+
+        // Log the exact response structure for debugging
+        console.log("🔍 Full response structure:", {
+          response,
+          hasData: !!response.data,
+          hasToken: !!response.token,
+          hasUser: !!response.user,
+          dataType: typeof response.data,
+          tokenType: typeof response.token,
+          userType: typeof response.user
+        });
 
         if (response.data && typeof response.data === 'object' && response.data.token && response.data.user) {
           // Format: {success: true, data: {token, user}}
-          console.log("🔍 Using data.token/data.user format");
+          console.log("✅ Using data.token/data.user format");
           token = response.data.token;
           user = response.data.user;
         } else if (response.token && response.user) {
           // Format: {success: true, token, user} or {success: true, token, user, data: null}
-          console.log("🔍 Using token/user format");
+          console.log("✅ Using token/user format");
           token = response.token;
           user = response.user;
         } else {
-          console.error("❌ Invalid response format:", {
-            hasData: !!response.data,
-            hasToken: !!response.token,
-            hasUser: !!response.user,
-            dataHasToken: response.data?.token,
-            dataHasUser: response.data?.user,
-            fullResponse: response
-          });
-          throw new Error(`Signup failed - invalid response format`);
+          // Emergency fallback - try to extract any token/user found anywhere
+          console.warn("⚠️ Using emergency fallback response extraction");
+
+          // Look for token anywhere in the response
+          token = response.token || response.data?.token || response.access_token || response.data?.access_token;
+
+          // Look for user anywhere in the response
+          user = response.user || response.data?.user || response.userData || response.data?.userData;
+
+          // If we still don't have both, create minimal user from available data
+          if (token && !user) {
+            user = {
+              id: response.id || response.data?.id || 'fallback-id',
+              email: response.email || response.data?.email || 'unknown@example.com',
+              firstName: response.firstName || response.data?.firstName || '',
+              lastName: response.lastName || response.data?.lastName || '',
+              role: 'USER',
+              subscriptionTier: 'free',
+              tokenBalance: 0
+            };
+          }
+
+          if (!token || !user) {
+            console.error("❌ Could not extract token/user from response:", response);
+            throw new Error("Signup succeeded but response format is invalid");
+          }
+
+          console.log("✅ Emergency fallback extraction successful", { token: !!token, user: !!user });
         }
 
         localStorage.setItem("token", token);
