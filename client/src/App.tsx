@@ -90,8 +90,8 @@ function Router() {
         <Route path="/register" component={Register} />
         <Route path="/admin/login" component={AdminLogin} />
         <Route path="/auth-test" component={AuthFormTest} />
-        <Route path="/admin" component={AdminDashboard} />
-        <Route path="/admin/dashboard" component={AdminDashboard} />
+        <Route path="/admin" component={() => <AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="/admin/dashboard" component={() => <AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/stripe-keys" component={StripeKeyManager} />
         <Route path="/landing" component={Home} />
         <Route path="/logout" component={LogoutPage} />
