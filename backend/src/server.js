@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth');
 const billingRoutes = require('./routes/billing');
 const subscriptionRoutes = require('./routes/subscriptions');
 const usageRoutes = require('./routes/usage');
+const adminRoutes = require('./routes/admin');
 
 // Import rate limiting middleware
 const { 
@@ -126,6 +127,9 @@ app.use('/api/subscriptions', subscriptionRoutes);
 
 // Usage and analytics routes (authenticated)
 app.use('/api/usage', authenticateWithSubscription, trackApiUsage, usageRoutes);
+
+// Admin routes (require admin authentication)
+app.use('/api/admin', adminRoutes);
 
 // Admin routes (require admin authentication)
 app.get('/api/admin/cost-dashboard', 

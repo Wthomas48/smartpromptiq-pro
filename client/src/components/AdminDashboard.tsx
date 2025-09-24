@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest as originalApiRequest } from '@/config/api';
 
 // Simple wrapper to handle the API calls correctly
@@ -51,7 +51,10 @@ import {
   HardDrive,
   Briefcase,
   User,
-  Sparkles
+  Sparkles,
+  Trash2,
+  UserX,
+  LogOut
 } from 'lucide-react';
 
 interface AdminStats {
@@ -105,6 +108,22 @@ const AdminDashboard: React.FC = () => {
   const [securityData, setSecurityData] = useState<any>(null);
   const [emailData, setEmailData] = useState<any>(null);
   const [systemData, setSystemData] = useState<any>(null);
+
+  // Delete functionality state
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    type: 'user' | 'payment' | 'session' | 'logs' | null;
+    target: any;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: null,
+    target: null,
+    title: '',
+    message: ''
+  });
+  const [deleteReason, setDeleteReason] = useState('');
 
   console.log('🚀 AdminDashboard component rendering with enhanced features!');
 
@@ -373,6 +392,171 @@ const AdminDashboard: React.FC = () => {
     } catch (error: any) {
       console.error(`❌ Error executing user action ${action}:`, error);
       alert(`Error executing action: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Delete functionality handlers
+  const openDeleteModal = (type: 'user' | 'payment' | 'session' | 'logs', target: any) => {
+    const messages = {
+      user: {
+        title: 'Delete User Account',
+        message: `Are you sure you want to permanently delete the account for ${target.firstName} ${target.lastName} (${target.email})? This action cannot be undone and will remove all associated data.`
+      },
+      payment: {
+        title: 'Delete Payment Record',
+        message: `Are you sure you want to delete the payment record for ${target.userEmail}? Amount: ${formatCurrency(target.amount)}. This action cannot be undone.`
+      },
+      session: {
+        title: 'Terminate User Sessions',
+        message: `Are you sure you want to terminate all active sessions for ${target.firstName} ${target.lastName} (${target.email})? The user will be logged out from all devices.`
+      },
+      logs: {
+        title: 'Clear System Logs',
+        message: 'Are you sure you want to clear system logs? You can specify a date to only clear older logs, or clear all logs if no date is specified.'
+      }
+    };
+
+    setDeleteModal({
+      isOpen: true,
+      type,
+      target,
+      title: messages[type].title,
+      message: messages[type].message
+    });
+    setDeleteReason('');
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({
+      isOpen: false,
+      type: null,
+      target: null,
+      title: '',
+      message: ''
+    });
+    setDeleteReason('');
+  };
+
+  const handleDelete = async () => {
+    if (!deleteModal.type || !deleteReason.trim()) {
+      alert('Please provide a reason for this action.');
+      return;
+    }
+
+    try {
+      setRefreshing(true);
+      console.log(`🔄 Executing delete action: ${deleteModal.type}`);
+
+      let endpoint = '';
+      let method = 'DELETE';
+      let body: any = { reason: deleteReason };
+
+      switch (deleteModal.type) {
+        case 'user':
+          endpoint = `/api/admin/users/${deleteModal.target.id}`;
+          break;
+        case 'payment':
+          endpoint = `/api/admin/payments/${deleteModal.target.id}`;
+          break;
+        case 'session':
+          endpoint = `/api/admin/sessions/${deleteModal.target.id}`;
+          break;
+        case 'logs':
+          endpoint = `/api/admin/logs`;
+          // For logs, we might want to include a date filter
+          if (deleteModal.target?.olderThan) {
+            body.olderThan = deleteModal.target.olderThan;
+          }
+          break;
+      }
+
+      const response = await apiRequest(endpoint, {
+        method,
+        body: JSON.stringify(body),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.success) {
+        console.log(`✅ Delete action ${deleteModal.type} completed:`, response.data);
+        closeDeleteModal();
+        await fetchAdminData(true);
+        alert(`${deleteModal.title} completed successfully`);
+      } else {
+        throw new Error(response.message || 'Delete action failed');
+      }
+    } catch (error: any) {
+      console.error(`❌ Error executing delete action ${deleteModal.type}:`, error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Suspend/Unsuspend handlers
+  const handleSuspendUser = async (userId: string, user: User) => {
+    const reason = prompt('Please enter a reason for suspension:');
+    if (!reason) return;
+
+    const durationStr = prompt('Duration in days (leave empty for permanent):');
+    const duration = durationStr ? parseInt(durationStr) : null;
+
+    try {
+      setRefreshing(true);
+      console.log(`🔄 Suspending user ${userId}...`);
+
+      const response = await apiRequest(`/api/admin/users/${userId}/suspend`, {
+        method: 'POST',
+        body: JSON.stringify({ reason, duration }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.success) {
+        console.log('✅ User suspended successfully:', response.data);
+        await fetchAdminData(true);
+        alert(`User ${user.email} suspended successfully`);
+      } else {
+        throw new Error(response.message || 'Suspension failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error suspending user:', error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleUnsuspendUser = async (userId: string, user: User) => {
+    const reason = prompt('Please enter a reason for unsuspension:');
+    if (!reason) return;
+
+    try {
+      setRefreshing(true);
+      console.log(`🔄 Unsuspending user ${userId}...`);
+
+      const response = await apiRequest(`/api/admin/users/${userId}/unsuspend`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.success) {
+        console.log('✅ User unsuspended successfully:', response.data);
+        await fetchAdminData(true);
+        alert(`User ${user.email} unsuspended successfully`);
+      } else {
+        throw new Error(response.message || 'Unsuspension failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error unsuspending user:', error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
     } finally {
       setRefreshing(false);
     }
@@ -1334,6 +1518,36 @@ const AdminDashboard: React.FC = () => {
                             >
                               <RefreshCw size={12} />
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDeleteModal('session', user)}
+                              disabled={refreshing}
+                              className="text-orange-600 hover:text-orange-800"
+                              title="Terminate Sessions"
+                            >
+                              <LogOut size={12} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSuspendUser(user.id, user)}
+                              disabled={refreshing}
+                              className="text-yellow-600 hover:text-yellow-800"
+                              title="Suspend User"
+                            >
+                              <UserX size={12} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDeleteModal('user', user)}
+                              disabled={refreshing}
+                              className="text-red-600 hover:text-red-800"
+                              title="Delete User"
+                            >
+                              <Trash2 size={12} />
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -1484,6 +1698,16 @@ const AdminDashboard: React.FC = () => {
                         )}
                         <Button variant="outline" size="sm">
                           <Eye size={16} />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openDeleteModal('payment', payment)}
+                          disabled={refreshing}
+                          className="text-red-600 hover:text-red-800"
+                          title="Delete Payment Record"
+                        >
+                          <Trash2 size={16} />
                         </Button>
                       </div>
                     </div>
@@ -1985,6 +2209,55 @@ const AdminDashboard: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* System Management */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  System Management
+                </CardTitle>
+                <CardDescription>Administrative actions for system maintenance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-4">
+                  <Button
+                    variant="destructive"
+                    onClick={() => openDeleteModal('logs', { olderThan: null })}
+                    disabled={refreshing}
+                    className="flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Clear All Logs
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const days = prompt('Clear logs older than how many days?');
+                      if (days && parseInt(days) > 0) {
+                        const cutoffDate = new Date();
+                        cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
+                        openDeleteModal('logs', { olderThan: cutoffDate.toISOString() });
+                      }
+                    }}
+                    disabled={refreshing}
+                    className="flex items-center gap-2"
+                  >
+                    <Database className="w-4 h-4" />
+                    Clear Old Logs
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => fetchAdminData(true)}
+                    disabled={refreshing}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Refresh System Data
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
@@ -2042,6 +2315,62 @@ const AdminDashboard: React.FC = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="w-5 h-5" />
+                {deleteModal.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700 mb-4">
+                {deleteModal.message}
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Reason for this action <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    rows={3}
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    placeholder="Please provide a detailed reason for this action..."
+                    required
+                  />
+                </div>
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={closeDeleteModal}
+                    disabled={refreshing}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={refreshing || !deleteReason.trim()}
+                    className="flex items-center gap-2"
+                  >
+                    {refreshing ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    {refreshing ? 'Processing...' : 'Confirm Delete'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

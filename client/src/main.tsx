@@ -1,8 +1,8 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
-import { AuthProvider } from "./hooks/useAuth-supabase";
-import "./index.css";
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.tsx'
+import { AuthProvider } from './contexts/AuthContext'
+import './index.css'
 
 // Simple error suppression for recharts only
 const originalConsoleError = console.error;

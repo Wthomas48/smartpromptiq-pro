@@ -80,7 +80,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(true);
       console.log("Checking auth...");
 
-      // Check for auth token in localStorage
+      // ✅ SUPABASE: First check Supabase session
+      try {
+        console.log('🔍 checkAuth: Checking Supabase session...');
+        const { supabase } = await import('@/lib/supabase');
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (!error && session?.user) {
+          console.log('✅ Supabase session found:', session.user);
+
+          const supabaseUser = {
+            id: session.user.id,
+            email: session.user.email!,
+            firstName: session.user.user_metadata?.firstName || '',
+            lastName: session.user.user_metadata?.lastName || '',
+            role: (session.user.user_metadata?.role || 'USER') as 'USER' | 'ADMIN',
+            subscriptionTier: session.user.user_metadata?.subscriptionTier || 'free',
+            tokenBalance: session.user.user_metadata?.tokenBalance || 0
+          };
+
+          setToken(session.access_token);
+          setIsAuthenticated(true);
+          updateUser(supabaseUser);
+
+          // Store in localStorage for consistency
+          localStorage.setItem("token", session.access_token);
+          localStorage.setItem("user", JSON.stringify(supabaseUser));
+
+          console.log("✅ Authenticated with Supabase session");
+          setIsLoading(false);
+          return;
+        }
+      } catch (supabaseError) {
+        console.log('⚠️ Supabase session check failed:', supabaseError);
+      }
+
+      // Check for auth token in localStorage (fallback for legacy/backend auth)
       const storedToken = localStorage.getItem("token");
       const storedUser = localStorage.getItem("user");
 
@@ -195,81 +230,112 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, []);
 
-  // ✅ ENHANCED: Login using the new authAPI with comprehensive data validation
+  // ✅ HYBRID: Login using Supabase with backend fallback
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log("🔐 Attempting login:", { email });
+      console.log("🔐 Attempting hybrid login:", { email });
 
-      // Use enhanced authAPI.signin with built-in data validation
-      const data = await authAPI.signin({ email, password });
-
-      console.log('🔍 LOGIN RESPONSE (validated):', data);
-
-      // ✅ FIXED: Handle both response formats - direct and nested data
-      if (data.success) {
-        // Handle direct format: {success: true, token: 'xxx', user: {...}}
-        let userData, authToken;
-
-        if (data.data) {
-          // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
-          userData = data.data.user;
-          authToken = data.data.token;
-        } else {
-          // Direct format: {success: true, user: {...}, token: 'xxx'}
-          userData = data.user;
-          authToken = data.token;
-        }
-
-        debugUserData(userData, 'login - RAW userData from API');
-
-        if (!authToken) {
-          console.error('❌ Login failed: No authentication token received');
-          throw new Error('No authentication token received');
-        }
-
-        if (!userData) {
-          console.error('❌ Login failed: No user data received');
-          throw new Error('No user data received');
-        }
-
-        console.log('🔍 Login debug - validated backend response:', {
+      // First try Supabase authentication
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
-          userData,
-          userDataRole: userData.role,
-          userDataRoles: userData.roles,
-          userDataPermissions: userData.permissions,
-          timestamp: new Date().toISOString()
+          password
         });
 
-        debugUserData(userData, 'login - BEFORE updateUser call');
+        if (!error && data.user && data.session) {
+          console.log('✅ SUPABASE LOGIN SUCCESS:', data);
 
-        // Store token and use updateUser for consistent data processing
-        localStorage.setItem("token", authToken);
-        setToken(authToken);
+          const userData = {
+            id: data.user.id,
+            email: data.user.email!,
+            firstName: data.user.user_metadata?.firstName || '',
+            lastName: data.user.user_metadata?.lastName || '',
+            role: (data.user.user_metadata?.role || 'USER') as 'USER' | 'ADMIN',
+            subscriptionTier: data.user.user_metadata?.subscriptionTier || 'free',
+            tokenBalance: data.user.user_metadata?.tokenBalance || 0
+          };
+
+          const authToken = data.session.access_token;
+          localStorage.setItem("token", authToken);
+          localStorage.setItem("user", JSON.stringify(userData));
+
+          setToken(authToken);
+          setIsAuthenticated(true);
+          updateUser(userData);
+
+          toast({
+            title: "Welcome back!",
+            description: `Signed in as ${userData.firstName || userData.email.split('@')[0]}`,
+          });
+
+          setTimeout(() => {
+            if (userData.role === 'ADMIN') {
+              setLocation("/admin");
+            } else {
+              setLocation("/dashboard");
+            }
+          }, 100);
+          return;
+        }
+      } catch (supabaseError: any) {
+        console.warn("⚠️ Supabase login failed, falling back to backend:", supabaseError.message);
+      }
+
+      // Fallback to backend authentication
+      console.log("🔄 Falling back to backend authentication");
+      const response = await authAPI.login(email, password);
+
+      console.log("🔍 Backend login response:", response);
+
+      if (response.success) {
+        // Handle different response formats
+        let token, user;
+
+        if (response.data && typeof response.data === 'object' && response.data.token && response.data.user) {
+          // Format: {success: true, data: {token, user}}
+          console.log("🔍 Using data.token/data.user format");
+          token = response.data.token;
+          user = response.data.user;
+        } else if (response.token && response.user) {
+          // Format: {success: true, token, user}
+          console.log("🔍 Using token/user format");
+          token = response.token;
+          user = response.user;
+        } else {
+          console.error("❌ Invalid response format:", {
+            hasData: !!response.data,
+            hasToken: !!response.token,
+            hasUser: !!response.user,
+            dataHasToken: response.data?.token,
+            dataHasUser: response.data?.user,
+            fullResponse: response
+          });
+          throw new Error(`Login failed - invalid response format: ${JSON.stringify(response)}`);
+        }
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        setToken(token);
         setIsAuthenticated(true);
-
-        // Use the centralized updateUser function for consistent validation
-        updateUser(userData);
-
-        debugUserData(userData, 'login - AFTER updateUser call');
+        updateUser(user);
 
         toast({
           title: "Welcome back!",
-          description: `Signed in as ${userData.firstName || userData.email.split('@')[0]} ${userData.role === 'ADMIN' ? '(Admin)' : ''}`,
+          description: `Signed in as ${user.firstName || user.email.split('@')[0]}`,
         });
 
-        // Add a small delay to see final state before redirect
         setTimeout(() => {
-          debugUserData(user, 'login - FINAL STATE before redirect');
-          // Don't redirect if user is admin (let admin login handle redirect)
-          if (userData.role !== 'ADMIN') {
+          if (user.role === 'ADMIN') {
+            setLocation("/admin");
+          } else {
             setLocation("/dashboard");
           }
         }, 100);
       } else {
-        console.error('❌ Login failed: Invalid response format', data);
-        throw new Error(data.message || 'Login failed - invalid response format');
+        throw new Error(response.message || "Login failed");
       }
     } catch (error: any) {
       console.error("❌ Login failed:", error);
@@ -284,79 +350,120 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ✅ ENHANCED: Signup function using authAPI with comprehensive data validation
+  // ✅ HYBRID: Signup using Supabase with backend fallback
   const signup = async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
       setIsLoading(true);
-      console.log("🔐 Attempting signup:", { email, firstName, lastName });
+      console.log("🔐 Attempting hybrid signup:", { email, firstName, lastName });
 
-      // Use enhanced authAPI.signup with built-in data validation
-      const data = await authAPI.signup({ email, password, firstName, lastName });
-
-      console.log('🔍 SIGNUP RESPONSE (validated):', data);
-
-      // ✅ FIXED: Handle both response formats - direct and nested data
-      if (data.success) {
-        // Handle direct format: {success: true, token: 'xxx', user: {...}}
-        let userData, authToken;
-
-        if (data.data) {
-          // Nested format: {success: true, data: {user: {...}, token: 'xxx'}}
-          userData = data.data.user;
-          authToken = data.data.token;
-        } else {
-          // Direct format: {success: true, user: {...}, token: 'xxx'}
-          userData = data.user;
-          authToken = data.token;
-        }
-
-        debugUserData(userData, 'signup - RAW userData from API');
-
-        if (!authToken) {
-          console.error('❌ Signup failed: No authentication token received');
-          throw new Error('No authentication token received');
-        }
-
-        if (!userData) {
-          console.error('❌ Signup failed: No user data received');
-          throw new Error('No user data received');
-        }
-
-        console.log('🔍 Signup debug - validated backend response:', {
+      // First try Supabase authentication
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { data, error } = await supabase.auth.signUp({
           email,
-          userData,
-          userDataRole: userData.role,
-          userDataRoles: userData.roles,
-          userDataPermissions: userData.permissions,
-          timestamp: new Date().toISOString()
+          password,
+          options: {
+            data: {
+              firstName: firstName || '',
+              lastName: lastName || ''
+            }
+          }
         });
 
-        debugUserData(userData, 'signup - BEFORE updateUser call');
+        if (!error && data.user) {
+          console.log('✅ SUPABASE SIGNUP SUCCESS:', data);
 
-        // Store token and use updateUser for consistent data processing
-        localStorage.setItem("token", authToken);
-        setToken(authToken);
+          if (data.session) {
+            // User signed up and was immediately logged in
+            const userData = {
+              id: data.user.id,
+              email: data.user.email!,
+              firstName: firstName || '',
+              lastName: lastName || '',
+              role: (data.user.user_metadata?.role || 'USER') as 'USER' | 'ADMIN',
+              subscriptionTier: data.user.user_metadata?.subscriptionTier || 'free',
+              tokenBalance: data.user.user_metadata?.tokenBalance || 0
+            };
+
+            const authToken = data.session.access_token;
+            localStorage.setItem("token", authToken);
+            localStorage.setItem("user", JSON.stringify(userData));
+
+            setToken(authToken);
+            setIsAuthenticated(true);
+            updateUser(userData);
+
+            toast({
+              title: "Welcome to SmartPromptIQ!",
+              description: `Account created for ${firstName || email.split('@')[0]}! 🎉`,
+            });
+
+            setTimeout(() => {
+              setLocation("/dashboard");
+            }, 100);
+            return;
+          } else {
+            // User needs to verify email first
+            toast({
+              title: "Check your email",
+              description: "Please check your email and click the confirmation link to activate your account.",
+            });
+            return;
+          }
+        }
+      } catch (supabaseError: any) {
+        console.warn("⚠️ Supabase signup failed, falling back to backend:", supabaseError.message);
+      }
+
+      // Fallback to backend authentication
+      console.log("🔄 Falling back to backend registration");
+      const response = await authAPI.register(email, password, firstName, lastName);
+
+      console.log("🔍 Backend register response:", response);
+
+      if (response.success) {
+        // Handle different response formats
+        let token, user;
+
+        if (response.data && typeof response.data === 'object' && response.data.token && response.data.user) {
+          // Format: {success: true, data: {token, user}}
+          console.log("🔍 Using data.token/data.user format");
+          token = response.data.token;
+          user = response.data.user;
+        } else if (response.token && response.user) {
+          // Format: {success: true, token, user}
+          console.log("🔍 Using token/user format");
+          token = response.token;
+          user = response.user;
+        } else {
+          console.error("❌ Invalid response format:", {
+            hasData: !!response.data,
+            hasToken: !!response.token,
+            hasUser: !!response.user,
+            dataHasToken: response.data?.token,
+            dataHasUser: response.data?.user,
+            fullResponse: response
+          });
+          throw new Error(`Signup failed - invalid response format: ${JSON.stringify(response)}`);
+        }
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        setToken(token);
         setIsAuthenticated(true);
-
-        // Use the centralized updateUser function for consistent validation
-        updateUser(userData);
-
-        debugUserData(userData, 'signup - AFTER updateUser call');
+        updateUser(user);
 
         toast({
           title: "Welcome to SmartPromptIQ!",
-          description: `Account created for ${userData.firstName || userData.email.split('@')[0]}! 🎉`,
+          description: `Account created for ${firstName || email.split('@')[0]}! 🎉`,
         });
 
-        // Add a small delay to see final state before redirect
         setTimeout(() => {
-          debugUserData(user, 'signup - FINAL STATE before redirect');
-          // Redirect to dashboard
           setLocation("/dashboard");
         }, 100);
       } else {
-        console.error('❌ Signup failed: Invalid response format', data);
-        throw new Error(data.message || 'Signup failed - invalid response format');
+        throw new Error(response.message || "Signup failed");
       }
     } catch (error: any) {
       console.error("❌ Signup failed:", error);
@@ -373,6 +480,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     try {
+      // Sign out from Supabase
+      const { supabase } = await import('@/lib/supabase');
+      await supabase.auth.signOut();
+
       // Clear local state
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -455,27 +566,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshUserData = async () => {
     try {
-      const authToken = localStorage.getItem("token");
-      if (!authToken) return;
+      // Check current Supabase session
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      const data = await authAPI.me();
-
-      if (data.success && (data.data?.user || data.user)) {
-        const updatedUser = data.data?.user || data.user;
-        updateUser(updatedUser);
-      }
-    } catch (error: any) {
-      console.error("Failed to refresh user data:", error);
-
-      // If it's an invalid token error, clear auth data
-      if (error.message && error.message.includes('Invalid token')) {
-        console.log("🧹 Invalid token in refreshUserData, clearing auth data...");
+      if (error || !session?.user) {
+        console.log("🧹 No valid Supabase session, clearing auth data...");
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setIsAuthenticated(false);
         setUser(null);
         setToken(null);
+        return;
       }
+
+      // Update user data from Supabase session
+      const updatedUser = {
+        id: session.user.id,
+        email: session.user.email!,
+        firstName: session.user.user_metadata?.firstName || '',
+        lastName: session.user.user_metadata?.lastName || '',
+        role: (session.user.user_metadata?.role || 'USER') as 'USER' | 'ADMIN',
+        subscriptionTier: session.user.user_metadata?.subscriptionTier || 'free',
+        tokenBalance: session.user.user_metadata?.tokenBalance || 0
+      };
+
+      updateUser(updatedUser);
+    } catch (error: any) {
+      console.error("Failed to refresh user data:", error);
     }
   };
 

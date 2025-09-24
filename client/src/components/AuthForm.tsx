@@ -21,7 +21,7 @@ import {
   Github,
   Chrome
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AuthFormProps {
   mode?: 'signin' | 'signup';

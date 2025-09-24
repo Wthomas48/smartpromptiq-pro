@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, Rocket, Crown, Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/config/api";
 
 export default function SignIn() {

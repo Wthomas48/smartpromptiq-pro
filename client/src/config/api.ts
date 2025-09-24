@@ -191,8 +191,9 @@ import { ensureSafeUser } from '../utils/safeDataUtils';
 // Import Supabase auth
 import { auth } from '../lib/supabase';
 
-// ✅ SUPABASE: Authentication functions using Supabase
+// ✅ HYBRID: Authentication functions with Supabase + Backend fallback
 export const authAPI = {
+  // Supabase signin (existing)
   signin: async (credentials: { email: string; password: string }) => {
     try {
       console.log('🔍 Supabase signin attempt:', { email: credentials.email });
@@ -229,6 +230,27 @@ export const authAPI = {
     }
   },
 
+  // Backend login fallback
+  login: async (email: string, password: string) => {
+    try {
+      console.log('🔍 Backend login attempt:', { email });
+
+      const response = await apiRequest('POST', '/api/auth/login', {
+        email,
+        password
+      });
+
+      const result = await response.json();
+      console.log('✅ Backend login success:', result);
+
+      return result;
+    } catch (error) {
+      console.error('❌ Backend login error:', error);
+      throw error;
+    }
+  },
+
+  // Supabase signup (existing)
   signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
     try {
       console.log('🔍 Supabase signup attempt:', { email: userData.email });
@@ -264,6 +286,28 @@ export const authAPI = {
 
     } catch (error) {
       console.error('❌ Signup API error:', error);
+      throw error;
+    }
+  },
+
+  // Backend register fallback
+  register: async (email: string, password: string, firstName?: string, lastName?: string) => {
+    try {
+      console.log('🔍 Backend register attempt:', { email, firstName, lastName });
+
+      const response = await apiRequest('POST', '/api/auth/register', {
+        email,
+        password,
+        firstName,
+        lastName
+      });
+
+      const result = await response.json();
+      console.log('✅ Backend register success:', result);
+
+      return result;
+    } catch (error) {
+      console.error('❌ Backend register error:', error);
       throw error;
     }
   },

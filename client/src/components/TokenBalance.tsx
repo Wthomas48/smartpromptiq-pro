@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Coins, Crown, Zap, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface UserSubscription {
   subscriptionTier: string;

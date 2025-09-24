@@ -1,28 +1,33 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase configuration - Force production rebuild with debugging
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-console.log('🔍 SUPABASE ENV CHECK:', {
+console.log('🔍 Supabase Configuration:', {
   supabaseUrl,
-  supabaseKeyLength: supabaseKey?.length,
-  isDev: import.meta.env.DEV,
-  mode: import.meta.env.MODE,
-  allEnv: import.meta.env
+  supabaseAnonKeyLength: supabaseAnonKey?.length,
+  environment: import.meta.env.MODE
 });
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Missing Supabase environment variables:', { supabaseUrl, supabaseKey });
-  throw new Error('Missing Supabase environment variables. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file')
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Missing Supabase environment variables:', {
+    VITE_SUPABASE_URL: supabaseUrl,
+    VITE_SUPABASE_ANON_KEY: supabaseAnonKey?.slice(0, 10) + '...'
+  });
+  throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
 
-// Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce' // More secure for SPAs
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 })
 

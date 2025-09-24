@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
 import TokenBalance from '@/components/TokenBalance';
 import TokenPurchase from '@/components/pricing/TokenPurchase';

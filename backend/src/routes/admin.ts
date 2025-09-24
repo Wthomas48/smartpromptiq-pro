@@ -3170,4 +3170,325 @@ router.post('/email-templates', authenticate, requireAdmin, async (req, res) => 
   }
 });
 
+// DELETE /api/admin/users/:id - Delete user account
+router.delete('/users/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Deletion reason is required'
+      });
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Don't allow deleting other admins
+    if (user.role === 'ADMIN' && user.id !== req.user!.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot delete other admin accounts'
+      });
+    }
+
+    // Delete user and all related data (cascade)
+    await prisma.user.delete({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: 'User account deleted successfully',
+      data: {
+        deletedUserId: id,
+        reason,
+        deletedBy: req.user!.id,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// DELETE /api/admin/payments/:id - Delete payment record
+router.delete('/payments/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Deletion reason is required'
+      });
+    }
+
+    // Find payment record
+    const payment = await prisma.tokenTransaction.findUnique({
+      where: { id }
+    });
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment record not found'
+      });
+    }
+
+    // Delete payment record
+    await prisma.tokenTransaction.delete({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: 'Payment record deleted successfully',
+      data: {
+        deletedPaymentId: id,
+        reason,
+        deletedBy: req.user!.id,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Delete payment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// DELETE /api/admin/sessions/:userId - Terminate user sessions
+router.delete('/sessions/:userId', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Termination reason is required'
+      });
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update user's token version to invalidate all sessions
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        tokenVersion: { increment: 1 }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'User sessions terminated successfully',
+      data: {
+        userId,
+        reason,
+        terminatedBy: req.user!.id,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Terminate sessions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// DELETE /api/admin/logs - Clear system logs
+router.delete('/logs', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { olderThan, reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Deletion reason is required'
+      });
+    }
+
+    let whereCondition = {};
+
+    if (olderThan) {
+      const cutoffDate = new Date(olderThan);
+      whereCondition = { createdAt: { lt: cutoffDate } };
+    }
+
+    // Delete usage logs
+    const deletedLogs = await prisma.usageLog.deleteMany({
+      where: whereCondition
+    });
+
+    res.json({
+      success: true,
+      message: `${deletedLogs.count} system logs deleted successfully`,
+      data: {
+        deletedCount: deletedLogs.count,
+        reason,
+        deletedBy: req.user!.id,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Delete logs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// POST /api/admin/users/:id/suspend - Suspend user account
+router.post('/users/:id/suspend', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, duration } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Suspension reason is required'
+      });
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Don't allow suspending other admins
+    if (user.role === 'ADMIN' && user.id !== req.user!.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot suspend other admin accounts'
+      });
+    }
+
+    const suspendedUntil = duration ? new Date(Date.now() + duration * 24 * 60 * 60 * 1000) : null;
+
+    // Update user status
+    await prisma.user.update({
+      where: { id },
+      data: {
+        status: 'suspended',
+        suspendedUntil,
+        suspensionReason: reason,
+        tokenVersion: { increment: 1 } // Invalidate sessions
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'User account suspended successfully',
+      data: {
+        userId: id,
+        reason,
+        suspendedUntil,
+        suspendedBy: req.user!.id,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Suspend user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// POST /api/admin/users/:id/unsuspend - Unsuspend user account
+router.post('/users/:id/unsuspend', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Unsuspension reason is required'
+      });
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update user status
+    await prisma.user.update({
+      where: { id },
+      data: {
+        status: 'active',
+        suspendedUntil: null,
+        suspensionReason: null
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'User account unsuspended successfully',
+      data: {
+        userId: id,
+        reason,
+        unsuspendedBy: req.user!.id,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Unsuspend user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
 export default router;
