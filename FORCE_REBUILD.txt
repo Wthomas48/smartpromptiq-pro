@@ -1,0 +1,12 @@
+Force Railway rebuild timestamp: 2025-10-03T01:04:00Z
+
+This file forces Railway to recognize changes and rebuild with the latest code.
+
+Changes deployed:
+- Fixed authentication signup response format
+- Added comprehensive demo endpoints for product categories
+- Fixed navigation flow (removed standalone generate)
+- Updated frontend build with latest fixes
+- Enhanced error handling and logging
+
+Version: 1.0.2
