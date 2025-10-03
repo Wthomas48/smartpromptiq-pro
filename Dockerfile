@@ -11,10 +11,10 @@ COPY package*.json ./
 COPY client/package*.json ./client/
 COPY backend/package*.json ./backend/
 
-# Install dependencies with npm ci for faster, reliable builds
-RUN npm ci
-RUN cd client && npm ci
-RUN cd backend && npm ci
+# Install dependencies with npm install for compatibility
+RUN npm install
+RUN cd client && npm install --legacy-peer-deps
+RUN cd backend && npm install
 
 # Copy source code
 COPY . .

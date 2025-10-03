@@ -1,6 +1,6 @@
 {
     "name": "smartpromptiq-saas",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "AI-Powered Prompt Engineering SaaS Platform",
     "type": "module",
     "scripts": {
@@ -21,7 +21,7 @@
         "lint": "eslint server --ext .ts",
         "type-check": "tsc --noEmit",
         "db:helper": "tsx scripts/db-helper.ts",
-        "railway:build": "cd client && rm -rf node_modules/.cache && npm run build",
+        "railway:build": "cd client && rm -rf node_modules && npm install && npm run build",
         "railway:start": "npm start",
         "db:shell": "docker-compose exec postgres psql -U postgres -d smartpromptiq",
         "db:stop": "docker-compose down",
