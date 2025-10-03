@@ -107,7 +107,6 @@ function Router() {
       <Route path="/categories" component={Categories} />
       <Route path="/questionnaire/:category" component={Questionnaire} />
       <Route path="/generation" component={Generation} />
-      <Route path="/generate" component={Generation} />
       <Route path="/teams" component={Teams} />
       <Route path="/team-dashboard" component={TeamDashboard} />
       <Route path="/billing" component={Billing} />

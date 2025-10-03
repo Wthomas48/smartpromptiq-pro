@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import BrainLogo from "@/components/BrainLogo";
 import { Sparkles, Rocket, Crown, Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/config/api";
@@ -152,6 +153,11 @@ export default function SignIn() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100 px-4">
       <Card className="w-full max-w-md shadow-2xl" data-build="signup-fix-2025-09-22-1">
         <CardHeader className="text-center">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center animate-pulse p-2">
+              <BrainLogo size={48} animate={true} />
+            </div>
+          </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
             SmartPromptIQ
           </CardTitle>

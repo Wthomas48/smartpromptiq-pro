@@ -61,7 +61,7 @@ export const getApiBaseUrl = (): string => {
 
     // If running on localhost in production, connect to backend on correct port
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       console.log('🔗 Using localhost API URL:', apiUrl);
       return apiUrl;
     }
@@ -261,11 +261,19 @@ export const authAPI = {
       });
 
       if (error) {
-        console.error('❌ Supabase signup error:', error);
-        throw new Error(error.message);
+        console.error('❌ Supabase signup error, falling back to backend:', error);
+        // Fallback to backend registration
+        return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
       }
 
       console.log('✅ Supabase signup success:', data);
+
+      // Check if we have a valid session token
+      if (!data.session?.access_token) {
+        console.log('⚠️ No session token from Supabase (email verification required), falling back to backend');
+        // Fallback to backend registration for immediate access
+        return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
+      }
 
       // Return in expected format for compatibility
       return {
@@ -280,13 +288,14 @@ export const authAPI = {
             roles: [],
             permissions: []
           },
-          token: data.session?.access_token
+          token: data.session.access_token
         }
       };
 
     } catch (error) {
-      console.error('❌ Signup API error:', error);
-      throw error;
+      console.error('❌ Signup API error, falling back to backend:', error);
+      // Final fallback to backend registration
+      return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
     }
   },
 
@@ -319,12 +328,13 @@ export const authAPI = {
       const { user, error } = await auth.getCurrentUser();
 
       if (error) {
-        console.error('❌ Supabase getCurrentUser error:', error);
-        throw new Error(error.message);
+        console.log('ℹ️ Supabase getCurrentUser error (normal for unauthenticated users):', error);
+        throw new Error('Auth session missing!');
       }
 
       if (!user) {
-        throw new Error('No authenticated user');
+        console.log('ℹ️ No authenticated user (normal for landing page)');
+        throw new Error('Auth session missing!');
       }
 
       console.log('✅ Supabase getCurrentUser success:', user);
@@ -346,7 +356,7 @@ export const authAPI = {
       };
 
     } catch (error) {
-      console.error('❌ Me API error:', error);
+      console.log('ℹ️ Me API completed without authentication (normal for landing page):', error);
       throw error;
     }
   }

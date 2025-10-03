@@ -71,33 +71,35 @@ router.post('/register', [
     const token = generateToken(user);
     const verificationToken = generateToken({ userId: user.id, type: 'email_verification' });
 
-    // Send welcome email and verification email
-    try {
-      await emailService.sendWelcomeEmail(user.email, user.firstName || 'User');
-      console.log(`Welcome email sent to ${user.email}`);
+    // Send welcome email and verification email (non-blocking)
+    setImmediate(async () => {
+      try {
+        await emailService.sendWelcomeEmail(user.email, user.firstName || 'User');
+        console.log(`Welcome email sent to ${user.email}`);
 
-      // Send email verification
-      await emailService.sendEmail({
-        to: user.email,
-        subject: 'Verify your SmartPromptIQ account',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #4F46E5;">Verify Your Email Address</h2>
-            <p>Hi ${user.firstName || 'there'},</p>
-            <p>Thanks for signing up! Please verify your email address to complete your SmartPromptIQ registration.</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.FRONTEND_URL}/verify-email/${verificationToken}" style="background: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Verify Email</a>
+        // Send email verification
+        await emailService.sendEmail({
+          to: user.email,
+          subject: 'Verify your SmartPromptIQ account',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #4F46E5;">Verify Your Email Address</h2>
+              <p>Hi ${user.firstName || 'there'},</p>
+              <p>Thanks for signing up! Please verify your email address to complete your SmartPromptIQ registration.</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.FRONTEND_URL}/verify-email/${verificationToken}" style="background: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Verify Email</a>
+              </div>
+              <p>If you didn't create an account, you can safely ignore this email.</p>
+              <p>Best regards,<br>The SmartPromptIQ Team</p>
             </div>
-            <p>If you didn't create an account, you can safely ignore this email.</p>
-            <p>Best regards,<br>The SmartPromptIQ Team</p>
-          </div>
-        `
-      });
-      console.log(`Verification email sent to ${user.email}`);
-    } catch (error) {
-      console.error('Failed to send emails:', error);
-      // Don't fail registration if email fails
-    }
+          `
+        });
+        console.log(`Verification email sent to ${user.email}`);
+      } catch (error) {
+        console.error('Failed to send emails:', error);
+        // Email failure doesn't affect registration success
+      }
+    });
 
     // ✅ FIXED: Ensure role is always properly set and validated for REGISTER
     const userData = {

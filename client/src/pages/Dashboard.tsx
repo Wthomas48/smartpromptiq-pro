@@ -30,7 +30,7 @@ export default function Dashboard() {
 
   // Mock quick actions with proper navigation
   const quickActions = [
-    { icon: Plus, title: 'Generate New Prompt', description: 'Create AI-powered prompts', action: '/generation', color: 'bg-blue-500' },
+    { icon: Plus, title: 'Create New Prompt', description: 'Start with questionnaire flow', action: '/categories', color: 'bg-blue-500' },
     { icon: FileText, title: 'Browse Templates', description: 'Explore prompt templates', action: '/templates', color: 'bg-green-500' },
     { icon: BarChart3, title: 'View Analytics', description: 'Track your performance', action: '/analytics', color: 'bg-purple-500' },
     { icon: Users, title: 'Team Collaboration', description: 'Work with your team', action: '/teams', color: 'bg-orange-500' }
@@ -60,10 +60,10 @@ export default function Dashboard() {
               </Badge>
               <Button
                 className="bg-indigo-600 hover:bg-indigo-700"
-                onClick={() => handleQuickAction('/generation')}
+                onClick={() => handleQuickAction('/categories')}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                New Prompt
+                Create Prompt
               </Button>
             </div>
           </div>

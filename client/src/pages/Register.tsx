@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { authAPI } from "@/config/api";
+import BrainLogo from "@/components/BrainLogo";
 import { Sparkles, Rocket, Crown, Eye, EyeOff, Lock, Mail, User, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function Register() {
@@ -176,8 +177,8 @@ export default function Register() {
       <Card className="w-full max-w-lg mx-auto shadow-2xl border-0 bg-white/95 backdrop-blur-sm relative z-10">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center animate-pulse">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center animate-pulse p-2">
+              <BrainLogo size={60} animate={true} />
             </div>
           </div>
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">

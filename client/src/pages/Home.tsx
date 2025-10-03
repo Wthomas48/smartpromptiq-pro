@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import TopNavigation from "@/components/TopNavigation";
 import AnimatedCounter from "@/components/AnimatedCounter";
+import BrainLogo from "@/components/BrainLogo";
 import { useLocation } from "wouter";
 
 export default function Home() {
@@ -60,8 +61,14 @@ export default function Home() {
           <div className="stars-container" ref={heroStarsRef}></div>
           
           <div className="hero-content">
-            <div className="hero-badge">Revolutionary AI-Powered Platform</div>
-            
+            <div className="hero-logo-section">
+              <div className="flex items-center justify-center space-x-4 mb-4">
+                <BrainLogo size={100} animate={true} variant="filled" className="hero-brain-logo" />
+                <BrainLogo size={100} animate={true} variant="outline" className="hero-brain-logo-outline" />
+              </div>
+              <div className="hero-badge">Revolutionary AI-Powered Platform</div>
+            </div>
+
             <h1 className="hero-title">
               Transform Ideas into<br />
               <span className="gradient-text">AI-Powered Blueprints</span>

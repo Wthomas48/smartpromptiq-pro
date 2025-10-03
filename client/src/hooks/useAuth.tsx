@@ -15,6 +15,10 @@ interface User {
   stripeCustomerId?: string;
   subscriptionStatus?: string;
   role?: 'USER' | 'ADMIN';
+  plan?: string;
+  name?: string;
+  roles?: any[];
+  permissions?: any[];
 }
 
 interface AuthContextType {
@@ -42,6 +46,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // ✅ ULTRA-ROBUST: Response normalization function
+  const normalizeAuthResponse = (response: any): { token: string; user: any } => {
+    console.log('🔍 Normalizing auth response:', response);
+
+    let token: string | null = null;
+    let user: any = null;
+
+    // Try to extract token from various locations
+    token = response.token ||
+            response.data?.token ||
+            response.access_token ||
+            response.data?.access_token ||
+            response.session?.access_token;
+
+    // Try to extract user from various locations
+    user = response.user ||
+           response.data?.user ||
+           response.userData ||
+           response.data?.userData ||
+           response.session?.user;
+
+    console.log('🔍 Extracted from response:', {
+      hasToken: !!token,
+      tokenLength: token?.length,
+      hasUser: !!user,
+      userKeys: user ? Object.keys(user) : []
+    });
+
+    if (!token || !user) {
+      console.error('❌ Normalization failed:', {
+        hasToken: !!token,
+        hasUser: !!user,
+        response
+      });
+      throw new Error('Authentication response missing token or user data');
+    }
+
+    return { token, user };
+  };
 
   // ✅ NEW: Comprehensive debugging function for user data validation
   const debugUserData = (user: any, location: string) => {
@@ -112,7 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
       } catch (supabaseError) {
-        console.log('⚠️ Supabase session check failed:', supabaseError);
+        console.log('⚠️ Supabase session check failed (this is normal for unauthenticated users):', supabaseError);
       }
 
       // Check for auth token in localStorage (fallback for legacy/backend auth)
@@ -153,7 +197,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return;
           }
         } catch (backendError: any) {
-          console.log("⚠️ Backend auth check failed:", backendError);
+          console.log("⚠️ Backend auth check failed (this is normal for unauthenticated users):", backendError);
 
           // Check if it's an invalid token error
           if (backendError.message && backendError.message.includes('Invalid token')) {
@@ -182,13 +226,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("✅ User authenticated from storage:", storedUserData);
         debugUserData(storedUserData, 'checkAuth - AFTER updateUser (stored)');
       } else {
-        console.log("No token found");
+        console.log("ℹ️ No token found - user is not authenticated (this is normal for landing page)");
         setIsAuthenticated(false);
         setUser(null);
         setToken(null);
       }
     } catch (error) {
-      console.error("Auth check failed:", error);
+      console.log("ℹ️ Auth check completed with no authentication (this is normal for landing page):", error);
       setIsAuthenticated(false);
       setUser(null);
       setToken(null);
@@ -290,50 +334,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("🔍 Backend login response:", response);
 
       if (response.success) {
-        // Handle different response formats
-        let token, user;
+        // ✅ ULTRA-ROBUST: Use normalization function
+        try {
+          const { token, user } = normalizeAuthResponse(response);
+          console.log('✅ Login response normalized successfully');
 
-        if (response.data && typeof response.data === 'object' && response.data.token && response.data.user) {
-          // Format: {success: true, data: {token, user}}
-          console.log("🔍 Using data.token/data.user format");
-          token = response.data.token;
-          user = response.data.user;
-        } else if (response.token && response.user) {
-          // Format: {success: true, token, user}
-          console.log("🔍 Using token/user format");
-          token = response.token;
-          user = response.user;
-        } else {
-          console.error("❌ Invalid response format:", {
-            hasData: !!response.data,
-            hasToken: !!response.token,
-            hasUser: !!response.user,
-            dataHasToken: response.data?.token,
-            dataHasUser: response.data?.user,
-            fullResponse: response
+          localStorage.setItem("token", token);
+          localStorage.setItem("user", JSON.stringify(user));
+
+          setToken(token);
+          setIsAuthenticated(true);
+          updateUser(user);
+
+          toast({
+            title: "Welcome back!",
+            description: `Signed in as ${user.firstName || user.email.split('@')[0]}`,
           });
-          throw new Error(`Login failed - invalid response format: ${JSON.stringify(response)}`);
+
+          setTimeout(() => {
+            if (user.role === 'ADMIN') {
+              setLocation("/admin");
+            } else {
+              setLocation("/dashboard");
+            }
+          }, 100);
+        } catch (normalizationError: any) {
+          console.error('❌ Login response normalization failed:', normalizationError);
+          throw new Error(`Login failed - invalid response format: ${normalizationError.message}`);
         }
-
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
-
-        setToken(token);
-        setIsAuthenticated(true);
-        updateUser(user);
-
-        toast({
-          title: "Welcome back!",
-          description: `Signed in as ${user.firstName || user.email.split('@')[0]}`,
-        });
-
-        setTimeout(() => {
-          if (user.role === 'ADMIN') {
-            setLocation("/admin");
-          } else {
-            setLocation("/dashboard");
-          }
-        }, 100);
       } else {
         throw new Error(response.message || "Login failed");
       }
@@ -422,76 +450,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("🔍 Backend register response:", response);
 
       if (response.success) {
-        // Handle different response formats - ULTRA ROBUST
-        let token, user;
+        // ✅ ULTRA-ROBUST: Use normalization function
+        try {
+          const { token, user } = normalizeAuthResponse(response);
+          console.log('✅ Signup response normalized successfully');
 
-        // Log the exact response structure for debugging
-        console.log("🔍 Full response structure:", {
-          response,
-          hasData: !!response.data,
-          hasToken: !!response.token,
-          hasUser: !!response.user,
-          dataType: typeof response.data,
-          tokenType: typeof response.token,
-          userType: typeof response.user
-        });
+          // Create user with fallback values if needed
+          const normalizedUser = {
+            id: user.id || 'fallback-id',
+            email: user.email || email || 'unknown@example.com',
+            firstName: user.firstName || firstName || '',
+            lastName: user.lastName || lastName || '',
+            role: user.role || 'USER',
+            subscriptionTier: user.subscriptionTier || user.plan || 'free',
+            tokenBalance: user.tokenBalance || 0
+          };
 
-        if (response.data && typeof response.data === 'object' && response.data.token && response.data.user) {
-          // Format: {success: true, data: {token, user}}
-          console.log("✅ Using data.token/data.user format");
-          token = response.data.token;
-          user = response.data.user;
-        } else if (response.token && response.user) {
-          // Format: {success: true, token, user} or {success: true, token, user, data: null}
-          console.log("✅ Using token/user format");
-          token = response.token;
-          user = response.user;
-        } else {
-          // Emergency fallback - try to extract any token/user found anywhere
-          console.warn("⚠️ Using emergency fallback response extraction");
+          localStorage.setItem("token", token);
+          localStorage.setItem("user", JSON.stringify(normalizedUser));
 
-          // Look for token anywhere in the response
-          token = response.token || response.data?.token || response.access_token || response.data?.access_token;
+          setToken(token);
+          setIsAuthenticated(true);
+          updateUser(normalizedUser);
 
-          // Look for user anywhere in the response
-          user = response.user || response.data?.user || response.userData || response.data?.userData;
+          toast({
+            title: "Welcome to SmartPromptIQ!",
+            description: `Account created for ${firstName || email.split('@')[0]}! 🎉`,
+          });
 
-          // If we still don't have both, create minimal user from available data
-          if (token && !user) {
-            user = {
-              id: response.id || response.data?.id || 'fallback-id',
-              email: response.email || response.data?.email || 'unknown@example.com',
-              firstName: response.firstName || response.data?.firstName || '',
-              lastName: response.lastName || response.data?.lastName || '',
-              role: 'USER',
-              subscriptionTier: 'free',
-              tokenBalance: 0
-            };
-          }
-
-          if (!token || !user) {
-            console.error("❌ Could not extract token/user from response:", response);
-            throw new Error("Signup succeeded but response format is invalid");
-          }
-
-          console.log("✅ Emergency fallback extraction successful", { token: !!token, user: !!user });
+          setTimeout(() => {
+            setLocation("/dashboard");
+          }, 100);
+        } catch (normalizationError: any) {
+          console.error('❌ Response normalization failed:', normalizationError);
+          throw new Error(`Signup failed - invalid response format: ${normalizationError.message}`);
         }
-
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
-
-        setToken(token);
-        setIsAuthenticated(true);
-        updateUser(user);
-
-        toast({
-          title: "Welcome to SmartPromptIQ!",
-          description: `Account created for ${firstName || email.split('@')[0]}! 🎉`,
-        });
-
-        setTimeout(() => {
-          setLocation("/dashboard");
-        }, 100);
       } else {
         throw new Error(response.message || "Signup failed");
       }
@@ -582,14 +575,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Safe single role check
     if (user.role) {
-      return user.role === 'admin' || user.role === 'ADMIN' || user.role?.name === 'admin';
+      return user.role === 'admin' || user.role === 'ADMIN';
     }
 
     // Safe multiple roles check
     const roles = user.roles || [];
     return roles.some(role => {
       if (typeof role === 'string') return role === 'admin' || role === 'ADMIN';
-      if (role && typeof role === 'object') return role.name === 'admin' || role.name === 'ADMIN';
+      if (role && typeof role === 'object' && 'name' in role) return role.name === 'admin' || role.name === 'ADMIN';
       return false;
     });
   };

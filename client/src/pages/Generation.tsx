@@ -61,7 +61,7 @@ export default function Generation() {
         return { prompt: questionnaireData.templateData.previewPrompt };
       }
 
-      const response = await apiRequest("POST", "/api/generate-prompt", {
+      const response = await apiRequest("POST", "/api/demo-generate-prompt", {
         category: directMode ? selectedCategory : (questionnaireData.category || "business"),
         answers: directMode ? {} : (questionnaireData.responses || {}),
         customization

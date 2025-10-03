@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import Logo from "@/components/Logo";
+import BrainLogo from "@/components/BrainLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { safeMap, ensureArray } from "@/utils/arrayUtils";
 
@@ -46,8 +46,7 @@ export default function Navigation() {
   // Navigation items for better organization
   const mainNavItems = [
     { href: "/dashboard", label: "Dashboard", icon: null, badge: null },
-    { href: "/generate", label: "Generate", icon: null, badge: "New!", special: true },
-    { href: "/categories", label: "Categories", icon: null, badge: null },
+    { href: "/categories", label: "Create Prompt", icon: null, badge: "Start Here!", special: true },
     { href: "/teams", label: "Teams", icon: Users, badge: "4 Active" },
     { href: "/documentation", label: "Docs", icon: null, badge: null }
   ];
@@ -71,7 +70,7 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/landing" className="flex items-center space-x-3" aria-label="SmartPromptIQ Home">
-            <Logo size={32} />
+            <BrainLogo size={32} animate={true} />
             <span className="text-xl font-bold text-slate-900 dark:text-white">SmartPromptIQ</span>
           </Link>
           

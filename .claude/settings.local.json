@@ -162,7 +162,10 @@
       "Bash(supabase:*)",
       "Bash(npx supabase:*)",
       "Bash(PORT=5173 npm run dev)",
-      "WebFetch(domain:smartpromptiq.com)"
+      "WebFetch(domain:smartpromptiq.com)",
+      "Bash(echo:*)",
+      "Bash(start \"\" \"http://localhost:5176\")",
+      "Bash(NODE_ENV=production npm run build)"
     ],
     "deny": [],
     "ask": []
