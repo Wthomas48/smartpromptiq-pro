@@ -165,7 +165,8 @@
       "WebFetch(domain:smartpromptiq.com)",
       "Bash(echo:*)",
       "Bash(start \"\" \"http://localhost:5176\")",
-      "Bash(NODE_ENV=production npm run build)"
+      "Bash(NODE_ENV=production npm run build)",
+      "Bash(PORT=8080 node railway-server-minimal.cjs)"
     ],
     "deny": [],
     "ask": []

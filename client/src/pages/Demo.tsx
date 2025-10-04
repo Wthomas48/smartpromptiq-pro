@@ -918,9 +918,9 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          templateType: selectedTemplate,
-          demoData: selectedTemplateData?.sampleResponses || {},
-          generateRealPrompt: true
+          template: selectedTemplate,
+          responses: selectedTemplateData?.sampleResponses || {},
+          userEmail: email
         }),
       });
 
@@ -930,11 +930,11 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
 
       const data = await response.json();
 
-      if (data.success && data.data?.generatedPrompt) {
+      if (data && data.content) {
         // Set real generated content
         setGeneratedContent({
-          title: data.data.title || selectedTemplateData?.sampleOutput?.title || 'Generated AI Prompt',
-          content: data.data.generatedPrompt
+          title: data.title || selectedTemplateData?.sampleOutput?.title || 'Generated AI Prompt',
+          content: data.content
         });
         setShowOutput(true);
 
@@ -948,8 +948,8 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
               },
               body: JSON.stringify({
                 email,
-                templateName: selectedTemplateData?.name,
-                generatedPrompt: data.data.generatedPrompt
+                results: data,
+                template: selectedTemplate
               }),
             });
           } catch (emailError) {
@@ -957,7 +957,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
           }
         }
       } else {
-        throw new Error(data.message || 'Generation failed');
+        throw new Error(data.error || 'Generation failed');
       }
     } catch (error) {
       console.error('Demo generation error:', error);
