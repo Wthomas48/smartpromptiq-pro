@@ -88,10 +88,10 @@ app.post('/api/auth/register', (req, res) => {
 // Demo rate limiting - simple in-memory store for production
 const demoUsage = new Map();
 const DEMO_LIMITS = {
-  MAX_REQUESTS_PER_IP: 5, // 5 requests per IP per hour
-  MAX_REQUESTS_PER_EMAIL: 3, // 3 requests per email per hour
+  MAX_REQUESTS_PER_IP: 20, // 20 requests per IP per hour
+  MAX_REQUESTS_PER_EMAIL: 10, // 10 requests per email per hour
   WINDOW_MS: 60 * 60 * 1000, // 1 hour
-  MAX_DAILY_TOTAL: 1000 // Total daily limit across all users
+  MAX_DAILY_TOTAL: 5000 // Total daily limit across all users
 };
 
 let dailyDemoCount = 0;
@@ -485,6 +485,30 @@ app.post('/api/demo/send-results', (req, res) => {
       success: false,
       error: 'Failed to send results',
       message: 'Please try again later'
+    });
+  }
+});
+
+// Demo rate limit reset endpoint (for development/testing)
+app.post('/api/demo/reset-limits', (req, res) => {
+  try {
+    // Clear all rate limiting data
+    demoUsage.clear();
+    dailyDemoCount = 0;
+    dailyResetTime = Date.now() + 24 * 60 * 60 * 1000;
+
+    console.log('🔄 Demo rate limits reset');
+
+    res.json({
+      success: true,
+      message: 'Demo rate limits have been reset',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Reset limits error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reset limits'
     });
   }
 });
