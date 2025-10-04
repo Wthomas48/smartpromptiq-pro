@@ -911,35 +911,38 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     if (template && template.questions) {
       // Template has interactive questionnaire - start interactive mode with pre-filled data
       console.log('🎯 Starting interactive demo for template with questions:', templateId);
-      setShowInteractiveDemo(true);
+
+      // Pre-fill data FIRST, then show interactive demo
       if (template.demoData) {
         console.log('🎯 Pre-filling demo form with sample data:', template.demoData);
         setUserResponses(template.demoData);
       } else {
         setUserResponses({});
       }
+
+      // Use React's batching by setting state in the same synchronous block
+      setShowInteractiveDemo(true);
     } else {
       // Template has no questions - generate immediately with sample responses
       console.log('🎯 Generating immediate demo for template without questions:', templateId);
       setShowInteractiveDemo(false);
       setUserResponses({});
-      // Trigger immediate generation
-      setTimeout(() => {
-        handleGenerateDemo();
-      }, 100);
+      // Trigger immediate generation without delay
+      handleGenerateDemo();
     }
   };
 
   const handleStartInteractiveDemo = () => {
-    setShowInteractiveDemo(true);
-    setCurrentStep(0);
-
-    // Pre-fill form with demo data if available
+    // Pre-fill form with demo data FIRST if available
     const template = selectedTemplate ? demoTemplates[selectedTemplate as keyof typeof demoTemplates] : null;
     if (template && template.demoData) {
       console.log('🎯 Pre-filling demo form with sample data:', template.demoData);
       setUserResponses(template.demoData);
     }
+
+    // Then show interactive demo and reset step
+    setCurrentStep(0);
+    setShowInteractiveDemo(true);
   };
 
   const handleNextStep = () => {
@@ -1381,21 +1384,47 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                           </h4>
                           
                           {selectedTemplateData.questions[currentStep].type === 'input' && (
-                            <Input
-                              placeholder={selectedTemplateData.questions[currentStep].placeholder}
-                              value={userResponses[selectedTemplateData.questions[currentStep].id] || ''}
-                              onChange={(e) => handleResponseChange(selectedTemplateData.questions[currentStep].id, e.target.value)}
-                              className="text-lg p-4 border-2 border-gray-200 focus:border-indigo-500"
-                            />
+                            <div className="relative">
+                              <Input
+                                placeholder={selectedTemplateData.questions[currentStep].placeholder}
+                                value={userResponses[selectedTemplateData.questions[currentStep].id] || ''}
+                                onChange={(e) => handleResponseChange(selectedTemplateData.questions[currentStep].id, e.target.value)}
+                                className={`text-lg p-4 border-2 focus:border-indigo-500 ${
+                                  userResponses[selectedTemplateData.questions[currentStep].id] && selectedTemplateData.demoData
+                                    ? 'border-green-300 bg-green-50'
+                                    : 'border-gray-200'
+                                }`}
+                              />
+                              {userResponses[selectedTemplateData.questions[currentStep].id] && selectedTemplateData.demoData && (
+                                <div className="absolute -top-2 -right-2">
+                                  <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                                    Pre-filled
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
-                          
+
                           {selectedTemplateData.questions[currentStep].type === 'textarea' && (
-                            <Textarea
-                              placeholder={selectedTemplateData.questions[currentStep].placeholder}
-                              value={userResponses[selectedTemplateData.questions[currentStep].id] || ''}
-                              onChange={(e) => handleResponseChange(selectedTemplateData.questions[currentStep].id, e.target.value)}
-                              className="text-lg p-4 border-2 border-gray-200 focus:border-indigo-500 min-h-[100px]"
-                            />
+                            <div className="relative">
+                              <Textarea
+                                placeholder={selectedTemplateData.questions[currentStep].placeholder}
+                                value={userResponses[selectedTemplateData.questions[currentStep].id] || ''}
+                                onChange={(e) => handleResponseChange(selectedTemplateData.questions[currentStep].id, e.target.value)}
+                                className={`text-lg p-4 border-2 focus:border-indigo-500 min-h-[100px] ${
+                                  userResponses[selectedTemplateData.questions[currentStep].id] && selectedTemplateData.demoData
+                                    ? 'border-green-300 bg-green-50'
+                                    : 'border-gray-200'
+                                }`}
+                              />
+                              {userResponses[selectedTemplateData.questions[currentStep].id] && selectedTemplateData.demoData && (
+                                <div className="absolute -top-2 -right-2">
+                                  <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                                    Pre-filled
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
                           
                           {selectedTemplateData.questions[currentStep].type === 'select' && (
