@@ -1,2 +1,2 @@
 [start]
-cmd = "node server.cjs"
+cmd = "node railway-server-minimal.cjs"

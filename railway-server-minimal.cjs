@@ -85,11 +85,144 @@ app.post('/api/auth/register', (req, res) => {
   });
 });
 
-// Demo generation endpoint
+// Demo rate limiting - simple in-memory store for production
+const demoUsage = new Map();
+const DEMO_LIMITS = {
+  MAX_REQUESTS_PER_IP: 5, // 5 requests per IP per hour
+  MAX_REQUESTS_PER_EMAIL: 3, // 3 requests per email per hour
+  WINDOW_MS: 60 * 60 * 1000, // 1 hour
+  MAX_DAILY_TOTAL: 1000 // Total daily limit across all users
+};
+
+let dailyDemoCount = 0;
+let dailyResetTime = Date.now() + 24 * 60 * 60 * 1000;
+
+// Demo generation endpoint with rate limiting
 app.post('/api/demo/generate', (req, res) => {
   try {
     const { template, responses, userEmail } = req.body;
-    console.log('🎯 Demo generate request:', { template, userEmail, responseCount: Object.keys(responses || {}).length });
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const now = Date.now();
+
+    // Reset daily counter if needed
+    if (now > dailyResetTime) {
+      dailyDemoCount = 0;
+      dailyResetTime = now + 24 * 60 * 60 * 1000;
+    }
+
+    // Check daily limit
+    if (dailyDemoCount >= DEMO_LIMITS.MAX_DAILY_TOTAL) {
+      return res.status(429).json({
+        error: 'Demo service temporarily unavailable',
+        message: 'Daily demo limit reached. Please try again tomorrow.',
+        retryAfter: Math.ceil((dailyResetTime - now) / 1000)
+      });
+    }
+
+    // Rate limiting by IP
+    const ipKey = `ip:${clientIP}`;
+    const ipUsage = demoUsage.get(ipKey) || { count: 0, resetTime: now + DEMO_LIMITS.WINDOW_MS };
+
+    if (now > ipUsage.resetTime) {
+      ipUsage.count = 0;
+      ipUsage.resetTime = now + DEMO_LIMITS.WINDOW_MS;
+    }
+
+    if (ipUsage.count >= DEMO_LIMITS.MAX_REQUESTS_PER_IP) {
+      return res.status(429).json({
+        error: 'Too many requests',
+        message: 'Rate limit exceeded. Please wait before making another request.',
+        retryAfter: Math.ceil((ipUsage.resetTime - now) / 1000)
+      });
+    }
+
+    // Rate limiting by email (if provided)
+    if (userEmail) {
+      const emailKey = `email:${userEmail.toLowerCase()}`;
+      const emailUsage = demoUsage.get(emailKey) || { count: 0, resetTime: now + DEMO_LIMITS.WINDOW_MS };
+
+      if (now > emailUsage.resetTime) {
+        emailUsage.count = 0;
+        emailUsage.resetTime = now + DEMO_LIMITS.WINDOW_MS;
+      }
+
+      if (emailUsage.count >= DEMO_LIMITS.MAX_REQUESTS_PER_EMAIL) {
+        return res.status(429).json({
+          error: 'Email limit exceeded',
+          message: 'You have reached the demo limit for this email. Please try again later.',
+          retryAfter: Math.ceil((emailUsage.resetTime - now) / 1000)
+        });
+      }
+
+      // Update email usage
+      emailUsage.count++;
+      demoUsage.set(emailKey, emailUsage);
+    }
+
+    // Update IP usage
+    ipUsage.count++;
+    demoUsage.set(ipKey, ipUsage);
+
+    // Increment daily counter
+    dailyDemoCount++;
+
+    // Input validation
+    if (!template || typeof template !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid template',
+        message: 'Template parameter is required and must be a string'
+      });
+    }
+
+    if (template.length > 50) {
+      return res.status(400).json({
+        error: 'Template name too long',
+        message: 'Template name must be 50 characters or less'
+      });
+    }
+
+    if (responses && typeof responses === 'object') {
+      // Limit number of response fields
+      if (Object.keys(responses).length > 20) {
+        return res.status(400).json({
+          error: 'Too many response fields',
+          message: 'Maximum 20 response fields allowed'
+        });
+      }
+
+      // Limit response field sizes
+      for (const [key, value] of Object.entries(responses)) {
+        if (typeof key !== 'string' || key.length > 100) {
+          return res.status(400).json({
+            error: 'Invalid response field',
+            message: 'Response field names must be strings with max 100 characters'
+          });
+        }
+        if (typeof value === 'string' && value.length > 1000) {
+          return res.status(400).json({
+            error: 'Response value too long',
+            message: 'Response values must be 1000 characters or less'
+          });
+        }
+      }
+    }
+
+    if (userEmail && (typeof userEmail !== 'string' || userEmail.length > 254)) {
+      return res.status(400).json({
+        error: 'Invalid email',
+        message: 'Email must be a valid string with max 254 characters'
+      });
+    }
+
+    console.log('🎯 Demo generate request:', {
+      template,
+      userEmail,
+      clientIP,
+      responseCount: Object.keys(responses || {}).length,
+      dailyCount: dailyDemoCount,
+      ipUsage: ipUsage.count,
+      emailUsage: userEmail ? demoUsage.get(`email:${userEmail.toLowerCase()}`)?.count : 'N/A'
+    });
 
     // Template responses based on demo template type
     const demoResponses = {
