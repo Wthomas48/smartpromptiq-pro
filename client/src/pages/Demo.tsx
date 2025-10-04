@@ -202,6 +202,12 @@ Trending: #SelfCare #NaturalBeauty #SkincareAddict
         { id: "goals", label: "Financial Goals", type: "textarea", placeholder: "e.g., retirement planning, home buying, debt reduction" },
         { id: "timeline", label: "Planning Timeline", type: "select", options: ["1-2 years", "3-5 years", "5-10 years", "10+ years"] }
       ],
+      demoData: {
+        "age": "30-40",
+        "income": "$50K-100K",
+        "goals": "Save for home down payment, build emergency fund, start retirement savings",
+        "timeline": "3-5 years"
+      },
       sampleResponses: {
         "Target Age Group": "30-40",
         "Income Level": "$75,000 annually", 
@@ -342,6 +348,12 @@ This plan provides a clear roadmap to financial security, balancing immediate ne
         { id: "duration", label: "Course Duration", type: "select", options: ["2-4 weeks", "4-6 weeks", "6-8 weeks", "8-12 weeks", "12+ weeks"] },
         { id: "format", label: "Learning Format", type: "textarea", placeholder: "e.g., Video lessons, worksheets, quizzes, live sessions" }
       ],
+      demoData: {
+        "topic": "Digital Marketing for Small Businesses",
+        "audience": "Small business owners with no marketing experience who want to learn cost-effective strategies to grow their customer base",
+        "duration": "6-8 weeks",
+        "format": "Video lessons, practical worksheets, live Q&A sessions, and peer discussion forums"
+      },
       sampleResponses: {
         "Course Topic": "Digital Marketing for Small Businesses",
         "Target Audience": "Small business owners with no marketing experience",
@@ -466,6 +478,12 @@ By the end of this course, students will be able to:
         { id: "audience", label: "Target Audience", type: "textarea", placeholder: "Describe your ideal clients" },
         { id: "approach", label: "Coaching Approach", type: "textarea", placeholder: "Your methodology and style" }
       ],
+      demoData: {
+        "focus": "Stress Management",
+        "duration": "8 weeks",
+        "audience": "Busy professionals experiencing work-life balance challenges and high stress levels",
+        "approach": "Mindfulness-based stress reduction combined with practical time management and boundary-setting tools"
+      },
       sampleResponses: {
         "Primary Focus Area": "Stress Management for Professionals",
         "Program Duration": "8 weeks",
@@ -635,6 +653,12 @@ By program completion, participants typically experience:
         { id: "features", label: "Core Features", type: "textarea", placeholder: "List the main features and functionality" },
         { id: "timeline", label: "Development Timeline", type: "select", options: ["3-6 months", "6-9 months", "9-12 months", "12+ months"] }
       ],
+      demoData: {
+        "appType": "Health & Fitness",
+        "platform": "Cross-Platform",
+        "features": "Workout tracking, meal planning, progress photos, social sharing, coach messaging, custom workout creation, nutrition database, progress analytics",
+        "timeline": "6-9 months"
+      },
       sampleResponses: {
         "App Type": "Fitness & Wellness",
         "Target Platform": "Cross-platform (iOS and Android)",
@@ -888,6 +912,13 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
   const handleStartInteractiveDemo = () => {
     setShowInteractiveDemo(true);
     setCurrentStep(0);
+
+    // Pre-fill form with demo data if available
+    const template = selectedTemplate ? demoTemplates[selectedTemplate as keyof typeof demoTemplates] : null;
+    if (template && template.demoData) {
+      console.log('🎯 Pre-filling demo form with sample data:', template.demoData);
+      setUserResponses(template.demoData);
+    }
   };
 
   const handleNextStep = () => {
@@ -1287,6 +1318,26 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                   {/* Interactive Questionnaire */}
                   {showInteractiveDemo && selectedTemplateData.questions ? (
                     <div className="space-y-6">
+                      {selectedTemplateData.demoData && (
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span className="text-green-800 font-medium text-sm">
+                                Demo Mode: Form pre-filled with example data - feel free to edit!
+                              </span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setUserResponses(selectedTemplateData.demoData || {})}
+                              className="text-green-700 border-green-300 hover:bg-green-100"
+                            >
+                              Reset to Demo Data
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between mb-6">
                         <h3 className="text-2xl font-bold text-gray-900">Interactive Questionnaire</h3>
                         <div className="flex items-center space-x-2">
