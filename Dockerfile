@@ -23,7 +23,7 @@ RUN cd backend && npm install --legacy-peer-deps
 COPY . .
 
 # Build client application with extended timeout
-RUN cd client && npm run build || (echo "Build failed" && exit 1)
+RUN cd client && NODE_OPTIONS="--max-old-space-size=4096" npm run build || (echo "Build failed with exit code $?" && exit 1)
 
 # Expose port
 EXPOSE 8080
