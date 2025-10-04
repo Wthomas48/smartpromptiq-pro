@@ -166,7 +166,9 @@
       "Bash(echo:*)",
       "Bash(start \"\" \"http://localhost:5176\")",
       "Bash(NODE_ENV=production npm run build)",
-      "Bash(PORT=8080 node railway-server-minimal.cjs)"
+      "Bash(PORT=8080 node railway-server-minimal.cjs)",
+      "Bash(for i in {2..6})",
+      "Bash(do echo \"Request $i:\")"
     ],
     "deny": [],
     "ask": []

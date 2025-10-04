@@ -905,8 +905,29 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     setSelectedTemplate(templateId);
     setShowOutput(false);
     setCurrentStep(0);
-    setUserResponses({});
-    setShowInteractiveDemo(false);
+
+    const template = demoTemplates[templateId as keyof typeof demoTemplates];
+
+    if (template && template.questions) {
+      // Template has interactive questionnaire - start interactive mode with pre-filled data
+      console.log('🎯 Starting interactive demo for template with questions:', templateId);
+      setShowInteractiveDemo(true);
+      if (template.demoData) {
+        console.log('🎯 Pre-filling demo form with sample data:', template.demoData);
+        setUserResponses(template.demoData);
+      } else {
+        setUserResponses({});
+      }
+    } else {
+      // Template has no questions - generate immediately with sample responses
+      console.log('🎯 Generating immediate demo for template without questions:', templateId);
+      setShowInteractiveDemo(false);
+      setUserResponses({});
+      // Trigger immediate generation
+      setTimeout(() => {
+        handleGenerateDemo();
+      }, 100);
+    }
   };
 
   const handleStartInteractiveDemo = () => {
@@ -950,7 +971,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
         },
         body: JSON.stringify({
           template: selectedTemplate,
-          responses: userResponses,
+          responses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
           userEmail: email
         }),
       });
