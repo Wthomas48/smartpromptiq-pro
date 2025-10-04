@@ -85,6 +85,228 @@ app.post('/api/auth/register', (req, res) => {
   });
 });
 
+// Demo generation endpoint
+app.post('/api/demo/generate', (req, res) => {
+  try {
+    const { template, responses, userEmail } = req.body;
+    console.log('🎯 Demo generate request:', { template, userEmail, responseCount: Object.keys(responses || {}).length });
+
+    // Template responses based on demo template type
+    const demoResponses = {
+      'startup-pitch': {
+        id: Date.now().toString(),
+        type: "startup_pitch",
+        title: `${responses?.['Business Name'] || 'Your Startup'} - Investor Pitch Deck`,
+        description: "Compelling pitch presentation designed to secure funding",
+        content: `# ${responses?.['Business Name'] || 'Your Startup'} Pitch Deck
+
+## The Problem
+${responses?.['Problem'] || 'A significant market problem that needs solving'} affects millions of potential customers, creating a $${Math.floor(Math.random() * 50 + 10)}B market opportunity.
+
+## Our Solution
+${responses?.['Solution'] || 'An innovative solution'} that addresses this problem through cutting-edge technology and user-centered design.
+
+## Target Market
+${responses?.['Target Market'] || 'Our target demographic'} represents a growing segment with high purchasing power and unmet needs.
+
+## Business Model
+${responses?.['Revenue Model'] || 'Subscription-based revenue model'} with multiple revenue streams ensuring sustainable growth.
+
+## Market Opportunity
+- Total Addressable Market: $${Math.floor(Math.random() * 100 + 50)}B
+- Serviceable Addressable Market: $${Math.floor(Math.random() * 20 + 5)}B
+- Growing at ${Math.floor(Math.random() * 20 + 15)}% annually
+
+## Competitive Advantage
+- First-mover advantage in emerging market
+- Proprietary technology and patents
+- Strong team with domain expertise
+- Strategic partnerships in place
+
+## Financial Projections
+- Year 1: $${Math.floor(Math.random() * 500 + 100)}K revenue
+- Year 2: $${Math.floor(Math.random() * 2000 + 500)}K revenue
+- Year 3: $${Math.floor(Math.random() * 5000 + 2000)}K revenue
+
+## Funding Requirements
+Seeking $${Math.floor(Math.random() * 2000 + 500)}K to accelerate growth and market expansion.`,
+        generatedAt: new Date().toISOString()
+      },
+      'social-campaign': {
+        id: Date.now().toString(),
+        type: "social_campaign",
+        title: `${responses?.['Product/Service'] || 'Your Product'} - Social Media Strategy`,
+        description: "Comprehensive social media campaign for maximum engagement",
+        content: `# Social Media Campaign: ${responses?.['Product/Service'] || 'Your Product'}
+
+## Campaign Overview
+A ${responses?.['Duration'] || '6-week'} integrated social media campaign targeting ${responses?.['Target Audience'] || 'your ideal customers'} with a budget of ${responses?.['Budget'] || '$5,000'}.
+
+## Content Strategy
+### Week 1-2: Awareness Building
+- Educational content about product benefits
+- Behind-the-scenes content creation
+- User-generated content campaigns
+
+### Week 3-4: Engagement & Community
+- Interactive polls and Q&As
+- Live demonstrations and tutorials
+- Customer testimonials and reviews
+
+### Week 5-6: Conversion Focus
+- Limited-time offers and promotions
+- Product launch announcements
+- Call-to-action focused content
+
+## Platform Strategy
+${responses?.['Platforms'] || 'Instagram, TikTok, Facebook'} optimized content with platform-specific formats and timing.
+
+## Expected Results
+- Reach: ${Math.floor(Math.random() * 500 + 100)}K users
+- Engagement Rate: ${Math.floor(Math.random() * 5 + 3)}%
+- Lead Generation: ${Math.floor(Math.random() * 1000 + 200)} qualified leads
+- ROI: ${Math.floor(Math.random() * 300 + 200)}%`,
+        generatedAt: new Date().toISOString()
+      },
+      'financial-planner': {
+        id: Date.now().toString(),
+        type: "financial_plan",
+        title: `Financial Roadmap for ${responses?.['Target Age Group'] || '30-40'} Year Olds`,
+        description: "Comprehensive financial planning strategy",
+        content: `# Financial Planning Guide for ${responses?.['Target Age Group'] || '30-40'} Year Olds
+
+## Financial Goals
+${responses?.['Financial Goals'] || 'Building wealth and financial security'} over a ${responses?.['Planning Timeline'] || '5-year'} timeline.
+
+## Income Analysis
+Based on ${responses?.['Income Level'] || '$75,000'} annual income:
+- Monthly Net Income: $${Math.floor((parseInt(responses?.['Income Level']?.replace(/[^0-9]/g, '') || '75000') * 0.75) / 12)}
+- Recommended Savings Rate: 20%
+- Monthly Savings Target: $${Math.floor((parseInt(responses?.['Income Level']?.replace(/[^0-9]/g, '') || '75000') * 0.15) / 12)}
+
+## Investment Strategy
+### Short-term (1-2 years)
+- Emergency Fund: 6 months expenses
+- High-yield savings accounts
+- Short-term CDs
+
+### Medium-term (3-5 years)
+- Balanced portfolio (60/40 stocks/bonds)
+- Target-date funds
+- Real estate down payment fund
+
+### Long-term (5+ years)
+- Aggressive growth portfolio
+- Retirement accounts (401k, IRA)
+- Index fund investments
+
+## Milestone Timeline
+- Year 1: Emergency fund complete
+- Year 2: Investment portfolio established
+- Year 3: ${responses?.['Financial Goals']?.includes('home') ? 'Home down payment ready' : 'Investment goals on track'}
+- Year 5: Significant wealth accumulation
+
+## Risk Management
+- Life insurance: 10x annual income
+- Disability insurance: 60% income replacement
+- Health insurance optimization`,
+        generatedAt: new Date().toISOString()
+      },
+      'course-creator': {
+        id: Date.now().toString(),
+        type: "course_plan",
+        title: `Online Course: ${responses?.['Course Topic'] || 'Your Subject Matter'}`,
+        description: "Complete online course development strategy",
+        content: `# Online Course Creation Plan
+
+## Course Overview
+"${responses?.['Course Topic'] || 'Your Subject Matter'}" designed for ${responses?.['Target Audience'] || 'professionals and enthusiasts'}.
+
+## Course Structure
+### Module 1: Foundation
+- Introduction and basics
+- Core concepts and principles
+- Hands-on exercises
+
+### Module 2: Intermediate Skills
+- Advanced techniques
+- Practical applications
+- Case studies and examples
+
+### Module 3: Mastery
+- Expert-level strategies
+- Real-world projects
+- Certification and next steps
+
+## Pricing Strategy
+- Course Price: ${responses?.['Course Price'] || '$299'}
+- Early Bird Discount: 30% off
+- Payment Plans: 3-month installments available
+
+## Marketing Plan
+### Pre-Launch (4 weeks)
+- Build email list with free content
+- Social media teasers and behind-the-scenes
+- Partner outreach and collaborations
+
+### Launch Week
+- Special launch pricing
+- Live Q&A sessions
+- Student testimonials and case studies
+
+### Post-Launch
+- Continuous content updates
+- Community building
+- Affiliate program launch
+
+## Expected Outcomes
+- Students: ${Math.floor(Math.random() * 500 + 100)} enrolled
+- Revenue: $${Math.floor(Math.random() * 50000 + 20000)}
+- Completion Rate: ${Math.floor(Math.random() * 30 + 60)}%
+- Satisfaction Score: ${(Math.random() * 1 + 4).toFixed(1)}/5.0`,
+        generatedAt: new Date().toISOString()
+      }
+    };
+
+    const response = demoResponses[template] || {
+      id: Date.now().toString(),
+      type: "general",
+      title: `Generated Content for ${template}`,
+      description: "AI-generated content based on your inputs",
+      content: `# ${template} Strategy
+
+Thank you for using our demo! Based on your inputs, here's a comprehensive strategy tailored to your needs.
+
+## Overview
+Your responses have been analyzed to create a customized plan that addresses your specific requirements and goals.
+
+## Key Recommendations
+1. Focus on your core value proposition
+2. Implement systematic tracking and measurement
+3. Build sustainable processes for long-term success
+4. Regularly review and optimize performance
+
+## Next Steps
+1. Review this generated content
+2. Customize further based on your specific needs
+3. Implement the recommended strategies
+4. Track progress and iterate as needed
+
+Generated on: ${new Date().toISOString()}`,
+      generatedAt: new Date().toISOString()
+    };
+
+    console.log('✅ Demo content generated successfully:', response.id);
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Demo generate error:', error);
+    res.status(500).json({
+      error: 'Failed to generate demo content',
+      message: 'Please try again later'
+    });
+  }
+});
+
 // Catch all
 app.get('*', (req, res) => {
   const indexPath = path.join(clientDistPath, 'index.html');
