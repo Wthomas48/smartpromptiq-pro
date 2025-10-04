@@ -85,6 +85,92 @@ app.post('/api/auth/register', (req, res) => {
   });
 });
 
+// User profile endpoint
+app.get('/api/auth/me', (req, res) => {
+  res.json({
+    success: true,
+    user: {
+      id: 'demo-user',
+      email: 'demo@example.com',
+      firstName: 'Demo',
+      lastName: 'User',
+      role: 'USER',
+      subscriptionTier: 'free',
+      plan: 'free',
+      tokenBalance: 1000
+    }
+  });
+});
+
+// Basic endpoints for demo functionality
+app.get('/api/prompts', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      {
+        id: '1',
+        title: 'Sample Business Strategy',
+        content: 'A comprehensive business strategy prompt for demo purposes.',
+        category: 'business',
+        createdAt: new Date().toISOString(),
+        isFavorite: false
+      }
+    ]
+  });
+});
+
+app.post('/api/prompts', (req, res) => {
+  const { title, content, category } = req.body;
+  res.json({
+    success: true,
+    data: {
+      id: Date.now().toString(),
+      title: title || 'New Prompt',
+      content: content || '',
+      category: category || 'business',
+      createdAt: new Date().toISOString(),
+      isFavorite: false
+    }
+  });
+});
+
+app.get('/api/stats', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      promptsGenerated: 127,
+      tokensUsed: 2450,
+      tokensRemaining: 2550,
+      promptsThisMonth: 34,
+      averageRating: 4.7,
+      favoritePrompts: 15
+    }
+  });
+});
+
+// Templates endpoint
+app.get('/api/templates', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      {
+        id: 'startup-pitch',
+        name: 'Startup Pitch Template',
+        description: 'Create compelling investor presentations',
+        category: 'business',
+        isPremium: false
+      },
+      {
+        id: 'social-campaign',
+        name: 'Social Media Campaign',
+        description: 'Plan and execute social media strategies',
+        category: 'marketing',
+        isPremium: false
+      }
+    ]
+  });
+});
+
 // Demo rate limiting - simple in-memory store for production
 const demoUsage = new Map();
 const DEMO_LIMITS = {
@@ -509,6 +595,243 @@ app.post('/api/demo/reset-limits', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to reset limits'
+    });
+  }
+});
+
+// Additional generation endpoints used by the app
+
+// Main generation endpoint used by Generation.tsx
+app.post('/api/demo-generate-prompt', (req, res) => {
+  try {
+    const { category, answers, customization } = req.body;
+    console.log('🎯 Demo generate prompt request:', { category, customization });
+
+    const generatedPrompt = `# ${category?.charAt(0).toUpperCase() + category?.slice(1) || 'Custom'} Strategy Prompt
+
+Based on your requirements and preferences, here's your customized AI prompt:
+
+## Objective
+Create a comprehensive ${category || 'business'} strategy that addresses your specific needs and goals.
+
+## Context
+${Object.keys(answers || {}).length > 0 ?
+  'Based on your questionnaire responses:\n' + Object.entries(answers).map(([key, value]) => `- ${key}: ${value}`).join('\n') :
+  'This prompt is designed for general use and can be customized further.'
+}
+
+## Tone & Style
+- Tone: ${customization?.tone || 'professional'}
+- Detail Level: ${customization?.detailLevel || 'comprehensive'}
+- Format: ${customization?.format || 'structured'}
+
+## Instructions
+1. Analyze the provided information thoroughly
+2. Develop strategic recommendations
+3. Provide actionable next steps
+4. Include relevant metrics and KPIs
+5. Present findings in a clear, ${customization?.format || 'structured'} format
+
+## Expected Output
+A detailed ${category || 'business'} strategy document with:
+- Executive summary
+- Key findings and insights
+- Strategic recommendations
+- Implementation timeline
+- Success metrics
+
+Generated at: ${new Date().toISOString()}`;
+
+    res.json({
+      success: true,
+      data: {
+        prompt: generatedPrompt
+      }
+    });
+  } catch (error) {
+    console.error('❌ Generate prompt error:', error);
+    res.status(500).json({
+      error: 'Failed to generate prompt',
+      message: 'Please try again later'
+    });
+  }
+});
+
+// General generation endpoint
+app.post('/api/generate-prompt', (req, res) => {
+  try {
+    const { category, answers, customization } = req.body;
+    console.log('🎯 Generate prompt request:', { category, customization });
+
+    const generatedPrompt = `# AI-Generated ${category?.charAt(0).toUpperCase() + category?.slice(1) || 'Custom'} Prompt
+
+## Context
+${Object.keys(answers || {}).length > 0 ?
+  'Based on your inputs:\n' + Object.entries(answers).map(([key, value]) => `- ${key}: ${value}`).join('\n') :
+  'This is a general purpose prompt that can be customized for your specific needs.'
+}
+
+## Instructions
+Please analyze the provided context and generate a comprehensive response that:
+1. Addresses the main objectives
+2. Provides actionable insights
+3. Includes specific recommendations
+4. Maintains a ${customization?.tone || 'professional'} tone
+5. Delivers ${customization?.detailLevel || 'comprehensive'} detail
+
+## Output Format
+Structure your response as follows:
+- Executive Summary
+- Key Analysis Points
+- Recommendations
+- Implementation Steps
+- Expected Outcomes
+
+Generated: ${new Date().toISOString()}`;
+
+    res.json({
+      success: true,
+      prompt: generatedPrompt
+    });
+  } catch (error) {
+    console.error('❌ Generate prompt error:', error);
+    res.status(500).json({
+      error: 'Failed to generate prompt',
+      message: 'Please try again later'
+    });
+  }
+});
+
+// Suggestions generation endpoint
+app.post('/api/suggestions/generate', (req, res) => {
+  try {
+    const { category, context, maxSuggestions = 5 } = req.body;
+    console.log('💡 Generate suggestions request:', { category, maxSuggestions });
+
+    const suggestionTemplates = {
+      business: [
+        'Market Research Analysis',
+        'Competitive Strategy Framework',
+        'Revenue Optimization Plan',
+        'Customer Acquisition Strategy',
+        'Operational Efficiency Audit'
+      ],
+      marketing: [
+        'Brand Positioning Strategy',
+        'Content Marketing Calendar',
+        'Social Media Campaign',
+        'Email Marketing Sequence',
+        'Conversion Rate Optimization'
+      ],
+      product: [
+        'Product Roadmap Planning',
+        'User Experience Audit',
+        'Feature Prioritization Matrix',
+        'Customer Feedback Analysis',
+        'Product Launch Strategy'
+      ],
+      education: [
+        'Curriculum Development Plan',
+        'Learning Assessment Framework',
+        'Student Engagement Strategy',
+        'Educational Technology Integration',
+        'Performance Tracking System'
+      ],
+      personal: [
+        'Goal Setting Framework',
+        'Skill Development Plan',
+        'Time Management System',
+        'Personal Brand Strategy',
+        'Network Building Plan'
+      ]
+    };
+
+    const templates = suggestionTemplates[category] || suggestionTemplates.business;
+    const suggestions = templates.slice(0, maxSuggestions).map((title, index) => ({
+      id: `suggestion-${Date.now()}-${index}`,
+      title,
+      description: `AI-generated ${title.toLowerCase()} tailored for your needs`,
+      prompt: `Create a comprehensive ${title.toLowerCase()} that addresses key challenges and opportunities in ${category || 'business'}.
+
+Please provide:
+1. Detailed analysis of current situation
+2. Strategic recommendations
+3. Implementation timeline
+4. Success metrics
+5. Risk mitigation strategies
+
+Format the response professionally with clear sections and actionable insights.`,
+      category: category || 'business',
+      tags: [category || 'business', 'strategy', 'ai-generated']
+    }));
+
+    res.json({
+      success: true,
+      suggestions,
+      category,
+      generatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Generate suggestions error:', error);
+    res.status(500).json({
+      error: 'Failed to generate suggestions',
+      message: 'Please try again later'
+    });
+  }
+});
+
+// Prompts generation endpoint
+app.post('/api/prompts/generate', (req, res) => {
+  try {
+    const { template, variables, customization } = req.body;
+    console.log('📝 Generate from template request:', { template, customization });
+
+    const generatedContent = `# Generated Content from Template: ${template || 'Custom'}
+
+## Context
+${variables ?
+  'Template variables:\n' + Object.entries(variables).map(([key, value]) => `- ${key}: ${value}`).join('\n') :
+  'No specific variables provided - using default template structure.'
+}
+
+## Generated Content
+Based on the template "${template}", here's your customized content:
+
+### Overview
+This content has been generated using AI analysis of your template and variables.
+
+### Key Points
+1. Strategic alignment with your objectives
+2. Customized recommendations based on inputs
+3. Actionable implementation steps
+4. Measurable success criteria
+
+### Implementation
+- Phase 1: Initial setup and preparation
+- Phase 2: Core implementation and rollout
+- Phase 3: Monitoring and optimization
+
+### Next Steps
+1. Review and customize the generated content
+2. Adapt recommendations to your specific context
+3. Implement the suggested strategies
+4. Track progress and iterate as needed
+
+Generated on: ${new Date().toISOString()}
+Template: ${template || 'Custom'}
+Customization: ${JSON.stringify(customization || {})}`;
+
+    res.json({
+      success: true,
+      content: generatedContent,
+      template,
+      generatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Template generation error:', error);
+    res.status(500).json({
+      error: 'Failed to generate from template',
+      message: 'Please try again later'
     });
   }
 });
