@@ -48,17 +48,40 @@ if (fs.existsSync(clientDistPath)) {
 
 // Basic auth endpoints
 app.post('/api/auth/login', (req, res) => {
+  const { email } = req.body;
   res.json({
     success: true,
-    data: { token: 'demo-token', user: { id: 'demo', email: 'demo@example.com' } }
+    data: {
+      token: 'demo-token',
+      user: {
+        id: 'demo-' + Date.now(),
+        email: email || 'demo@example.com',
+        firstName: 'Demo',
+        lastName: 'User',
+        role: 'USER',
+        subscriptionTier: 'free',
+        plan: 'free',
+        tokenBalance: 1000
+      }
+    }
   });
 });
 
 app.post('/api/auth/register', (req, res) => {
+  const { email, firstName, lastName } = req.body;
   res.json({
     success: true,
     token: 'demo-token',
-    user: { id: 'demo', email: req.body.email || 'demo@example.com' }
+    user: {
+      id: 'demo-' + Date.now(),
+      email: email || 'demo@example.com',
+      firstName: firstName || 'Demo',
+      lastName: lastName || 'User',
+      role: 'USER',
+      subscriptionTier: 'free',
+      plan: 'free',
+      tokenBalance: 1000
+    }
   });
 });
 
