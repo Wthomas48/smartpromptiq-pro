@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="50%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="brainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="32" height="32" rx="6" fill="url(#bgGradient)"/>
+
+  <!-- Enhanced brain design matching our logo -->
+  <g transform="translate(6, 8)">
+    <!-- Left hemisphere -->
+    <path d="M4 6c-2 0-3.5 1.5-3.5 3.5v2.5c0 2 1.5 3.5 3.5 3.5h1.5c0.8 0 1.5-0.7 1.5-1.5V7.5c0-0.8-0.7-1.5-1.5-1.5H4z"
+          fill="url(#brainGradient)" opacity="0.95"/>
+
+    <!-- Right hemisphere -->
+    <path d="M16 6c2 0 3.5 1.5 3.5 3.5v2.5c0 2-1.5 3.5-3.5 3.5h-1.5c-0.8 0-1.5-0.7-1.5-1.5V7.5c0-0.8 0.7-1.5 1.5-1.5H16z"
+          fill="url(#brainGradient)" opacity="0.95"/>
+
+    <!-- Central connection -->
+    <path d="M7 9.5h6c0.6 0 1-0.4 1-1v-1c0-0.6-0.4-1-1-1H7c-0.6 0-1 0.4-1 1v1c0 0.6 0.4 1 1 1z"
+          fill="url(#brainGradient)" opacity="0.9"/>
+
+    <!-- Brain detail lines -->
+    <path d="M4.5 8c-0.3 0-0.5 0.2-0.5 0.5v1.5c0 0.3 0.2 0.5 0.5 0.5h0.8v-2.5h-0.8z"
+          fill="#7c3aed" opacity="0.3"/>
+    <path d="M15.5 8c0.3 0 0.5 0.2 0.5 0.5v1.5c0 0.3-0.2 0.5-0.5 0.5h-0.8v-2.5h0.8z"
+          fill="#0ea5e9" opacity="0.3"/>
+
+    <!-- Neural activity dots -->
+    <circle cx="3.5" cy="9.5" r="0.4" fill="#0ea5e9" opacity="0.8"/>
+    <circle cx="5.2" cy="8.2" r="0.3" fill="#06b6d4" opacity="0.7"/>
+    <circle cx="16.5" cy="9.5" r="0.4" fill="#7c3aed" opacity="0.8"/>
+    <circle cx="14.8" cy="8.2" r="0.3" fill="#8b5cf6" opacity="0.7"/>
+    <circle cx="10" cy="9" r="0.5" fill="#ffffff" opacity="0.9"/>
+  </g>
+</svg>
