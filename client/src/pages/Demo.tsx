@@ -919,7 +919,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
         },
         body: JSON.stringify({
           template: selectedTemplate,
-          responses: selectedTemplateData?.sampleResponses || {},
+          responses: userResponses,
           userEmail: email
         }),
       });

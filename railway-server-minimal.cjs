@@ -440,6 +440,55 @@ Generated on: ${new Date().toISOString()}`,
   }
 });
 
+// Demo send results endpoint
+app.post('/api/demo/send-results', (req, res) => {
+  try {
+    const { email, results, template } = req.body;
+    console.log('📧 Demo send results request:', { email, template, resultsLength: results?.content?.length });
+
+    // Input validation
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email',
+        message: 'Email is required'
+      });
+    }
+
+    if (!results || !results.content) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid results',
+        message: 'Results content is required'
+      });
+    }
+
+    // Mock email sending (in production, integrate with actual email service)
+    const emailResponse = {
+      id: Date.now().toString(),
+      email: email,
+      template: template,
+      sentAt: new Date().toISOString(),
+      status: 'sent'
+    };
+
+    console.log('✅ Demo results sent via email:', emailResponse.id);
+
+    res.json({
+      success: true,
+      data: emailResponse,
+      message: 'Results sent to your email successfully!'
+    });
+  } catch (error) {
+    console.error('❌ Demo send results error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send results',
+      message: 'Please try again later'
+    });
+  }
+});
+
 // Catch all
 app.get('*', (req, res) => {
   const indexPath = path.join(clientDistPath, 'index.html');
