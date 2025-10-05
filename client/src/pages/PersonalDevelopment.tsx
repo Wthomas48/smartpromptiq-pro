@@ -563,7 +563,7 @@ export default function PersonalDevelopment() {
                   <CardTitle className="flex items-center justify-between">
                     {generatedPlan.title}
                     <Badge variant="secondary" className="ml-2">
-                      {generatedPlan.type.replace('_', ' ').toUpperCase()}
+                      {generatedPlan.type?.replace('_', ' ').toUpperCase() || 'PLAN'}
                     </Badge>
                   </CardTitle>
                   <CardDescription>{generatedPlan.description}</CardDescription>
@@ -584,14 +584,14 @@ export default function PersonalDevelopment() {
                   <Separator />
 
                   {/* Strategies */}
-                  {generatedPlan.strategies.length > 0 && (
+                  {generatedPlan.strategies?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Key Strategies
                       </h4>
                       <div className="space-y-2">
-                        {generatedPlan.strategies.map((strategy, index) => (
+                        {generatedPlan.strategies?.map((strategy, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{strategy}</span>
@@ -602,14 +602,14 @@ export default function PersonalDevelopment() {
                   )}
 
                   {/* Action Steps */}
-                  {generatedPlan.actionSteps.length > 0 && (
+                  {generatedPlan.actionSteps?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <CheckCircle className="w-4 h-4" />
                         Action Steps
                       </h4>
                       <div className="space-y-2">
-                        {generatedPlan.actionSteps.map((step, index) => (
+                        {generatedPlan.actionSteps?.map((step, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center text-xs font-semibold text-orange-600 dark:text-orange-400 flex-shrink-0">
                               {index + 1}
@@ -622,14 +622,14 @@ export default function PersonalDevelopment() {
                   )}
 
                   {/* Milestones */}
-                  {generatedPlan.milestones.length > 0 && (
+                  {generatedPlan.milestones?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
                         Success Milestones
                       </h4>
                       <div className="space-y-2">
-                        {generatedPlan.milestones.map((milestone, index) => (
+                        {generatedPlan.milestones?.map((milestone, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{milestone}</span>
@@ -640,14 +640,14 @@ export default function PersonalDevelopment() {
                   )}
 
                   {/* Tracking Methods */}
-                  {generatedPlan.trackingMethods.length > 0 && (
+                  {generatedPlan.trackingMethods?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Users className="w-4 h-4" />
                         Progress Tracking
                       </h4>
                       <div className="space-y-2">
-                        {generatedPlan.trackingMethods.map((method, index) => (
+                        {generatedPlan.trackingMethods?.map((method, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{method}</span>
@@ -658,14 +658,14 @@ export default function PersonalDevelopment() {
                   )}
 
                   {/* Resources */}
-                  {generatedPlan.resources.length > 0 && (
+                  {generatedPlan.resources?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Mic className="w-4 h-4" />
                         Recommended Resources
                       </h4>
                       <div className="space-y-2">
-                        {generatedPlan.resources.map((resource, index) => (
+                        {generatedPlan.resources?.map((resource, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{resource}</span>
@@ -676,14 +676,14 @@ export default function PersonalDevelopment() {
                   )}
 
                   {/* Challenges */}
-                  {generatedPlan.challenges.length > 0 && (
+                  {generatedPlan.challenges?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Potential Challenges
                       </h4>
                       <div className="space-y-2">
-                        {generatedPlan.challenges.map((challenge, index) => (
+                        {generatedPlan.challenges?.map((challenge, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-red-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{challenge}</span>
@@ -694,14 +694,14 @@ export default function PersonalDevelopment() {
                   )}
 
                   {/* Recommendations */}
-                  {generatedPlan.recommendations.length > 0 && (
+                  {generatedPlan.recommendations?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <CheckCircle className="w-4 h-4" />
                         Expert Recommendations
                       </h4>
                       <div className="space-y-2">
-                        {generatedPlan.recommendations.map((rec, index) => (
+                        {generatedPlan.recommendations?.map((rec, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-teal-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{rec}</span>

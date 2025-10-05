@@ -40,6 +40,7 @@ import {
   Award
 } from "lucide-react";
 import AnimatedCounter from "@/components/AnimatedCounter";
+import { PDFExport } from "@/components/PDFExport";
 
 export default function Demo() {
   const [, setLocation] = useLocation();
@@ -902,11 +903,14 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
   }, []);
 
   const handleTryTemplate = (templateId: string) => {
+    console.log('🎬 handleTryTemplate called with templateId:', templateId);
     setSelectedTemplate(templateId);
     setShowOutput(false);
     setCurrentStep(0);
 
     const template = demoTemplates[templateId as keyof typeof demoTemplates];
+    console.log('📋 Template found:', template ? 'YES' : 'NO');
+    console.log('📋 Template details:', template);
 
     if (template && template.questions) {
       // Template has interactive questionnaire - start interactive mode with pre-filled data
@@ -928,7 +932,8 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
       setShowInteractiveDemo(false);
       setUserResponses({});
       // Trigger immediate generation without delay
-      handleGenerateDemo();
+      console.log('⚡ About to call handleGenerateDemo()');
+      handleGenerateDemo(templateId);
     }
   };
 
@@ -958,9 +963,14 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     setUserResponses(prev => ({ ...prev, [questionId]: value }));
   };
 
-  const handleGenerateDemo = async () => {
-    if (!selectedTemplate) return;
+  const handleGenerateDemo = async (templateId?: string) => {
+    const templateToUse = templateId || selectedTemplate;
+    if (!templateToUse) {
+      console.error('❌ No template selected');
+      return;
+    }
 
+    console.log('🚀 Starting demo generation for template:', templateToUse);
     setIsGenerating(true);
     setShowOutput(false);
     setGeneratedContent(null);
@@ -973,9 +983,9 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          template: selectedTemplate,
+          template: templateToUse,
           responses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
-          userEmail: email
+          userEmail: email || undefined
         }),
       });
 
@@ -984,13 +994,19 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
       }
 
       const data = await response.json();
+      console.log('🔍 Backend response data:', data);
 
-      if (data && data.content) {
+      // Handle direct response format from backend
+      if (data && data.title && data.content) {
+        console.log('✅ Demo content received successfully:', data.title);
         // Set real generated content
-        setGeneratedContent({
+        const contentToSet = {
           title: data.title || selectedTemplateData?.sampleOutput?.title || 'Generated AI Prompt',
           content: data.content
-        });
+        };
+        console.log('📄 Setting generatedContent to:', contentToSet);
+        setGeneratedContent(contentToSet);
+        console.log('👁️ Setting showOutput to true');
         setShowOutput(true);
 
         // Optionally send results to email if provided
@@ -1003,8 +1019,8 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
               },
               body: JSON.stringify({
                 email,
-                results: data,
-                template: selectedTemplate
+                templateName: data.title,
+                generatedPrompt: data.content
               }),
             });
           } catch (emailError) {
@@ -1012,7 +1028,8 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
           }
         }
       } else {
-        throw new Error(data.error || 'Generation failed');
+        console.error('❌ No content found in response:', data);
+        throw new Error(data.error || 'No content generated');
       }
     } catch (error) {
       console.error('Demo generation error:', error);
@@ -1037,6 +1054,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
         setShowOutput(true);
       }
     } finally {
+      console.log('🏁 Demo generation finished, isGenerating set to false');
       setIsGenerating(false);
     }
   };
@@ -1214,10 +1232,13 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
               {Object.entries(demoTemplates).map(([id, template]) => {
                 const Icon = template.icon;
                 return (
-                  <Card 
-                    key={id} 
-                    className="group hover:shadow-lg transition-all duration-300 cursor-pointer border hover:border-indigo-300 bg-white" 
-                    onClick={() => handleTryTemplate(id)}
+                  <Card
+                    key={id}
+                    className="group hover:shadow-lg transition-all duration-300 cursor-pointer border hover:border-indigo-300 bg-white"
+                    onClick={() => {
+                      console.log('🖱️ Card clicked for template ID:', id);
+                      handleTryTemplate(id);
+                    }}
                   >
                     
                     <CardHeader className="relative z-10">
@@ -1453,12 +1474,12 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                             >
                               Previous
                             </Button>
-                            <Button 
+                            <Button
                               onClick={handleNextStep}
-                              disabled={!userResponses[selectedTemplateData.questions[currentStep].id]}
+                              disabled={!userResponses[selectedTemplateData.questions?.[currentStep]?.id || '']}
                               className="bg-indigo-600 hover:bg-indigo-700"
                             >
-                              {currentStep === selectedTemplateData.questions.length - 1 ? (
+                              {currentStep === (selectedTemplateData.questions?.length || 1) - 1 ? (
                                 <>Generate Content</>
                               ) : (
                                 <>Next <ArrowRight className="ml-2 w-4 h-4" /></>
@@ -1497,9 +1518,9 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                       {!showOutput && !isGenerating && (
                         <div>
                           <h4 className="text-xl font-bold text-gray-900 mb-4">Ready to see the magic happen?</h4>
-                          <Button 
-                            size="lg" 
-                            onClick={handleGenerateDemo}
+                          <Button
+                            size="lg"
+                            onClick={() => handleGenerateDemo()}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 text-lg font-medium rounded-lg"
                           >
                             Generate Professional Content
@@ -1525,7 +1546,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                     )}
 
                   {/* Enhanced Sample Output */}
-                  {showOutput && (generatedContent || selectedTemplateData.sampleOutput) && (
+                  {(showOutput || generatedContent) && (
                     <div className="space-y-6 animate-fade-in">
                       <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200">
                         <div className="flex items-center justify-between mb-4">
@@ -1572,6 +1593,67 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                             </div>
                           </div>
                         </div>
+                      </div>
+
+                      {/* PDF Export Section */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <PDFExport
+                          content={{
+                            title: generatedContent ? generatedContent.title : selectedTemplateData.sampleOutput.title,
+                            content: generatedContent ? generatedContent.content : selectedTemplateData.sampleOutput.content,
+                            category: selectedTemplateData.category,
+                            metadata: {
+                              generatedAt: new Date().toISOString(),
+                              templateType: selectedTemplate,
+                              userEmail: email || 'demo@smartpromptiq.com'
+                            }
+                          }}
+                          variant="card"
+                        />
+
+                        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex items-center space-x-2">
+                              <Zap className="w-5 h-5 text-blue-600" />
+                              <span>Zapier Integration</span>
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                Automation
+                              </Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <p className="text-sm text-blue-700">
+                              Automatically trigger workflows when content is generated. Connect to 5000+ apps.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                              <div className="flex items-center space-x-2">
+                                <CheckCircle className="w-4 h-4 text-blue-600" />
+                                <span>Auto-Save to Drive</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <CheckCircle className="w-4 h-4 text-blue-600" />
+                                <span>Email Notifications</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <CheckCircle className="w-4 h-4 text-blue-600" />
+                                <span>Slack Updates</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <CheckCircle className="w-4 h-4 text-blue-600" />
+                                <span>CRM Integration</span>
+                              </div>
+                            </div>
+
+                            <Button
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                              onClick={() => window.open('https://zapier.com', '_blank')}
+                            >
+                              <Zap className="mr-2 w-4 h-4" />
+                              Connect Zapier
+                            </Button>
+                          </CardContent>
+                        </Card>
                       </div>
 
                       {/* Professional CTA Section */}

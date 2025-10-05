@@ -9,6 +9,8 @@ import BrainLogo from "@/components/BrainLogo";
 import { Sparkles, Rocket, Crown, Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/config/api";
+import { useSecurityContext } from "@/components/SecurityProvider";
+import { CaptchaVerification } from "@/components/CaptchaVerification";
 
 export default function SignIn() {
   // Enable production debugging
@@ -37,8 +39,11 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [captchaVerified, setCaptchaVerified] = useState(false);
   const [, setLocation] = useLocation();
   const { login, signup, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { deviceFingerprint, checkRateLimit } = useSecurityContext();
 
   // ✅ FIXED: Redirect authenticated users to dashboard
   useEffect(() => {
@@ -85,25 +90,66 @@ export default function SignIn() {
     setError("");
     setIsLoading(true);
 
+    // Validation checks
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
 
+    if (!firstName || !lastName || !email) {
+      setError("All fields are required");
+      setIsLoading(false);
+      return;
+    }
+
+    // Check rate limiting before proceeding
     try {
-      debugLog("Signup Request", { email, firstName, lastName });
-      console.log('🔍 Attempting signup with auth hook');
+      const rateLimitOk = await checkRateLimit('registration');
+      if (!rateLimitOk) {
+        setError("Too many registration attempts. Please wait before trying again.");
+        setIsLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.warn('Rate limit check failed, proceeding with caution');
+    }
+
+    // Show CAPTCHA if not already verified
+    if (!captchaVerified) {
+      setShowCaptcha(true);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      debugLog("Signup Request", { email, firstName, lastName, deviceFingerprint });
+      console.log('🔍 Attempting signup with security verification');
 
       await signup(email, password, firstName, lastName);
-      console.log('✅ Signup successful via auth hook');
+      console.log('✅ Signup successful with security verification');
       // The auth hook will handle the redirect to dashboard
     } catch (err: any) {
       debugLog("Signup Error", err);
-      console.error('❌ Signup error via auth hook:', err);
+      console.error('❌ Signup error:', err);
       setError(err.message || "Failed to create account");
+
+      // Reset CAPTCHA on error
+      setCaptchaVerified(false);
+      setShowCaptcha(false);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCaptchaVerified = (verified: boolean) => {
+    setCaptchaVerified(verified);
+    if (verified) {
+      setShowCaptcha(false);
+      // Automatically proceed with signup after CAPTCHA verification
+      setTimeout(() => handleSignUp(), 100);
+    } else {
+      setError("CAPTCHA verification failed. Please try again.");
     }
   };
 
@@ -301,10 +347,20 @@ export default function SignIn() {
                 </div>
               )}
 
+              {/* Security CAPTCHA for signup */}
+              {isSignUp && showCaptcha && (
+                <div className="space-y-4">
+                  <CaptchaVerification
+                    onVerified={handleCaptchaVerified}
+                    required={true}
+                  />
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 transition-all duration-200"
-                disabled={isLoading}
+                disabled={isLoading || (isSignUp && showCaptcha)}
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">

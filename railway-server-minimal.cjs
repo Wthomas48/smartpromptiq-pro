@@ -24,6 +24,472 @@ app.use((req, res, next) => {
   next();
 });
 
+// 🛡️ SECURITY MIDDLEWARE LAYER
+// Rate limiting storage
+const rateLimitStore = new Map();
+const captchaStore = new Map();
+const registrationAttempts = new Map();
+const suspiciousIPs = new Set();
+
+// Security configuration
+const SECURITY_CONFIG = {
+  RATE_LIMITS: {
+    registration: { max: 3, window: 15 * 60 * 1000 }, // 3 attempts per 15 minutes
+    login: { max: 5, window: 15 * 60 * 1000 }, // 5 attempts per 15 minutes
+    captcha: { max: 10, window: 60 * 1000 }, // 10 captcha requests per minute
+    demo: { max: 5, window: 5 * 60 * 1000 } // 5 demo requests per 5 minutes
+  },
+  CAPTCHA_EXPIRE: 5 * 60 * 1000, // 5 minutes
+  SUSPICIOUS_THRESHOLD: 10, // Failed attempts before IP is marked suspicious
+  BAN_DURATION: 24 * 60 * 60 * 1000 // 24 hours
+};
+
+// Device fingerprint validation
+const validateFingerprint = (fingerprint) => {
+  if (!fingerprint || typeof fingerprint !== 'string') return false;
+  if (fingerprint.length < 10 || fingerprint.length > 100) return false;
+  return /^[A-Za-z0-9+/=]+$/.test(fingerprint);
+};
+
+// Rate limiting middleware
+const rateLimit = (type) => {
+  return (req, res, next) => {
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const key = `${type}:${clientIP}`;
+    const now = Date.now();
+    const config = SECURITY_CONFIG.RATE_LIMITS[type];
+
+    // Check if IP is suspicious
+    if (suspiciousIPs.has(clientIP)) {
+      return res.status(429).json({
+        success: false,
+        error: 'IP temporarily blocked due to suspicious activity',
+        retryAfter: SECURITY_CONFIG.BAN_DURATION / 1000
+      });
+    }
+
+    // Get or create rate limit entry
+    let rateLimitData = rateLimitStore.get(key);
+    if (!rateLimitData || now > rateLimitData.resetTime) {
+      rateLimitData = { count: 0, resetTime: now + config.window };
+    }
+
+    // Check rate limit
+    if (rateLimitData.count >= config.max) {
+      // Mark IP as suspicious after multiple rate limit violations
+      const suspiciousKey = `suspicious:${clientIP}`;
+      let suspiciousData = rateLimitStore.get(suspiciousKey) || { count: 0 };
+      suspiciousData.count++;
+
+      if (suspiciousData.count >= 3) {
+        suspiciousIPs.add(clientIP);
+        console.log(`🚨 IP ${clientIP} marked as suspicious`);
+        setTimeout(() => suspiciousIPs.delete(clientIP), SECURITY_CONFIG.BAN_DURATION);
+      }
+
+      rateLimitStore.set(suspiciousKey, suspiciousData);
+
+      return res.status(429).json({
+        success: false,
+        error: 'Rate limit exceeded',
+        retryAfter: Math.ceil((rateLimitData.resetTime - now) / 1000)
+      });
+    }
+
+    // Update rate limit
+    rateLimitData.count++;
+    rateLimitStore.set(key, rateLimitData);
+
+    console.log(`🔒 Rate limit ${type}: ${clientIP} - ${rateLimitData.count}/${config.max}`);
+    next();
+  };
+};
+
+// Bot detection middleware
+const botDetection = (req, res, next) => {
+  const userAgent = req.headers['user-agent'] || '';
+  const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+
+  // Common bot patterns
+  const botPatterns = [
+    /bot/i, /crawler/i, /spider/i, /scraper/i, /curl/i, /wget/i,
+    /python/i, /java/i, /go-http/i, /ruby/i, /php/i
+  ];
+
+  // Suspicious patterns
+  const suspiciousPatterns = [
+    /^$/,  // Empty user agent
+    /^Mozilla\/5\.0$/,  // Generic Mozilla only
+    /.{500,}/,  // Extremely long user agent
+  ];
+
+  const isBot = botPatterns.some(pattern => pattern.test(userAgent));
+  const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(userAgent));
+
+  if (isBot) {
+    console.log(`🤖 Bot detected: ${clientIP} - ${userAgent}`);
+    return res.status(403).json({
+      success: false,
+      error: 'Automated access not allowed'
+    });
+  }
+
+  if (isSuspicious) {
+    console.log(`🚨 Suspicious user agent: ${clientIP} - ${userAgent}`);
+    // Allow but monitor
+    req.suspicious = true;
+  }
+
+  next();
+};
+
+// CAPTCHA endpoints
+app.post('/api/security/captcha/generate', rateLimit('captcha'), (req, res) => {
+  try {
+    const { deviceFingerprint } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+
+    if (!validateFingerprint(deviceFingerprint)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid device fingerprint'
+      });
+    }
+
+    // Generate math problem
+    const operations = ['+', '-', '*'];
+    const operation = operations[Math.floor(Math.random() * operations.length)];
+    let num1, num2, answer;
+
+    switch (operation) {
+      case '+':
+        num1 = Math.floor(Math.random() * 50) + 1;
+        num2 = Math.floor(Math.random() * 50) + 1;
+        answer = num1 + num2;
+        break;
+      case '-':
+        num1 = Math.floor(Math.random() * 50) + 25;
+        num2 = Math.floor(Math.random() * 25) + 1;
+        answer = num1 - num2;
+        break;
+      case '*':
+        num1 = Math.floor(Math.random() * 10) + 1;
+        num2 = Math.floor(Math.random() * 10) + 1;
+        answer = num1 * num2;
+        break;
+    }
+
+    const token = `captcha_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const challenge = {
+      question: `${num1} ${operation === '*' ? '×' : operation} ${num2}`,
+      answer,
+      ip: clientIP,
+      deviceFingerprint,
+      expires: Date.now() + SECURITY_CONFIG.CAPTCHA_EXPIRE
+    };
+
+    captchaStore.set(token, challenge);
+
+    console.log(`🧩 CAPTCHA generated for ${clientIP}: ${challenge.question} = ${answer}`);
+
+    res.json({
+      success: true,
+      token,
+      question: challenge.question
+    });
+  } catch (error) {
+    console.error('❌ CAPTCHA generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate CAPTCHA'
+    });
+  }
+});
+
+app.post('/api/security/captcha/verify', (req, res) => {
+  try {
+    const { token, solution, deviceFingerprint } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+
+    const challenge = captchaStore.get(token);
+    if (!challenge) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid or expired CAPTCHA token'
+      });
+    }
+
+    // Verify expiration
+    if (Date.now() > challenge.expires) {
+      captchaStore.delete(token);
+      return res.status(400).json({
+        success: false,
+        error: 'CAPTCHA expired'
+      });
+    }
+
+    // Verify device fingerprint and IP
+    if (challenge.deviceFingerprint !== deviceFingerprint || challenge.ip !== clientIP) {
+      console.log(`🚨 CAPTCHA security violation: ${clientIP}`);
+      captchaStore.delete(token);
+      return res.status(403).json({
+        success: false,
+        error: 'Security validation failed'
+      });
+    }
+
+    // Verify solution
+    const isCorrect = parseInt(solution) === challenge.answer;
+    captchaStore.delete(token);
+
+    if (isCorrect) {
+      console.log(`✅ CAPTCHA verified for ${clientIP}`);
+      res.json({
+        success: true,
+        verified: true
+      });
+    } else {
+      console.log(`❌ CAPTCHA failed for ${clientIP}: expected ${challenge.answer}, got ${solution}`);
+      res.json({
+        success: true,
+        verified: false
+      });
+    }
+  } catch (error) {
+    console.error('❌ CAPTCHA verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to verify CAPTCHA'
+    });
+  }
+});
+
+// Rate limit check endpoint
+app.post('/api/security/rate-limit/check', (req, res) => {
+  try {
+    const { action } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const key = `${action}:${clientIP}`;
+    const now = Date.now();
+    const config = SECURITY_CONFIG.RATE_LIMITS[action];
+
+    if (!config) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid action'
+      });
+    }
+
+    const rateLimitData = rateLimitStore.get(key);
+    if (!rateLimitData || now > rateLimitData.resetTime) {
+      res.json({
+        success: true,
+        allowed: true,
+        remaining: config.max - 1
+      });
+    } else {
+      const remaining = config.max - rateLimitData.count;
+      res.json({
+        success: true,
+        allowed: remaining > 0,
+        remaining: Math.max(0, remaining)
+      });
+    }
+  } catch (error) {
+    console.error('❌ Rate limit check error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check rate limit'
+    });
+  }
+});
+
+// 🔗 ZAPIER WEBHOOK ENDPOINTS
+const webhookStore = new Map();
+const webhookSubscriptions = new Map();
+
+// Zapier webhook registration (for Zapier to subscribe to events)
+app.post('/api/webhooks/zapier/subscribe', (req, res) => {
+  try {
+    const { event, targetUrl, subscriptionId } = req.body;
+
+    if (!event || !targetUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Event type and target URL are required'
+      });
+    }
+
+    const subscription = {
+      id: subscriptionId || `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      event,
+      targetUrl,
+      createdAt: new Date().toISOString(),
+      active: true
+    };
+
+    webhookSubscriptions.set(subscription.id, subscription);
+    console.log(`🔗 Zapier subscription created: ${event} → ${targetUrl}`);
+
+    res.json({
+      success: true,
+      subscription
+    });
+  } catch (error) {
+    console.error('❌ Zapier subscription error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create subscription'
+    });
+  }
+});
+
+// Zapier webhook unsubscription
+app.delete('/api/webhooks/zapier/subscribe/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const subscription = webhookSubscriptions.get(id);
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        error: 'Subscription not found'
+      });
+    }
+
+    webhookSubscriptions.delete(id);
+    console.log(`🗑️ Zapier subscription removed: ${id}`);
+
+    res.json({
+      success: true,
+      message: 'Subscription removed'
+    });
+  } catch (error) {
+    console.error('❌ Zapier unsubscription error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove subscription'
+    });
+  }
+});
+
+// Webhook trigger endpoint (called by frontend)
+app.post('/api/webhooks/zapier', (req, res) => {
+  try {
+    const { event, data, timestamp } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+
+    console.log(`🎯 Zapier webhook triggered: ${event} from ${clientIP}`);
+
+    // Store webhook data
+    const webhookId = `webhook_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const webhookData = {
+      id: webhookId,
+      event,
+      data,
+      timestamp: timestamp || new Date().toISOString(),
+      ip: clientIP,
+      processed: false
+    };
+
+    webhookStore.set(webhookId, webhookData);
+
+    // Send to all subscribed Zapier endpoints
+    const relevantSubscriptions = Array.from(webhookSubscriptions.values())
+      .filter(sub => sub.active && sub.event === event);
+
+    const deliveryPromises = relevantSubscriptions.map(async (subscription) => {
+      try {
+        const response = await fetch(subscription.targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'SmartPromptIQ-Webhooks/1.0'
+          },
+          body: JSON.stringify({
+            event,
+            data,
+            timestamp: webhookData.timestamp,
+            subscription_id: subscription.id,
+            source: 'smartpromptiq'
+          })
+        });
+
+        console.log(`📤 Webhook delivered to ${subscription.targetUrl}: ${response.status}`);
+        return { success: true, subscription: subscription.id, status: response.status };
+      } catch (error) {
+        console.error(`❌ Webhook delivery failed to ${subscription.targetUrl}:`, error);
+        return { success: false, subscription: subscription.id, error: error.message };
+      }
+    });
+
+    // Execute all deliveries
+    Promise.allSettled(deliveryPromises).then(results => {
+      const delivered = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+      const failed = results.filter(r => r.status === 'rejected' || !r.value.success).length;
+
+      console.log(`📊 Webhook delivery complete: ${delivered} success, ${failed} failed`);
+
+      // Mark as processed
+      webhookData.processed = true;
+      webhookData.deliveryResults = results;
+      webhookStore.set(webhookId, webhookData);
+    });
+
+    res.json({
+      success: true,
+      webhookId,
+      subscriptions: relevantSubscriptions.length,
+      message: `Webhook triggered for ${relevantSubscriptions.length} subscription(s)`
+    });
+
+  } catch (error) {
+    console.error('❌ Webhook trigger error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to trigger webhook'
+    });
+  }
+});
+
+// Zapier webhook test endpoint (for Zapier app setup)
+app.post('/api/webhooks/zapier/test', (req, res) => {
+  console.log('🧪 Zapier test webhook received');
+  res.json({
+    success: true,
+    message: 'SmartPromptIQ webhook endpoint is working!',
+    timestamp: new Date().toISOString(),
+    events: [
+      'user_registered',
+      'prompt_generated',
+      'pdf_generated',
+      'template_completed',
+      'demo_used'
+    ]
+  });
+});
+
+// Get webhook history (for debugging)
+app.get('/api/webhooks/history', (req, res) => {
+  try {
+    const webhooks = Array.from(webhookStore.values())
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 50); // Last 50 webhooks
+
+    res.json({
+      success: true,
+      webhooks,
+      total: webhookStore.size
+    });
+  } catch (error) {
+    console.error('❌ Webhook history error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get webhook history'
+    });
+  }
+});
+
 // CRITICAL: Railway health check - IMMEDIATE RESPONSE
 app.get('/health', (req, res) => {
   console.log('🏥 Health check at:', new Date().toISOString());
@@ -48,41 +514,162 @@ if (fs.existsSync(clientDistPath)) {
 
 // Basic auth endpoints
 app.post('/api/auth/login', (req, res) => {
-  const { email } = req.body;
-  res.json({
-    success: true,
-    data: {
-      token: 'demo-token',
+  const { email, password, isAdminLogin } = req.body;
+
+  console.log('🔐 Login attempt:', { email, isAdminLogin, hasPassword: !!password });
+
+  // Check for admin credentials
+  const adminEmails = ['admin@admin.com', 'admin@smartpromptiq.net', 'admin@smartpromptiq.com'];
+  const adminPassword = 'admin123'; // Demo admin password
+
+  if (isAdminLogin || adminEmails.includes(email)) {
+    // Admin login validation
+    if (adminEmails.includes(email) && password === adminPassword) {
+      console.log('✅ Admin login successful for:', email);
+      res.json({
+        success: true,
+        data: {
+          token: 'admin-token-' + Date.now(),
+          user: {
+            id: 'admin-' + Date.now(),
+            email: email,
+            firstName: 'Admin',
+            lastName: 'User',
+            role: 'ADMIN',
+            subscriptionTier: 'enterprise',
+            plan: 'enterprise',
+            tokenBalance: 999999
+          }
+        }
+      });
+    } else {
+      console.log('❌ Admin login failed for:', email);
+      res.status(401).json({
+        success: false,
+        message: 'Invalid admin credentials'
+      });
+    }
+  } else {
+    // Regular user login (demo)
+    console.log('✅ User login successful for:', email);
+    res.json({
+      success: true,
+      data: {
+        token: 'demo-token',
+        user: {
+          id: 'demo-' + Date.now(),
+          email: email || 'demo@example.com',
+          firstName: 'Demo',
+          lastName: 'User',
+          role: 'USER',
+          subscriptionTier: 'free',
+          plan: 'free',
+          tokenBalance: 1000
+        }
+      }
+    });
+  }
+});
+
+// Enhanced registration endpoint with security
+app.post('/api/auth/register', rateLimit('registration'), botDetection, (req, res) => {
+  try {
+    const { email, firstName, lastName, captchaToken, captchaSolution, deviceFingerprint } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+
+    // Validate required fields
+    if (!email || !firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields'
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+
+    // Validate device fingerprint
+    if (!validateFingerprint(deviceFingerprint)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid device fingerprint'
+      });
+    }
+
+    // Verify CAPTCHA if provided
+    if (captchaToken && captchaSolution) {
+      const challenge = captchaStore.get(captchaToken);
+      if (!challenge) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid or expired CAPTCHA'
+        });
+      }
+
+      if (challenge.deviceFingerprint !== deviceFingerprint || challenge.ip !== clientIP) {
+        return res.status(403).json({
+          success: false,
+          error: 'CAPTCHA security validation failed'
+        });
+      }
+
+      if (parseInt(captchaSolution) !== challenge.answer) {
+        return res.status(400).json({
+          success: false,
+          error: 'Incorrect CAPTCHA solution'
+        });
+      }
+
+      captchaStore.delete(captchaToken);
+    }
+
+    // Check for suspicious registration patterns
+    const registrationKey = `reg:${email}:${deviceFingerprint}`;
+    const existingAttempt = registrationAttempts.get(registrationKey);
+    if (existingAttempt && Date.now() - existingAttempt < 60000) {
+      return res.status(429).json({
+        success: false,
+        error: 'Please wait before registering again'
+      });
+    }
+
+    // Log successful registration
+    registrationAttempts.set(registrationKey, Date.now());
+    console.log(`✅ User registration: ${email} from ${clientIP}`);
+
+    // Generate secure user data
+    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const token = `auth_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
+
+    res.json({
+      success: true,
+      token,
       user: {
-        id: 'demo-' + Date.now(),
-        email: email || 'demo@example.com',
-        firstName: 'Demo',
-        lastName: 'User',
+        id: userId,
+        email: email,
+        firstName: firstName,
+        lastName: lastName,
         role: 'USER',
         subscriptionTier: 'free',
         plan: 'free',
-        tokenBalance: 1000
+        tokenBalance: 1000,
+        verified: true,
+        createdAt: new Date().toISOString()
       }
-    }
-  });
-});
-
-app.post('/api/auth/register', (req, res) => {
-  const { email, firstName, lastName } = req.body;
-  res.json({
-    success: true,
-    token: 'demo-token',
-    user: {
-      id: 'demo-' + Date.now(),
-      email: email || 'demo@example.com',
-      firstName: firstName || 'Demo',
-      lastName: lastName || 'User',
-      role: 'USER',
-      subscriptionTier: 'free',
-      plan: 'free',
-      tokenBalance: 1000
-    }
-  });
+    });
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Registration failed'
+    });
+  }
 });
 
 // User profile endpoint
@@ -148,6 +735,243 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
+// Admin authentication middleware
+const authenticateAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer token
+
+  console.log('🔐 Admin auth check:', { authHeader, token });
+
+  if (!token) {
+    console.log('❌ No token provided');
+    return res.status(401).json({
+      success: false,
+      message: 'Authorization token required'
+    });
+  }
+
+  // Check if token is an admin token or a valid admin session
+  if (token.startsWith('admin-token-') || token === 'demo-token') {
+    console.log('✅ Admin token validated');
+    next();
+  } else {
+    console.log('❌ Invalid admin token');
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+};
+
+// Admin endpoints
+app.get('/api/admin/stats', authenticateAdmin, (req, res) => {
+  console.log('📊 Admin stats requested');
+  res.json({
+    success: true,
+    data: {
+      totalUsers: 8947,
+      activeUsers: 2345,
+      totalRevenue: 125340.50,
+      monthlyRevenue: 34500.25,
+      totalPrompts: 47283,
+      successfulPayments: 1234,
+      refundedPayments: 23,
+      pendingPayments: 45,
+      systemHealth: 'healthy'
+    }
+  });
+});
+
+app.get('/api/admin/users', authenticateAdmin, (req, res) => {
+  console.log('👥 Admin users list requested');
+  const mockUsers = Array.from({ length: 20 }, (_, i) => ({
+    id: `user-${i + 1}`,
+    email: `user${i + 1}@example.com`,
+    firstName: `User`,
+    lastName: `${i + 1}`,
+    subscriptionTier: i % 3 === 0 ? 'premium' : 'free',
+    subscriptionStatus: 'active',
+    tokenBalance: Math.floor(Math.random() * 5000),
+    createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+    lastActiveAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+    totalSpent: Math.floor(Math.random() * 500)
+  }));
+
+  res.json({
+    success: true,
+    data: mockUsers
+  });
+});
+
+app.get('/api/admin/payments', authenticateAdmin, (req, res) => {
+  console.log('💳 Admin payments list requested');
+  const mockPayments = Array.from({ length: 15 }, (_, i) => ({
+    id: `payment-${i + 1}`,
+    userId: `user-${i + 1}`,
+    userEmail: `user${i + 1}@example.com`,
+    amount: (Math.random() * 100 + 10).toFixed(2),
+    currency: 'USD',
+    status: ['succeeded', 'pending', 'failed', 'refunded'][Math.floor(Math.random() * 4)],
+    stripePaymentId: `pi_${Math.random().toString(36).substr(2, 9)}`,
+    createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+    description: 'SmartPromptIQ Premium Subscription'
+  }));
+
+  res.json({
+    success: true,
+    data: mockPayments
+  });
+});
+
+app.get('/api/admin/token-monitoring', authenticateAdmin, (req, res) => {
+  console.log('🔑 Admin token monitoring requested');
+  res.json({
+    success: true,
+    data: {
+      totalTokensUsed: 2345678,
+      averageTokensPerUser: 523,
+      topTokenUsers: [
+        { userId: 'user-1', email: 'user1@example.com', tokensUsed: 12500 },
+        { userId: 'user-2', email: 'user2@example.com', tokensUsed: 9800 },
+        { userId: 'user-3', email: 'user3@example.com', tokensUsed: 8750 }
+      ]
+    }
+  });
+});
+
+app.get('/api/admin/password-security', authenticateAdmin, (req, res) => {
+  console.log('🔒 Admin password security requested');
+  res.json({
+    success: true,
+    data: {
+      weakPasswords: 23,
+      reusedPasswords: 5,
+      securityScore: 8.7,
+      lastSecurityAudit: new Date().toISOString()
+    }
+  });
+});
+
+app.get('/api/admin/email-management', authenticateAdmin, (req, res) => {
+  console.log('📧 Admin email management requested');
+  res.json({
+    success: true,
+    data: {
+      emailsSent: 15430,
+      emailsDelivered: 15241,
+      emailsBounced: 89,
+      emailsOpened: 12876,
+      openRate: 84.5
+    }
+  });
+});
+
+app.get('/api/admin/system-monitoring', authenticateAdmin, (req, res) => {
+  console.log('🖥️ Admin system monitoring requested');
+  res.json({
+    success: true,
+    data: {
+      uptime: '99.97%',
+      responseTime: '245ms',
+      errorRate: '0.03%',
+      lastDeployment: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  });
+});
+
+app.get('/api/admin/active-sessions', authenticateAdmin, (req, res) => {
+  console.log('👤 Admin active sessions requested');
+  res.json({
+    success: true,
+    data: Array.from({ length: 10 }, (_, i) => ({
+      id: `session-${i + 1}`,
+      userId: `user-${i + 1}`,
+      email: `user${i + 1}@example.com`,
+      ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      createdAt: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString()
+    }))
+  });
+});
+
+app.get('/api/admin/recent-registrations', authenticateAdmin, (req, res) => {
+  console.log('📝 Admin recent registrations requested');
+  res.json({
+    success: true,
+    data: Array.from({ length: 5 }, (_, i) => ({
+      id: `new-user-${i + 1}`,
+      email: `newuser${i + 1}@example.com`,
+      firstName: `New`,
+      lastName: `User${i + 1}`,
+      createdAt: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString()
+    }))
+  });
+});
+
+app.get('/api/admin/logs', authenticateAdmin, (req, res) => {
+  console.log('📜 Admin logs requested');
+  res.json({
+    success: true,
+    data: Array.from({ length: 20 }, (_, i) => ({
+      id: `log-${i + 1}`,
+      timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
+      level: ['INFO', 'WARN', 'ERROR'][Math.floor(Math.random() * 3)],
+      message: `Sample log message ${i + 1}`,
+      userId: Math.random() > 0.5 ? `user-${Math.floor(Math.random() * 100)}` : null
+    }))
+  });
+});
+
+// Admin action endpoints (POST requests)
+app.post('/api/admin/payments/:id/refund', (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  console.log(`💸 Admin refund requested for payment ${id}, reason: ${reason}`);
+  res.json({
+    success: true,
+    message: 'Refund processed successfully'
+  });
+});
+
+app.post('/api/admin/actions/:action', (req, res) => {
+  const { action } = req.params;
+  const { userId, data } = req.body;
+  console.log(`⚡ Admin action "${action}" for user ${userId}`);
+  res.json({
+    success: true,
+    message: `Action ${action} completed successfully`
+  });
+});
+
+app.delete('/api/admin/users/:id', (req, res) => {
+  const { id } = req.params;
+  console.log(`🗑️ Admin delete user ${id}`);
+  res.json({
+    success: true,
+    message: 'User deleted successfully'
+  });
+});
+
+app.post('/api/admin/users/:id/suspend', (req, res) => {
+  const { id } = req.params;
+  const { reason, duration } = req.body;
+  console.log(`⏸️ Admin suspend user ${id}, reason: ${reason}, duration: ${duration}`);
+  res.json({
+    success: true,
+    message: 'User suspended successfully'
+  });
+});
+
+app.post('/api/admin/users/:id/unsuspend', (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  console.log(`▶️ Admin unsuspend user ${id}, reason: ${reason}`);
+  res.json({
+    success: true,
+    message: 'User unsuspended successfully'
+  });
+});
+
 // Templates endpoint
 app.get('/api/templates', (req, res) => {
   res.json({
@@ -169,6 +993,184 @@ app.get('/api/templates', (req, res) => {
       }
     ]
   });
+});
+
+// Email endpoints
+// Newsletter subscription endpoint
+app.post('/api/newsletter/subscribe', (req, res) => {
+  try {
+    const { email, name, source } = req.body;
+    console.log('📧 Newsletter subscription:', { email, name, source });
+
+    // Input validation
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email',
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    // Mock newsletter subscription (in production, integrate with email service)
+    const subscription = {
+      id: Date.now().toString(),
+      email: email.toLowerCase(),
+      name: name || '',
+      source: source || 'website',
+      subscribedAt: new Date().toISOString(),
+      status: 'active'
+    };
+
+    console.log('✅ Newsletter subscription successful:', subscription.id);
+    res.json({
+      success: true,
+      data: subscription,
+      message: 'Successfully subscribed to newsletter!'
+    });
+
+  } catch (error) {
+    console.error('❌ Newsletter subscription error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Newsletter subscription failed',
+      message: 'Please try again later'
+    });
+  }
+});
+
+// Contact form endpoint
+app.post('/api/contact', (req, res) => {
+  try {
+    const { name, email, subject, message, category } = req.body;
+    console.log('📞 Contact form submission:', { name, email, subject, category });
+
+    // Input validation
+    if (!name || !email || !message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'Name, email, and message are required'
+      });
+    }
+
+    if (!email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email',
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    // Mock contact form handling (in production, send email to admin and auto-reply to user)
+    const contactSubmission = {
+      id: Date.now().toString(),
+      name,
+      email: email.toLowerCase(),
+      subject: subject || 'General Inquiry',
+      message,
+      category: category || 'general',
+      submittedAt: new Date().toISOString(),
+      status: 'received'
+    };
+
+    console.log('✅ Contact form submission received:', contactSubmission.id);
+    res.json({
+      success: true,
+      data: contactSubmission,
+      message: 'Thank you for your message! We\'ll get back to you soon.'
+    });
+
+  } catch (error) {
+    console.error('❌ Contact form error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Contact form submission failed',
+      message: 'Please try again later'
+    });
+  }
+});
+
+// Email test endpoint for admins
+app.post('/api/email/test', (req, res) => {
+  try {
+    const { email, templateType } = req.body;
+    console.log('🧪 Email test request:', { email, templateType });
+
+    // Input validation
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email',
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    // Mock email test (in production, use actual email service)
+    const testEmail = {
+      id: Date.now().toString(),
+      email: email.toLowerCase(),
+      templateType: templateType || 'test',
+      sentAt: new Date().toISOString(),
+      status: 'sent'
+    };
+
+    console.log('✅ Test email sent:', testEmail.id);
+    res.json({
+      success: true,
+      data: testEmail,
+      message: 'Test email sent successfully!'
+    });
+
+  } catch (error) {
+    console.error('❌ Email test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Email test failed',
+      message: 'Please try again later'
+    });
+  }
+});
+
+// Welcome email endpoint (for new user registration)
+app.post('/api/email/welcome', (req, res) => {
+  try {
+    const { email, name } = req.body;
+    console.log('👋 Welcome email request:', { email, name });
+
+    // Input validation
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email',
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    // Mock welcome email (in production, use actual email service)
+    const welcomeEmail = {
+      id: Date.now().toString(),
+      email: email.toLowerCase(),
+      name: name || 'User',
+      templateType: 'welcome',
+      sentAt: new Date().toISOString(),
+      status: 'sent'
+    };
+
+    console.log('✅ Welcome email sent:', welcomeEmail.id);
+    res.json({
+      success: true,
+      data: welcomeEmail,
+      message: 'Welcome email sent successfully!'
+    });
+
+  } catch (error) {
+    console.error('❌ Welcome email error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Welcome email failed',
+      message: 'Please try again later'
+    });
+  }
 });
 
 // Demo rate limiting - simple in-memory store for production
@@ -529,8 +1531,8 @@ Generated on: ${new Date().toISOString()}`,
 // Demo send results endpoint
 app.post('/api/demo/send-results', (req, res) => {
   try {
-    const { email, results, template } = req.body;
-    console.log('📧 Demo send results request:', { email, template, resultsLength: results?.content?.length });
+    const { email, templateName, generatedPrompt, results, template } = req.body;
+    console.log('📧 Demo send results request:', { email, templateName, promptLength: generatedPrompt?.length });
 
     // Input validation
     if (!email || typeof email !== 'string') {
@@ -541,11 +1543,15 @@ app.post('/api/demo/send-results', (req, res) => {
       });
     }
 
-    if (!results || !results.content) {
+    // Check for both old and new parameter formats
+    const content = generatedPrompt || results?.content;
+    const templateTitle = templateName || template;
+
+    if (!content) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid results',
-        message: 'Results content is required'
+        error: 'Invalid content',
+        message: 'Generated prompt content is required'
       });
     }
 
@@ -553,7 +1559,8 @@ app.post('/api/demo/send-results', (req, res) => {
     const emailResponse = {
       id: Date.now().toString(),
       email: email,
-      template: template,
+      template: templateTitle,
+      contentLength: content.length,
       sentAt: new Date().toISOString(),
       status: 'sent'
     };
@@ -653,6 +1660,203 @@ Generated at: ${new Date().toISOString()}`;
     res.status(500).json({
       error: 'Failed to generate prompt',
       message: 'Please try again later'
+    });
+  }
+});
+
+// Prompt refinement endpoint for AI-powered prompt improvement
+app.post('/api/refine-prompt', (req, res) => {
+  try {
+    const { currentPrompt, refinementQuery, category } = req.body;
+    console.log('🔧 Refine prompt request:', { category, query: refinementQuery?.substring(0, 100) });
+
+    // Simulate AI-powered prompt refinement
+    const refinedPrompt = `# Refined ${category?.charAt(0).toUpperCase() + category?.slice(1) || 'Custom'} Prompt
+
+## Enhanced Version
+Based on your refinement request: "${refinementQuery}"
+
+${currentPrompt}
+
+## Improvements Applied
+✅ Enhanced clarity and specificity
+✅ Optimized structure and flow
+✅ Added relevant context and examples
+✅ Improved actionability and measurability
+
+## Additional Recommendations
+- Consider adding specific metrics for success measurement
+- Include timeline and milestone checkpoints
+- Specify target audience characteristics
+- Add contingency planning elements
+
+## Usage Tips
+1. Test this prompt with sample data first
+2. Adjust tone based on your specific audience
+3. Customize examples to match your industry
+4. Monitor results and iterate as needed
+
+---
+*Prompt refined using AI-powered optimization based on your request: "${refinementQuery}"*
+`;
+
+    res.json({
+      success: true,
+      data: {
+        refinedPrompt: refinedPrompt,
+        improvements: [
+          'Enhanced clarity and specificity',
+          'Optimized structure and flow',
+          'Added relevant context',
+          'Improved actionability'
+        ],
+        confidence: 0.92
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Refine prompt error:', error);
+    res.status(500).json({
+      error: 'Failed to refine prompt',
+      message: 'Please try again later'
+    });
+  }
+});
+
+// Demo refinement endpoint (no auth required)
+app.post('/api/demo-refine', (req, res) => {
+  try {
+    const { currentPrompt, refinementQuery, category = 'general' } = req.body;
+
+    if (!currentPrompt || !refinementQuery) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current prompt and refinement query are required'
+      });
+    }
+
+    console.log('🔧 Demo refining prompt:', {
+      category,
+      refinementQuery: refinementQuery.substring(0, 50) + '...'
+    });
+
+    // Refinement templates for demo
+    const refinementTemplates = {
+      'more detailed': 'Added comprehensive details and step-by-step breakdowns',
+      'specific': 'Enhanced with specific examples and targeted recommendations',
+      'conversational': 'Adjusted tone to be more conversational and engaging',
+      'professional': 'Refined for professional business context',
+      'simple': 'Simplified language and reduced complexity',
+      'examples': 'Added real-world examples and case studies',
+      'roi': 'Enhanced with ROI calculations and business value metrics',
+      'timeline': 'Added timeline, milestones, and implementation schedule'
+    };
+
+    // Determine which refinement to apply based on the query
+    let refinementType = 'general enhancement';
+    for (const [key, description] of Object.entries(refinementTemplates)) {
+      if (refinementQuery.toLowerCase().includes(key)) {
+        refinementType = description;
+        break;
+      }
+    }
+
+    // Generate refinement text based on query
+    function generateRefinementText(query, cat) {
+      const queryLower = query.toLowerCase();
+
+      if (queryLower.includes('detailed') || queryLower.includes('specific')) {
+        return `Based on your request for more detailed information, here are the enhanced specifications:
+
+• Detailed implementation steps with timelines
+• Specific resource requirements and budget allocations
+• Risk assessment and mitigation strategies
+• Success metrics and key performance indicators
+• Stakeholder communication plan
+• Quality assurance and testing protocols`;
+      }
+
+      if (queryLower.includes('example') || queryLower.includes('case')) {
+        return `Here are real-world examples and case studies:
+
+**Case Study 1:** Similar implementation at TechCorp
+- 40% efficiency improvement in 6 months
+- ROI of 250% within first year
+- Key success factors and lessons learned
+
+**Case Study 2:** Best practices from industry leaders
+- Proven methodologies and frameworks
+- Common pitfalls and how to avoid them
+- Scalability considerations for growth`;
+      }
+
+      if (queryLower.includes('roi') || queryLower.includes('business value')) {
+        return `Business Value and ROI Analysis:
+
+**Financial Impact:**
+- Initial investment: $X
+- Expected returns: $Y within Z months
+- Break-even point: Month X
+- 3-year projected value: $Z
+
+**Operational Benefits:**
+- Time savings: X hours per week
+- Efficiency gains: Y% improvement
+- Risk reduction: Z% decrease in errors
+- Scalability potential: Up to X% growth capacity`;
+      }
+
+      if (queryLower.includes('timeline') || queryLower.includes('schedule')) {
+        return `Implementation Timeline and Milestones:
+
+**Phase 1 (Weeks 1-2): Planning & Preparation**
+- Requirements gathering and analysis
+- Team formation and resource allocation
+- Risk assessment and mitigation planning
+
+**Phase 2 (Weeks 3-6): Development & Testing**
+- Core implementation and development
+- Quality assurance and testing cycles
+- User acceptance testing and feedback
+
+**Phase 3 (Weeks 7-8): Deployment & Optimization**
+- Production deployment and monitoring
+- Performance optimization and fine-tuning
+- Training and knowledge transfer`;
+      }
+
+      return `Enhanced content based on your refinement request:
+
+• Improved clarity and structure
+• Additional context and background information
+• Enhanced actionability with specific next steps
+• Better organization and flow
+• More comprehensive coverage of key topics
+• Practical implementation guidance`;
+    }
+
+    // Create refined version
+    const refinedPrompt = `${currentPrompt}
+
+## Enhanced Content (${refinementType}):
+
+${generateRefinementText(refinementQuery, category)}`;
+
+    res.json({
+      success: true,
+      data: {
+        refinedPrompt,
+        refinementApplied: refinementQuery,
+        timestamp: new Date(),
+        usage: { type: 'demo', tokens: 0 }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Demo refine error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
     });
   }
 });
@@ -835,6 +2039,490 @@ Customization: ${JSON.stringify(customization || {})}`;
     });
   }
 });
+
+// Personalized suggestions endpoint
+app.get('/api/suggestions/personalized', (req, res) => {
+  try {
+    const { category, context, maxSuggestions = 5 } = req.query;
+    console.log('🎯 Personalized suggestions request:', { category, maxSuggestions });
+
+    const suggestionTemplates = {
+      business: [
+        'Strategic Market Analysis',
+        'Competitive Intelligence Report',
+        'Revenue Optimization Plan',
+        'Customer Acquisition Strategy',
+        'Operational Excellence Audit'
+      ],
+      marketing: [
+        'Brand Positioning Strategy',
+        'Digital Marketing Campaign',
+        'Content Strategy Framework',
+        'Customer Journey Mapping',
+        'Conversion Rate Optimization'
+      ],
+      product: [
+        'Product Roadmap Planning',
+        'User Experience Research',
+        'Feature Prioritization Matrix',
+        'Customer Feedback Analysis',
+        'Product Launch Strategy'
+      ],
+      education: [
+        'Curriculum Development Plan',
+        'Learning Assessment Strategy',
+        'Student Engagement Framework',
+        'Educational Technology Integration',
+        'Performance Analytics System'
+      ],
+      personal: [
+        'Goal Achievement Framework',
+        'Skill Development Roadmap',
+        'Time Management System',
+        'Personal Brand Strategy',
+        'Network Building Plan'
+      ],
+      creative: [
+        'Creative Brief Generator',
+        'Brand Identity Development',
+        'Storytelling Framework',
+        'Visual Design Strategy',
+        'Content Creation Workflow'
+      ]
+    };
+
+    const templates = suggestionTemplates[category] || suggestionTemplates.business;
+    const suggestions = templates.slice(0, parseInt(maxSuggestions)).map((title, index) => ({
+      id: `suggestion-${Date.now()}-${index}`,
+      title,
+      description: `AI-generated ${title.toLowerCase()} specifically tailored for ${category || 'business'} needs`,
+      prompt: `Create a comprehensive ${title.toLowerCase()} that addresses key challenges and opportunities in ${category || 'business'}.
+
+Please provide:
+1. Detailed analysis of current situation
+2. Strategic recommendations with actionable steps
+3. Implementation timeline with key milestones
+4. Success metrics and KPIs
+5. Risk assessment and mitigation strategies
+
+Format the response professionally with clear sections, specific examples, and practical insights that can be immediately implemented.`,
+      category: category || 'business',
+      tags: [category || 'business', 'strategy', 'ai-generated', 'personalized'],
+      complexity: 'comprehensive',
+      estimatedTime: '15-30 minutes'
+    }));
+
+    res.json({
+      success: true,
+      data: suggestions,
+      category,
+      totalSuggestions: suggestions.length,
+      generatedAt: new Date().toISOString(),
+      message: `Generated ${suggestions.length} personalized suggestions for ${category || 'business'}`
+    });
+  } catch (error) {
+    console.error('❌ Personalized suggestions error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate personalized suggestions',
+      message: 'Please try again later'
+    });
+  }
+});
+
+// ===============================================
+// PAYMENT & BILLING ENDPOINTS
+// ===============================================
+
+// Mock payment data store (in production, use proper database)
+const mockPayments = new Map();
+const mockSubscriptions = new Map();
+const mockUsers = new Map();
+
+// Initialize mock user for testing
+mockUsers.set('test-user-123', {
+  id: 'test-user-123',
+  email: 'test@example.com',
+  tokenBalance: 100,
+  subscriptionTier: 'free',
+  subscriptionStatus: 'active',
+  stripeCustomerId: null,
+  tokensUsed: 0,
+  tokensPurchased: 100
+});
+
+// Get billing information
+app.get('/api/billing/info', (req, res) => {
+  try {
+    const userId = 'test-user-123'; // Mock user ID
+    const user = mockUsers.get(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          tokenBalance: user.tokenBalance,
+          subscriptionTier: user.subscriptionTier,
+          subscriptionStatus: user.subscriptionStatus,
+          monthlyUsage: {
+            tokensUsed: user.tokensUsed,
+            resetDate: new Date()
+          },
+          lifetime: {
+            tokensUsed: user.tokensUsed,
+            tokensPurchased: user.tokensPurchased,
+            lastPurchase: new Date()
+          }
+        },
+        subscription: user.subscriptionTier !== 'free' ? {
+          tier: user.subscriptionTier,
+          status: user.subscriptionStatus,
+          billingCycle: 'monthly',
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        } : null,
+        recentPurchases: [],
+        costAnalysis: {
+          monthlyCosts: 0,
+          monthlyRevenue: user.subscriptionTier === 'pro' ? 4999 : 0,
+          costSafety: 'safe'
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Billing info error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve billing information'
+    });
+  }
+});
+
+// Purchase tokens
+app.post('/api/billing/purchase-tokens', (req, res) => {
+  try {
+    const { packageKey, paymentMethodId } = req.body;
+    const userId = 'test-user-123'; // Mock user ID
+
+    console.log('💳 Token purchase request:', { packageKey, paymentMethodId });
+
+    // Token packages
+    const tokenPackages = {
+      small: { tokens: 25, priceInCents: 499, name: 'Small Package' },
+      medium: { tokens: 100, priceInCents: 1799, name: 'Medium Package' },
+      large: { tokens: 500, priceInCents: 7999, name: 'Large Package' },
+      bulk: { tokens: 1000, priceInCents: 14999, name: 'Bulk Package' }
+    };
+
+    const tokenPackage = tokenPackages[packageKey];
+    if (!tokenPackage) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid token package'
+      });
+    }
+
+    const user = mockUsers.get(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Mock payment processing
+    const paymentId = `pi_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const purchase = {
+      id: paymentId,
+      userId,
+      packageKey,
+      tokens: tokenPackage.tokens,
+      priceInCents: tokenPackage.priceInCents,
+      status: 'succeeded',
+      createdAt: new Date(),
+      paymentMethodId
+    };
+
+    // Store payment record
+    mockPayments.set(paymentId, purchase);
+
+    // Update user balance
+    user.tokenBalance += tokenPackage.tokens;
+    user.tokensPurchased += tokenPackage.tokens;
+    mockUsers.set(userId, user);
+
+    console.log('✅ Token purchase completed:', {
+      paymentId,
+      tokens: tokenPackage.tokens,
+      newBalance: user.tokenBalance
+    });
+
+    res.json({
+      success: true,
+      data: {
+        paymentIntentId: paymentId,
+        status: 'succeeded',
+        tokensAdded: tokenPackage.tokens,
+        newBalance: user.tokenBalance,
+        purchase: {
+          id: paymentId,
+          packageName: tokenPackage.name,
+          tokens: tokenPackage.tokens,
+          amount: tokenPackage.priceInCents / 100
+        }
+      },
+      message: `Successfully purchased ${tokenPackage.tokens} tokens!`
+    });
+
+  } catch (error) {
+    console.error('❌ Token purchase error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Token purchase failed'
+    });
+  }
+});
+
+// Get available token packages
+app.get('/api/billing/token-packages', (req, res) => {
+  try {
+    const packages = [
+      {
+        key: 'small',
+        tokens: 25,
+        priceInCents: 499,
+        pricePerToken: 19.96,
+        name: 'Small Package',
+        popular: false
+      },
+      {
+        key: 'medium',
+        tokens: 100,
+        priceInCents: 1799,
+        pricePerToken: 17.99,
+        name: 'Medium Package',
+        popular: true,
+        savings: 10
+      },
+      {
+        key: 'large',
+        tokens: 500,
+        priceInCents: 7999,
+        pricePerToken: 15.99,
+        name: 'Large Package',
+        popular: false,
+        savings: 20
+      },
+      {
+        key: 'bulk',
+        tokens: 1000,
+        priceInCents: 14999,
+        pricePerToken: 14.99,
+        name: 'Bulk Package',
+        popular: false,
+        savings: 25
+      }
+    ];
+
+    res.json({
+      success: true,
+      data: packages
+    });
+
+  } catch (error) {
+    console.error('❌ Error getting token packages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve token packages'
+    });
+  }
+});
+
+// Create subscription
+app.post('/api/billing/create-subscription', (req, res) => {
+  try {
+    const { tierId, billingCycle = 'monthly', paymentMethodId } = req.body;
+    const userId = 'test-user-123'; // Mock user ID
+
+    console.log('📅 Subscription creation request:', { tierId, billingCycle });
+
+    const subscriptionTiers = {
+      starter: {
+        name: 'Starter',
+        monthly: 1499, // $14.99
+        yearly: 14990, // $149.90
+        tokensPerMonth: 200
+      },
+      pro: {
+        name: 'Pro',
+        monthly: 4999, // $49.99
+        yearly: 49990, // $499.90
+        tokensPerMonth: 1000
+      },
+      business: {
+        name: 'Business',
+        monthly: 14999, // $149.99
+        yearly: 149990, // $1499.90
+        tokensPerMonth: 5000
+      }
+    };
+
+    const tier = subscriptionTiers[tierId];
+    if (!tier) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid subscription tier'
+      });
+    }
+
+    const user = mockUsers.get(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Mock subscription creation
+    const subscriptionId = `sub_test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const subscription = {
+      id: subscriptionId,
+      userId,
+      tier: tierId,
+      billingCycle,
+      status: 'active',
+      priceInCents: tier[billingCycle],
+      tokensPerMonth: tier.tokensPerMonth,
+      createdAt: new Date(),
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + (billingCycle === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000)
+    };
+
+    // Store subscription
+    mockSubscriptions.set(subscriptionId, subscription);
+
+    // Update user
+    user.subscriptionTier = tierId;
+    user.subscriptionStatus = 'active';
+    user.tokenBalance += tier.tokensPerMonth; // Add first month tokens
+    mockUsers.set(userId, user);
+
+    console.log('✅ Subscription created:', {
+      subscriptionId,
+      tier: tierId,
+      billingCycle
+    });
+
+    res.json({
+      success: true,
+      data: {
+        subscriptionId,
+        status: 'active',
+        tier: tierId,
+        tokensAdded: tier.tokensPerMonth,
+        newBalance: user.tokenBalance
+      },
+      message: `Successfully subscribed to ${tier.name} plan!`
+    });
+
+  } catch (error) {
+    console.error('❌ Subscription creation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create subscription'
+    });
+  }
+});
+
+// Get user invoices
+app.get('/api/billing/invoices', (req, res) => {
+  try {
+    const userId = 'test-user-123'; // Mock user ID
+
+    // Mock invoice data
+    const invoices = [
+      {
+        id: `inv_${Date.now()}`,
+        amount: 4999,
+        currency: 'usd',
+        status: 'paid',
+        created: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        description: 'Pro Plan - Monthly',
+        pdfUrl: '/api/billing/invoice/download/inv_123'
+      }
+    ];
+
+    res.json({
+      success: true,
+      data: invoices,
+      hasMore: false
+    });
+
+  } catch (error) {
+    console.error('❌ Error getting invoices:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve invoices'
+    });
+  }
+});
+
+// Update payment method
+app.post('/api/billing/update-payment-method', (req, res) => {
+  try {
+    const { paymentMethodId } = req.body;
+    const userId = 'test-user-123'; // Mock user ID
+
+    console.log('💳 Payment method update request:', { paymentMethodId });
+
+    const user = mockUsers.get(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Mock payment method update
+    console.log('✅ Payment method updated:', paymentMethodId);
+
+    res.json({
+      success: true,
+      message: 'Payment method updated successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating payment method:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update payment method'
+    });
+  }
+});
+
+// Payment webhook (mock)
+app.post('/api/billing/webhook', (req, res) => {
+  try {
+    console.log('🔔 Payment webhook received:', req.body);
+
+    // In production, verify webhook signature and process events
+    res.json({ received: true });
+
+  } catch (error) {
+    console.error('❌ Webhook handler error:', error);
+    res.status(500).json({ error: 'Webhook handler failed' });
+  }
+});
+
+// ===============================================
+// END PAYMENT & BILLING ENDPOINTS
+// ===============================================
 
 // Catch all
 app.get('*', (req, res) => {

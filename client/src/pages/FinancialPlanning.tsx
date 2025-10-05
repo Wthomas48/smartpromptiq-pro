@@ -715,7 +715,7 @@ export default function FinancialPlanning() {
                   <CardTitle className="flex items-center justify-between">
                     {generatedStrategy.title}
                     <Badge variant="secondary" className="ml-2">
-                      {generatedStrategy.type.replace('_', ' ').toUpperCase()}
+                      {generatedStrategy.type?.replace('_', ' ').toUpperCase() || 'STRATEGY'}
                     </Badge>
                   </CardTitle>
                   <CardDescription>{generatedStrategy.description}</CardDescription>
@@ -736,14 +736,14 @@ export default function FinancialPlanning() {
                   <Separator />
 
                   {/* Revenue Projections */}
-                  {generatedStrategy.projections.revenue.length > 0 && (
+                  {generatedStrategy.projections?.revenue?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <DollarSign className="w-4 h-4" />
                         Revenue Projections
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.projections.revenue.map((item, index) => (
+                        {generatedStrategy.projections?.revenue?.map((item, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{item}</span>
@@ -754,14 +754,14 @@ export default function FinancialPlanning() {
                   )}
 
                   {/* Expense Analysis */}
-                  {generatedStrategy.projections.expenses.length > 0 && (
+                  {generatedStrategy.projections?.expenses?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Calculator className="w-4 h-4" />
                         Expense Analysis
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.projections.expenses.map((expense, index) => (
+                        {generatedStrategy.projections?.expenses?.map((expense, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-orange-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{expense}</span>
@@ -772,14 +772,14 @@ export default function FinancialPlanning() {
                   )}
 
                   {/* Profitability Timeline */}
-                  {generatedStrategy.projections.profitability.length > 0 && (
+                  {generatedStrategy.projections?.profitability?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
                         Profitability Analysis
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.projections.profitability.map((profit, index) => (
+                        {generatedStrategy.projections?.profitability?.map((profit, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{profit}</span>
@@ -790,14 +790,14 @@ export default function FinancialPlanning() {
                   )}
 
                   {/* Funding Options */}
-                  {generatedStrategy.fundingOptions.length > 0 && (
+                  {generatedStrategy.fundingOptions?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Users className="w-4 h-4" />
                         Funding Options
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.fundingOptions.map((option, index) => (
+                        {generatedStrategy.fundingOptions?.map((option, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{option}</span>
@@ -808,14 +808,14 @@ export default function FinancialPlanning() {
                   )}
 
                   {/* Pitch Elements */}
-                  {generatedStrategy.pitchElements.length > 0 && (
+                  {generatedStrategy.pitchElements?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Presentation className="w-4 h-4" />
                         Key Pitch Elements
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.pitchElements.map((element, index) => (
+                        {generatedStrategy.pitchElements?.map((element, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex-shrink-0">
                               {index + 1}
@@ -828,14 +828,14 @@ export default function FinancialPlanning() {
                   )}
 
                   {/* Risk Factors */}
-                  {generatedStrategy.riskFactors.length > 0 && (
+                  {generatedStrategy.riskFactors?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Risk Factors
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.riskFactors.map((risk, index) => (
+                        {generatedStrategy.riskFactors?.map((risk, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-red-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{risk}</span>
@@ -846,14 +846,14 @@ export default function FinancialPlanning() {
                   )}
 
                   {/* Recommendations */}
-                  {generatedStrategy.recommendations.length > 0 && (
+                  {generatedStrategy.recommendations?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
                         Strategic Recommendations
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.recommendations.map((rec, index) => (
+                        {generatedStrategy.recommendations?.map((rec, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-teal-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{rec}</span>

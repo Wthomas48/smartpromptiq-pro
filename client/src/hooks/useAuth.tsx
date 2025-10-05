@@ -172,8 +172,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log('🔍 checkAuth: Verifying token with backend...');
           const data = await authAPI.me();
 
-          if (data.success && (data.data?.user || data.user)) {
-            const backendUserData = data.data?.user || data.user;
+          if (data.success && data.data?.user) {
+            const backendUserData = data.data.user;
             debugUserData(backendUserData, 'checkAuth - BACKEND user data');
 
             // Merge stored user data with backend data, prioritizing stored data for names

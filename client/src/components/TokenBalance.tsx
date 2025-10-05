@@ -23,7 +23,7 @@ export default function TokenBalance() {
     subscriptionTier: user?.plan?.toLowerCase() || "free",
     tokenBalance: user?.tokenBalance || 0,
     subscriptionStatus: user?.subscriptionStatus || "active",
-    subscriptionEndDate: user?.subscriptionEndDate || "2024-12-31"
+    subscriptionEndDate: user?.subscriptionTier || "2024-12-31"
   };
 
   console.log("TokenBalance loaded with user data:", subscription);

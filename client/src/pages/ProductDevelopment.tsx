@@ -502,7 +502,7 @@ export default function ProductDevelopment() {
                   <CardTitle className="flex items-center justify-between">
                     {generatedStrategy.title}
                     <Badge variant="secondary" className="ml-2">
-                      {generatedStrategy.type.replace('_', ' ').toUpperCase()}
+                      {generatedStrategy.type?.replace('_', ' ').toUpperCase() || 'STRATEGY'}
                     </Badge>
                   </CardTitle>
                   <CardDescription>{generatedStrategy.description}</CardDescription>
@@ -523,14 +523,14 @@ export default function ProductDevelopment() {
                   <Separator />
 
                   {/* Key Features/Opportunities */}
-                  {generatedStrategy.features.length > 0 && (
+                  {generatedStrategy.features?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Lightbulb className="w-4 h-4" />
                         Key Features & Opportunities
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.features.map((feature, index) => (
+                        {generatedStrategy.features?.map((feature, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{feature}</span>
@@ -541,14 +541,14 @@ export default function ProductDevelopment() {
                   )}
 
                   {/* Implementation Roadmap */}
-                  {generatedStrategy.roadmap.length > 0 && (
+                  {generatedStrategy.roadmap?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Implementation Roadmap
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.roadmap.map((item, index) => (
+                        {generatedStrategy.roadmap?.map((item, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex-shrink-0">
                               {index + 1}
@@ -561,14 +561,14 @@ export default function ProductDevelopment() {
                   )}
 
                   {/* Validation Methods */}
-                  {generatedStrategy.validationMethods.length > 0 && (
+                  {generatedStrategy.validationMethods?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Users className="w-4 h-4" />
                         Validation & Testing Methods
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.validationMethods.map((method, index) => (
+                        {generatedStrategy.validationMethods?.map((method, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{method}</span>
@@ -579,14 +579,14 @@ export default function ProductDevelopment() {
                   )}
 
                   {/* Risk Factors */}
-                  {generatedStrategy.risks.length > 0 && (
+                  {generatedStrategy.risks?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
                         Risk Factors & Mitigation
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.risks.map((risk, index) => (
+                        {generatedStrategy.risks?.map((risk, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-orange-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{risk}</span>
@@ -597,14 +597,14 @@ export default function ProductDevelopment() {
                   )}
 
                   {/* Recommendations */}
-                  {generatedStrategy.recommendations.length > 0 && (
+                  {generatedStrategy.recommendations?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <DollarSign className="w-4 h-4" />
                         Key Recommendations
                       </h4>
                       <div className="space-y-2">
-                        {generatedStrategy.recommendations.map((rec, index) => (
+                        {generatedStrategy.recommendations?.map((rec, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{rec}</span>

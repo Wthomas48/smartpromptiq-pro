@@ -577,7 +577,7 @@ export default function Education() {
                   <CardTitle className="flex items-center justify-between">
                     {generatedContent.title}
                     <Badge variant="secondary" className="ml-2">
-                      {generatedContent.type.replace('_', ' ').toUpperCase()}
+                      {generatedContent.type?.replace('_', ' ').toUpperCase() || 'CONTENT'}
                     </Badge>
                   </CardTitle>
                   <CardDescription>{generatedContent.description}</CardDescription>
@@ -609,14 +609,14 @@ export default function Education() {
                   <Separator />
 
                   {/* Modules/Phases */}
-                  {generatedContent.modules.length > 0 && (
+                  {generatedContent.modules?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <BookOpen className="w-4 h-4" />
                         Learning Modules
                       </h4>
                       <div className="space-y-2">
-                        {generatedContent.modules.map((module, index) => (
+                        {generatedContent.modules?.map((module, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-semibold text-blue-600 dark:text-blue-400 flex-shrink-0">
                               {index + 1}
@@ -629,14 +629,14 @@ export default function Education() {
                   )}
 
                   {/* Learning Objectives */}
-                  {generatedContent.objectives.length > 0 && (
+                  {generatedContent.objectives?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Learning Objectives
                       </h4>
                       <div className="space-y-2">
-                        {generatedContent.objectives.map((objective, index) => (
+                        {generatedContent.objectives?.map((objective, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{objective}</span>
@@ -647,14 +647,14 @@ export default function Education() {
                   )}
 
                   {/* Activities */}
-                  {generatedContent.activities.length > 0 && (
+                  {generatedContent.activities?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Users className="w-4 h-4" />
                         Learning Activities
                       </h4>
                       <div className="space-y-2">
-                        {generatedContent.activities.map((activity, index) => (
+                        {generatedContent.activities?.map((activity, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-purple-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{activity}</span>
@@ -665,14 +665,14 @@ export default function Education() {
                   )}
 
                   {/* Assessments */}
-                  {generatedContent.assessments.length > 0 && (
+                  {generatedContent.assessments?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
                         Assessment Methods
                       </h4>
                       <div className="space-y-2">
-                        {generatedContent.assessments.map((assessment, index) => (
+                        {generatedContent.assessments?.map((assessment, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-orange-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{assessment}</span>
@@ -683,14 +683,14 @@ export default function Education() {
                   )}
 
                   {/* Resources */}
-                  {generatedContent.resources.length > 0 && (
+                  {generatedContent.resources?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Search className="w-4 h-4" />
                         Resources & Materials
                       </h4>
                       <div className="space-y-2">
-                        {generatedContent.resources.map((resource, index) => (
+                        {generatedContent.resources?.map((resource, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-teal-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{resource}</span>
@@ -701,14 +701,14 @@ export default function Education() {
                   )}
 
                   {/* Recommendations */}
-                  {generatedContent.recommendations.length > 0 && (
+                  {generatedContent.recommendations?.length > 0 && (
                     <div>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Implementation Recommendations
                       </h4>
                       <div className="space-y-2">
-                        {generatedContent.recommendations.map((rec, index) => (
+                        {generatedContent.recommendations?.map((rec, index) => (
                           <div key={index} className="flex items-start gap-2">
                             <div className="w-2 h-2 rounded-full bg-indigo-500 mt-2 flex-shrink-0" />
                             <span className="text-sm">{rec}</span>

@@ -168,7 +168,12 @@
       "Bash(NODE_ENV=production npm run build)",
       "Bash(PORT=8080 node railway-server-minimal.cjs)",
       "Bash(for i in {2..6})",
-      "Bash(do echo \"Request $i:\")"
+      "Bash(do echo \"Request $i:\")",
+      "Bash(start \"\" \"http://localhost:5174/demo\")",
+      "Bash(start \"\" \"http://localhost:5177/demo\")",
+      "Bash(npx kill-port:*)",
+      "Bash(kill-port:*)",
+      "Bash(PORT=5000 node railway-server-minimal.cjs)"
     ],
     "deny": [],
     "ask": []

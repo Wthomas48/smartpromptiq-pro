@@ -947,7 +947,7 @@ export default function TeamDashboard() {
                                 project.status === 'in_progress' ? 'bg-blue-500/20 text-blue-300' :
                                 'bg-gray-500/20 text-gray-300'
                               }`}>
-                                {project.status.replace('_', ' ')}
+                                {project.status?.replace('_', ' ') || 'unknown'}
                               </Badge>
                               <div className="flex space-x-2">
                                 <Button size="sm" variant="outline" className="border-white/20 text-white hover:bg-white/10">
@@ -1314,7 +1314,7 @@ export default function TeamDashboard() {
                                 <div className="text-sm text-white/60 mt-1">{activity.time}</div>
                               </div>
                               <Badge className="bg-white/10 text-white/70 border-white/20">
-                                {activity.type.replace('_', ' ')}
+                                {activity.type?.replace('_', ' ') || 'unknown'}
                               </Badge>
                             </div>
                           </CardContent>

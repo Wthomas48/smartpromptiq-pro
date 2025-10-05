@@ -53,17 +53,32 @@ export default function PromptRefinement({
  const refineMutation = useMutation({
    mutationFn: async (query: string) => {
      try {
-       // First, try the authenticated endpoint
-       const response = await apiRequest("POST", "/api/refine-prompt", {
-         currentPrompt,
-         refinementQuery: query,
-         category,
-         originalAnswers,
-         history: refinementHistory
-       });
-       return response.json();
+       // Check if we're in demo mode (no authentication required)
+       const isDemoMode = window.location.pathname.includes('/demo') ||
+                         window.location.pathname.includes('/generation') ||
+                         sessionStorage.getItem('questionnaire');
+
+       if (isDemoMode) {
+         // Use demo refinement endpoint (no auth required)
+         const response = await apiRequest("POST", "/api/demo-refine", {
+           currentPrompt,
+           refinementQuery: query,
+           category
+         });
+         return response.json();
+       } else {
+         // Use authenticated endpoint for logged-in users
+         const response = await apiRequest("POST", "/api/refine-prompt", {
+           currentPrompt,
+           refinementQuery: query,
+           category,
+           originalAnswers,
+           history: refinementHistory
+         });
+         return response.json();
+       }
      } catch (error) {
-       console.log('Authenticated refinement failed, using fallback:', error);
+       console.log('Refinement API failed, using fallback:', error);
 
        // Fallback to client-side refinement if API fails
        return {

@@ -47,6 +47,7 @@ import NotFound from "@/pages/not-found";
 import Navigation from "@/components/Navigation";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AdminRoute from "@/components/AdminRoute";
+import { SecurityProvider } from "@/components/SecurityProvider";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -136,12 +137,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <ThemeProvider>
-          <TooltipProvider>
-            <RatingSystemProvider>
-              <Toaster />
-              <Router />
-            </RatingSystemProvider>
-          </TooltipProvider>
+          <SecurityProvider>
+            <TooltipProvider>
+              <RatingSystemProvider>
+                <Toaster />
+                <Router />
+              </RatingSystemProvider>
+            </TooltipProvider>
+          </SecurityProvider>
         </ThemeProvider>
       </ErrorBoundary>
     </QueryClientProvider>

@@ -11,6 +11,7 @@ import { Sparkles, Copy, Save, Plus, Loader2 } from "lucide-react";
 import PromptCustomizer from "@/components/PromptCustomizer";
 import PromptRefinement from "@/components/PromptRefinement";
 import QuickSuggestions from "@/components/QuickSuggestions";
+import { PDFExport } from "@/components/PDFExport";
 
 export default function Generation() {
   const [, setLocation] = useLocation();
@@ -250,6 +251,19 @@ export default function Generation() {
                   )}
                 </Button>
                 <div className="flex items-center space-x-2">
+                  <PDFExport
+                    content={{
+                      title: promptTitle || "Generated Prompt",
+                      content: generatedContent,
+                      category: directMode ? selectedCategory : (questionnaireData.category || "Business"),
+                      metadata: {
+                        generatedAt: new Date().toISOString(),
+                        templateType: directMode ? selectedCategory : (questionnaireData.isTemplate ? questionnaireData.templateData?.name : questionnaireData.category),
+                        userEmail: 'user@smartpromptiq.com'
+                      }
+                    }}
+                    size="sm"
+                  />
                   <Button
                     variant="outline"
                     onClick={handleCreateAnother}

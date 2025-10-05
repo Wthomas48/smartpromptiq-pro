@@ -347,10 +347,7 @@ const AdminDashboard: React.FC = () => {
 
       const response = await apiRequest(`/api/admin/payments/${paymentId}/refund`, {
         method: 'POST',
-        body: JSON.stringify({ reason }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: { reason }
       });
 
       if (response.success) {
@@ -376,10 +373,7 @@ const AdminDashboard: React.FC = () => {
 
       const response = await apiRequest(`/api/admin/actions/${action}`, {
         method: 'POST',
-        body: JSON.stringify({ userId, data: { reason: `Admin action: ${action}` } }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: { userId, data: { reason: `Admin action: ${action}` } }
       });
 
       if (response.success) {
@@ -474,10 +468,7 @@ const AdminDashboard: React.FC = () => {
 
       const response = await apiRequest(endpoint, {
         method,
-        body: JSON.stringify(body),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: body
       });
 
       if (response.success) {
@@ -510,10 +501,7 @@ const AdminDashboard: React.FC = () => {
 
       const response = await apiRequest(`/api/admin/users/${userId}/suspend`, {
         method: 'POST',
-        body: JSON.stringify({ reason, duration }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: { reason, duration }
       });
 
       if (response.success) {
@@ -541,10 +529,7 @@ const AdminDashboard: React.FC = () => {
 
       const response = await apiRequest(`/api/admin/users/${userId}/unsuspend`, {
         method: 'POST',
-        body: JSON.stringify({ reason }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: { reason }
       });
 
       if (response.success) {

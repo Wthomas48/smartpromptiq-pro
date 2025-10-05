@@ -590,7 +590,7 @@ export default function RatingDashboard() {
                               {feedback.category}
                             </Badge>
                             <Badge variant="secondary" className="text-xs">
-                              {feedback.triggerType.replace('_', ' ')}
+                              {feedback.triggerType?.replace('_', ' ') || 'unknown'}
                             </Badge>
                           </div>
                           <span className="text-sm text-gray-500">
@@ -651,7 +651,7 @@ export default function RatingDashboard() {
                           <div className="flex items-center space-x-2 ml-4">
                             {getStatusIcon(improvement.status)}
                             <span className="text-sm capitalize font-medium">
-                              {improvement.status.replace('_', ' ')}
+                              {improvement.status?.replace('_', ' ') || 'unknown'}
                             </span>
                           </div>
                         </div>
