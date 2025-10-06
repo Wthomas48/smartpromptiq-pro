@@ -16,6 +16,7 @@ const billingRoutes = require('./routes/billing');
 const subscriptionRoutes = require('./routes/subscriptions');
 const usageRoutes = require('./routes/usage');
 const adminRoutes = require('./routes/admin');
+const demoRoutes = require('./routes/demo');
 
 // Import rate limiting middleware
 const { 
@@ -127,6 +128,9 @@ app.use('/api/subscriptions', subscriptionRoutes);
 
 // Usage and analytics routes (authenticated)
 app.use('/api/usage', authenticateWithSubscription, trackApiUsage, usageRoutes);
+
+// Demo routes (public access for demo purposes)
+app.use('/api/demo', demoRoutes);
 
 // Admin routes (require admin authentication)
 app.use('/api/admin', adminRoutes);
@@ -390,6 +394,9 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
+// Initialize queue service
+const { demoQueue } = require('./services/queueService');
+
 // Start server
 app.listen(PORT, () => {
   console.log('🚀 SmartPromptIQ Pro Backend Started!');
@@ -399,8 +406,9 @@ app.listen(PORT, () => {
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
   console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
   console.log(`📊 API Info: http://localhost:${PORT}/api`);
-  console.log('✨ Features: Token-based pricing, Cost protection, Advanced analytics');
-  
+  console.log('✨ Features: Token-based pricing, Cost protection, Advanced analytics, Demo Queue');
+  console.log('📋 Demo Queue: Processing jobs with Bull and Redis');
+
   if (process.env.NODE_ENV === 'development') {
     console.log('🔧 Development mode - Detailed error messages enabled');
   }

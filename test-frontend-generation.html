@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend Generation Test</title>
+</head>
+<body>
+    <h1>Frontend Generation Test</h1>
+    <button onclick="testDemoGenerate()">Test Demo Generate</button>
+    <button onclick="testPromptGenerate()">Test Prompt Generate</button>
+    <div id="result"></div>
+
+    <script>
+        async function testDemoGenerate() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing /api/demo/generate...';
+
+            try {
+                const response = await fetch('http://localhost:5000/api/demo/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        templateType: 'business',
+                        userResponses: {
+                            businessName: 'Test',
+                            industry: 'tech',
+                            goal: 'test'
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Demo API Response:', data);
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <h2>DEMO SUCCESS!</h2>
+                        <h3>${data.data.title}</h3>
+                        <pre>${data.data.content}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<h2>DEMO ERROR:</h2><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                console.error('Demo Error:', error);
+                resultDiv.innerHTML = `<h2>DEMO ERROR:</h2><pre>${error.message}</pre>`;
+            }
+        }
+
+        async function testPromptGenerate() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing /api/demo-generate-prompt...';
+
+            try {
+                const response = await fetch('http://localhost:5000/api/demo-generate-prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        category: 'business',
+                        answers: {},
+                        customization: {}
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Prompt API Response:', data);
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <h2>PROMPT SUCCESS!</h2>
+                        <h3>${data.data.title}</h3>
+                        <pre>${data.data.content}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<h2>PROMPT ERROR:</h2><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                console.error('Prompt Error:', error);
+                resultDiv.innerHTML = `<h2>PROMPT ERROR:</h2><pre>${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

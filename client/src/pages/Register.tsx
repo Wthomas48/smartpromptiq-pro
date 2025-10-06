@@ -15,14 +15,11 @@ export default function Register() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    confirmPassword: "",
-    firstName: "",
-    lastName: ""
+    honeypot: "" // Bot protection field
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [userName, setUserName] = useState("");
   const [, setLocation] = useLocation();
@@ -44,41 +41,24 @@ export default function Register() {
     });
   };
 
-  const getPasswordStrength = (password: string) => {
-    if (password.length === 0) return { strength: 0, label: '', color: '' };
-    if (password.length < 6) return { strength: 1, label: 'Too short', color: 'text-red-500' };
-
-    // Check for basic requirements: at least one letter and one number
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumber = /\d/.test(password);
-
-    if (password.length >= 6 && hasLetter && hasNumber) {
-      if (password.length >= 12) return { strength: 4, label: 'Very Strong', color: 'text-green-500' };
-      if (password.length >= 8) return { strength: 3, label: 'Strong', color: 'text-green-500' };
-      return { strength: 2, label: 'Good', color: 'text-blue-500' };
-    }
-
-    return { strength: 1, label: 'Needs letter & number', color: 'text-orange-500' };
-  };
-
-  const passwordsMatch = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword;
-  const passwordStrength = getPasswordStrength(formData.password);
+  // Simplified password validation - just check length
+  const isPasswordValid = formData.password.length >= 4;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+    // Bot protection - check honeypot field
+    if (formData.honeypot) {
+      setError("Please try again");
       setIsLoading(false);
       return;
     }
 
-    // Validate password length
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    // Simple validation
+    if (formData.password.length < 4) {
+      setError("Password must be at least 4 characters");
       setIsLoading(false);
       return;
     }
@@ -86,11 +66,15 @@ export default function Register() {
     try {
       console.log('🔍 Register: Attempting signup with authAPI...');
 
+      // Extract name from email for simplicity
+      const emailName = formData.email.split('@')[0];
+      const firstName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+
       const data = await authAPI.signup({
         email: formData.email,
         password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        firstName: firstName,
+        lastName: "", // Optional
       });
 
       console.log('🔍 Register: Signup response:', data);
@@ -100,7 +84,7 @@ export default function Register() {
       }
 
       // Show success animation
-      setUserName(formData.firstName || formData.email.split('@')[0]);
+      setUserName(firstName);
       setShowSuccess(true);
 
       // ✅ FIXED: Handle both response formats - nested {data: {token}} and direct {token}
@@ -198,55 +182,25 @@ export default function Register() {
               </Alert>
             )}
 
-            {/* New System Announcement */}
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-700">
-                <strong>✨ Enhanced User Experience!</strong><br />
-                Our new system provides real user data, improved features, and better personalization.
+            {/* Simplified Registration Message */}
+            <Alert className="border-blue-200 bg-blue-50">
+              <Sparkles className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-700">
+                <strong>🚀 Quick Registration!</strong><br />
+                Just your email and password to get started with SmartPromptIQ.
               </AlertDescription>
             </Alert>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">
-                  First Name
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    placeholder="John"
-                    required
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                    className="pl-10 pr-4 py-3 h-12 border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 rounded-lg transition-all duration-200"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">
-                  Last Name
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    placeholder="Doe"
-                    required
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    disabled={isLoading}
-                    className="pl-10 pr-4 py-3 h-12 border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 rounded-lg transition-all duration-200"
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Hidden honeypot field for bot protection */}
+            <input
+              type="text"
+              name="honeypot"
+              value={formData.honeypot}
+              onChange={handleInputChange}
+              style={{ display: 'none' }}
+              tabIndex={-1}
+              autoComplete="off"
+            />
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
@@ -278,9 +232,9 @@ export default function Register() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a strong password"
+                  placeholder="Choose a password (4+ characters)"
                   required
-                  minLength={6}
+                  minLength={4}
                   value={formData.password}
                   onChange={handleInputChange}
                   disabled={isLoading}
@@ -299,81 +253,7 @@ export default function Register() {
                   )}
                 </button>
               </div>
-              {formData.password && (
-                <div className="flex items-center space-x-2">
-                  <div className="flex-1">
-                    <div className="flex space-x-1">
-                      {[1, 2, 3, 4].map((level) => (
-                        <div
-                          key={level}
-                          className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
-                            level <= passwordStrength.strength
-                              ? level === 1
-                                ? 'bg-red-400'
-                                : level === 2
-                                ? 'bg-orange-400'
-                                : level === 3
-                                ? 'bg-blue-400'
-                                : 'bg-green-400'
-                              : 'bg-gray-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <span className={`text-xs font-medium ${passwordStrength.color}`}>
-                    {passwordStrength.label}
-                  </span>
-                </div>
-              )}
-              <p className="text-xs text-gray-500">At least 6 characters with a letter and number</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
-                Confirm Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm your password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  disabled={isLoading}
-                  className="pl-10 pr-12 py-3 h-12 border-2 border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 rounded-lg transition-all duration-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                  disabled={isLoading}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-              {formData.confirmPassword && (
-                <div className="flex items-center space-x-2">
-                  {passwordsMatch ? (
-                    <div className="flex items-center space-x-1 text-green-600">
-                      <CheckCircle className="w-3 h-3" />
-                      <span className="text-xs">Passwords match</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-1 text-red-500">
-                      <AlertCircle className="w-3 h-3" />
-                      <span className="text-xs">Passwords don't match</span>
-                    </div>
-                  )}
-                </div>
-              )}
+              <p className="text-xs text-gray-500">Minimum 4 characters</p>
             </div>
           </CardContent>
 
@@ -381,7 +261,7 @@ export default function Register() {
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 h-12 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              disabled={isLoading || !passwordsMatch || formData.password.length < 6}
+              disabled={isLoading || !isPasswordValid || !formData.email}
             >
               {isLoading ? (
                 <div className="flex items-center space-x-2">
@@ -390,8 +270,8 @@ export default function Register() {
                 </div>
               ) : (
                 <div className="flex items-center space-x-2">
-                  <Crown className="w-4 h-4" />
-                  <span>Create Account & Start Creating</span>
+                  <Rocket className="w-4 h-4" />
+                  <span>Create Account</span>
                   <Sparkles className="w-4 h-4" />
                 </div>
               )}

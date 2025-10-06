@@ -41,6 +41,8 @@ import {
 } from "lucide-react";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import { PDFExport } from "@/components/PDFExport";
+import { useDemoGenerationWithStatus } from "@/hooks/useDemoGeneration";
+import { RequestQueueMonitor } from "@/components/RequestQueueMonitor";
 
 export default function Demo() {
   const [, setLocation] = useLocation();
@@ -55,6 +57,25 @@ export default function Demo() {
   const [showEmailCapture, setShowEmailCapture] = useState(true);
   const [email, setEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
+
+  // Advanced demo generation with queue monitoring
+  const {
+    loading: hookLoading,
+    error: hookError,
+    data: hookData,
+    queueStatus,
+    systemLoad,
+    generateDemo: generateDemoAdvanced,
+    progress,
+    isRetrying,
+    canRetry,
+    retry
+  } = useDemoGenerationWithStatus();
+
+  // Sync the local isGenerating state with the hook loading state
+  useEffect(() => {
+    setIsGenerating(hookLoading);
+  }, [hookLoading]);
 
   const demoStats = {
     promptsGenerated: 47283,
@@ -71,6 +92,22 @@ export default function Demo() {
       icon: Briefcase,
       color: "blue",
       description: "Create compelling pitch presentations for investors",
+      questions: [
+        { id: "businessName", label: "Business Name", type: "input", placeholder: "e.g., EcoTrack, TechFlow, GreenSpace" },
+        { id: "industry", label: "Industry", type: "select", options: ["Technology", "Healthcare", "Finance", "Retail", "Manufacturing", "Education", "Environmental"] },
+        { id: "problem", label: "Problem Statement", type: "textarea", placeholder: "What problem does your business solve?" },
+        { id: "solution", label: "Your Solution", type: "textarea", placeholder: "How does your product/service solve this problem?" },
+        { id: "targetMarket", label: "Target Market", type: "textarea", placeholder: "Who are your ideal customers?" },
+        { id: "revenueModel", label: "Revenue Model", type: "select", options: ["SaaS Subscription", "One-time Purchase", "Freemium", "Marketplace Commission", "Advertising", "Licensing"] }
+      ],
+      demoData: {
+        "businessName": "EcoTrack",
+        "industry": "Environmental",
+        "problem": "Small businesses struggle to track and reduce their carbon footprint",
+        "solution": "AI-powered carbon tracking and reduction platform",
+        "targetMarket": "Small to medium businesses (10-500 employees)",
+        "revenueModel": "SaaS Subscription"
+      },
       sampleResponses: {
         "Business Name": "EcoTrack",
         "Industry": "Environmental Technology",
@@ -122,6 +159,22 @@ Seeking $2M Series A to:
       icon: Target,
       color: "green",
       description: "Launch engaging social media campaigns across platforms",
+      questions: [
+        { id: "productService", label: "Product/Service", type: "input", placeholder: "e.g., Organic Skincare Line, Mobile App, Online Course" },
+        { id: "targetAudience", label: "Target Audience", type: "textarea", placeholder: "Describe your ideal customers (age, interests, demographics)" },
+        { id: "campaignGoal", label: "Campaign Goal", type: "select", options: ["Brand Awareness", "Lead Generation", "Sales Conversion", "Product Launch", "Community Building", "Customer Retention"] },
+        { id: "budget", label: "Budget Range", type: "select", options: ["$500-1,000", "$1,000-5,000", "$5,000-10,000", "$10,000-25,000", "$25,000+"] },
+        { id: "duration", label: "Campaign Duration", type: "select", options: ["1-2 weeks", "3-4 weeks", "6-8 weeks", "2-3 months", "Ongoing"] },
+        { id: "platforms", label: "Preferred Platforms", type: "textarea", placeholder: "e.g., Instagram, TikTok, Facebook, LinkedIn, Twitter" }
+      ],
+      demoData: {
+        "productService": "Organic Skincare Line",
+        "targetAudience": "Health-conscious women aged 25-45",
+        "campaignGoal": "Product Launch",
+        "budget": "$1,000-5,000",
+        "duration": "6-8 weeks",
+        "platforms": "Instagram, TikTok, Facebook"
+      },
       sampleResponses: {
         "Product/Service": "Organic Skincare Line",
         "Target Audience": "Health-conscious women aged 25-45",
@@ -951,10 +1004,13 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
   };
 
   const handleNextStep = () => {
+    console.log('🔘 BUTTON CLICKED: handleNextStep');
     const template = selectedTemplate ? demoTemplates[selectedTemplate as keyof typeof demoTemplates] : null;
     if (template && template.questions && currentStep < template.questions.length - 1) {
+      console.log('📝 Moving to next step:', currentStep + 1);
       setCurrentStep(currentStep + 1);
     } else {
+      console.log('🎯 Final step reached, calling handleGenerateDemo');
       handleGenerateDemo();
     }
   };
@@ -970,44 +1026,65 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
       return;
     }
 
-    console.log('🚀 Starting demo generation for template:', templateToUse);
+    console.log('🚀 Starting advanced demo generation for template:', templateToUse);
+    console.log('📋 Selected template data:', selectedTemplateData);
+    console.log('👤 User responses:', userResponses);
+    console.log('📧 Email:', email);
+
+    // Prepare request data in the correct format for the hook
+    const requestData = {
+      templateType: templateToUse,
+      userResponses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
+      email: email || undefined
+    };
+    console.log('📤 Request data for hook:', requestData);
+
+    // Set local loading state to sync with legacy UI
     setIsGenerating(true);
     setShowOutput(false);
     setGeneratedContent(null);
 
     try {
-      // Use the real demo API endpoint
-      const response = await fetch('/api/demo/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          template: templateToUse,
-          responses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
-          userEmail: email || undefined
-        }),
-      });
+      // Use the advanced hook for generation with queue management
+      const result = await generateDemoAdvanced(requestData);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      console.log('✅ Advanced demo generation successful:', result);
 
-      const data = await response.json();
-      console.log('🔍 Backend response data:', data);
+      // Handle success - set the generated content
+      if (result && typeof result === 'object') {
+        const resultData = result as any;
+        console.log('🔍 Raw result from backend:', result);
 
-      // Handle direct response format from backend
-      if (data && data.title && data.content) {
-        console.log('✅ Demo content received successfully:', data.title);
-        // Set real generated content
+        // Backend returns {success, data: {title, content}, meta} so we need to access result.data
+        // But the hook returns the whole response, so we need to extract the data
+        let generatedData;
+        if (resultData.success && resultData.data) {
+          // Direct backend response format
+          generatedData = resultData.data;
+        } else if (resultData.data) {
+          // Hook wrapped the response
+          generatedData = resultData.data;
+        } else {
+          // Fallback to result itself
+          generatedData = resultData;
+        }
+
         const contentToSet = {
-          title: data.title || selectedTemplateData?.sampleOutput?.title || 'Generated AI Prompt',
-          content: data.content
+          title: generatedData.title || selectedTemplateData?.sampleOutput?.title || 'Generated AI Prompt',
+          content: generatedData.content || generatedData.prompt || 'Generated content'
         };
+
         console.log('📄 Setting generatedContent to:', contentToSet);
+        console.log('🔍 Generated data extraction:', {
+          originalResult: result,
+          resultData,
+          generatedData,
+          finalContentToSet: contentToSet
+        });
+
         setGeneratedContent(contentToSet);
-        console.log('👁️ Setting showOutput to true');
         setShowOutput(true);
+        console.log('✅ State updated - generatedContent set and showOutput = true');
 
         // Optionally send results to email if provided
         if (email) {
@@ -1019,20 +1096,17 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
               },
               body: JSON.stringify({
                 email,
-                templateName: data.title,
-                generatedPrompt: data.content
+                templateName: resultData.title || 'Generated AI Prompt',
+                generatedPrompt: resultData.content || resultData.prompt || 'Generated content'
               }),
             });
           } catch (emailError) {
             console.log('Could not send email, but generation succeeded');
           }
         }
-      } else {
-        console.error('❌ No content found in response:', data);
-        throw new Error(data.error || 'No content generated');
       }
     } catch (error) {
-      console.error('Demo generation error:', error);
+      console.error('Advanced demo generation error:', error);
 
       // Enhanced fallback with better error handling
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -1054,7 +1128,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
         setShowOutput(true);
       }
     } finally {
-      console.log('🏁 Demo generation finished, isGenerating set to false');
+      console.log('🏁 Advanced demo generation finished');
       setIsGenerating(false);
     }
   };
@@ -1089,6 +1163,11 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30">
+
+      {/* Advanced Request Queue Monitor */}
+      <div className="fixed top-4 right-4 z-50 max-w-xs">
+        <RequestQueueMonitor showControls={false} />
+      </div>
 
       {/* Email Capture Modal */}
       <Dialog open={showEmailCapture} onOpenChange={setShowEmailCapture}>
@@ -1520,7 +1599,10 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                           <h4 className="text-xl font-bold text-gray-900 mb-4">Ready to see the magic happen?</h4>
                           <Button
                             size="lg"
-                            onClick={() => handleGenerateDemo()}
+                            onClick={() => {
+                              console.log('🔘 BUTTON CLICKED: Generate Professional Content button');
+                              handleGenerateDemo();
+                            }}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 text-lg font-medium rounded-lg"
                           >
                             Generate Professional Content

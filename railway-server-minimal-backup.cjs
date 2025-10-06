@@ -2,15 +2,6 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 
-// Import rate limiter middleware
-const {
-  createRateLimiter,
-  demoRateLimiter,
-  dynamicRateLimiter,
-  ipRateLimiter,
-  burstProtection
-} = require('./middleware/rateLimiter.cjs');
-
 console.log('🚀 RAILWAY SERVER STARTING...');
 console.log('Current time:', new Date().toISOString());
 console.log('Node version:', process.version);
@@ -33,14 +24,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🛡️ REDIS-BASED RATE LIMITING MIDDLEWARE
-// Apply global IP-based rate limiting
-app.use(ipRateLimiter);
-
-// Apply burst protection
-app.use(burstProtection);
-
-// 🛡️ SECURITY MIDDLEWARE LAYER (Legacy - keeping as fallback)
+// 🛡️ SECURITY MIDDLEWARE LAYER
 // Rate limiting storage
 const rateLimitStore = new Map();
 const captchaStore = new Map();
@@ -1201,8 +1185,8 @@ const DEMO_LIMITS = {
 let dailyDemoCount = 0;
 let dailyResetTime = Date.now() + 24 * 60 * 60 * 1000;
 
-// Demo generation endpoint with Redis-based rate limiting
-app.post('/api/demo/generate', demoRateLimiter, (req, res) => {
+// Demo generation endpoint with rate limiting
+app.post('/api/demo/generate', (req, res) => {
   try {
     const { template, responses, userEmail } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';

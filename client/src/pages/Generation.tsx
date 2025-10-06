@@ -71,7 +71,7 @@ export default function Generation() {
       return result.data || result; // Handle both new and old response formats
     },
     onSuccess: (data) => {
-      setGeneratedContent(data.prompt);
+      setGeneratedContent(data.content || data.prompt);
       
       // Set title based on mode
       if (questionnaireData.isTemplate && questionnaireData.templateData) {

@@ -28,20 +28,43 @@ const config = {
 
 // Determine the API base URL based on environment with enhanced validation
 export const getApiBaseUrl = (): string => {
-  // Check environment variables - Force deployment for signup fix
-  console.log('🔍 ENV CHECK:', {
+  // ✅ SIMPLE AND RELIABLE ROUTING
+  const currentUrl = typeof window !== 'undefined' ? window.location : null;
+
+  console.log('🔍 API ROUTING DEBUG:', {
+    hostname: currentUrl?.hostname,
+    port: currentUrl?.port,
+    protocol: currentUrl?.protocol,
     VITE_API_URL: import.meta.env.VITE_API_URL,
-    NODE_ENV: import.meta.env.NODE_ENV,
     DEV: import.meta.env.DEV,
-    PROD: import.meta.env.PROD,
-    BASE_URL: import.meta.env.BASE_URL,
-    MODE: import.meta.env.MODE
+    PROD: import.meta.env.PROD
   });
 
-  // In development, use the current origin (Vite proxy handles /api routes)
-  if (import.meta.env.DEV) {
-    return '';
+  // ✅ LOCALHOST DEVELOPMENT: Only when specifically on localhost dev ports
+  if (currentUrl &&
+      currentUrl.hostname === 'localhost' &&
+      (currentUrl.port === '5173' || currentUrl.port === '5178' || currentUrl.port === '5179')) {
+    const localApi = 'http://localhost:5000';
+    console.log('🔧 LOCALHOST DEV: Using local backend:', localApi);
+    return localApi;
   }
+
+  // ✅ EVERYTHING ELSE: Use same origin (production, staging, any other domain)
+  if (currentUrl && currentUrl.hostname !== 'localhost') {
+    console.log('🌐 PRODUCTION/EXTERNAL: Using same origin for domain:', currentUrl.hostname);
+    return ''; // Empty string = same origin
+  }
+
+  // ✅ SERVER-SIDE OR DEV FALLBACK
+  if (import.meta.env.DEV) {
+    const localApi = 'http://localhost:5000';
+    console.log('🔧 DEV FALLBACK: Using local backend:', localApi);
+    return localApi;
+  }
+
+  // ✅ FINAL FALLBACK: Always return empty string for production
+  console.log('🌐 FINAL FALLBACK: Using same origin (empty string)');
+  return '';
 
   // In production, determine backend URL with enhanced validation
   if (typeof window !== 'undefined') {
@@ -75,6 +98,12 @@ export const getApiBaseUrl = (): string => {
       console.log('✅ Production domain detected:', hostname);
       // For Railway/Vercel/Netlify deployment, use same origin (backend serves frontend)
       return import.meta.env.VITE_API_URL || '';
+    }
+
+    // ✅ SMARTPROMPTIQ.COM: Handle your production domain specifically
+    if (hostname.includes('smartpromptiq.com')) {
+      console.log('✅ SmartPromptIQ production domain detected:', hostname);
+      return ''; // Use same origin for production (backend serves frontend)
     }
 
     // For other deployed environments, use environment variable or same origin
@@ -153,8 +182,8 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       throw new Error('Network error - please check your internet connection');
     }
 
-    // TEMPORARILY DISABLED: In production, if the API call fails, provide fallback behavior
-    if (false && !import.meta.env.DEV && (error.message.includes('fetch') || error.message.includes('network'))) {
+    // DISABLED: Remove mock fallback behavior to use real backend only
+    if (false) {
       console.warn(`🔄 Production API fallback for ${url}`);
 
       // Return mock responses for auth endpoints in production when backend is unavailable

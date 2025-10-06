@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct API Test</title>
+</head>
+<body>
+    <h1>Direct API Test</h1>
+    <button onclick="testGeneration()">Test Demo Generation</button>
+    <div id="result"></div>
+
+    <script>
+        async function testGeneration() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+
+            try {
+                const response = await fetch('http://localhost:5000/api/demo/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        templateType: 'business',
+                        userResponses: {
+                            industry: 'tech',
+                            goal: 'test direct call'
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                console.log('API Response:', data);
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <h2>SUCCESS!</h2>
+                        <h3>${data.data.title}</h3>
+                        <pre>${data.data.content}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<h2>ERROR:</h2><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `<h2>ERROR:</h2><pre>${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>
