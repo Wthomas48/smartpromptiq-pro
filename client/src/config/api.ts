@@ -43,7 +43,7 @@ export const getApiBaseUrl = (): string => {
   // ✅ LOCALHOST DEVELOPMENT: Only when specifically on localhost dev ports
   if (currentUrl &&
       currentUrl.hostname === 'localhost' &&
-      (currentUrl.port === '5173' || currentUrl.port === '5178' || currentUrl.port === '5179')) {
+      (currentUrl.port === '5173' || currentUrl.port === '5174' || currentUrl.port === '5178' || currentUrl.port === '5179')) {
     const localApi = 'http://localhost:5000';
     console.log('🔧 LOCALHOST DEV: Using local backend:', localApi);
     return localApi;
@@ -165,8 +165,22 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
         status: response.status,
         statusText: response.statusText
       }));
+
       console.error(`❌ API Error Response:`, errorData);
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+
+      // Create enhanced error object for 429 responses
+      if (response.status === 429) {
+        const enhancedError = new Error(JSON.stringify(errorData));
+        enhancedError.status = response.status;
+        enhancedError.retryAfter = errorData.retryAfter;
+        enhancedError.remaining = errorData.remaining;
+        throw enhancedError;
+      }
+
+      const error = new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      error.status = response.status;
+      error.statusText = response.statusText;
+      throw error;
     }
 
     return response;

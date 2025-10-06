@@ -22,11 +22,29 @@ const PORT = process.env.PORT || 5000;
 // Minimal essential middleware
 app.use(express.json({ limit: '1mb' }));
 
-// CORS headers
+// CORS headers - Allow specific origins when credentials are included
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://localhost:5001',
+    'http://localhost:5002',
+    'http://localhost:8080',
+    'https://smartpromptiq.up.railway.app',
+    'https://smartpromptiq-pro.up.railway.app',
+    'https://smartpromptiq.railway.app',
+    'https://smartpromptiq-pro.railway.app'
+  ];
+
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Origin, Cache-Control, Pragma');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -1191,11 +1209,13 @@ app.post('/api/email/welcome', (req, res) => {
 
 // Demo rate limiting - simple in-memory store for production
 const demoUsage = new Map();
+const requestCache = new Map(); // Cache for similar requests
 const DEMO_LIMITS = {
-  MAX_REQUESTS_PER_IP: 20, // 20 requests per IP per hour
-  MAX_REQUESTS_PER_EMAIL: 10, // 10 requests per email per hour
-  WINDOW_MS: 60 * 60 * 1000, // 1 hour
-  MAX_DAILY_TOTAL: 5000 // Total daily limit across all users
+  MAX_REQUESTS_PER_IP: 100, // Increased: 100 requests per IP per hour
+  MAX_REQUESTS_PER_EMAIL: 50, // Increased: 50 requests per email per 5 minutes
+  WINDOW_MS: 5 * 60 * 1000, // Changed to 5 minutes for demo tier
+  MAX_DAILY_TOTAL: 10000, // Increased daily limit
+  CACHE_DURATION: 5 * 60 * 1000 // 5 minutes cache
 };
 
 let dailyDemoCount = 0;
@@ -1253,8 +1273,12 @@ app.post('/api/demo/generate', demoRateLimiter, (req, res) => {
       if (emailUsage.count >= DEMO_LIMITS.MAX_REQUESTS_PER_EMAIL) {
         return res.status(429).json({
           error: 'Email limit exceeded',
-          message: 'You have reached the demo limit for this email. Please try again later.',
-          retryAfter: Math.ceil((emailUsage.resetTime - now) / 1000)
+          message: `Demo limit: ${DEMO_LIMITS.MAX_REQUESTS_PER_EMAIL} requests per ${Math.floor(DEMO_LIMITS.WINDOW_MS / 60000)} minutes`,
+          retryAfter: Math.ceil((emailUsage.resetTime - now) / 1000),
+          remaining: 0,
+          resetTime: emailUsage.resetTime,
+          limit: DEMO_LIMITS.MAX_REQUESTS_PER_EMAIL,
+          windowMs: DEMO_LIMITS.WINDOW_MS
         });
       }
 
@@ -1315,6 +1339,18 @@ app.post('/api/demo/generate', demoRateLimiter, (req, res) => {
       return res.status(400).json({
         error: 'Invalid email',
         message: 'Email must be a valid string with max 254 characters'
+      });
+    }
+
+    // Check cache first (before rate limiting to improve UX)
+    const cacheKey = `cache:${template}:${JSON.stringify(responses || {})}`;
+    const cachedResult = requestCache.get(cacheKey);
+    if (cachedResult && now < cachedResult.expires) {
+      console.log('✅ Returning cached result for:', template);
+      return res.json({
+        ...cachedResult.data,
+        cached: true,
+        cacheAge: Math.floor((now - cachedResult.created) / 1000)
       });
     }
 
@@ -1534,12 +1570,78 @@ Generated on: ${new Date().toISOString()}`,
     };
 
     console.log('✅ Demo content generated successfully:', response.id);
+
+    // Cache the successful response for future requests
+    requestCache.set(cacheKey, {
+      data: response,
+      created: now,
+      expires: now + DEMO_LIMITS.CACHE_DURATION
+    });
+    console.log('💾 Response cached for:', template);
+
     res.json(response);
   } catch (error) {
     console.error('❌ Demo generate error:', error);
     res.status(500).json({
       error: 'Failed to generate demo content',
       message: 'Please try again later'
+    });
+  }
+});
+
+// Rate limit status endpoint
+app.get('/api/demo/rate-limit-status', (req, res) => {
+  try {
+    const { userEmail } = req.query;
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+    const now = Date.now();
+
+    const ipKey = `ip:${clientIP}`;
+    const ipUsage = demoUsage.get(ipKey) || { count: 0, resetTime: now + DEMO_LIMITS.WINDOW_MS };
+
+    let emailUsage = null;
+    if (userEmail) {
+      const emailKey = `email:${userEmail.toString().toLowerCase()}`;
+      emailUsage = demoUsage.get(emailKey) || { count: 0, resetTime: now + DEMO_LIMITS.WINDOW_MS };
+    }
+
+    // Reset if window expired
+    if (now > ipUsage.resetTime) {
+      ipUsage.count = 0;
+      ipUsage.resetTime = now + DEMO_LIMITS.WINDOW_MS;
+    }
+    if (emailUsage && now > emailUsage.resetTime) {
+      emailUsage.count = 0;
+      emailUsage.resetTime = now + DEMO_LIMITS.WINDOW_MS;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ip: {
+          remaining: Math.max(0, DEMO_LIMITS.MAX_REQUESTS_PER_IP - ipUsage.count),
+          limit: DEMO_LIMITS.MAX_REQUESTS_PER_IP,
+          resetTime: ipUsage.resetTime,
+          windowMs: DEMO_LIMITS.WINDOW_MS
+        },
+        email: emailUsage ? {
+          remaining: Math.max(0, DEMO_LIMITS.MAX_REQUESTS_PER_EMAIL - emailUsage.count),
+          limit: DEMO_LIMITS.MAX_REQUESTS_PER_EMAIL,
+          resetTime: emailUsage.resetTime,
+          windowMs: DEMO_LIMITS.WINDOW_MS
+        } : null,
+        daily: {
+          remaining: Math.max(0, DEMO_LIMITS.MAX_DAILY_TOTAL - dailyDemoCount),
+          limit: DEMO_LIMITS.MAX_DAILY_TOTAL,
+          resetTime: dailyResetTime
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Rate limit status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get rate limit status'
     });
   }
 });

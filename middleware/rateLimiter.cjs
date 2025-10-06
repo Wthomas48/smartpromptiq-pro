@@ -83,8 +83,8 @@ const RATE_LIMIT_CONFIGS = {
   },
   demo: {
     windowMs: 5 * 60 * 1000, // 5 minutes
-    max: 10,
-    message: 'Demo limit: 10 requests per 5 minutes',
+    max: 50, // Increased from 10 to 50
+    message: 'Demo limit: 50 requests per 5 minutes',
     standardHeaders: true,
     legacyHeaders: false,
   },

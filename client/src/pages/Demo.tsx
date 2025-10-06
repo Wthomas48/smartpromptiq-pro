@@ -42,6 +42,7 @@ import {
 import AnimatedCounter from "@/components/AnimatedCounter";
 import { PDFExport } from "@/components/PDFExport";
 import { useDemoGenerationWithStatus } from "@/hooks/useDemoGeneration";
+import { RateLimitStatus, CooldownTimer } from "@/components/RateLimitStatus";
 import { RequestQueueMonitor } from "@/components/RequestQueueMonitor";
 
 export default function Demo() {
@@ -69,7 +70,13 @@ export default function Demo() {
     progress,
     isRetrying,
     canRetry,
-    retry
+    canGenerate,
+    retry,
+    checkRateLimit,
+    remaining,
+    retryAfter,
+    cooldownUntil,
+    isDebouncing
   } = useDemoGenerationWithStatus();
 
   // Sync the local isGenerating state with the hook loading state
@@ -1031,11 +1038,11 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     console.log('👤 User responses:', userResponses);
     console.log('📧 Email:', email);
 
-    // Prepare request data in the correct format for the hook
+    // Prepare request data in the correct format for the backend API
     const requestData = {
-      templateType: templateToUse,
-      userResponses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
-      email: email || undefined
+      template: templateToUse,
+      responses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
+      userEmail: email || undefined
     };
     console.log('📤 Request data for hook:', requestData);
 
@@ -1595,18 +1602,37 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                   {!showInteractiveDemo && (
                     <div className="text-center bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-8">
                       {!showOutput && !isGenerating && (
-                        <div>
+                        <div className="space-y-4">
                           <h4 className="text-xl font-bold text-gray-900 mb-4">Ready to see the magic happen?</h4>
-                          <Button
-                            size="lg"
-                            onClick={() => {
-                              console.log('🔘 BUTTON CLICKED: Generate Professional Content button');
-                              handleGenerateDemo();
-                            }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 text-lg font-medium rounded-lg"
-                          >
-                            Generate Professional Content
-                          </Button>
+
+                          <RateLimitStatus
+                            remaining={remaining}
+                            retryAfter={retryAfter}
+                            cooldownUntil={cooldownUntil}
+                            isDebouncing={isDebouncing}
+                            canGenerate={canGenerate}
+                            loading={isGenerating}
+                            error={hookError}
+                          />
+
+                          <div className="flex items-center gap-3">
+                            <Button
+                              size="lg"
+                              disabled={!canGenerate || isGenerating}
+                              onClick={() => {
+                                console.log('🔘 BUTTON CLICKED: Generate Professional Content button');
+                                handleGenerateDemo();
+                              }}
+                              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 text-lg font-medium rounded-lg"
+                            >
+                              {isGenerating ? 'Generating...' : 'Generate Professional Content'}
+                            </Button>
+
+                            <CooldownTimer
+                              cooldownUntil={cooldownUntil}
+                              retryAfter={retryAfter}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
