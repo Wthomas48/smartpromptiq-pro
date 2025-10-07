@@ -394,20 +394,26 @@ export const authAPI = {
     }
   },
 
-  // Backend register fallback - Clean minimal implementation
+  // Backend register fallback - Production-compatible implementation
   register: async (email: string, password: string, firstName?: string, lastName?: string) => {
-    // ✅ CLEAN REQUEST: Exactly match backend expectations
+    // ✅ PRODUCTION MIDDLEWARE COMPATIBLE: Send exactly what production expects
     const userData = {
-      email,
-      password,
-      firstName: firstName || undefined, // Send undefined instead of empty string
-      lastName: lastName || undefined    // Send undefined instead of empty string
+      email: email.trim().toLowerCase(),
+      password: password.trim(), // Trim but don't lowercase passwords
+      firstName: firstName?.trim() || '',  // Always include firstName, even if empty
+      lastName: lastName?.trim() || '',    // Always include lastName, even if empty
+      // Add additional fields that production middleware might expect
+      name: firstName?.trim() || 'User',   // Fallback name field
+      fullName: `${firstName?.trim() || ''} ${lastName?.trim() || ''}`.trim() || 'User'
     };
 
-    // Remove undefined fields to send clean JSON
-    const cleanUserData = Object.fromEntries(
-      Object.entries(userData).filter(([_, value]) => value !== undefined)
-    );
+    // Remove fields with empty values to avoid validation issues
+    const cleanUserData = {
+      email: userData.email,
+      password: userData.password,
+      firstName: userData.firstName || 'User',  // Ensure never empty
+      lastName: userData.lastName || '',        // Can be empty
+    };
 
     try {
       console.log('📤 CLEAN SIGNUP REQUEST:', JSON.stringify(cleanUserData, null, 2));

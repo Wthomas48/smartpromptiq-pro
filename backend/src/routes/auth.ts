@@ -8,32 +8,104 @@ import emailService from '../utils/emailService';
 
 const router = express.Router();
 
+// Enhanced validation with detailed error messages
+const registerValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email address is required')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
+  body('firstName')
+    .optional()
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('First name cannot be empty if provided'),
+  body('lastName')
+    .optional()
+    .trim()
+];
+
+// Enhanced error handler middleware
+const handleValidationErrors = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.error('❌ Registration validation failed:', {
+      receivedBody: req.body,
+      bodyKeys: Object.keys(req.body),
+      errors: errors.array(),
+      timestamp: new Date().toISOString(),
+      userAgent: req.headers['user-agent'],
+      origin: req.headers.origin
+    });
+
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed - check field requirements',
+      errors: errors.array().map(err => ({
+        field: (err as any).param,
+        message: err.msg,
+        value: typeof (err as any).value === 'string' ? (err as any).value.substring(0, 50) : (err as any).value,
+        location: (err as any).location
+      })),
+      receivedFields: Object.keys(req.body),
+      expectedFields: ['email', 'password', 'firstName (optional)', 'lastName (optional)'],
+      debug: {
+        emailProvided: !!req.body.email,
+        passwordProvided: !!req.body.password,
+        firstNameProvided: !!req.body.firstName,
+        lastNameProvided: !!req.body.lastName
+      }
+    });
+  }
+  next();
+};
+
 // Register
-router.post('/register', [
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
-  body('firstName').optional().trim().escape(),
-  body('lastName').optional().trim().escape(),
-], async (req: express.Request, res: express.Response) => {
+router.post('/register', registerValidation, handleValidationErrors, async (req: express.Request, res: express.Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
+    console.log('📥 Registration request received:', {
+      body: {
+        email: req.body.email,
+        password: req.body.password ? '[PROVIDED]' : '[MISSING]',
+        firstName: req.body.firstName || '[NOT PROVIDED]',
+        lastName: req.body.lastName || '[NOT PROVIDED]'
+      },
+      headers: {
+        contentType: req.headers['content-type'],
+        origin: req.headers.origin,
+        userAgent: req.headers['user-agent']?.substring(0, 100)
+      },
+      bodyKeys: Object.keys(req.body),
+      timestamp: new Date().toISOString()
+    });
 
     const { email, password, firstName, lastName } = req.body;
 
-    // Validate password strength
+    // Validate password strength with detailed logging
+    console.log('🔐 Validating password strength...');
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.isValid) {
+      console.error('❌ Password validation failed:', {
+        email: email,
+        passwordLength: password?.length || 0,
+        errors: passwordValidation.errors,
+        timestamp: new Date().toISOString()
+      });
+
       return res.status(400).json({
         success: false,
-        message: 'Password validation failed',
-        errors: passwordValidation.errors
+        message: 'Password does not meet security requirements',
+        errors: passwordValidation.errors,
+        requirements: {
+          minLength: 6,
+          provided: password?.length || 0
+        },
+        debug: {
+          passwordProvided: !!password,
+          passwordType: typeof password
+        }
       });
     }
 
@@ -43,9 +115,17 @@ router.post('/register', [
     });
 
     if (existingUser) {
+      console.warn('⚠️ Registration attempt with existing email:', {
+        email: email,
+        existingUserId: existingUser.id,
+        timestamp: new Date().toISOString()
+      });
+
       return res.status(400).json({
         success: false,
-        message: 'User already exists'
+        message: 'An account with this email address already exists',
+        error: 'USER_EXISTS',
+        suggestions: ['Try logging in instead', 'Use a different email address', 'Reset your password if you forgot it']
       });
     }
 
