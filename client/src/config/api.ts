@@ -394,59 +394,60 @@ export const authAPI = {
     }
   },
 
-  // Backend register fallback
+  // Backend register fallback - Clean minimal implementation
   register: async (email: string, password: string, firstName?: string, lastName?: string) => {
+    // ✅ CLEAN REQUEST: Exactly match backend expectations
     const userData = {
       email,
       password,
-      firstName,
-      lastName
+      firstName: firstName || undefined, // Send undefined instead of empty string
+      lastName: lastName || undefined    // Send undefined instead of empty string
     };
 
+    // Remove undefined fields to send clean JSON
+    const cleanUserData = Object.fromEntries(
+      Object.entries(userData).filter(([_, value]) => value !== undefined)
+    );
+
     try {
-      console.log('📤 SIGNUP REQUEST PAYLOAD:', JSON.stringify(userData, null, 2));
-      console.log('📤 SIGNUP API URL:', `${getApiBaseUrl()}/api/auth/register`);
+      console.log('📤 CLEAN SIGNUP REQUEST:', JSON.stringify(cleanUserData, null, 2));
 
-      const response = await apiRequest('POST', '/api/auth/register', userData);
+      // ✅ DIRECT FETCH: Skip complex apiRequest wrapper for debugging
+      const response = await fetch(`${getApiBaseUrl()}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // NO Authorization header for registration
+          // NO extra headers that might cause 400 errors
+        },
+        body: JSON.stringify(cleanUserData),
+      });
 
-      console.log('📥 SIGNUP RESPONSE STATUS:', response.status);
-      console.log('📥 SIGNUP RESPONSE OK:', response.ok);
+      console.log('📥 Direct Response Status:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
+      // Check if response has error details
+      const data = await response.json();
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('📥 SIGNUP ERROR BODY:', errorBody);
-
-        // Try to parse as JSON
-        try {
-          const errorJson = JSON.parse(errorBody);
-          console.error('📥 PARSED ERROR JSON:', errorJson);
-          throw new Error(errorJson.message || errorJson.error || 'Signup failed');
-        } catch (parseError) {
-          console.error('📥 COULD NOT PARSE ERROR JSON:', parseError);
-          throw new Error(`HTTP ${response.status}: ${errorBody}`);
-        }
+        console.error('📥 Registration failed:', {
+          status: response.status,
+          message: data.message || data.error || 'Unknown error',
+          errors: data.errors || data.validation || null,
+          fullResponse: data
+        });
+        throw new Error(data.message || data.error || `HTTP ${response.status}`);
       }
 
-      const result = await response.json();
-      console.log('📥 SIGNUP SUCCESS RESULT:', result);
+      console.log('📥 Registration Success:', data);
+      return data;
 
-      return result;
     } catch (error) {
-      console.error('❌ Backend register error:', error);
-
-      // Try to get the actual error message from backend
-      if (error.response) {
-        try {
-          const errorData = await error.response.json();
-          console.error('❌ Backend error details:', errorData);
-
-          // Show user-friendly error
-          throw new Error(errorData?.message || errorData?.error || 'Registration failed');
-        } catch (parseError) {
-          console.error('❌ Could not parse error response:', parseError);
-        }
-      }
-
+      console.error('❌ Register request failed:', error);
       throw error;
     }
   },
