@@ -125,6 +125,40 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       };
     }
 
+    // Add device fingerprint for production security
+    if (typeof window !== 'undefined') {
+      const generateDeviceFingerprint = (): string => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.textBaseline = 'top';
+          ctx.font = '14px Arial';
+          ctx.fillText('Device fingerprint', 2, 2);
+        }
+
+        const fingerprint = {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          screen: `${screen.width}x${screen.height}`,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          platform: navigator.platform,
+          cookieEnabled: navigator.cookieEnabled,
+          canvas: canvas.toDataURL(),
+          timestamp: Date.now()
+        };
+
+        const fingerprintString = JSON.stringify(fingerprint);
+        const hash = btoa(fingerprintString).slice(0, 32);
+        return hash;
+      };
+
+      const deviceFingerprint = generateDeviceFingerprint();
+      options.headers = {
+        ...options.headers,
+        'X-Device-Fingerprint': deviceFingerprint,
+      };
+    }
+
     if (body) {
       options.body = JSON.stringify(body);
       if (import.meta.env.DEV) {
@@ -286,6 +320,8 @@ export const authAPI = {
   // Supabase signup (existing)
   signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
     try {
+      console.log('🚀 STARTING SIGNUP PROCESS:', { email: userData.email, firstName: userData.firstName });
+
       if (import.meta.env.DEV) {
       }
 
@@ -341,26 +377,57 @@ export const authAPI = {
 
   // Backend register fallback
   register: async (email: string, password: string, firstName?: string, lastName?: string) => {
-    try {
-      if (import.meta.env.DEV) {
-      }
+    const userData = {
+      email,
+      password,
+      firstName,
+      lastName
+    };
 
-      const response = await apiRequest('POST', '/api/auth/register', {
-        email,
-        password,
-        firstName,
-        lastName
-      });
+    try {
+      console.log('📤 SIGNUP REQUEST PAYLOAD:', JSON.stringify(userData, null, 2));
+      console.log('📤 SIGNUP API URL:', `${getApiBaseUrl()}/api/auth/register`);
+
+      const response = await apiRequest('POST', '/api/auth/register', userData);
+
+      console.log('📥 SIGNUP RESPONSE STATUS:', response.status);
+      console.log('📥 SIGNUP RESPONSE OK:', response.ok);
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('📥 SIGNUP ERROR BODY:', errorBody);
+
+        // Try to parse as JSON
+        try {
+          const errorJson = JSON.parse(errorBody);
+          console.error('📥 PARSED ERROR JSON:', errorJson);
+          throw new Error(errorJson.message || errorJson.error || 'Signup failed');
+        } catch (parseError) {
+          console.error('📥 COULD NOT PARSE ERROR JSON:', parseError);
+          throw new Error(`HTTP ${response.status}: ${errorBody}`);
+        }
+      }
 
       const result = await response.json();
-      if (import.meta.env.DEV) {
-      }
+      console.log('📥 SIGNUP SUCCESS RESULT:', result);
 
       return result;
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('❌ Backend register error:', error);
+      console.error('❌ Backend register error:', error);
+
+      // Try to get the actual error message from backend
+      if (error.response) {
+        try {
+          const errorData = await error.response.json();
+          console.error('❌ Backend error details:', errorData);
+
+          // Show user-friendly error
+          throw new Error(errorData?.message || errorData?.error || 'Registration failed');
+        } catch (parseError) {
+          console.error('❌ Could not parse error response:', parseError);
+        }
       }
+
       throw error;
     }
   },
@@ -437,6 +504,40 @@ export const demoApiRequest = async (method: string, url: string, body?: any) =>
     };
 
     // DON'T add auth token for demo requests - they should work without authentication
+
+    // Add device fingerprint for production security (demo requests also need this)
+    if (typeof window !== 'undefined') {
+      const generateDeviceFingerprint = (): string => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.textBaseline = 'top';
+          ctx.font = '14px Arial';
+          ctx.fillText('Device fingerprint', 2, 2);
+        }
+
+        const fingerprint = {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          screen: `${screen.width}x${screen.height}`,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          platform: navigator.platform,
+          cookieEnabled: navigator.cookieEnabled,
+          canvas: canvas.toDataURL(),
+          timestamp: Date.now()
+        };
+
+        const fingerprintString = JSON.stringify(fingerprint);
+        const hash = btoa(fingerprintString).slice(0, 32);
+        return hash;
+      };
+
+      const deviceFingerprint = generateDeviceFingerprint();
+      options.headers = {
+        ...options.headers,
+        'X-Device-Fingerprint': deviceFingerprint,
+      };
+    }
 
     if (body) {
       options.body = JSON.stringify(body);

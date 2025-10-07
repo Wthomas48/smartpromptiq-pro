@@ -45,6 +45,27 @@ export default function Register() {
   // Fixed password validation - match backend requirement
   const isPasswordValid = formData.password.length >= 6;
 
+  // Client-side validation before API call
+  const validateSignupData = (data: { email: string; password: string; firstName: string; lastName: string }) => {
+    const errors = [];
+
+    if (!data.email || !data.email.includes('@')) {
+      errors.push('Valid email is required');
+    }
+
+    if (!data.password || data.password.length < 6) {
+      errors.push('Password must be at least 6 characters');
+    }
+
+    if (!data.firstName || data.firstName.trim().length === 0) {
+      errors.push('First name is required');
+    }
+
+    // lastName is optional in our app, so no validation needed
+
+    return errors;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -90,17 +111,30 @@ export default function Register() {
     }
 
     try {
-
       // Extract name from email for simplicity
       const emailName = formData.email.split('@')[0];
       const firstName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
 
-      const data = await authAPI.signup({
-        email: formData.email,
-        password: formData.password,
-        firstName: firstName,
+      // Prepare signup data
+      const signupData = {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password, // Don't trim password!
+        firstName: firstName.trim(),
         lastName: "", // Optional
-      });
+      };
+
+      // Validate data before sending
+      const validationErrors = validateSignupData(signupData);
+      if (validationErrors.length > 0) {
+        console.error('❌ Validation failed:', validationErrors);
+        setError(validationErrors.join(', '));
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('✅ Validation passed, sending signup request');
+
+      const data = await authAPI.signup(signupData);
 
       console.log('🔍 Register: Signup response:', data);
 
