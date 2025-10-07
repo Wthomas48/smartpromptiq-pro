@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,11 +47,50 @@ import { RateLimitStatus, CooldownTimer } from "@/components/RateLimitStatus";
 import { RequestQueueMonitor } from "@/components/RequestQueueMonitor";
 
 export default function Demo() {
+  const { user, isAdmin } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [showNotification, setShowNotification] = useState(false);
+  const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
+  const outputRef = useRef<HTMLDivElement>(null);
   const [showOutput, setShowOutput] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<{title: string, content: string} | null>(null);
+
+  // Add CSS animations
+  useEffect(() => {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+@keyframes borderGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+`;
+
+    if (!document.head.querySelector('style[data-demo-enhancements]')) {
+      styleSheet.setAttribute('data-demo-enhancements', 'true');
+      document.head.appendChild(styleSheet);
+    }
+  }, []);
   const [currentStep, setCurrentStep] = useState(0);
   const [userResponses, setUserResponses] = useState<Record<string, string>>({});
   const [showInteractiveDemo, setShowInteractiveDemo] = useState(false);
@@ -58,6 +98,9 @@ export default function Demo() {
   const [showEmailCapture, setShowEmailCapture] = useState(true);
   const [email, setEmail] = useState("");
   const [emailCaptured, setEmailCaptured] = useState(false);
+  const [lastRequestTime, setLastRequestTime] = useState<number>(0);
+  const [isDebounced, setIsDebounced] = useState(false);
+  const [demoCache, setDemoCache] = useState<Record<string, {content: any, timestamp: number}>>({});
 
   // Advanced demo generation with queue monitoring
   const {
@@ -84,6 +127,43 @@ export default function Demo() {
     setIsGenerating(hookLoading);
   }, [hookLoading]);
 
+  // Sync hookData with local generatedContent state
+  useEffect(() => {
+    if (hookData && !hookLoading) {
+      console.log('📥 Demo hook data received:', hookData);
+
+      let contentToSet = null;
+
+      // Handle different response formats from the backend
+      if (hookData.content) {
+        // Direct content format
+        contentToSet = {
+          title: hookData.title || 'Generated Content',
+          content: hookData.content
+        };
+      } else if (hookData.data && hookData.data.content) {
+        // Nested data format
+        contentToSet = {
+          title: hookData.data.title || 'Generated Content',
+          content: hookData.data.content
+        };
+      } else if (typeof hookData === 'string') {
+        // String format
+        contentToSet = {
+          title: 'Generated Content',
+          content: hookData
+        };
+      }
+
+      if (contentToSet) {
+        console.log('✅ Setting generated content from hook data:', contentToSet);
+        setGeneratedContent(contentToSet);
+        setShowOutput(true);
+        setIsGenerating(false);
+      }
+    }
+  }, [hookData, hookLoading]);
+
   const demoStats = {
     promptsGenerated: 47283,
     activeUsers: 8947,
@@ -100,12 +180,54 @@ export default function Demo() {
       color: "blue",
       description: "Create compelling pitch presentations for investors",
       questions: [
-        { id: "businessName", label: "Business Name", type: "input", placeholder: "e.g., EcoTrack, TechFlow, GreenSpace" },
-        { id: "industry", label: "Industry", type: "select", options: ["Technology", "Healthcare", "Finance", "Retail", "Manufacturing", "Education", "Environmental"] },
-        { id: "problem", label: "Problem Statement", type: "textarea", placeholder: "What problem does your business solve?" },
-        { id: "solution", label: "Your Solution", type: "textarea", placeholder: "How does your product/service solve this problem?" },
-        { id: "targetMarket", label: "Target Market", type: "textarea", placeholder: "Who are your ideal customers?" },
-        { id: "revenueModel", label: "Revenue Model", type: "select", options: ["SaaS Subscription", "One-time Purchase", "Freemium", "Marketplace Commission", "Advertising", "Licensing"] }
+        {
+          id: "businessName",
+          label: "What's Your Business Name?",
+          type: "input",
+          placeholder: "e.g., EcoTrack, TechFlow, GreenSpace",
+          context: "Choose a memorable name that reflects your business identity and mission. This will be the foundation of your brand.",
+          helpText: "💡 Keep it simple, memorable, and relevant to your industry. Avoid complex or hard-to-spell names."
+        },
+        {
+          id: "industry",
+          label: "Which Industry Are You In?",
+          type: "select",
+          options: ["Technology", "Healthcare", "Finance", "Retail", "Manufacturing", "Education", "Environmental"],
+          context: "Your industry classification helps determine market size, competition, regulations, and growth opportunities.",
+          helpText: "🎯 Choose the primary industry that best represents your core business activities and target market."
+        },
+        {
+          id: "problem",
+          label: "What Problem Are You Solving?",
+          type: "textarea",
+          placeholder: "Describe the specific pain point or challenge your business addresses",
+          context: "A clear problem statement is crucial for MVP success. The bigger and more urgent the problem, the better your market opportunity.",
+          helpText: "🔍 Be specific! Focus on real problems people face daily and are willing to pay to solve."
+        },
+        {
+          id: "solution",
+          label: "How Do You Solve This Problem?",
+          type: "textarea",
+          placeholder: "Explain your unique approach and what makes your solution better",
+          context: "Your solution should directly address the problem with a clear value proposition that sets you apart from alternatives.",
+          helpText: "⭐ Focus on what makes you unique and why customers would choose you over existing solutions."
+        },
+        {
+          id: "targetMarket",
+          label: "Who Are Your Ideal Customers?",
+          type: "textarea",
+          placeholder: "Describe demographics, behaviors, and characteristics of your target audience",
+          context: "Understanding your target market deeply helps you build features they actually want and find the right marketing channels.",
+          helpText: "👥 Be specific: age, income, job titles, pain points, where they spend time online, buying behavior."
+        },
+        {
+          id: "revenueModel",
+          label: "How Will You Make Money?",
+          type: "select",
+          options: ["SaaS Subscription", "One-time Purchase", "Freemium", "Marketplace Commission", "Advertising", "Licensing"],
+          context: "Your revenue model determines pricing strategy, customer acquisition costs, and long-term business sustainability.",
+          helpText: "💰 Consider what your customers prefer to pay for and how competitors monetize similar solutions."
+        }
       ],
       demoData: {
         "businessName": "EcoTrack",
@@ -167,12 +289,54 @@ Seeking $2M Series A to:
       color: "green",
       description: "Launch engaging social media campaigns across platforms",
       questions: [
-        { id: "productService", label: "Product/Service", type: "input", placeholder: "e.g., Organic Skincare Line, Mobile App, Online Course" },
-        { id: "targetAudience", label: "Target Audience", type: "textarea", placeholder: "Describe your ideal customers (age, interests, demographics)" },
-        { id: "campaignGoal", label: "Campaign Goal", type: "select", options: ["Brand Awareness", "Lead Generation", "Sales Conversion", "Product Launch", "Community Building", "Customer Retention"] },
-        { id: "budget", label: "Budget Range", type: "select", options: ["$500-1,000", "$1,000-5,000", "$5,000-10,000", "$10,000-25,000", "$25,000+"] },
-        { id: "duration", label: "Campaign Duration", type: "select", options: ["1-2 weeks", "3-4 weeks", "6-8 weeks", "2-3 months", "Ongoing"] },
-        { id: "platforms", label: "Preferred Platforms", type: "textarea", placeholder: "e.g., Instagram, TikTok, Facebook, LinkedIn, Twitter" }
+        {
+          id: "productService",
+          label: "What Are You Promoting?",
+          type: "input",
+          placeholder: "e.g., Organic Skincare Line, Mobile App, Online Course",
+          context: "Clearly define what you're marketing to create focused, relevant content that resonates with your audience.",
+          helpText: "🎯 Be specific about the main product or service this campaign will focus on."
+        },
+        {
+          id: "targetAudience",
+          label: "Who Is Your Ideal Customer?",
+          type: "textarea",
+          placeholder: "Describe your ideal customers: age, interests, demographics, online behavior",
+          context: "Understanding your audience deeply allows you to create content that speaks directly to their needs and interests.",
+          helpText: "👥 Include: age range, gender, interests, pain points, where they hang out online, buying behavior."
+        },
+        {
+          id: "campaignGoal",
+          label: "What's Your Main Campaign Goal?",
+          type: "select",
+          options: ["Brand Awareness", "Lead Generation", "Sales Conversion", "Product Launch", "Community Building", "Customer Retention"],
+          context: "Your goal determines the type of content, messaging, and metrics you'll focus on throughout the campaign.",
+          helpText: "🎪 Choose ONE primary goal to keep your campaign focused and measurable."
+        },
+        {
+          id: "budget",
+          label: "What's Your Marketing Budget?",
+          type: "select",
+          options: ["$500-1,000", "$1,000-5,000", "$5,000-10,000", "$10,000-25,000", "$25,000+"],
+          context: "Your budget determines platform choices, ad spend allocation, and the scale of content production you can afford.",
+          helpText: "💰 Include both paid advertising and content creation costs in your budget planning."
+        },
+        {
+          id: "duration",
+          label: "How Long Will Your Campaign Run?",
+          type: "select",
+          options: ["1-2 weeks", "3-4 weeks", "6-8 weeks", "2-3 months", "Ongoing"],
+          context: "Campaign duration affects content planning, budget allocation, and the time needed to see meaningful results.",
+          helpText: "⏰ Longer campaigns allow for testing and optimization, but require sustained content creation."
+        },
+        {
+          id: "platforms",
+          label: "Which Platforms Will You Use?",
+          type: "textarea",
+          placeholder: "e.g., Instagram, TikTok, Facebook, LinkedIn, Twitter - and why",
+          context: "Platform selection should align with where your target audience spends time and your content capabilities.",
+          helpText: "📱 Focus on 2-3 platforms maximum for better quality content and engagement."
+        }
       ],
       demoData: {
         "productService": "Organic Skincare Line",
@@ -258,10 +422,38 @@ Trending: #SelfCare #NaturalBeauty #SkincareAddict
       color: "green",
       description: "Create comprehensive financial planning strategies and investment guides",
       questions: [
-        { id: "age", label: "Target Age Group", type: "select", options: ["20-30", "30-40", "40-50", "50-60", "60+"] },
-        { id: "income", label: "Income Level", type: "select", options: ["$30K-50K", "$50K-100K", "$100K-200K", "$200K+"] },
-        { id: "goals", label: "Financial Goals", type: "textarea", placeholder: "e.g., retirement planning, home buying, debt reduction" },
-        { id: "timeline", label: "Planning Timeline", type: "select", options: ["1-2 years", "3-5 years", "5-10 years", "10+ years"] }
+        {
+          id: "age",
+          label: "What's Your Age Group?",
+          type: "select",
+          options: ["20-30", "30-40", "40-50", "50-60", "60+"],
+          context: "Age determines your investment timeline, risk tolerance, and the financial strategies that work best for your life stage.",
+          helpText: "📊 Different life stages require different financial strategies and investment approaches."
+        },
+        {
+          id: "income",
+          label: "What's Your Annual Income?",
+          type: "select",
+          options: ["$30K-50K", "$50K-100K", "$100K-200K", "$200K+"],
+          context: "Income level affects how much you can save, invest, and the types of financial products available to you.",
+          helpText: "💼 Choose your household income range to get personalized savings and investment recommendations."
+        },
+        {
+          id: "goals",
+          label: "What Are Your Financial Goals?",
+          type: "textarea",
+          placeholder: "e.g., retirement planning, home buying, debt reduction, emergency fund, children's education",
+          context: "Clear financial goals help prioritize where to allocate your money and create a roadmap for success.",
+          helpText: "🎯 List your top 3-5 financial goals in order of priority, with specific amounts if possible."
+        },
+        {
+          id: "timeline",
+          label: "What's Your Planning Timeline?",
+          type: "select",
+          options: ["1-2 years", "3-5 years", "5-10 years", "10+ years"],
+          context: "Your timeline determines investment strategies, risk levels, and the types of accounts you should prioritize.",
+          helpText: "⏰ Longer timelines allow for more aggressive growth strategies, shorter ones require safer approaches."
+        }
       ],
       demoData: {
         "age": "30-40",
@@ -404,10 +596,38 @@ This plan provides a clear roadmap to financial security, balancing immediate ne
       color: "purple",
       description: "Design comprehensive online courses with structured modules",
       questions: [
-        { id: "topic", label: "Course Topic", type: "input", placeholder: "e.g., Digital Marketing, Web Development, Photography" },
-        { id: "audience", label: "Target Audience", type: "textarea", placeholder: "Describe your ideal students and their current skill level" },
-        { id: "duration", label: "Course Duration", type: "select", options: ["2-4 weeks", "4-6 weeks", "6-8 weeks", "8-12 weeks", "12+ weeks"] },
-        { id: "format", label: "Learning Format", type: "textarea", placeholder: "e.g., Video lessons, worksheets, quizzes, live sessions" }
+        {
+          id: "topic",
+          label: "What's Your Course Topic?",
+          type: "input",
+          placeholder: "e.g., Digital Marketing, Web Development, Photography",
+          context: "Choose a subject you're passionate about and have expertise in. This will be the foundation of your entire course.",
+          helpText: "💡 Tip: Be specific! 'Social Media Marketing for Restaurants' is better than just 'Marketing'"
+        },
+        {
+          id: "audience",
+          label: "Who Are Your Ideal Students?",
+          type: "textarea",
+          placeholder: "Describe your ideal students: their background, current skill level, goals, and challenges",
+          context: "Understanding your students deeply helps create content that truly resonates and delivers value.",
+          helpText: "🎯 Consider: What do they already know? What struggles do they face? What outcome do they want?"
+        },
+        {
+          id: "duration",
+          label: "How Long Should Your Course Be?",
+          type: "select",
+          options: ["2-4 weeks", "4-6 weeks", "6-8 weeks", "8-12 weeks", "12+ weeks"],
+          context: "Course length should match the complexity of your topic and your students' available time commitment.",
+          helpText: "⏰ Remember: Shorter courses have higher completion rates, but complex topics need adequate time"
+        },
+        {
+          id: "format",
+          label: "What Learning Experience Will You Create?",
+          type: "textarea",
+          placeholder: "Describe your teaching methods: Video lessons, interactive worksheets, live sessions, community discussions, practical projects, quizzes, etc.",
+          context: "The format determines how engaging and effective your course will be. Mix different learning styles for maximum impact.",
+          helpText: "🚀 Pro tip: Combine multiple formats! Videos + worksheets + community = higher engagement and better results"
+        }
       ],
       demoData: {
         "topic": "Digital Marketing for Small Businesses",
@@ -534,10 +754,38 @@ By the end of this course, students will be able to:
       color: "pink",
       description: "Create personalized wellness and lifestyle coaching programs",
       questions: [
-        { id: "focus", label: "Primary Focus Area", type: "select", options: ["Weight Loss", "Stress Management", "Fitness", "Nutrition", "Sleep", "Mental Health"] },
-        { id: "duration", label: "Program Duration", type: "select", options: ["4 weeks", "8 weeks", "12 weeks", "6 months"] },
-        { id: "audience", label: "Target Audience", type: "textarea", placeholder: "Describe your ideal clients" },
-        { id: "approach", label: "Coaching Approach", type: "textarea", placeholder: "Your methodology and style" }
+        {
+          id: "focus",
+          label: "What's Your Primary Wellness Focus?",
+          type: "select",
+          options: ["Weight Loss", "Stress Management", "Fitness", "Nutrition", "Sleep", "Mental Health"],
+          context: "Your focus area determines the program structure, techniques, and outcomes you'll deliver to clients.",
+          helpText: "🎯 Choose the area where you have the most expertise and passion for helping others."
+        },
+        {
+          id: "duration",
+          label: "How Long Is Your Program?",
+          type: "select",
+          options: ["4 weeks", "8 weeks", "12 weeks", "6 months"],
+          context: "Program length affects pricing, depth of transformation, and client commitment levels you can expect.",
+          helpText: "⏰ Longer programs allow deeper transformation but require higher client commitment and investment."
+        },
+        {
+          id: "audience",
+          label: "Who Are Your Ideal Clients?",
+          type: "textarea",
+          placeholder: "Describe demographics, challenges, motivation levels, and what they want to achieve",
+          context: "Understanding your ideal clients helps create targeted messaging and program content that attracts the right people.",
+          helpText: "👥 Be specific: age, lifestyle, current challenges, motivation level, what they've tried before."
+        },
+        {
+          id: "approach",
+          label: "What's Your Coaching Philosophy?",
+          type: "textarea",
+          placeholder: "Describe your unique methodology, techniques, and what makes your approach different",
+          context: "Your coaching approach differentiates you from competitors and helps clients understand what to expect.",
+          helpText: "⭐ Include your core beliefs, techniques you use, and what makes your style unique and effective."
+        }
       ],
       demoData: {
         "focus": "Stress Management",
@@ -709,10 +957,38 @@ By program completion, participants typically experience:
       color: "blue",
       description: "Create comprehensive mobile app development strategies and technical specifications",
       questions: [
-        { id: "appType", label: "App Type", type: "select", options: ["E-commerce", "Social Media", "Productivity", "Health & Fitness", "Education", "Entertainment"] },
-        { id: "platform", label: "Target Platform", type: "select", options: ["iOS Only", "Android Only", "Cross-Platform"] },
-        { id: "features", label: "Core Features", type: "textarea", placeholder: "List the main features and functionality" },
-        { id: "timeline", label: "Development Timeline", type: "select", options: ["3-6 months", "6-9 months", "9-12 months", "12+ months"] }
+        {
+          id: "appType",
+          label: "What Type of App Are You Building?",
+          type: "select",
+          options: ["E-commerce", "Social Media", "Productivity", "Health & Fitness", "Education", "Entertainment"],
+          context: "App type determines development complexity, required features, monetization strategies, and target audience.",
+          helpText: "📱 Choose the category that best describes your app's primary purpose and functionality."
+        },
+        {
+          id: "platform",
+          label: "Which Platform Will You Target?",
+          type: "select",
+          options: ["iOS Only", "Android Only", "Cross-Platform"],
+          context: "Platform choice affects development costs, timeline, user reach, and technical requirements.",
+          helpText: "🎯 Cross-platform reaches more users but may cost more initially. Single platforms are faster to develop."
+        },
+        {
+          id: "features",
+          label: "What Are Your Core Features?",
+          type: "textarea",
+          placeholder: "List the essential features that make your app valuable: user authentication, main functionality, key interactions, etc.",
+          context: "Core features define your MVP scope, development complexity, and what users will pay for.",
+          helpText: "⭐ Focus on 3-5 essential features for your MVP. Advanced features can be added in future versions."
+        },
+        {
+          id: "timeline",
+          label: "What's Your Development Timeline?",
+          type: "select",
+          options: ["3-6 months", "6-9 months", "9-12 months", "12+ months"],
+          context: "Timeline affects team size, budget requirements, feature scope, and when you can start generating revenue.",
+          helpText: "⏰ Be realistic! Complex apps with many features need more time. Simple MVPs can launch faster."
+        }
       ],
       demoData: {
         "appType": "Health & Fitness",
@@ -1026,12 +1302,44 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     setUserResponses(prev => ({ ...prev, [questionId]: value }));
   };
 
+  // Generate cache key based on template and responses
+  const generateCacheKey = (template: string, responses: Record<string, string>) => {
+    const sortedResponses = Object.keys(responses).sort().reduce((obj: Record<string, string>, key) => {
+      obj[key] = responses[key];
+      return obj;
+    }, {});
+    return `${template}:${JSON.stringify(sortedResponses)}`;
+  };
+
+  // Check if cached result is still valid (30 minutes)
+  const isCacheValid = (timestamp: number) => {
+    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+    return Date.now() - timestamp < CACHE_DURATION;
+  };
+
   const handleGenerateDemo = async (templateId?: string) => {
+    console.log('🔥 GENERATE DEMO BUTTON CLICKED!', { templateId, selectedTemplate });
+    console.log('🔥 CURRENT STATE BEFORE GENERATION:', { showOutput, generatedContent, isGenerating });
+
     const templateToUse = templateId || selectedTemplate;
     if (!templateToUse) {
       console.error('❌ No template selected');
       return;
     }
+
+    // Implement debouncing to prevent double-clicks
+    const now = Date.now();
+    const DEBOUNCE_TIME = 2000; // 2 seconds
+
+    if (now - lastRequestTime < DEBOUNCE_TIME) {
+      console.log('🛑 Request debounced - too soon since last request');
+      setIsDebounced(true);
+      setTimeout(() => setIsDebounced(false), DEBOUNCE_TIME - (now - lastRequestTime));
+      return;
+    }
+
+    setLastRequestTime(now);
+    setIsDebounced(false);
 
     console.log('🚀 Starting advanced demo generation for template:', templateToUse);
     console.log('📋 Selected template data:', selectedTemplateData);
@@ -1040,11 +1348,26 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
 
     // Prepare request data in the correct format for the backend API
     const requestData = {
-      template: templateToUse,
-      responses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
+      templateType: templateToUse,  // ✅ Backend expects 'templateType'
+      userResponses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
       userEmail: email || undefined
     };
     console.log('📤 Request data for hook:', requestData);
+
+    // Check cache first
+    const cacheKey = generateCacheKey(templateToUse, requestData.userResponses);
+    const cachedResult = demoCache[cacheKey];
+
+    if (cachedResult && isCacheValid(cachedResult.timestamp)) {
+      console.log('💾 Using cached result (instant)');
+      setGeneratedContent({
+        title: `${cachedResult.content.title || 'Generated Content'} (Cached)`,
+        content: cachedResult.content.content || 'Cached content'
+      });
+      setShowOutput(true);
+      setIsGenerating(false);
+      return;
+    }
 
     // Set local loading state to sync with legacy UI
     setIsGenerating(true);
@@ -1052,21 +1375,26 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     setGeneratedContent(null);
 
     try {
+      // Start timing the generation
+      setGenerationStartTime(Date.now());
+
       // Use the advanced hook for generation with queue management
+      console.log('📤 Calling useDemoGeneration hook...');
       const result = await generateDemoAdvanced(requestData);
+      console.log('✅ Hook returned result:', result);
 
-      console.log('✅ Advanced demo generation successful:', result);
-
-      // Handle success - set the generated content
+      // Process the result directly since the hook returns it
       if (result && typeof result === 'object') {
         const resultData = result as any;
         console.log('🔍 Raw result from backend:', result);
 
-        // Backend returns {success, data: {title, content}, meta} so we need to access result.data
-        // But the hook returns the whole response, so we need to extract the data
+        // Handle the actual API response format: {id, type, title, description, content, generatedAt}
         let generatedData;
-        if (resultData.success && resultData.data) {
-          // Direct backend response format
+        if (resultData.content) {
+          // Direct API response format - use as is
+          generatedData = resultData;
+        } else if (resultData.success && resultData.data) {
+          // Wrapped response format
           generatedData = resultData.data;
         } else if (resultData.data) {
           // Hook wrapped the response
@@ -1082,16 +1410,38 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
         };
 
         console.log('📄 Setting generatedContent to:', contentToSet);
-        console.log('🔍 Generated data extraction:', {
-          originalResult: result,
-          resultData,
-          generatedData,
-          finalContentToSet: contentToSet
-        });
+
+        // Cache the result for future use
+        const cacheKey = generateCacheKey(templateToUse, requestData.userResponses);
+        setDemoCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            content: contentToSet,
+            timestamp: Date.now()
+          }
+        }));
+        console.log('💾 Result cached for future use');
 
         setGeneratedContent(contentToSet);
         setShowOutput(true);
-        console.log('✅ State updated - generatedContent set and showOutput = true');
+        setIsGenerating(false);
+        console.log('✅ CRITICAL: Setting state - generatedContent:', contentToSet);
+        console.log('✅ CRITICAL: showOutput = true, isGenerating = false');
+        console.log('✅ CRITICAL: Content should now be visible!');
+
+        // Trigger success notification
+        setShowNotification(true);
+        setTimeout(() => setShowNotification(false), 5000);
+
+        // Auto-scroll to output with smooth animation
+        setTimeout(() => {
+          if (outputRef.current) {
+            outputRef.current.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+        }, 300);
 
         // Optionally send results to email if provided
         if (email) {
@@ -1103,36 +1453,64 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
               },
               body: JSON.stringify({
                 email,
-                templateName: resultData.title || 'Generated AI Prompt',
-                generatedPrompt: resultData.content || resultData.prompt || 'Generated content'
+                templateName: generatedData.title || 'Generated AI Prompt',
+                generatedPrompt: generatedData.content || generatedData.prompt || 'Generated content'
               }),
             });
           } catch (emailError) {
             console.log('Could not send email, but generation succeeded');
           }
         }
+      } else {
+        console.error('❌ Hook returned invalid result:', result);
+        throw new Error('Invalid response from generation hook');
       }
     } catch (error) {
+      console.error('❌ Hook threw error:', error);
       console.error('Advanced demo generation error:', error);
 
-      // Enhanced fallback with better error handling
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.log(`Using fallback sample output due to error: ${errorMessage}`);
+      // Enhanced error handling with user-friendly messages
+      let userFriendlyMessage = 'Something went wrong';
+      let showRetryButton = false;
+      let retryMessage = '';
+
+      if (error instanceof Error) {
+        // Parse different error types
+        if (error.message.includes('429') || error.message.includes('rate limit')) {
+          userFriendlyMessage = 'Rate limit reached';
+          retryMessage = 'You\'ve reached the demo limit. Please wait a moment or create a free account for unlimited access.';
+          showRetryButton = true;
+        } else if (error.message.includes('Network') || error.message.includes('fetch')) {
+          userFriendlyMessage = 'Connection issue';
+          retryMessage = 'Unable to connect to our servers. Please check your internet connection and try again.';
+          showRetryButton = true;
+        } else if (error.message.includes('timeout')) {
+          userFriendlyMessage = 'Request timed out';
+          retryMessage = 'The request took too long to complete. Please try again.';
+          showRetryButton = true;
+        } else {
+          userFriendlyMessage = 'Service temporarily unavailable';
+          retryMessage = 'Our AI service is temporarily unavailable. Please try again in a few moments.';
+          showRetryButton = true;
+        }
+      }
 
       // Check if we have sample output to fall back to
       if (selectedTemplateData?.sampleOutput) {
         setGeneratedContent({
-          title: `${selectedTemplateData.sampleOutput.title} (Sample)`,
-          content: `${selectedTemplateData.sampleOutput.content}\n\n---\n\n*Note: This is sample content. The live AI generation service is temporarily unavailable.*`
+          title: `${selectedTemplateData.sampleOutput.title} (Sample Content)`,
+          content: `${selectedTemplateData.sampleOutput.content}\n\n---\n\n## ⚠️ ${userFriendlyMessage}\n\n${retryMessage}\n\n*This is sample content to show you what our AI can generate. Create a free account to access the live AI generation service.*`
         });
         setShowOutput(true);
+        setIsGenerating(false);
       } else {
         // Final fallback if no sample content exists
         setGeneratedContent({
-          title: 'Demo Content Unavailable',
-          content: `# Demo Service Temporarily Unavailable\n\nWe're experiencing technical difficulties with the live demo service. Please try again later or create a free account to access the full AI generation capabilities.\n\nError details: ${errorMessage}`
+          title: `⚠️ ${userFriendlyMessage}`,
+          content: `# ${userFriendlyMessage}\n\n${retryMessage}\n\n## What you can do:\n\n- **Try again in a few moments** - temporary issues usually resolve quickly\n- **Create a free account** - get unlimited access to our AI generation service\n- **Contact support** - if the problem persists, we're here to help\n\n---\n\n*SmartPromptIQ is committed to providing reliable AI-powered content generation. We apologize for any inconvenience.*`
         });
         setShowOutput(true);
+        setIsGenerating(false);
       }
     } finally {
       console.log('🏁 Advanced demo generation finished');
@@ -1486,9 +1864,18 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                       
                       {selectedTemplateData.questions[currentStep] && (
                         <div className="bg-white border-2 border-indigo-100 rounded-xl p-6">
-                          <h4 className="text-xl font-semibold mb-4 text-gray-900">
-                            {selectedTemplateData.questions[currentStep].label}
-                          </h4>
+                          <div className="space-y-4 mb-6">
+                            <h4 className="text-xl font-semibold text-gray-900">
+                              {selectedTemplateData.questions[currentStep].label}
+                            </h4>
+                            {selectedTemplateData.questions[currentStep].context && (
+                              <div className="bg-indigo-50 border-l-4 border-indigo-400 p-4 rounded-r-lg">
+                                <p className="text-indigo-800 text-sm leading-relaxed">
+                                  {selectedTemplateData.questions[currentStep].context}
+                                </p>
+                              </div>
+                            )}
+                          </div>
                           
                           {selectedTemplateData.questions[currentStep].type === 'input' && (
                             <div className="relative">
@@ -1551,7 +1938,15 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                               </SelectContent>
                             </Select>
                           )}
-                          
+
+                          {selectedTemplateData.questions[currentStep].helpText && (
+                            <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                              <p className="text-gray-700 text-sm font-medium">
+                                {selectedTemplateData.questions[currentStep].helpText}
+                              </p>
+                            </div>
+                          )}
+
                           <div className="flex justify-between mt-6">
                             <Button 
                               variant="outline"
@@ -1615,17 +2010,66 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                             error={hookError}
                           />
 
+                          {/* Enhanced Rate Limit Info Badge */}
+                          {remaining !== -1 && (
+                            <div className="flex items-center justify-center mb-4">
+                              <div className={`px-4 py-2 rounded-lg text-sm font-medium shadow-sm ${
+                                remaining > 10
+                                  ? 'bg-green-100 text-green-800 border border-green-200'
+                                  : remaining > 5
+                                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                    : remaining > 0
+                                      ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                                      : 'bg-red-100 text-red-800 border border-red-200'
+                              }`}>
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    remaining > 10 ? 'bg-green-500' :
+                                    remaining > 5 ? 'bg-yellow-500' :
+                                    remaining > 0 ? 'bg-orange-500' : 'bg-red-500'
+                                  } ${remaining === 0 ? 'animate-pulse' : ''}`} />
+                                  <span>
+                                    {remaining > 0
+                                      ? `${remaining} demo requests remaining`
+                                      : 'Rate limit reached - please wait'}
+                                  </span>
+                                  {remaining <= 5 && remaining > 0 && (
+                                    <Badge variant="outline" className="text-xs ml-2">
+                                      Sign up for unlimited
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex items-center gap-3">
                             <Button
                               size="lg"
-                              disabled={!canGenerate || isGenerating}
+                              disabled={!canGenerate || isGenerating || isDebounced}
                               onClick={() => {
-                                console.log('🔘 BUTTON CLICKED: Generate Professional Content button');
-                                handleGenerateDemo();
+                                if (!isGenerating && canGenerate && !isDebounced) {
+                                  console.log('🔘 BUTTON CLICKED: Generate Professional Content button');
+                                  handleGenerateDemo();
+                                }
                               }}
-                              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 text-lg font-medium rounded-lg"
+                              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-3 text-lg font-medium rounded-lg transition-all duration-200"
                             >
-                              {isGenerating ? 'Generating...' : 'Generate Professional Content'}
+                              {isGenerating
+                                ? (
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Generating...
+                                  </div>
+                                )
+                                : isDebounced
+                                  ? (
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="w-4 h-4" />
+                                      Please wait...
+                                    </div>
+                                  )
+                                  : 'Generate Professional Content'}
                             </Button>
 
                             <CooldownTimer
@@ -1653,30 +2097,145 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                       </div>
                     )}
 
-                  {/* Enhanced Sample Output */}
+                  {/* Admin Debug Mode */}
+                  {isAdmin() && (
+                    <div className="debug-info mb-6 p-4 bg-gray-100 border border-gray-300 rounded-lg">
+                      <h4 className="font-bold text-gray-800 mb-2">🔧 Admin Debug Info</h4>
+                      <pre className="text-xs bg-white p-2 rounded border overflow-auto max-h-40">
+                        {JSON.stringify({
+                          showOutput,
+                          hasContent: !!generatedContent,
+                          contentPreview: generatedContent?.content?.slice(0, 50) + (generatedContent?.content?.length > 50 ? '...' : ''),
+                          isGenerating,
+                          userRole: user?.role,
+                          generationTime: generationStartTime ? Date.now() - generationStartTime : null
+                        }, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Visual Progress Indicators */}
+                  {isGenerating && (
+                    <div className="mb-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-2xl animate-pulse">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="flex-1">
+                          <div className="text-lg font-semibold text-blue-800 mb-1">🚀 Generating content...</div>
+                          <div className="text-sm text-blue-600">Processing your request with AI magic ✨</div>
+                        </div>
+                        <div className="text-blue-500 animate-bounce">📝</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Success Notification */}
+                  {showNotification && generatedContent && (
+                    <div className="mb-6 p-4 bg-green-50 border-2 border-green-200 rounded-2xl animate-bounce">
+                      <div className="flex items-center space-x-3">
+                        <CheckCircle className="w-6 h-6 text-green-500" />
+                        <div className="flex-1">
+                          <div className="text-green-800 font-semibold">✅ Content generated successfully!</div>
+                          <div className="text-green-600 text-sm">
+                            Generated in {generationStartTime ? Math.round((Date.now() - generationStartTime) / 1000) : 0} seconds
+                          </div>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800 animate-pulse">🎉 New Content!</Badge>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Enhanced Sample Output with Animations */}
                   {(showOutput || generatedContent) && (
-                    <div className="space-y-6 animate-fade-in">
-                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200">
+                    <div
+                      ref={outputRef}
+                      className="space-y-6 animate-fade-in transition-all duration-700 transform"
+                      style={{
+                        border: generatedContent ? '3px solid #10b981' : '2px solid #e5e7eb',
+                        minHeight: '200px',
+                        padding: '20px',
+                        backgroundColor: generatedContent ? '#f0fdf4' : '#f9fafb',
+                        borderRadius: '16px',
+                        boxShadow: generatedContent ? '0 0 20px rgba(16, 185, 129, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        animation: generatedContent ? 'borderGlow 2s ease-in-out' : 'none'
+                      }}
+                    >
+                      <div className={`rounded-2xl p-6 border-2 ${
+                        generatedContent?.title?.includes('⚠️') || generatedContent?.title?.includes('Sample Content')
+                          ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200'
+                          : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                      }`}>
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                              <CheckCircle className="w-6 h-6 text-white animate-pulse" />
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              generatedContent?.title?.includes('⚠️') || generatedContent?.title?.includes('Sample Content')
+                                ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
+                                : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                            }`}>
+                              {generatedContent?.title?.includes('⚠️') ? (
+                                <Target className="w-6 h-6 text-white" />
+                              ) : (
+                                <CheckCircle className="w-6 h-6 text-white animate-pulse" />
+                              )}
                             </div>
                             <div>
-                              <h3 className="text-2xl font-bold text-green-800">
-                                🚀 Real AI Magic Generated!
+                              <h3 className={`text-2xl font-bold ${
+                                generatedContent?.title?.includes('⚠️') || generatedContent?.title?.includes('Sample Content')
+                                  ? 'text-yellow-800'
+                                  : 'text-green-800'
+                              }`}>
+                                {generatedContent?.title?.includes('⚠️')
+                                  ? '⚠️ Demo Service Issue'
+                                  : generatedContent?.title?.includes('Sample Content')
+                                    ? '📝 Sample Content (Service Issue)'
+                                    : '🚀 Real AI Magic Generated!'
+                                }
                               </h3>
-                              <p className="text-sm text-green-600">
-                                {generatedContent ? '✨ Live AI Generation' : '📝 Sample Output'}
+                              <p className={`text-sm ${
+                                generatedContent?.title?.includes('⚠️') || generatedContent?.title?.includes('Sample Content')
+                                  ? 'text-yellow-600'
+                                  : 'text-green-600'
+                              }`}>
+                                {generatedContent?.title?.includes('⚠️')
+                                  ? 'Showing fallback content'
+                                  : generatedContent?.title?.includes('Sample Content')
+                                    ? 'Showing sample due to service issue'
+                                    : generatedContent ? '✨ Live AI Generation' : '📝 Sample Output'
+                                }
                               </p>
                             </div>
                           </div>
-                          <Badge className="bg-green-500 text-white px-4 py-2 text-sm font-semibold">
-                            Demo Output
-                          </Badge>
+                          <div className="flex items-center space-x-2">
+                            <Badge className={`px-4 py-2 text-sm font-semibold ${
+                              generatedContent?.title?.includes('⚠️') || generatedContent?.title?.includes('Sample Content')
+                                ? 'bg-yellow-500 text-white'
+                                : 'bg-green-500 text-white'
+                            }`}>
+                              {generatedContent?.title?.includes('⚠️') ? 'Error Fallback' : 'Demo Output'}
+                            </Badge>
+                            {(generatedContent?.title?.includes('⚠️') || generatedContent?.title?.includes('Sample Content')) && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleGenerateDemo()}
+                                disabled={isGenerating || isDebounced}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                <ArrowRight className="w-4 h-4 mr-1" />
+                                Retry
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-green-700 text-lg">
-                          Here's what SmartPromptIQ created based on the questionnaire responses. This is actual AI-generated content!
+                        <p className={`text-lg ${
+                          generatedContent?.title?.includes('⚠️') || generatedContent?.title?.includes('Sample Content')
+                            ? 'text-yellow-700'
+                            : 'text-green-700'
+                        }`}>
+                          {generatedContent?.title?.includes('⚠️')
+                            ? 'We encountered an issue with the live AI service. You can still see what our AI typically generates.'
+                            : generatedContent?.title?.includes('Sample Content')
+                              ? 'Here\'s sample content showing what our AI creates. The live service is temporarily unavailable.'
+                              : 'Here\'s what SmartPromptIQ created based on the questionnaire responses. This is actual AI-generated content!'
+                          }
                         </p>
                       </div>
                       
@@ -1696,8 +2255,71 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                         </div>
                         <div className="p-8">
                           <div className="prose prose-lg max-w-none">
-                            <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                              {generatedContent ? generatedContent.content : selectedTemplateData.sampleOutput.content}
+                            <div className="whitespace-pre-wrap text-gray-800 leading-relaxed markdown-content">
+                              {/* Enhanced Markdown Rendering with Fallback */}
+                              {(() => {
+                                const content = generatedContent ? generatedContent.content : selectedTemplateData.sampleOutput.content;
+                                try {
+                                  // Simple markdown-like formatting for common patterns
+                                  return content
+                                    .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold mb-6 text-gray-900">$1</h1>')
+                                    .replace(/^## (.*$)/gm, '<h2 class="text-2xl font-semibold mb-4 text-gray-800">$1</h2>')
+                                    .replace(/^### (.*$)/gm, '<h3 class="text-xl font-medium mb-3 text-gray-700">$1</h3>')
+                                    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                                    .replace(/\*(.*?)\*/g, '<em class="italic text-gray-700">$1</em>')
+                                    .split('\n')
+                                    .map((line, index) => {
+                                      // Handle list items
+                                      if (line.startsWith('- ')) {
+                                        return (
+                                          <div
+                                            key={index}
+                                            className="ml-4 mb-2 animate-fade-in"
+                                            style={{ animationDelay: `${index * 0.05}s` }}
+                                          >
+                                            <span className="text-blue-500 mr-2">•</span>
+                                            <span dangerouslySetInnerHTML={{ __html: line.slice(2) }} />
+                                          </div>
+                                        );
+                                      }
+
+                                      // Handle headers and formatted text
+                                      if (line.includes('<h1') || line.includes('<h2') || line.includes('<h3') ||
+                                          line.includes('<strong') || line.includes('<em')) {
+                                        return (
+                                          <div
+                                            key={index}
+                                            dangerouslySetInnerHTML={{ __html: line }}
+                                            className="animate-fade-in mb-4"
+                                            style={{ animationDelay: `${index * 0.05}s` }}
+                                          />
+                                        );
+                                      }
+
+                                      // Handle regular paragraphs
+                                      if (line.trim()) {
+                                        return (
+                                          <div
+                                            key={index}
+                                            className="mb-4 animate-fade-in"
+                                            style={{ animationDelay: `${index * 0.05}s` }}
+                                            dangerouslySetInnerHTML={{ __html: line }}
+                                          />
+                                        );
+                                      }
+
+                                      return <div key={index} className="mb-2" />;
+                                    });
+                                } catch (error) {
+                                  console.error('Markdown rendering error:', error);
+                                  // Fallback to plain text with basic formatting
+                                  return (
+                                    <div className="animate-fade-in">
+                                      {content}
+                                    </div>
+                                  );
+                                }
+                              })()}
                             </div>
                           </div>
                         </div>

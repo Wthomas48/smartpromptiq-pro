@@ -43,7 +43,7 @@ export const getApiBaseUrl = (): string => {
   // ✅ LOCALHOST DEVELOPMENT: Only when specifically on localhost dev ports
   if (currentUrl &&
       currentUrl.hostname === 'localhost' &&
-      (currentUrl.port === '5173' || currentUrl.port === '5174' || currentUrl.port === '5178' || currentUrl.port === '5179')) {
+      (currentUrl.port === '5173' || currentUrl.port === '5174' || currentUrl.port === '5175' || currentUrl.port === '5178' || currentUrl.port === '5179')) {
     const localApi = 'http://localhost:5000';
     console.log('🔧 LOCALHOST DEV: Using local backend:', localApi);
     return localApi;
@@ -120,9 +120,11 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
   const baseUrl = getApiBaseUrl();
   const fullUrl = `${baseUrl}${url}`;
 
-  console.log(`🌐 API Request: ${method} ${fullUrl}`);
-  console.log(`🌐 Environment: ${import.meta.env.DEV ? 'Development' : 'Production'}`);
-  console.log(`🌐 Base URL: ${baseUrl}`);
+  if (import.meta.env.DEV) {
+    console.log(`🌐 API Request: ${method} ${fullUrl}`);
+    console.log(`🌐 Environment: ${import.meta.env.DEV ? 'Development' : 'Production'}`);
+    console.log(`🌐 Base URL: ${baseUrl}`);
+  }
 
   try {
     const options: RequestInit = {
@@ -152,12 +154,16 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
 
     if (body) {
       options.body = JSON.stringify(body);
-      console.log(`🌐 Request Body:`, body);
+      if (import.meta.env.DEV) {
+        console.log(`🌐 Request Body:`, body);
+      }
     }
 
     const response = await fetch(fullUrl, options);
-    console.log(`🌐 Response Status: ${response.status} ${response.statusText}`);
-    console.log(`🌐 Response Headers:`, Object.fromEntries(response.headers.entries()));
+    if (import.meta.env.DEV) {
+      console.log(`🌐 Response Status: ${response.status} ${response.statusText}`);
+      console.log(`🌐 Response Headers:`, Object.fromEntries(response.headers.entries()));
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({
@@ -166,7 +172,9 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
         statusText: response.statusText
       }));
 
-      console.error(`❌ API Error Response:`, errorData);
+      if (import.meta.env.DEV) {
+        console.error(`❌ API Error Response:`, errorData);
+      }
 
       // Create enhanced error object for 429 responses
       if (response.status === 429) {
@@ -185,7 +193,9 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
 
     return response;
   } catch (error) {
-    console.error(`❌ API Error for ${fullUrl}:`, error);
+    if (import.meta.env.DEV) {
+      console.error(`❌ API Error for ${fullUrl}:`, error);
+    }
 
     // Enhanced error handling with network detection
     if (error.name === 'AbortError') {
@@ -239,16 +249,22 @@ export const authAPI = {
   // Supabase signin (existing)
   signin: async (credentials: { email: string; password: string }) => {
     try {
-      console.log('🔍 Supabase signin attempt:', { email: credentials.email });
+      if (import.meta.env.DEV) {
+        console.log('🔍 Supabase signin attempt:', { email: credentials.email });
+      }
 
       const { data, error } = await auth.signIn(credentials.email, credentials.password);
 
       if (error) {
-        console.error('❌ Supabase signin error:', error);
+        if (import.meta.env.DEV) {
+          console.error('❌ Supabase signin error:', error);
+        }
         throw new Error(error.message);
       }
 
-      console.log('✅ Supabase signin success:', data);
+      if (import.meta.env.DEV) {
+        console.log('✅ Supabase signin success:', data);
+      }
 
       // Return in expected format for compatibility
       return {
@@ -268,7 +284,9 @@ export const authAPI = {
       };
 
     } catch (error) {
-      console.error('❌ Signin API error:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Signin API error:', error);
+      }
       throw error;
     }
   },
@@ -276,7 +294,9 @@ export const authAPI = {
   // Backend login fallback
   login: async (email: string, password: string) => {
     try {
-      console.log('🔍 Backend login attempt:', { email });
+      if (import.meta.env.DEV) {
+        console.log('🔍 Backend login attempt:', { email });
+      }
 
       const response = await apiRequest('POST', '/api/auth/login', {
         email,
@@ -284,11 +304,15 @@ export const authAPI = {
       });
 
       const result = await response.json();
-      console.log('✅ Backend login success:', result);
+      if (import.meta.env.DEV) {
+        console.log('✅ Backend login success:', result);
+      }
 
       return result;
     } catch (error) {
-      console.error('❌ Backend login error:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Backend login error:', error);
+      }
       throw error;
     }
   },
@@ -296,7 +320,9 @@ export const authAPI = {
   // Supabase signup (existing)
   signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
     try {
-      console.log('🔍 Supabase signup attempt:', { email: userData.email });
+      if (import.meta.env.DEV) {
+        console.log('🔍 Supabase signup attempt:', { email: userData.email });
+      }
 
       const { data, error } = await auth.signUp(userData.email, userData.password, {
         firstName: userData.firstName,
@@ -304,16 +330,22 @@ export const authAPI = {
       });
 
       if (error) {
-        console.error('❌ Supabase signup error, falling back to backend:', error);
+        if (import.meta.env.DEV) {
+          console.error('❌ Supabase signup error, falling back to backend:', error);
+        }
         // Fallback to backend registration
         return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
       }
 
-      console.log('✅ Supabase signup success:', data);
+      if (import.meta.env.DEV) {
+        console.log('✅ Supabase signup success:', data);
+      }
 
       // Check if we have a valid session token
       if (!data.session?.access_token) {
-        console.log('⚠️ No session token from Supabase (email verification required), falling back to backend');
+        if (import.meta.env.DEV) {
+          console.log('⚠️ No session token from Supabase (email verification required), falling back to backend');
+        }
         // Fallback to backend registration for immediate access
         return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
       }
@@ -336,7 +368,9 @@ export const authAPI = {
       };
 
     } catch (error) {
-      console.error('❌ Signup API error, falling back to backend:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Signup API error, falling back to backend:', error);
+      }
       // Final fallback to backend registration
       return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
     }
@@ -345,7 +379,9 @@ export const authAPI = {
   // Backend register fallback
   register: async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
-      console.log('🔍 Backend register attempt:', { email, firstName, lastName });
+      if (import.meta.env.DEV) {
+        console.log('🔍 Backend register attempt:', { email, firstName, lastName });
+      }
 
       const response = await apiRequest('POST', '/api/auth/register', {
         email,
@@ -355,32 +391,44 @@ export const authAPI = {
       });
 
       const result = await response.json();
-      console.log('✅ Backend register success:', result);
+      if (import.meta.env.DEV) {
+        console.log('✅ Backend register success:', result);
+      }
 
       return result;
     } catch (error) {
-      console.error('❌ Backend register error:', error);
+      if (import.meta.env.DEV) {
+        console.error('❌ Backend register error:', error);
+      }
       throw error;
     }
   },
 
   me: async () => {
     try {
-      console.log('🔍 Supabase getCurrentUser attempt');
+      if (import.meta.env.DEV) {
+        console.log('🔍 Supabase getCurrentUser attempt');
+      }
 
       const { user, error } = await auth.getCurrentUser();
 
       if (error) {
-        console.log('ℹ️ Supabase getCurrentUser error (normal for unauthenticated users):', error);
+        if (import.meta.env.DEV) {
+          console.log('ℹ️ Supabase getCurrentUser error (normal for unauthenticated users):', error);
+        }
         throw new Error('Auth session missing!');
       }
 
       if (!user) {
-        console.log('ℹ️ No authenticated user (normal for landing page)');
+        if (import.meta.env.DEV) {
+          console.log('ℹ️ No authenticated user (normal for landing page)');
+        }
         throw new Error('Auth session missing!');
       }
 
-      console.log('✅ Supabase getCurrentUser success:', user);
+      if (import.meta.env.DEV) {
+        console.log('✅ Supabase getCurrentUser success:', user);
+      }
 
       // Return in expected format for compatibility
       return {
@@ -399,10 +447,122 @@ export const authAPI = {
       };
 
     } catch (error) {
-      console.log('ℹ️ Me API completed without authentication (normal for landing page):', error);
+      if (import.meta.env.DEV) {
+        console.log('ℹ️ Me API completed without authentication (normal for landing page):', error);
+      }
       throw error;
     }
   }
 };
 
-export default { getApiBaseUrl, apiRequest };
+// ✅ DEMO API: Special API request function that doesn't include authentication
+export const demoApiRequest = async (method: string, url: string, body?: any) => {
+  const baseUrl = getApiBaseUrl();
+  const fullUrl = `${baseUrl}${url}`;
+
+  if (import.meta.env.DEV) {
+    console.log(`🎯 Demo API Request: ${method} ${fullUrl}`);
+    console.log(`🎯 Environment: ${import.meta.env.DEV ? 'Development' : 'Production'}`);
+    console.log(`🎯 Base URL: ${baseUrl}`);
+  }
+
+  try {
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Origin': typeof window !== 'undefined' ? window.location.origin : '',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      },
+      credentials: 'include',
+      mode: 'cors',
+    };
+
+    // DON'T add auth token for demo requests - they should work without authentication
+
+    if (body) {
+      options.body = JSON.stringify(body);
+      if (import.meta.env.DEV) {
+        console.log(`🎯 Demo Request Body:`, body);
+      }
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('⏳ Waiting for response...');
+    }
+    const response = await fetch(fullUrl, options);
+    if (import.meta.env.DEV) {
+      console.log('📥 Response received:', response.status, response.statusText);
+    }
+    if (import.meta.env.DEV) {
+      console.log(`🎯 Demo Response Status: ${response.status} ${response.statusText}`);
+      console.log(`🎯 Demo Response Headers:`, Object.fromEntries(response.headers.entries()));
+    }
+
+    // Log response data BEFORE checking if ok
+    let responseData: any = null;
+    try {
+      const responseText = await response.text();
+      if (import.meta.env.DEV) {
+        console.log(`🎯 Demo Raw Response Text:`, responseText);
+      }
+      responseData = responseText ? JSON.parse(responseText) : null;
+      if (import.meta.env.DEV) {
+        console.log(`🎯 Demo Parsed Response Data:`, responseData);
+      }
+    } catch (parseError) {
+      if (import.meta.env.DEV) {
+        console.error(`❌ Demo Response Parse Error:`, parseError);
+      }
+    }
+
+    if (!response.ok) {
+      const errorData = responseData || {
+        message: `Request failed with status ${response.status}`,
+        status: response.status,
+        statusText: response.statusText
+      };
+
+      if (import.meta.env.DEV) {
+        console.error(`❌ Demo API Error Response:`, errorData);
+      }
+
+      // Create enhanced error object for 429 responses
+      if (response.status === 429) {
+        const enhancedError = new Error(JSON.stringify(errorData));
+        enhancedError.status = response.status;
+        enhancedError.retryAfter = errorData.retryAfter;
+        enhancedError.remaining = errorData.remaining;
+        throw enhancedError;
+      }
+
+      const error = new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      error.status = response.status;
+      error.statusText = response.statusText;
+      throw error;
+    }
+
+    // Return a Response-like object with the parsed data
+    return {
+      ...response,
+      json: async () => responseData
+    };
+  } catch (error) {
+    console.error(`❌ Demo API Error for ${fullUrl}:`, error);
+
+    // Enhanced error handling with network detection
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - please check your connection');
+    }
+
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error - please check your internet connection');
+    }
+
+    throw error;
+  }
+};
+
+export default { getApiBaseUrl, apiRequest, demoApiRequest };

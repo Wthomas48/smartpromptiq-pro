@@ -28,6 +28,7 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
+    'http://localhost:5175',
     'http://localhost:3000',
     'http://localhost:5000',
     'http://localhost:5001',
@@ -1224,7 +1225,10 @@ let dailyResetTime = Date.now() + 24 * 60 * 60 * 1000;
 // Demo generation endpoint with Redis-based rate limiting
 app.post('/api/demo/generate', demoRateLimiter, (req, res) => {
   try {
-    const { template, responses, userEmail } = req.body;
+    const { template, templateType, responses, userResponses, userEmail } = req.body;
+    // Support both 'template' and 'templateType' field names for compatibility
+    const templateToUse = template || templateType;
+    const responsesToUse = responses || userResponses;
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     const now = Date.now();
 
@@ -1295,14 +1299,14 @@ app.post('/api/demo/generate', demoRateLimiter, (req, res) => {
     dailyDemoCount++;
 
     // Input validation
-    if (!template || typeof template !== 'string') {
+    if (!templateToUse || typeof templateToUse !== 'string') {
       return res.status(400).json({
         error: 'Invalid template',
         message: 'Template parameter is required and must be a string'
       });
     }
 
-    if (template.length > 50) {
+    if (templateToUse.length > 50) {
       return res.status(400).json({
         error: 'Template name too long',
         message: 'Template name must be 50 characters or less'
@@ -1343,10 +1347,10 @@ app.post('/api/demo/generate', demoRateLimiter, (req, res) => {
     }
 
     // Check cache first (before rate limiting to improve UX)
-    const cacheKey = `cache:${template}:${JSON.stringify(responses || {})}`;
+    const cacheKey = `cache:${templateToUse}:${JSON.stringify(responsesToUse || {})}`;
     const cachedResult = requestCache.get(cacheKey);
     if (cachedResult && now < cachedResult.expires) {
-      console.log('✅ Returning cached result for:', template);
+      console.log('✅ Returning cached result for:', templateToUse);
       return res.json({
         ...cachedResult.data,
         cached: true,
@@ -1355,10 +1359,10 @@ app.post('/api/demo/generate', demoRateLimiter, (req, res) => {
     }
 
     console.log('🎯 Demo generate request:', {
-      template,
+      template: templateToUse,
       userEmail,
       clientIP,
-      responseCount: Object.keys(responses || {}).length,
+      responseCount: Object.keys(responsesToUse || {}).length,
       dailyCount: dailyDemoCount,
       ipUsage: ipUsage.count,
       emailUsage: userEmail ? demoUsage.get(`email:${userEmail.toLowerCase()}`)?.count : 'N/A'
@@ -1541,12 +1545,12 @@ Based on ${responses?.['Income Level'] || '$75,000'} annual income:
       }
     };
 
-    const response = demoResponses[template] || {
+    const response = demoResponses[templateToUse] || {
       id: Date.now().toString(),
       type: "general",
-      title: `Generated Content for ${template}`,
+      title: `Generated Content for ${templateToUse}`,
       description: "AI-generated content based on your inputs",
-      content: `# ${template} Strategy
+      content: `# ${templateToUse} Strategy
 
 Thank you for using our demo! Based on your inputs, here's a comprehensive strategy tailored to your needs.
 
@@ -1577,7 +1581,7 @@ Generated on: ${new Date().toISOString()}`,
       created: now,
       expires: now + DEMO_LIMITS.CACHE_DURATION
     });
-    console.log('💾 Response cached for:', template);
+    console.log('💾 Response cached for:', templateToUse);
 
     res.json(response);
   } catch (error) {
@@ -1725,6 +1729,1189 @@ app.post('/api/demo/reset-limits', (req, res) => {
 });
 
 // Additional generation endpoints used by the app
+
+// Product planning endpoints
+app.post('/api/product/mvp-planning', demoRateLimiter, (req, res) => {
+  try {
+    const { productName, targetAudience, coreFeatures, timeline, budget } = req.body;
+
+    console.log('🎯 Product MVP planning request:', { productName, targetAudience, timeline });
+
+    // Generate MVP planning content
+    const mvpPlan = {
+      success: true,
+      data: {
+        productName: productName || 'Your Product',
+        planningPhase: 'MVP Development Strategy',
+        content: `# ${productName || 'Product'} MVP Development Plan
+
+## Executive Summary
+A comprehensive MVP (Minimum Viable Product) strategy for ${productName || 'your product'} targeting ${targetAudience || 'your target audience'}.
+
+## Product Overview
+**Product Name:** ${productName || 'Your Product'}
+**Target Audience:** ${targetAudience || 'Target market to be defined'}
+**Timeline:** ${timeline || '3-6 months'}
+**Budget Range:** ${budget || 'To be determined'}
+
+## Core MVP Features
+${coreFeatures ?
+  (Array.isArray(coreFeatures) ?
+    coreFeatures.map(feature => `• ${feature}`).join('\n') :
+    `• ${coreFeatures}`) :
+  `• User authentication and registration
+• Core functionality implementation
+• Basic user interface
+• Essential integrations`
+}
+
+## Development Phases
+
+### Phase 1: Foundation (Weeks 1-4)
+• Market research and validation
+• Technical architecture planning
+• Core feature specification
+• Team setup and project initialization
+
+### Phase 2: Core Development (Weeks 5-12)
+• MVP feature development
+• User interface implementation
+• Basic testing and QA
+• Initial user feedback collection
+
+### Phase 3: Launch Preparation (Weeks 13-16)
+• Beta testing with select users
+• Performance optimization
+• Launch strategy execution
+• Feedback integration and iteration
+
+## Success Metrics
+• User acquisition targets
+• Feature adoption rates
+• User retention metrics
+• Revenue/conversion goals
+
+## Risk Mitigation
+• Technical feasibility assessment
+• Market competition analysis
+• Resource allocation planning
+• Contingency planning
+
+*Generated by SmartPromptIQ's product planning AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `mvp_${Date.now()}`
+      }
+    };
+
+    res.json(mvpPlan);
+
+  } catch (error) {
+    console.error('❌ Product MVP planning error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate MVP plan'
+    });
+  }
+});
+
+// UX Design endpoint
+app.post('/api/product/ux-design', demoRateLimiter, (req, res) => {
+  try {
+    const { productType, userPersonas, designGoals, platform, constraints } = req.body;
+
+    console.log('🎯 UX Design request:', { productType, platform });
+
+    const uxDesign = {
+      success: true,
+      data: {
+        type: 'ux_design',
+        title: `UX Design Strategy for ${productType || 'Your Product'}`,
+        description: 'Comprehensive user experience design framework',
+        content: `# UX Design Strategy: ${productType || 'Product'}
+
+## Design Overview
+**Product Type:** ${productType || 'Digital Product'}
+**Target Platform:** ${platform || 'Web & Mobile'}
+**Design Goals:** ${designGoals || 'Enhanced user experience and engagement'}
+
+## User Personas
+${userPersonas ?
+  (Array.isArray(userPersonas) ?
+    userPersonas.map(persona => `• ${persona}`).join('\n') :
+    `• ${userPersonas}`) :
+  `• Primary User: Tech-savvy professionals
+• Secondary User: Casual consumers
+• Tertiary User: Enterprise clients`
+}
+
+## Design Framework
+
+### 1. User Research & Analysis
+• Conduct user interviews and surveys
+• Analyze user behavior patterns
+• Create detailed user journey maps
+• Identify pain points and opportunities
+
+### 2. Information Architecture
+• Site mapping and content organization
+• Navigation structure design
+• Content hierarchy planning
+• Search and filtering systems
+
+### 3. Wireframing & Prototyping
+• Low-fidelity wireframes
+• Interactive prototypes
+• User flow documentation
+• Accessibility considerations
+
+### 4. Visual Design System
+• Brand identity integration
+• Color palette and typography
+• Component library creation
+• Responsive design guidelines
+
+## Platform-Specific Considerations
+**${platform || 'Multi-Platform'}:**
+• Platform design guidelines adherence
+• Native interaction patterns
+• Performance optimization
+• Cross-platform consistency
+
+## Design Constraints
+${constraints ?
+  (Array.isArray(constraints) ?
+    constraints.map(constraint => `• ${constraint}`).join('\n') :
+    `• ${constraints}`) :
+  `• Budget limitations
+• Timeline constraints
+• Technical limitations
+• Brand guidelines`
+}
+
+## Success Metrics
+• User engagement rates
+• Task completion efficiency
+• User satisfaction scores
+• Conversion rate improvements
+
+*Generated by SmartPromptIQ's UX design AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `ux_${Date.now()}`
+      }
+    };
+
+    res.json(uxDesign);
+
+  } catch (error) {
+    console.error('❌ UX Design error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate UX design strategy'
+    });
+  }
+});
+
+// Competitive Analysis endpoint
+app.post('/api/product/competitive-analysis', demoRateLimiter, (req, res) => {
+  try {
+    const { industry, competitors, analysisScope, businessModel } = req.body;
+
+    console.log('🎯 Competitive Analysis request:', { industry, analysisScope });
+
+    const competitiveAnalysis = {
+      success: true,
+      data: {
+        type: 'competitive_analysis',
+        title: `Competitive Analysis: ${industry || 'Market'} Industry`,
+        description: 'Strategic competitive landscape assessment',
+        content: `# Competitive Analysis: ${industry || 'Industry'} Market
+
+## Analysis Overview
+**Industry:** ${industry || 'Technology Sector'}
+**Analysis Scope:** ${analysisScope || 'Direct and indirect competitors'}
+**Business Model:** ${businessModel || 'B2B SaaS'}
+
+## Competitive Landscape
+
+### Direct Competitors
+${competitors ?
+  (Array.isArray(competitors) ?
+    competitors.slice(0, 3).map((comp, i) => `
+#### Competitor ${i + 1}: ${comp}
+• Market Position: Established player
+• Key Strengths: Brand recognition, market share
+• Weaknesses: Legacy technology, pricing
+• Differentiation: Feature comparison needed`).join('\n') :
+    `#### ${competitors}
+• Market Position: Primary competitor
+• Key Strengths: Market leadership
+• Weaknesses: Areas for improvement
+• Differentiation: Competitive advantages`) :
+  `#### Competitor A
+• Market Position: Market leader
+• Key Strengths: Strong brand, extensive features
+• Weaknesses: High pricing, complex interface
+• Differentiation: Premium positioning
+
+#### Competitor B
+• Market Position: Growing challenger
+• Key Strengths: Innovative features, competitive pricing
+• Weaknesses: Limited market presence
+• Differentiation: Technology focus
+
+#### Competitor C
+• Market Position: Niche player
+• Key Strengths: Specialized features
+• Weaknesses: Limited scalability
+• Differentiation: Vertical focus`
+}
+
+### Market Analysis
+
+#### Market Size & Growth
+• Total Addressable Market (TAM): Significant opportunity
+• Serviceable Addressable Market (SAM): Growing segment
+• Market Growth Rate: Strong positive trajectory
+• Key Market Drivers: Digital transformation, efficiency needs
+
+#### Customer Segments
+• Enterprise clients: Large organizations
+• SMB market: Small to medium businesses
+• Individual users: Consumer market
+• Vertical markets: Industry-specific needs
+
+### Competitive Positioning
+
+#### Feature Comparison Matrix
+• Core Features: Industry standard capabilities
+• Advanced Features: Differentiation opportunities
+• Pricing Models: Various approaches in market
+• Customer Support: Service level variations
+
+#### SWOT Analysis
+**Strengths:**
+• Innovation potential
+• Team expertise
+• Market timing
+• Technology advantages
+
+**Weaknesses:**
+• Brand recognition
+• Resource limitations
+• Market presence
+• Customer base
+
+**Opportunities:**
+• Market gaps identified
+• Emerging technologies
+• Customer pain points
+• Geographic expansion
+
+**Threats:**
+• Established competitors
+• Market saturation
+• Technology changes
+• Economic factors
+
+## Strategic Recommendations
+
+### Differentiation Strategy
+• Focus on unique value proposition
+• Leverage technology advantages
+• Target underserved segments
+• Develop specialized features
+
+### Go-to-Market Approach
+• Direct sales strategy
+• Partnership channels
+• Digital marketing focus
+• Customer success emphasis
+
+### Product Development
+• Feature prioritization
+• User experience focus
+• Integration capabilities
+• Scalability planning
+
+*Generated by SmartPromptIQ's competitive analysis AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `analysis_${Date.now()}`
+      }
+    };
+
+    res.json(competitiveAnalysis);
+
+  } catch (error) {
+    console.error('❌ Competitive Analysis error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate competitive analysis'
+    });
+  }
+});
+
+// Marketing endpoints
+app.post('/api/marketing/social-campaign', demoRateLimiter, (req, res) => {
+  try {
+    const { platform, audience, goals, budget, duration } = req.body;
+    console.log('🎯 Social Campaign request:', { platform, audience, goals });
+
+    const campaign = {
+      success: true,
+      data: {
+        type: 'social_campaign',
+        title: `Social Media Campaign Strategy for ${platform || 'Multi-Platform'}`,
+        content: `# Social Media Campaign Strategy
+
+## Campaign Overview
+**Platform:** ${platform || 'Instagram, Facebook, TikTok'}
+**Target Audience:** ${audience || 'Young professionals aged 25-35'}
+**Duration:** ${duration || '6 weeks'}
+**Budget:** ${budget || '$5,000'}
+
+## Campaign Goals
+${goals || '• Increase brand awareness\n• Drive website traffic\n• Generate leads\n• Build community engagement'}
+
+## Content Strategy
+### Week 1-2: Awareness Building
+• Educational content and industry insights
+• Behind-the-scenes content
+• User-generated content campaigns
+
+### Week 3-4: Engagement Focus
+• Interactive polls and Q&A sessions
+• Live streaming events
+• Community challenges
+
+### Week 5-6: Conversion Drive
+• Product demonstrations
+• Customer testimonials
+• Limited-time offers
+
+## Success Metrics
+• Reach: 250K+ unique users
+• Engagement Rate: 4.5%+
+• Website Traffic: 30% increase
+• Conversions: 500+ leads
+
+*Generated by SmartPromptIQ's marketing AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `social_${Date.now()}`
+      }
+    };
+    res.json(campaign);
+  } catch (error) {
+    console.error('❌ Social Campaign error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate social campaign' });
+  }
+});
+
+app.post('/api/marketing/seo-strategy', demoRateLimiter, (req, res) => {
+  try {
+    const { website, keywords, competitors, goals } = req.body;
+    console.log('🎯 SEO Strategy request:', { website, keywords });
+
+    const seoStrategy = {
+      success: true,
+      data: {
+        type: 'seo_strategy',
+        title: `SEO Strategy for ${website || 'Your Website'}`,
+        content: `# SEO Strategy Plan
+
+## Website Analysis
+**Target Website:** ${website || 'your-website.com'}
+**Primary Keywords:** ${keywords || 'digital marketing, online presence, web optimization'}
+
+## Technical SEO
+• Website speed optimization
+• Mobile responsiveness
+• Schema markup implementation
+• Internal linking structure
+
+## Content Strategy
+• Keyword-optimized blog posts
+• Landing page optimization
+• Meta descriptions and titles
+• Content gap analysis
+
+## Link Building
+• Guest posting opportunities
+• Industry partnerships
+• Resource page listings
+• Broken link recovery
+
+## Monitoring & Analytics
+• Google Analytics setup
+• Search Console optimization
+• Keyword ranking tracking
+• Competitor analysis
+
+*Generated by SmartPromptIQ's SEO AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `seo_${Date.now()}`
+      }
+    };
+    res.json(seoStrategy);
+  } catch (error) {
+    console.error('❌ SEO Strategy error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate SEO strategy' });
+  }
+});
+
+app.post('/api/marketing/brand-strategy', demoRateLimiter, (req, res) => {
+  try {
+    const { brandName, industry, values, positioning } = req.body;
+    console.log('🎯 Brand Strategy request:', { brandName, industry });
+
+    const brandStrategy = {
+      success: true,
+      data: {
+        type: 'brand_strategy',
+        title: `Brand Strategy for ${brandName || 'Your Brand'}`,
+        content: `# Brand Strategy Framework
+
+## Brand Identity
+**Brand Name:** ${brandName || 'Your Brand'}
+**Industry:** ${industry || 'Technology'}
+**Core Values:** ${values || 'Innovation, Trust, Excellence'}
+
+## Brand Positioning
+${positioning || 'Market leader in innovative solutions that transform how businesses operate'}
+
+## Brand Architecture
+• Brand mission and vision
+• Value proposition development
+• Brand personality definition
+• Voice and tone guidelines
+
+## Visual Identity
+• Logo design principles
+• Color palette strategy
+• Typography selection
+• Brand imagery guidelines
+
+## Brand Experience
+• Customer touchpoint mapping
+• Brand consistency standards
+• Employee brand training
+• Brand monitoring protocols
+
+*Generated by SmartPromptIQ's brand AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `brand_${Date.now()}`
+      }
+    };
+    res.json(brandStrategy);
+  } catch (error) {
+    console.error('❌ Brand Strategy error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate brand strategy' });
+  }
+});
+
+app.post('/api/marketing/content-ideas', demoRateLimiter, (req, res) => {
+  try {
+    const { niche, contentType, audience, frequency } = req.body;
+    console.log('🎯 Content Ideas request:', { niche, contentType });
+
+    const contentIdeas = {
+      success: true,
+      data: {
+        type: 'content_ideas',
+        title: `Content Ideas for ${niche || 'Your Niche'}`,
+        content: `# Content Marketing Ideas
+
+## Content Strategy
+**Niche:** ${niche || 'Digital Marketing'}
+**Content Type:** ${contentType || 'Blog posts, videos, infographics'}
+**Target Audience:** ${audience || 'Small business owners'}
+**Publishing Frequency:** ${frequency || '3 times per week'}
+
+## Blog Post Ideas
+• "10 Essential Tools Every ${audience || 'Professional'} Needs"
+• "Complete Guide to ${niche || 'Digital Marketing'} in 2024"
+• "Common Mistakes in ${niche || 'Your Industry'} and How to Avoid Them"
+• "Case Study: How We Achieved [Specific Result]"
+• "Behind the Scenes: Our ${niche || 'Process'} Revealed"
+
+## Video Content Ideas
+• Tutorial series on ${niche || 'key topics'}
+• Customer success stories
+• Live Q&A sessions
+• Product demonstrations
+• Industry trend discussions
+
+## Social Media Content
+• Quick tips and tricks
+• Motivational quotes
+• User-generated content
+• Polls and interactive posts
+• Behind-the-scenes content
+
+*Generated by SmartPromptIQ's content AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `content_${Date.now()}`
+      }
+    };
+    res.json(contentIdeas);
+  } catch (error) {
+    console.error('❌ Content Ideas error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate content ideas' });
+  }
+});
+
+app.post('/api/marketing/keyword-strategy', demoRateLimiter, (req, res) => {
+  try {
+    const { industry, location, competition } = req.body;
+    console.log('🎯 Keyword Strategy request:', { industry, location });
+
+    const keywordStrategy = {
+      success: true,
+      data: {
+        type: 'keyword_strategy',
+        title: `Keyword Strategy for ${industry || 'Your Industry'}`,
+        content: `# Keyword Research Strategy
+
+## Primary Keywords
+• ${industry || 'digital marketing'} services
+• ${industry || 'digital marketing'} ${location || 'near me'}
+• best ${industry || 'digital marketing'} company
+• ${industry || 'digital marketing'} consultant
+
+## Long-tail Keywords
+• how to improve ${industry || 'digital marketing'} ROI
+• ${industry || 'digital marketing'} strategy for small business
+• ${industry || 'digital marketing'} trends 2024
+• affordable ${industry || 'digital marketing'} services
+
+## Local SEO Keywords
+• ${industry || 'digital marketing'} ${location || 'your city'}
+• ${location || 'local'} ${industry || 'digital marketing'} expert
+• ${industry || 'digital marketing'} agency ${location || 'your area'}
+
+## Keyword Analysis
+• Search volume assessment
+• Competition level evaluation
+• Keyword difficulty scoring
+• Content gap identification
+
+*Generated by SmartPromptIQ's keyword AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `keyword_${Date.now()}`
+      }
+    };
+    res.json(keywordStrategy);
+  } catch (error) {
+    console.error('❌ Keyword Strategy error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate keyword strategy' });
+  }
+});
+
+app.post('/api/marketing/brand-messaging', demoRateLimiter, (req, res) => {
+  try {
+    const { brand, audience, values, tone } = req.body;
+    console.log('🎯 Brand Messaging request:', { brand, audience });
+
+    const brandMessaging = {
+      success: true,
+      data: {
+        type: 'brand_messaging',
+        title: `Brand Messaging for ${brand || 'Your Brand'}`,
+        content: `# Brand Messaging Framework
+
+## Core Message
+${brand || 'Your Brand'} empowers ${audience || 'businesses'} to achieve exceptional results through innovative solutions and expert guidance.
+
+## Value Propositions
+• Proven expertise in ${values || 'delivering results'}
+• Customer-centric approach
+• Innovative solutions
+• Reliable partnership
+
+## Brand Voice
+**Tone:** ${tone || 'Professional yet approachable'}
+• Confident and knowledgeable
+• Supportive and encouraging
+• Clear and actionable
+• Inspiring and motivational
+
+## Key Messages
+• "Transforming ${audience || 'businesses'} through innovation"
+• "Your success is our priority"
+• "Proven results, exceptional service"
+• "Leading the way in ${values || 'industry excellence'}"
+
+*Generated by SmartPromptIQ's messaging AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `messaging_${Date.now()}`
+      }
+    };
+    res.json(brandMessaging);
+  } catch (error) {
+    console.error('❌ Brand Messaging error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate brand messaging' });
+  }
+});
+
+// Financial Planning endpoints
+app.post('/api/financial/revenue-model', demoRateLimiter, (req, res) => {
+  try {
+    const { businessType, targetMarket, pricing, revenueStreams } = req.body;
+    console.log('🎯 Revenue Model request:', { businessType, targetMarket });
+
+    const revenueModel = {
+      success: true,
+      data: {
+        type: 'revenue_model',
+        title: `Revenue Model for ${businessType || 'Your Business'}`,
+        content: `# Revenue Model Strategy
+
+## Business Overview
+**Business Type:** ${businessType || 'SaaS Platform'}
+**Target Market:** ${targetMarket || 'Small to medium businesses'}
+**Pricing Strategy:** ${pricing || 'Subscription-based'}
+
+## Revenue Streams
+${revenueStreams || '• Monthly subscriptions\n• Annual subscriptions\n• Premium add-ons\n• Professional services'}
+
+## Pricing Tiers
+• **Starter:** $49/month - Basic features
+• **Professional:** $149/month - Advanced features
+• **Enterprise:** $349/month - Full suite + support
+
+## Financial Projections
+• Year 1: $500K ARR
+• Year 2: $2.5M ARR
+• Year 3: $8M ARR
+
+*Generated by SmartPromptIQ's financial AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `revenue_${Date.now()}`
+      }
+    };
+    res.json(revenueModel);
+  } catch (error) {
+    console.error('❌ Revenue Model error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate revenue model' });
+  }
+});
+
+app.post('/api/financial/funding-strategy', demoRateLimiter, (req, res) => {
+  try {
+    const { fundingAmount, stage, useOfFunds, timeline } = req.body;
+    console.log('🎯 Funding Strategy request:', { fundingAmount, stage });
+
+    const fundingStrategy = {
+      success: true,
+      data: {
+        type: 'funding_strategy',
+        title: `Funding Strategy: ${stage || 'Series A'} Round`,
+        content: `# Funding Strategy Plan
+
+## Funding Overview
+**Funding Amount:** ${fundingAmount || '$2M'}
+**Funding Stage:** ${stage || 'Series A'}
+**Timeline:** ${timeline || '6-9 months'}
+
+## Use of Funds
+${useOfFunds || '• Product development (40%)\n• Marketing and sales (30%)\n• Team expansion (20%)\n• Operations (10%)'}
+
+## Investor Targeting
+• Early-stage VCs
+• Angel investors
+• Industry specialists
+• Strategic partners
+
+## Funding Timeline
+• Month 1-2: Deck preparation
+• Month 3-4: Initial outreach
+• Month 5-6: Due diligence
+• Month 7-9: Closing
+
+*Generated by SmartPromptIQ's funding AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `funding_${Date.now()}`
+      }
+    };
+    res.json(fundingStrategy);
+  } catch (error) {
+    console.error('❌ Funding Strategy error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate funding strategy' });
+  }
+});
+
+app.post('/api/financial/pitch-deck', demoRateLimiter, (req, res) => {
+  try {
+    const { companyName, problem, solution, market } = req.body;
+    console.log('🎯 Pitch Deck request:', { companyName, problem });
+
+    const pitchDeck = {
+      success: true,
+      data: {
+        type: 'pitch_deck',
+        title: `Pitch Deck for ${companyName || 'Your Company'}`,
+        content: `# ${companyName || 'Company'} Pitch Deck
+
+## Slide Structure
+
+### 1. Company Introduction
+**${companyName || 'Your Company'}** - Transforming ${market || 'the industry'} through innovation
+
+### 2. Problem Statement
+${problem || 'Current market inefficiencies cost businesses millions annually'}
+
+### 3. Solution
+${solution || 'Our AI-driven platform provides real-time solutions'}
+
+### 4. Market Opportunity
+• Total Addressable Market: $5B+
+• Growing at 25% annually
+• Underserved segments identified
+
+### 5. Business Model
+• SaaS subscription model
+• Multiple revenue streams
+• Scalable pricing tiers
+
+### 6. Traction
+• Customer growth metrics
+• Revenue milestones
+• Key partnerships
+
+### 7. Financial Projections
+• 3-year revenue forecast
+• Path to profitability
+• Funding requirements
+
+### 8. Team
+• Experienced leadership
+• Technical expertise
+• Advisory board
+
+### 9. Funding Ask
+• Investment amount
+• Use of funds
+• Expected outcomes
+
+*Generated by SmartPromptIQ's pitch AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `pitch_${Date.now()}`
+      }
+    };
+    res.json(pitchDeck);
+  } catch (error) {
+    console.error('❌ Pitch Deck error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate pitch deck' });
+  }
+});
+
+app.post('/api/financial/projections', demoRateLimiter, (req, res) => {
+  try {
+    const { timeframe, revenueModel, expenses, growth } = req.body;
+    console.log('🎯 Financial Projections request:', { timeframe, revenueModel });
+
+    const projections = {
+      success: true,
+      data: {
+        type: 'financial_projections',
+        title: `${timeframe || '3-Year'} Financial Projections`,
+        content: `# Financial Projections
+
+## Revenue Forecasting
+**Model:** ${revenueModel || 'SaaS Subscription'}
+**Growth Rate:** ${growth || '25% annually'}
+
+### Year 1
+• Revenue: $500K
+• Expenses: $400K
+• Net Income: $100K
+
+### Year 2
+• Revenue: $2.5M
+• Expenses: $1.8M
+• Net Income: $700K
+
+### Year 3
+• Revenue: $8M
+• Expenses: $5.5M
+• Net Income: $2.5M
+
+## Key Assumptions
+• Customer acquisition cost: $200
+• Customer lifetime value: $2,500
+• Monthly churn rate: 3%
+• Average selling price: $150/month
+
+## Break-even Analysis
+• Break-even point: Month 8
+• Cash flow positive: Month 12
+• Profitability: Month 18
+
+*Generated by SmartPromptIQ's financial AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `projections_${Date.now()}`
+      }
+    };
+    res.json(projections);
+  } catch (error) {
+    console.error('❌ Financial Projections error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate financial projections' });
+  }
+});
+
+// Education endpoints
+app.post('/api/education/course-creation', demoRateLimiter, (req, res) => {
+  try {
+    const { topic, audience, format, duration } = req.body;
+    console.log('🎯 Course Creation request:', { topic, audience });
+
+    const course = {
+      success: true,
+      data: {
+        type: 'course_creation',
+        title: `Course: ${topic || 'Professional Development'}`,
+        content: `# Course Development Plan
+
+## Course Overview
+**Topic:** ${topic || 'Professional Skills Development'}
+**Target Audience:** ${audience || 'Working professionals'}
+**Format:** ${format || 'Online video course'}
+**Duration:** ${duration || '8 weeks'}
+
+## Learning Objectives
+• Master core concepts
+• Apply practical skills
+• Build professional portfolio
+• Develop expertise
+
+## Course Structure
+### Module 1-2: Foundation
+• Core concepts introduction
+• Essential tools and software
+• Goal setting
+
+### Module 3-4: Skill Development
+• Hands-on practice
+• Real-world projects
+• Peer collaboration
+
+### Module 5-6: Advanced Applications
+• Complex projects
+• Best practices
+• Quality assurance
+
+### Module 7-8: Mastery
+• Advanced techniques
+• Career planning
+• Continued learning
+
+*Generated by SmartPromptIQ's education AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `course_${Date.now()}`
+      }
+    };
+    res.json(course);
+  } catch (error) {
+    console.error('❌ Course Creation error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate course plan' });
+  }
+});
+
+app.post('/api/education/skill-development', demoRateLimiter, (req, res) => {
+  try {
+    const { skills, level, goals, timeline } = req.body;
+    console.log('🎯 Skill Development request:', { skills, level });
+
+    const skillPlan = {
+      success: true,
+      data: {
+        type: 'skill_development',
+        title: `Skill Development Plan: ${skills || 'Professional Skills'}`,
+        content: `# Skill Development Strategy
+
+## Target Skills
+**Primary Skills:** ${skills || 'Leadership, Communication, Technical Skills'}
+**Current Level:** ${level || 'Intermediate'}
+**Timeline:** ${timeline || '6 months'}
+
+## Development Goals
+${goals || '• Improve leadership capabilities\n• Enhance communication skills\n• Master technical competencies\n• Build professional network'}
+
+## Learning Path
+### Phase 1: Assessment (Weeks 1-2)
+• Skill gap analysis
+• Baseline measurement
+• Goal refinement
+
+### Phase 2: Foundation (Weeks 3-8)
+• Core skill building
+• Practical exercises
+• Knowledge acquisition
+
+### Phase 3: Application (Weeks 9-16)
+• Real-world practice
+• Project implementation
+• Feedback integration
+
+### Phase 4: Mastery (Weeks 17-24)
+• Advanced techniques
+• Mentoring others
+• Continuous improvement
+
+*Generated by SmartPromptIQ's skill AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `skill_${Date.now()}`
+      }
+    };
+    res.json(skillPlan);
+  } catch (error) {
+    console.error('❌ Skill Development error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate skill plan' });
+  }
+});
+
+app.post('/api/education/research-insights', demoRateLimiter, (req, res) => {
+  try {
+    const { researchTopic, methodology, scope, timeline } = req.body;
+    console.log('🎯 Research Insights request:', { researchTopic, methodology });
+
+    const research = {
+      success: true,
+      data: {
+        type: 'research_insights',
+        title: `Research Plan: ${researchTopic || 'Industry Analysis'}`,
+        content: `# Research Methodology
+
+## Research Overview
+**Topic:** ${researchTopic || 'Industry Trends and Analysis'}
+**Methodology:** ${methodology || 'Mixed methods approach'}
+**Scope:** ${scope || 'Industry-wide analysis'}
+**Timeline:** ${timeline || '3 months'}
+
+## Research Framework
+### Primary Research
+• Surveys and interviews
+• Focus groups
+• Observational studies
+• Case studies
+
+### Secondary Research
+• Literature review
+• Industry reports
+• Market analysis
+• Competitor research
+
+## Data Collection
+• Quantitative metrics
+• Qualitative insights
+• Statistical analysis
+• Trend identification
+
+## Analysis Plan
+• Data processing
+• Pattern recognition
+• Insight generation
+• Recommendation development
+
+*Generated by SmartPromptIQ's research AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `research_${Date.now()}`
+      }
+    };
+    res.json(research);
+  } catch (error) {
+    console.error('❌ Research Insights error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate research plan' });
+  }
+});
+
+// Personal Development endpoints
+app.post('/api/personal/goal-setting', demoRateLimiter, (req, res) => {
+  try {
+    const { goals, timeframe, priorities, challenges } = req.body;
+    console.log('🎯 Goal Setting request:', { goals, timeframe });
+
+    const goalPlan = {
+      success: true,
+      data: {
+        type: 'goal_setting',
+        title: `Goal Setting Framework: ${timeframe || '12 Month'} Plan`,
+        content: `# Personal Goal Setting Strategy
+
+## Goal Overview
+**Primary Goals:** ${goals || 'Career advancement, skill development, work-life balance'}
+**Timeframe:** ${timeframe || '12 months'}
+**Priority Level:** ${priorities || 'High importance, career-focused'}
+
+## SMART Goals Framework
+### Specific Goals
+• Define clear, specific objectives
+• Identify measurable outcomes
+• Set achievable targets
+• Ensure relevance to values
+• Establish time-bound deadlines
+
+## Goal Categories
+### Career Goals
+• Professional advancement
+• Skill development
+• Network building
+• Leadership growth
+
+### Personal Goals
+• Health and wellness
+• Relationships
+• Learning and education
+• Financial stability
+
+## Action Planning
+### Monthly Milestones
+• Track progress indicators
+• Adjust strategies as needed
+• Celebrate achievements
+• Learn from setbacks
+
+### Weekly Actions
+• Specific tasks and activities
+• Time allocation
+• Resource requirements
+• Progress measurement
+
+*Generated by SmartPromptIQ's goal-setting AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `goals_${Date.now()}`
+      }
+    };
+    res.json(goalPlan);
+  } catch (error) {
+    console.error('❌ Goal Setting error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate goal plan' });
+  }
+});
+
+app.post('/api/personal/public-speaking', demoRateLimiter, (req, res) => {
+  try {
+    const { experience, audience, goals, timeline } = req.body;
+    console.log('🎯 Public Speaking request:', { experience, audience });
+
+    const speakingPlan = {
+      success: true,
+      data: {
+        type: 'public_speaking',
+        title: `Public Speaking Development Plan`,
+        content: `# Public Speaking Mastery Program
+
+## Assessment
+**Current Experience:** ${experience || 'Beginner to intermediate'}
+**Target Audience:** ${audience || 'Professional conferences and meetings'}
+**Development Goals:** ${goals || 'Confident presentation delivery'}
+**Timeline:** ${timeline || '6 months'}
+
+## Skill Development Areas
+### Foundation Skills
+• Voice projection and clarity
+• Body language and posture
+• Eye contact and engagement
+• Breathing and relaxation
+
+### Content Development
+• Story structure and flow
+• Key message clarity
+• Supporting evidence
+• Call-to-action design
+
+### Delivery Techniques
+• Pace and timing
+• Emphasis and inflection
+• Gesture coordination
+• Stage presence
+
+## Practice Framework
+### Weekly Practice
+• Daily voice exercises
+• Weekly video reviews
+• Monthly mock presentations
+• Quarterly real speaking opportunities
+
+### Progressive Challenges
+• Start with small groups
+• Progress to larger audiences
+• Tackle different topics
+• Master various formats
+
+*Generated by SmartPromptIQ's speaking AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `speaking_${Date.now()}`
+      }
+    };
+    res.json(speakingPlan);
+  } catch (error) {
+    console.error('❌ Public Speaking error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate speaking plan' });
+  }
+});
+
+app.post('/api/personal/networking', demoRateLimiter, (req, res) => {
+  try {
+    const { industry, goals, events, approach } = req.body;
+    console.log('🎯 Networking request:', { industry, goals });
+
+    const networkingPlan = {
+      success: true,
+      data: {
+        type: 'networking',
+        title: `Networking Strategy for ${industry || 'Professional Growth'}`,
+        content: `# Strategic Networking Plan
+
+## Networking Overview
+**Industry Focus:** ${industry || 'Technology and Business'}
+**Networking Goals:** ${goals || 'Professional advancement and knowledge sharing'}
+**Preferred Events:** ${events || 'Industry conferences, meetups, online communities'}
+**Approach Style:** ${approach || 'Authentic relationship building'}
+
+## Networking Strategy
+### Target Connections
+• Industry leaders and influencers
+• Peers and colleagues
+• Potential mentors
+• Emerging professionals
+
+### Networking Venues
+• Professional conferences
+• Industry meetups
+• Online communities
+• Alumni networks
+• Professional associations
+
+## Relationship Building
+### Initial Contact
+• Authentic conversation starters
+• Value-first introductions
+• Mutual interest discovery
+• Contact information exchange
+
+### Follow-up Strategy
+• Timely follow-up messages
+• Value-added content sharing
+• Meeting invitations
+• Long-term relationship nurturing
+
+### Network Maintenance
+• Regular check-ins
+• Celebrating others' successes
+• Offering assistance and support
+• Maintaining visibility
+
+*Generated by SmartPromptIQ's networking AI*`,
+        generatedAt: new Date().toISOString(),
+        id: `networking_${Date.now()}`
+      }
+    };
+    res.json(networkingPlan);
+  } catch (error) {
+    console.error('❌ Networking error:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate networking plan' });
+  }
+});
 
 // Main generation endpoint used by Generation.tsx
 app.post('/api/demo-generate-prompt', (req, res) => {

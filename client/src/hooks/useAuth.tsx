@@ -87,51 +87,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { token, user };
   };
 
-  // ✅ NEW: Comprehensive debugging function for user data validation
+  // ✅ NEW: Comprehensive debugging function for user data validation (dev only)
   const debugUserData = (user: any, location: string) => {
-    console.log(`🔍 User data at ${location}:`, {
-      user,
-      hasUser: !!user,
-      userType: typeof user,
-      hasRole: !!user?.role,
-      roleValue: user?.role,
-      roleType: typeof user?.role,
-      hasRoles: !!user?.roles,
-      rolesValue: user?.roles,
-      rolesType: typeof user?.roles,
-      rolesIsArray: Array.isArray(user?.roles),
-      rolesLength: Array.isArray(user?.roles) ? user.roles.length : 'N/A',
-      hasPermissions: !!user?.permissions,
-      permissionsValue: user?.permissions,
-      permissionsType: typeof user?.permissions,
-      permissionsIsArray: Array.isArray(user?.permissions),
-      permissionsLength: Array.isArray(user?.permissions) ? user.permissions.length : 'N/A',
-      email: user?.email,
-      firstName: user?.firstName,
-      lastName: user?.lastName
-    });
+    if (import.meta.env.DEV) {
+      console.log(`🔍 User data at ${location}:`, {
+        user,
+        hasUser: !!user,
+        userType: typeof user,
+        hasRole: !!user?.role,
+        roleValue: user?.role,
+        roleType: typeof user?.role,
+        hasRoles: !!user?.roles,
+        rolesValue: user?.roles,
+        rolesType: typeof user?.roles,
+        rolesIsArray: Array.isArray(user?.roles),
+        rolesLength: Array.isArray(user?.roles) ? user.roles.length : 'N/A',
+        hasPermissions: !!user?.permissions,
+        permissionsValue: user?.permissions,
+        permissionsType: typeof user?.permissions,
+        permissionsIsArray: Array.isArray(user?.permissions),
+        permissionsLength: Array.isArray(user?.permissions) ? user.permissions.length : 'N/A',
+        email: user?.email,
+        firstName: user?.firstName,
+        lastName: user?.lastName
+      });
+    }
   };
 
-  // Environment check on component mount
-  console.log('🔍 AUTH ENV CHECK:', {
-    isClient: typeof window !== 'undefined',
-    hasLocalStorage: typeof localStorage !== 'undefined',
-    currentUrl: typeof window !== 'undefined' ? window.location.href : 'SSR',
-  });
+  // Environment check on component mount (dev only)
+  if (import.meta.env.DEV) {
+    console.log('🔍 AUTH ENV CHECK:', {
+      isClient: typeof window !== 'undefined',
+      hasLocalStorage: typeof localStorage !== 'undefined',
+      currentUrl: typeof window !== 'undefined' ? window.location.href : 'SSR',
+    });
+  }
 
   const checkAuth = async () => {
     try {
       setIsLoading(true);
-      console.log("Checking auth...");
+      if (import.meta.env.DEV) {
+        console.log("Checking auth...");
+      }
 
       // ✅ SUPABASE: First check Supabase session
       try {
-        console.log('🔍 checkAuth: Checking Supabase session...');
+        if (import.meta.env.DEV) {
+          console.log('🔍 checkAuth: Checking Supabase session...');
+        }
         const { supabase } = await import('@/lib/supabase');
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (!error && session?.user) {
-          console.log('✅ Supabase session found:', session.user);
+          if (import.meta.env.DEV) {
+            console.log('✅ Supabase session found:', session.user);
+          }
 
           const supabaseUser = {
             id: session.user.id,
@@ -151,12 +161,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           localStorage.setItem("token", session.access_token);
           localStorage.setItem("user", JSON.stringify(supabaseUser));
 
-          console.log("✅ Authenticated with Supabase session");
+          if (import.meta.env.DEV) {
+            console.log("✅ Authenticated with Supabase session");
+          }
           setIsLoading(false);
           return;
         }
       } catch (supabaseError) {
-        console.log('⚠️ Supabase session check failed (this is normal for unauthenticated users):', supabaseError);
+        // Only log in development - this is normal for unauthenticated users
+        if (import.meta.env.DEV) {
+          console.log('⚠️ Supabase session check failed (this is normal for unauthenticated users):', supabaseError);
+        }
       }
 
       // Check for auth token in localStorage (fallback for legacy/backend auth)
@@ -169,7 +184,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         try {
           // ✅ ENHANCED: Verify token with backend using authAPI.me
-          console.log('🔍 checkAuth: Verifying token with backend...');
+          if (import.meta.env.DEV) {
+            console.log('🔍 checkAuth: Verifying token with backend...');
+          }
           const data = await authAPI.me();
 
           if (data.success && data.data?.user) {
@@ -192,16 +209,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // Use centralized updateUser for consistent data processing
             updateUser(mergedUserData);
 
-            console.log("✅ User authenticated with merged data:", mergedUserData);
-            debugUserData(mergedUserData, 'checkAuth - AFTER updateUser (merged)');
+            if (import.meta.env.DEV) {
+              console.log("✅ User authenticated with merged data:", mergedUserData);
+              debugUserData(mergedUserData, 'checkAuth - AFTER updateUser (merged)');
+            }
             return;
           }
         } catch (backendError: any) {
-          console.log("⚠️ Backend auth check failed (this is normal for unauthenticated users):", backendError);
+          // Only log in development - this is normal for unauthenticated users
+          if (import.meta.env.DEV) {
+            console.log("⚠️ Backend auth check failed (this is normal for unauthenticated users):", backendError);
+          }
 
           // Check if it's an invalid token error
           if (backendError.message && backendError.message.includes('Invalid token')) {
-            console.log("🧹 Invalid token detected, clearing auth data...");
+            if (import.meta.env.DEV) {
+              console.log("🧹 Invalid token detected, clearing auth data...");
+            }
             // Clear invalid token and user data
             localStorage.removeItem("token");
             localStorage.removeItem("user");
@@ -223,16 +247,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Use centralized updateUser for consistent data processing
         updateUser(storedUserData);
 
-        console.log("✅ User authenticated from storage:", storedUserData);
-        debugUserData(storedUserData, 'checkAuth - AFTER updateUser (stored)');
+        if (import.meta.env.DEV) {
+          console.log("✅ User authenticated from storage:", storedUserData);
+          debugUserData(storedUserData, 'checkAuth - AFTER updateUser (stored)');
+        }
       } else {
-        console.log("ℹ️ No token found - user is not authenticated (this is normal for landing page)");
+        // Only log in development - this is normal for unauthenticated users on landing page
+        if (import.meta.env.DEV) {
+          console.log("ℹ️ No token found - user is not authenticated (this is normal for landing page)");
+        }
         setIsAuthenticated(false);
         setUser(null);
         setToken(null);
       }
     } catch (error) {
-      console.log("ℹ️ Auth check completed with no authentication (this is normal for landing page):", error);
+      // Only log in development - this is normal for unauthenticated users on landing page
+      if (import.meta.env.DEV) {
+        console.log("ℹ️ Auth check completed with no authentication (this is normal for landing page):", error);
+      }
       setIsAuthenticated(false);
       setUser(null);
       setToken(null);
@@ -249,7 +281,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // If we have a token but no user data, or vice versa, clear both
       if ((storedToken && !storedUser) || (!storedToken && storedUser)) {
-        console.log("🧹 Inconsistent auth data detected, clearing...");
+        if (import.meta.env.DEV) {
+          console.log("🧹 Inconsistent auth data detected, clearing...");
+        }
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setIsAuthenticated(false);
@@ -260,7 +294,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // If we have both but the token looks invalid (too short, malformed, etc.)
       if (storedToken && storedToken.length < 20) {
-        console.log("🧹 Invalid token format detected, clearing...");
+        if (import.meta.env.DEV) {
+          console.log("🧹 Invalid token format detected, clearing...");
+        }
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setIsAuthenticated(false);

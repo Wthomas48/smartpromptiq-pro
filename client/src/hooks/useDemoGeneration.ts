@@ -1,6 +1,6 @@
 // hooks/useDemoGeneration.ts
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { apiRequest } from '../config/api';
+import { demoApiRequest } from '../config/api';
 import { requestQueue } from '../utils/requestQueue';
 
 // Debounce utility
@@ -88,8 +88,21 @@ export const useDemoGeneration = () => {
     }, 500);
 
     try {
-      const response = await apiRequest('POST', '/api/demo/generate', demoData);
+      console.log('🔄 useDemoGeneration: Starting API request with data:', demoData);
+
+      // Add timeout handling (30 seconds)
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout - 30 seconds exceeded')), 30000);
+      });
+
+      const requestPromise = demoApiRequest('POST', '/api/demo/generate', demoData);
+
+      console.log('⏳ useDemoGeneration: Waiting for response with 30s timeout...');
+      const response = await Promise.race([requestPromise, timeoutPromise]) as Response;
+      console.log('📥 useDemoGeneration: Response received:', response.status);
+
       const result = await response.json();
+      console.log('📦 useDemoGeneration: Data parsed:', result);
 
       if (queueIntervalRef.current) {
         clearInterval(queueIntervalRef.current);
@@ -111,8 +124,23 @@ export const useDemoGeneration = () => {
         remaining: -1 // Will be updated by separate rate limit check
       }));
 
+      console.log('✅ useDemoGeneration: Success, returning result:', result);
+      console.log('🔍 useDemoGeneration: Result type:', typeof result);
+      console.log('🔍 useDemoGeneration: Result has success:', 'success' in result);
+      console.log('🔍 useDemoGeneration: Result has data:', 'data' in result);
+      console.log('🔍 useDemoGeneration: Result has content:', 'content' in result);
+
+      // Extract the data from the API response format: {success: true, data: {...}, meta: {...}}
+      if (result.success && result.data) {
+        console.log('📤 Extracting data from successful API response:', result.data);
+        return result.data;
+      }
+
+      console.log('📤 Returning result directly:', result);
       return result;
     } catch (error: any) {
+      console.error('❌ useDemoGeneration: Error occurred:', error);
+
       if (queueIntervalRef.current) {
         clearInterval(queueIntervalRef.current);
         queueIntervalRef.current = null;
@@ -213,7 +241,7 @@ export const useDemoGeneration = () => {
   const checkRateLimit = useCallback(async (userEmail?: string) => {
     try {
       const params = userEmail ? `?userEmail=${encodeURIComponent(userEmail)}` : '';
-      const response = await apiRequest('GET', `/api/demo/rate-limit-status${params}`);
+      const response = await demoApiRequest('GET', `/api/demo/rate-limit-status${params}`);
       const result = await response.json();
 
       if (result.success) {
@@ -347,10 +375,10 @@ export const useBatchDemoGeneration = () => {
     });
 
     try {
-      // Use apiRequest for each batch item since we're using the config API
+      // Use demoApiRequest for each batch item to avoid auth issues
       const results = await Promise.all(
         demoDataArray.map(async (demoData) => {
-          const response = await apiRequest('POST', '/api/demo/generate', demoData);
+          const response = await demoApiRequest('POST', '/api/demo/generate', demoData);
           return response.json();
         })
       );

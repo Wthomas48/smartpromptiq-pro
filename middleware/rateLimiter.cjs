@@ -180,7 +180,13 @@ const ipRateLimiter = rateLimit({
 const burstProtection = rateLimit({
   store: createStore('burst'),
   windowMs: 10 * 1000, // 10 seconds
-  max: 10, // 10 requests per 10 seconds
+  max: (req) => {
+    // More lenient for localhost development
+    if (req.ip === '127.0.0.1' || req.ip === '::1' || req.hostname === 'localhost') {
+      return 100; // 100 requests per 10 seconds for localhost
+    }
+    return 10; // 10 requests per 10 seconds for other IPs
+  },
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
