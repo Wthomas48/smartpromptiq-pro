@@ -310,15 +310,20 @@ if (require('fs').existsSync(clientDistPath)) {
 }
 app.use(express.static(clientDistPath));
 
-// SPA fallback - serve index.html for non-API routes
+// API route not found handler - should come AFTER all API routes
+app.all('/api/*', (req, res) => {
+  console.error(`❌ API route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: `API route ${req.originalUrl} not found`,
+    method: req.method,
+    availableRoutes: ['/health', '/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/me', '/api/teams', '/api/billing/info', '/api/suggestions/personalized', '/api/generate-prompt', '/api/prompts']
+  });
+});
+
+// SPA fallback - serve index.html for non-API routes (GET only)
 app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({
-      success: false,
-      message: `API route ${req.originalUrl} not found`,
-      availableRoutes: ['/health', '/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/me', '/api/teams', '/api/billing/info', '/api/suggestions/personalized', '/api/generate-prompt', '/api/prompts']
-    });
-  }
+  console.log(`📄 Serving SPA for: ${req.originalUrl}`);
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
