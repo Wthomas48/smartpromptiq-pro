@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,8 +47,129 @@ import { useDemoGenerationWithStatus } from "@/hooks/useDemoGeneration";
 import { RateLimitStatus, CooldownTimer } from "@/components/RateLimitStatus";
 import { RequestQueueMonitor } from "@/components/RequestQueueMonitor";
 
+// Memoized output component to prevent excessive re-renders
+const OutputSection = memo(({
+  generatedContent,
+  selectedTemplateData,
+  showOutput,
+  outputRef
+}: {
+  generatedContent: {title: string, content: string} | null;
+  selectedTemplateData: any;
+  showOutput: boolean;
+  outputRef: React.RefObject<HTMLDivElement>;
+}) => {
+  const contentToRender = useMemo(() => {
+    if (!generatedContent && !selectedTemplateData?.sampleOutput) return null;
+
+    const content = generatedContent ? generatedContent.content : selectedTemplateData?.sampleOutput?.content || 'No content available';
+
+    try {
+      // Simple markdown-like formatting for common patterns
+      return content
+        .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold mb-6 text-gray-900">$1</h1>')
+        .replace(/^## (.*$)/gm, '<h2 class="text-2xl font-semibold mb-4 text-gray-800">$1</h2>')
+        .replace(/^### (.*$)/gm, '<h3 class="text-xl font-medium mb-3 text-gray-700">$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="italic text-gray-700">$1</em>')
+        .split('\n')
+        .map((line, index) => {
+          // Handle list items
+          if (line.startsWith('- ')) {
+            return (
+              <div
+                key={index}
+                className="ml-4 mb-2 animate-fade-in"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <span className="text-blue-500 mr-2">•</span>
+                <span dangerouslySetInnerHTML={{ __html: line.slice(2) }} />
+              </div>
+            );
+          }
+
+          // Handle headers and formatted text
+          if (line.includes('<h1') || line.includes('<h2') || line.includes('<h3') ||
+              line.includes('<strong') || line.includes('<em')) {
+            return (
+              <div
+                key={index}
+                dangerouslySetInnerHTML={{ __html: line }}
+                className="animate-fade-in mb-4"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              />
+            );
+          }
+
+          // Handle regular paragraphs
+          if (line.trim()) {
+            return (
+              <div
+                key={index}
+                className="mb-4 animate-fade-in"
+                style={{ animationDelay: `${index * 0.05}s` }}
+                dangerouslySetInnerHTML={{ __html: line }}
+              />
+            );
+          }
+
+          return null;
+        });
+    } catch (error) {
+      console.error('Markdown rendering error:', error);
+      // Fallback to plain text
+      return (
+        <div className="animate-fade-in">
+          {content}
+        </div>
+      );
+    }
+  }, [generatedContent?.content, selectedTemplateData?.sampleOutput?.content]);
+
+  // Early return if no content to display
+  if (!showOutput || !generatedContent) {
+    console.log('OutputSection: Early return - showOutput:', showOutput, 'generatedContent:', !!generatedContent);
+    return null;
+  }
+  console.log('OutputSection: Rendering content - showOutput:', showOutput, 'generatedContent:', !!generatedContent);
+
+  return (
+    <div
+      ref={outputRef}
+      className="space-y-6 animate-fade-in transition-all duration-700 transform"
+      style={{
+        border: generatedContent ? '3px solid #10b981' : '2px solid #e5e7eb',
+        minHeight: '200px',
+        padding: '20px',
+        backgroundColor: generatedContent ? '#f0fdf4' : '#f9fafb',
+        borderRadius: '16px',
+        boxShadow: generatedContent ? '0 0 20px rgba(16, 185, 129, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
+        animation: generatedContent ? 'borderGlow 2s ease-in-out' : 'none'
+      }}
+    >
+      <div className="bg-white border-2 border-green-300 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-6">
+          <div className="flex items-center justify-between">
+            <h4 className="text-2xl font-bold">
+              {generatedContent ? generatedContent.title : selectedTemplateData?.sampleOutput?.title || 'Generated Content'}
+            </h4>
+          </div>
+        </div>
+        <div className="p-8">
+          <div className="prose prose-lg max-w-none">
+            <div className="whitespace-pre-wrap text-gray-800 leading-relaxed markdown-content">
+              {contentToRender}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default function Demo() {
   const { user, isAdmin } = useAuth();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState(false);
@@ -78,6 +200,15 @@ export default function Demo() {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes highlight {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0.3);
   }
 }
 
@@ -127,42 +258,9 @@ export default function Demo() {
     setIsGenerating(hookLoading);
   }, [hookLoading]);
 
-  // Sync hookData with local generatedContent state
-  useEffect(() => {
-    if (hookData && !hookLoading) {
-      console.log('📥 Demo hook data received:', hookData);
-
-      let contentToSet = null;
-
-      // Handle different response formats from the backend
-      if (hookData.content) {
-        // Direct content format
-        contentToSet = {
-          title: hookData.title || 'Generated Content',
-          content: hookData.content
-        };
-      } else if (hookData.data && hookData.data.content) {
-        // Nested data format
-        contentToSet = {
-          title: hookData.data.title || 'Generated Content',
-          content: hookData.data.content
-        };
-      } else if (typeof hookData === 'string') {
-        // String format
-        contentToSet = {
-          title: 'Generated Content',
-          content: hookData
-        };
-      }
-
-      if (contentToSet) {
-        console.log('✅ Setting generated content from hook data:', contentToSet);
-        setGeneratedContent(contentToSet);
-        setShowOutput(true);
-        setIsGenerating(false);
-      }
-    }
-  }, [hookData, hookLoading]);
+  // REMOVED: Sync hookData with local generatedContent state
+  // This was causing duplicate state updates and conflicts
+  // State is now managed directly in the generation handler
 
   const demoStats = {
     promptsGenerated: 47283,
@@ -1239,22 +1337,19 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
   }, []);
 
   const handleTryTemplate = (templateId: string) => {
-    console.log('🎬 handleTryTemplate called with templateId:', templateId);
+    console.log('TEMPLATE SELECTED: Clearing output for template', templateId);
     setSelectedTemplate(templateId);
-    setShowOutput(false);
+
+    // ✅ FIXED: Don't clear output immediately - let handleGenerateDemo check cache first
+    // setShowOutput(false); // REMOVED - this was preventing cached content from showing
     setCurrentStep(0);
 
     const template = demoTemplates[templateId as keyof typeof demoTemplates];
-    console.log('📋 Template found:', template ? 'YES' : 'NO');
-    console.log('📋 Template details:', template);
 
     if (template && template.questions) {
       // Template has interactive questionnaire - start interactive mode with pre-filled data
-      console.log('🎯 Starting interactive demo for template with questions:', templateId);
-
       // Pre-fill data FIRST, then show interactive demo
       if (template.demoData) {
-        console.log('🎯 Pre-filling demo form with sample data:', template.demoData);
         setUserResponses(template.demoData);
       } else {
         setUserResponses({});
@@ -1264,11 +1359,9 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
       setShowInteractiveDemo(true);
     } else {
       // Template has no questions - generate immediately with sample responses
-      console.log('🎯 Generating immediate demo for template without questions:', templateId);
       setShowInteractiveDemo(false);
       setUserResponses({});
       // Trigger immediate generation without delay
-      console.log('⚡ About to call handleGenerateDemo()');
       handleGenerateDemo(templateId);
     }
   };
@@ -1277,7 +1370,6 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     // Pre-fill form with demo data FIRST if available
     const template = selectedTemplate ? demoTemplates[selectedTemplate as keyof typeof demoTemplates] : null;
     if (template && template.demoData) {
-      console.log('🎯 Pre-filling demo form with sample data:', template.demoData);
       setUserResponses(template.demoData);
     }
 
@@ -1287,13 +1379,10 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
   };
 
   const handleNextStep = () => {
-    console.log('🔘 BUTTON CLICKED: handleNextStep');
     const template = selectedTemplate ? demoTemplates[selectedTemplate as keyof typeof demoTemplates] : null;
     if (template && template.questions && currentStep < template.questions.length - 1) {
-      console.log('📝 Moving to next step:', currentStep + 1);
       setCurrentStep(currentStep + 1);
     } else {
-      console.log('🎯 Final step reached, calling handleGenerateDemo');
       handleGenerateDemo();
     }
   };
@@ -1318,8 +1407,6 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
   };
 
   const handleGenerateDemo = async (templateId?: string) => {
-    console.log('🔥 GENERATE DEMO BUTTON CLICKED!', { templateId, selectedTemplate });
-    console.log('🔥 CURRENT STATE BEFORE GENERATION:', { showOutput, generatedContent, isGenerating });
 
     const templateToUse = templateId || selectedTemplate;
     if (!templateToUse) {
@@ -1332,7 +1419,6 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     const DEBOUNCE_TIME = 2000; // 2 seconds
 
     if (now - lastRequestTime < DEBOUNCE_TIME) {
-      console.log('🛑 Request debounced - too soon since last request');
       setIsDebounced(true);
       setTimeout(() => setIsDebounced(false), DEBOUNCE_TIME - (now - lastRequestTime));
       return;
@@ -1341,52 +1427,59 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
     setLastRequestTime(now);
     setIsDebounced(false);
 
-    console.log('🚀 Starting advanced demo generation for template:', templateToUse);
-    console.log('📋 Selected template data:', selectedTemplateData);
-    console.log('👤 User responses:', userResponses);
-    console.log('📧 Email:', email);
-
     // Prepare request data in the correct format for the backend API
     const requestData = {
       templateType: templateToUse,  // ✅ Backend expects 'templateType'
       userResponses: Object.keys(userResponses).length > 0 ? userResponses : selectedTemplateData?.sampleResponses || {},
       userEmail: email || undefined
     };
-    console.log('📤 Request data for hook:', requestData);
 
     // Check cache first
     const cacheKey = generateCacheKey(templateToUse, requestData.userResponses);
     const cachedResult = demoCache[cacheKey];
 
     if (cachedResult && isCacheValid(cachedResult.timestamp)) {
-      console.log('💾 Using cached result (instant)');
-      setGeneratedContent({
+      console.log('CACHE HIT: Using cached result', cachedResult.content);
+      const cachedContent = {
         title: `${cachedResult.content.title || 'Generated Content'} (Cached)`,
         content: cachedResult.content.content || 'Cached content'
-      });
+      };
+      console.log('CACHE: Setting generated content', cachedContent);
+      setGeneratedContent(cachedContent);
       setShowOutput(true);
       setIsGenerating(false);
+      console.log('✅ State updated, content should display (CACHED)');
+
+      // ✅ CRITICAL: Scroll to output and show feedback for cached content
+      requestAnimationFrame(() => {
+        const output = document.querySelector('.demo-output') as HTMLElement;
+        if (output) {
+          output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          // Highlight the output briefly
+          output.style.animation = 'highlight 2s ease-in-out';
+        }
+      });
       return;
     }
 
     // Set local loading state to sync with legacy UI
+    console.log('CLEARING: About to clear content and start generation');
     setIsGenerating(true);
     setShowOutput(false);
     setGeneratedContent(null);
+    console.log('CLEARING: Content cleared, generation starting');
 
     try {
       // Start timing the generation
       setGenerationStartTime(Date.now());
 
       // Use the advanced hook for generation with queue management
-      console.log('📤 Calling useDemoGeneration hook...');
       const result = await generateDemoAdvanced(requestData);
-      console.log('✅ Hook returned result:', result);
 
       // Process the result directly since the hook returns it
       if (result && typeof result === 'object') {
         const resultData = result as any;
-        console.log('🔍 Raw result from backend:', result);
 
         // Handle the actual API response format: {id, type, title, description, content, generatedAt}
         let generatedData;
@@ -1409,8 +1502,6 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
           content: generatedData.content || generatedData.prompt || 'Generated content'
         };
 
-        console.log('📄 Setting generatedContent to:', contentToSet);
-
         // Cache the result for future use
         const cacheKey = generateCacheKey(templateToUse, requestData.userResponses);
         setDemoCache(prev => ({
@@ -1420,14 +1511,42 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
             timestamp: Date.now()
           }
         }));
-        console.log('💾 Result cached for future use');
 
         setGeneratedContent(contentToSet);
         setShowOutput(true);
         setIsGenerating(false);
-        console.log('✅ CRITICAL: Setting state - generatedContent:', contentToSet);
-        console.log('✅ CRITICAL: showOutput = true, isGenerating = false');
-        console.log('✅ CRITICAL: Content should now be visible!');
+        console.log('✅ Content state updated successfully');
+
+        // ✅ CRITICAL: Scroll to output and show feedback
+        requestAnimationFrame(() => {
+          const output = document.querySelector('.demo-output') as HTMLElement;
+          if (output) {
+            output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // Highlight the output briefly
+            output.style.animation = 'highlight 2s ease-in-out';
+          }
+        });
+
+        // ✅ ADD: Show success banner
+        const banner = document.createElement('div');
+        banner.className = 'success-banner';
+        banner.textContent = '✅ Content generated! Scroll down to view your results.';
+        banner.style.cssText = `
+          position: fixed;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #10b981;
+          color: white;
+          padding: 16px 32px;
+          border-radius: 8px;
+          font-weight: 600;
+          z-index: 9999;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        `;
+        document.body.appendChild(banner);
+        setTimeout(() => banner.remove(), 3000);
 
         // Trigger success notification
         setShowNotification(true);
@@ -1513,8 +1632,8 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
         setIsGenerating(false);
       }
     } finally {
-      console.log('🏁 Advanced demo generation finished');
       setIsGenerating(false);
+
     }
   };
 
@@ -1700,7 +1819,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                     key={id}
                     className="group hover:shadow-lg transition-all duration-300 cursor-pointer border hover:border-indigo-300 bg-white"
                     onClick={() => {
-                      console.log('🖱️ Card clicked for template ID:', id);
+                      console.log('CARD CLICK: Template card clicked for ID:', id);
                       handleTryTemplate(id);
                     }}
                   >
@@ -2049,7 +2168,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                               disabled={!canGenerate || isGenerating || isDebounced}
                               onClick={() => {
                                 if (!isGenerating && canGenerate && !isDebounced) {
-                                  console.log('🔘 BUTTON CLICKED: Generate Professional Content button');
+                                  console.log('BUTTON CLICKED: Generate Professional Content button');
                                   handleGenerateDemo();
                                 }
                               }}
@@ -2144,8 +2263,41 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                     </div>
                   )}
 
-                  {/* Enhanced Sample Output with Animations */}
-                  {(showOutput || generatedContent) && (
+
+                  {/* Optimized Output Section */}
+                  <OutputSection
+                    generatedContent={generatedContent}
+                    selectedTemplateData={selectedTemplateData}
+                    showOutput={showOutput}
+                    outputRef={outputRef}
+                  />
+
+                  {/* Actual output with demo-output class */}
+                  {showOutput && generatedContent && (
+                    <div className="demo-output" style={{
+                      marginTop: '40px',
+                      padding: '20px',
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}>
+                      <h2 style={{
+                        fontSize: '1.5rem',
+                        fontWeight: 'bold',
+                        marginBottom: '16px',
+                        color: '#1f2937'
+                      }}>{generatedContent.title}</h2>
+                      <div style={{
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: '1.6',
+                        color: '#374151'
+                      }}>{generatedContent.content}</div>
+                    </div>
+                  )}
+
+                  {/* Legacy Output Section - Remove after testing */}
+                  {false && (showOutput || generatedContent) && (
                     <div
                       ref={outputRef}
                       className="space-y-6 animate-fade-in transition-all duration-700 transform"
@@ -2243,7 +2395,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                         <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-6">
                           <div className="flex items-center justify-between">
                             <h4 className="text-2xl font-bold">
-                              {generatedContent ? generatedContent.title : selectedTemplateData.sampleOutput.title}
+                              {generatedContent ? generatedContent.title : selectedTemplateData?.sampleOutput?.title || 'Generated Content'}
                             </h4>
                             <div className="flex items-center space-x-2 text-green-100">
                               <Star className="w-5 h-5 fill-current" />
@@ -2258,7 +2410,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                             <div className="whitespace-pre-wrap text-gray-800 leading-relaxed markdown-content">
                               {/* Enhanced Markdown Rendering with Fallback */}
                               {(() => {
-                                const content = generatedContent ? generatedContent.content : selectedTemplateData.sampleOutput.content;
+                                const content = generatedContent ? generatedContent.content : selectedTemplateData?.sampleOutput?.content || 'No content available';
                                 try {
                                   // Simple markdown-like formatting for common patterns
                                   return content

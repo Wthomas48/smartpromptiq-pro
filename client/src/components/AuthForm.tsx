@@ -106,7 +106,7 @@ export default function AuthForm({
     setIsLoading(true);
 
     try {
-      console.log('🔐 AuthForm submission:', { email, mode: currentMode });
+      console.log('AuthForm submission:', { email, mode: currentMode });
 
       if (currentMode === 'signup') {
         // Validate terms acceptance
@@ -138,10 +138,10 @@ export default function AuthForm({
         }
 
         await signup(email, password, firstName, lastName);
-        console.log('✅ AuthForm signup successful');
+        console.log('AuthForm signup successful');
       } else {
         await login(email, password);
-        console.log('✅ AuthForm login successful');
+        console.log('AuthForm login successful');
       }
 
       // Remember me functionality
@@ -176,7 +176,7 @@ export default function AuthForm({
   };
 
   const handleDemoAccess = () => {
-    console.log('🎯 Demo access requested');
+    console.log('Demo access requested');
     setLocation('/demo');
   };
 

@@ -31,39 +31,27 @@ export const getApiBaseUrl = (): string => {
   // ✅ SIMPLE AND RELIABLE ROUTING
   const currentUrl = typeof window !== 'undefined' ? window.location : null;
 
-  console.log('🔍 API ROUTING DEBUG:', {
-    hostname: currentUrl?.hostname,
-    port: currentUrl?.port,
-    protocol: currentUrl?.protocol,
-    VITE_API_URL: import.meta.env.VITE_API_URL,
-    DEV: import.meta.env.DEV,
-    PROD: import.meta.env.PROD
-  });
 
   // ✅ LOCALHOST DEVELOPMENT: Only when specifically on localhost dev ports
   if (currentUrl &&
       currentUrl.hostname === 'localhost' &&
       (currentUrl.port === '5173' || currentUrl.port === '5174' || currentUrl.port === '5175' || currentUrl.port === '5178' || currentUrl.port === '5179')) {
     const localApi = 'http://localhost:5000';
-    console.log('🔧 LOCALHOST DEV: Using local backend:', localApi);
     return localApi;
   }
 
   // ✅ EVERYTHING ELSE: Use same origin (production, staging, any other domain)
   if (currentUrl && currentUrl.hostname !== 'localhost') {
-    console.log('🌐 PRODUCTION/EXTERNAL: Using same origin for domain:', currentUrl.hostname);
     return ''; // Empty string = same origin
   }
 
   // ✅ SERVER-SIDE OR DEV FALLBACK
   if (import.meta.env.DEV) {
     const localApi = 'http://localhost:5000';
-    console.log('🔧 DEV FALLBACK: Using local backend:', localApi);
     return localApi;
   }
 
   // ✅ FINAL FALLBACK: Always return empty string for production
-  console.log('🌐 FINAL FALLBACK: Using same origin (empty string)');
   return '';
 
   // In production, determine backend URL with enhanced validation
@@ -71,21 +59,14 @@ export const getApiBaseUrl = (): string => {
     const hostname = window.location.hostname;
     const origin = window.location.origin;
 
-    console.log('🌐 Host validation:', {
-      hostname,
-      origin,
-      isAllowedHost: config.allowedHosts.includes(hostname)
-    });
 
     // Check if hostname is in allowed hosts
     if (config.allowedHosts.includes(hostname)) {
-      console.log('✅ Host validation passed for:', hostname);
     }
 
     // If running on localhost in production, connect to backend on correct port
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      console.log('🔗 Using localhost API URL:', apiUrl);
       return apiUrl;
     }
 
@@ -95,20 +76,17 @@ export const getApiBaseUrl = (): string => {
     );
 
     if (isProductionDomain) {
-      console.log('✅ Production domain detected:', hostname);
       // For Railway/Vercel/Netlify deployment, use same origin (backend serves frontend)
       return import.meta.env.VITE_API_URL || '';
     }
 
     // ✅ SMARTPROMPTIQ.COM: Handle your production domain specifically
     if (hostname.includes('smartpromptiq.com')) {
-      console.log('✅ SmartPromptIQ production domain detected:', hostname);
       return ''; // Use same origin for production (backend serves frontend)
     }
 
     // For other deployed environments, use environment variable or same origin
     const apiUrl = import.meta.env.VITE_API_URL || '';
-    console.log('🔗 Using configured API URL:', apiUrl);
     return apiUrl;
   }
 
@@ -120,11 +98,6 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
   const baseUrl = getApiBaseUrl();
   const fullUrl = `${baseUrl}${url}`;
 
-  if (import.meta.env.DEV) {
-    console.log(`🌐 API Request: ${method} ${fullUrl}`);
-    console.log(`🌐 Environment: ${import.meta.env.DEV ? 'Development' : 'Production'}`);
-    console.log(`🌐 Base URL: ${baseUrl}`);
-  }
 
   try {
     const options: RequestInit = {
@@ -155,14 +128,11 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
     if (body) {
       options.body = JSON.stringify(body);
       if (import.meta.env.DEV) {
-        console.log(`🌐 Request Body:`, body);
       }
     }
 
     const response = await fetch(fullUrl, options);
     if (import.meta.env.DEV) {
-      console.log(`🌐 Response Status: ${response.status} ${response.statusText}`);
-      console.log(`🌐 Response Headers:`, Object.fromEntries(response.headers.entries()));
     }
 
     if (!response.ok) {
@@ -250,7 +220,6 @@ export const authAPI = {
   signin: async (credentials: { email: string; password: string }) => {
     try {
       if (import.meta.env.DEV) {
-        console.log('🔍 Supabase signin attempt:', { email: credentials.email });
       }
 
       const { data, error } = await auth.signIn(credentials.email, credentials.password);
@@ -263,7 +232,6 @@ export const authAPI = {
       }
 
       if (import.meta.env.DEV) {
-        console.log('✅ Supabase signin success:', data);
       }
 
       // Return in expected format for compatibility
@@ -295,7 +263,6 @@ export const authAPI = {
   login: async (email: string, password: string) => {
     try {
       if (import.meta.env.DEV) {
-        console.log('🔍 Backend login attempt:', { email });
       }
 
       const response = await apiRequest('POST', '/api/auth/login', {
@@ -305,7 +272,6 @@ export const authAPI = {
 
       const result = await response.json();
       if (import.meta.env.DEV) {
-        console.log('✅ Backend login success:', result);
       }
 
       return result;
@@ -321,7 +287,6 @@ export const authAPI = {
   signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
     try {
       if (import.meta.env.DEV) {
-        console.log('🔍 Supabase signup attempt:', { email: userData.email });
       }
 
       const { data, error } = await auth.signUp(userData.email, userData.password, {
@@ -338,13 +303,11 @@ export const authAPI = {
       }
 
       if (import.meta.env.DEV) {
-        console.log('✅ Supabase signup success:', data);
       }
 
       // Check if we have a valid session token
       if (!data.session?.access_token) {
         if (import.meta.env.DEV) {
-          console.log('⚠️ No session token from Supabase (email verification required), falling back to backend');
         }
         // Fallback to backend registration for immediate access
         return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
@@ -380,7 +343,6 @@ export const authAPI = {
   register: async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
       if (import.meta.env.DEV) {
-        console.log('🔍 Backend register attempt:', { email, firstName, lastName });
       }
 
       const response = await apiRequest('POST', '/api/auth/register', {
@@ -392,7 +354,6 @@ export const authAPI = {
 
       const result = await response.json();
       if (import.meta.env.DEV) {
-        console.log('✅ Backend register success:', result);
       }
 
       return result;
@@ -407,7 +368,6 @@ export const authAPI = {
   me: async () => {
     try {
       if (import.meta.env.DEV) {
-        console.log('🔍 Supabase getCurrentUser attempt');
       }
 
       const { user, error } = await auth.getCurrentUser();
@@ -427,7 +387,6 @@ export const authAPI = {
       }
 
       if (import.meta.env.DEV) {
-        console.log('✅ Supabase getCurrentUser success:', user);
       }
 
       // Return in expected format for compatibility
@@ -461,9 +420,6 @@ export const demoApiRequest = async (method: string, url: string, body?: any) =>
   const fullUrl = `${baseUrl}${url}`;
 
   if (import.meta.env.DEV) {
-    console.log(`🎯 Demo API Request: ${method} ${fullUrl}`);
-    console.log(`🎯 Environment: ${import.meta.env.DEV ? 'Development' : 'Production'}`);
-    console.log(`🎯 Base URL: ${baseUrl}`);
   }
 
   try {
@@ -485,7 +441,6 @@ export const demoApiRequest = async (method: string, url: string, body?: any) =>
     if (body) {
       options.body = JSON.stringify(body);
       if (import.meta.env.DEV) {
-        console.log(`🎯 Demo Request Body:`, body);
       }
     }
 
@@ -494,11 +449,8 @@ export const demoApiRequest = async (method: string, url: string, body?: any) =>
     }
     const response = await fetch(fullUrl, options);
     if (import.meta.env.DEV) {
-      console.log('📥 Response received:', response.status, response.statusText);
     }
     if (import.meta.env.DEV) {
-      console.log(`🎯 Demo Response Status: ${response.status} ${response.statusText}`);
-      console.log(`🎯 Demo Response Headers:`, Object.fromEntries(response.headers.entries()));
     }
 
     // Log response data BEFORE checking if ok
@@ -506,11 +458,9 @@ export const demoApiRequest = async (method: string, url: string, body?: any) =>
     try {
       const responseText = await response.text();
       if (import.meta.env.DEV) {
-        console.log(`🎯 Demo Raw Response Text:`, responseText);
       }
       responseData = responseText ? JSON.parse(responseText) : null;
       if (import.meta.env.DEV) {
-        console.log(`🎯 Demo Parsed Response Data:`, responseData);
       }
     } catch (parseError) {
       if (import.meta.env.DEV) {

@@ -88,8 +88,6 @@ export const useDemoGeneration = () => {
     }, 500);
 
     try {
-      console.log('🔄 useDemoGeneration: Starting API request with data:', demoData);
-
       // Add timeout handling (30 seconds)
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout - 30 seconds exceeded')), 30000);
@@ -97,12 +95,8 @@ export const useDemoGeneration = () => {
 
       const requestPromise = demoApiRequest('POST', '/api/demo/generate', demoData);
 
-      console.log('⏳ useDemoGeneration: Waiting for response with 30s timeout...');
       const response = await Promise.race([requestPromise, timeoutPromise]) as Response;
-      console.log('📥 useDemoGeneration: Response received:', response.status);
-
       const result = await response.json();
-      console.log('📦 useDemoGeneration: Data parsed:', result);
 
       if (queueIntervalRef.current) {
         clearInterval(queueIntervalRef.current);
@@ -112,11 +106,17 @@ export const useDemoGeneration = () => {
       // Set cooldown for 2 seconds after successful request
       const cooldownUntil = Date.now() + 2000;
 
+      // Extract the actual content data for state
+      let dataToStore = result;
+      if (result.success && result.data) {
+        dataToStore = result.data;
+      }
+
       setState(prev => ({
         ...prev,
         loading: false,
         error: null,
-        data: result,
+        data: dataToStore,
         queuePosition: 0,
         retryCount: 0,
         retryAfter: 0,
@@ -124,20 +124,7 @@ export const useDemoGeneration = () => {
         remaining: -1 // Will be updated by separate rate limit check
       }));
 
-      console.log('✅ useDemoGeneration: Success, returning result:', result);
-      console.log('🔍 useDemoGeneration: Result type:', typeof result);
-      console.log('🔍 useDemoGeneration: Result has success:', 'success' in result);
-      console.log('🔍 useDemoGeneration: Result has data:', 'data' in result);
-      console.log('🔍 useDemoGeneration: Result has content:', 'content' in result);
-
-      // Extract the data from the API response format: {success: true, data: {...}, meta: {...}}
-      if (result.success && result.data) {
-        console.log('📤 Extracting data from successful API response:', result.data);
-        return result.data;
-      }
-
-      console.log('📤 Returning result directly:', result);
-      return result;
+      return dataToStore;
     } catch (error: any) {
       console.error('❌ useDemoGeneration: Error occurred:', error);
 

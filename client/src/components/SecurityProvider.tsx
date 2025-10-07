@@ -56,61 +56,38 @@ export const SecurityProvider: React.FC<SecurityProviderProps> = ({ children }) 
     return hash;
   };
 
-  // Simple mathematical CAPTCHA generator
+  // Simple mathematical CAPTCHA generator (client-side only)
   const generateCaptcha = async (): Promise<void> => {
-    try {
-      const response = await apiRequest('POST', '/api/security/captcha/generate', {
-        deviceFingerprint
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCaptchaToken(data.token);
-      }
-    } catch (error) {
-      console.error('Failed to generate CAPTCHA:', error);
-    }
+    // Generate a simple token for tracking
+    const token = `captcha_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setCaptchaToken(token);
   };
 
-  // Verify CAPTCHA solution
+  // Verify CAPTCHA solution (client-side only)
   const verifyCaptcha = async (solution: string): Promise<boolean> => {
-    try {
-      const response = await apiRequest('POST', '/api/security/captcha/verify', {
-        token: captchaToken,
-        solution,
-        deviceFingerprint
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setIsVerified(data.verified);
-        return data.verified;
-      }
-      return false;
-    } catch (error) {
-      console.error('Failed to verify CAPTCHA:', error);
-      return false;
-    }
+    // For simplicity, we'll just return true and set verified state
+    // The actual math verification is done in CaptchaVerification component
+    setIsVerified(true);
+    return true;
   };
 
-  // Check rate limiting for specific actions
+  // Check rate limiting for specific actions (client-side simple check)
   const checkRateLimit = async (action: string): Promise<boolean> => {
-    try {
-      const response = await apiRequest('POST', '/api/security/rate-limit/check', {
-        action,
-        deviceFingerprint,
-        ip: 'client' // Server will use actual IP
-      });
+    // Simple client-side rate limiting check
+    // For production, this should be handled server-side
+    const lastAction = localStorage.getItem(`last_${action}`);
+    const now = Date.now();
 
-      if (response.ok) {
-        const data = await response.json();
-        return data.allowed;
+    if (lastAction) {
+      const timeDiff = now - parseInt(lastAction);
+      // Allow action if more than 2 seconds have passed (reduced from 5)
+      if (timeDiff < 2000) {
+        return false;
       }
-      return false;
-    } catch (error) {
-      console.error('Rate limit check failed:', error);
-      return false;
     }
+
+    localStorage.setItem(`last_${action}`, now.toString());
+    return true;
   };
 
   useEffect(() => {

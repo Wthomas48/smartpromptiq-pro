@@ -125,7 +125,7 @@ const AdminDashboard: React.FC = () => {
   });
   const [deleteReason, setDeleteReason] = useState('');
 
-  console.log('🚀 AdminDashboard component rendering with enhanced features!');
+  console.log('AdminDashboard component rendering with enhanced features!');
 
   // Fetch admin data with real API calls
   const fetchAdminData = async (showRefreshLoader = false) => {
@@ -133,14 +133,14 @@ const AdminDashboard: React.FC = () => {
       if (showRefreshLoader) setRefreshing(true);
       else setLoading(true);
 
-      console.log('🔄 Fetching admin data from live APIs...');
+      console.log('Fetching admin data from live APIs...');
 
       // Fetch dashboard stats from real backend
       const statsResponse = await apiRequest('/api/admin/stats', {
         method: 'GET',
       });
 
-      console.log('📊 Stats response:', statsResponse);
+      console.log('Stats response:', statsResponse);
 
       if (statsResponse.success) {
         const data = statsResponse.data;
@@ -162,7 +162,7 @@ const AdminDashboard: React.FC = () => {
         method: 'GET',
       });
 
-      console.log('👥 Users response:', usersResponse);
+      console.log('Users response:', usersResponse);
 
       if (usersResponse.success) {
         const userData = usersResponse.data.users || [];
@@ -185,7 +185,7 @@ const AdminDashboard: React.FC = () => {
         method: 'GET',
       });
 
-      console.log('💳 Payments response:', paymentsResponse);
+      console.log('Payments response:', paymentsResponse);
 
       if (paymentsResponse.success) {
         const paymentData = paymentsResponse.data.payments || [];
@@ -202,7 +202,7 @@ const AdminDashboard: React.FC = () => {
         })));
       }
 
-      console.log('✅ Admin data fetched successfully from live backend');
+      console.log('Admin data fetched successfully from live backend');
     } catch (error) {
       console.error('❌ Error fetching admin data from live backend:', error);
 
@@ -257,7 +257,7 @@ const AdminDashboard: React.FC = () => {
   // Fetch comprehensive admin data including new features
   const fetchComprehensiveData = async () => {
     try {
-      console.log('🔄 Fetching comprehensive admin data...');
+      console.log('Fetching comprehensive admin data...');
 
       // ✅ ENABLED: Backend restarted with new endpoints
       const [tokenResponse, securityResponse, emailResponse, systemResponse] = await Promise.all([
@@ -267,26 +267,26 @@ const AdminDashboard: React.FC = () => {
         apiRequest('/api/admin/system-monitoring', { method: 'GET' })
       ]);
 
-      console.log('✅ New admin endpoints enabled - backend running with comprehensive features');
+      console.log('New admin endpoints enabled - backend running with comprehensive features');
 
       if (tokenResponse.success) {
         setTokenData(tokenResponse.data);
-        console.log('✅ Token monitoring data loaded');
+        console.log('Token monitoring data loaded');
       }
 
       if (securityResponse.success) {
         setSecurityData(securityResponse.data);
-        console.log('✅ Security data loaded');
+        console.log('Security data loaded');
       }
 
       if (emailResponse.success) {
         setEmailData(emailResponse.data);
-        console.log('✅ Email management data loaded');
+        console.log('Email management data loaded');
       }
 
       if (systemResponse.success) {
         setSystemData(systemResponse.data);
-        console.log('✅ System monitoring data loaded');
+        console.log('System monitoring data loaded');
       }
     } catch (error) {
       console.error('❌ Error fetching comprehensive data:', error);
@@ -310,7 +310,7 @@ const AdminDashboard: React.FC = () => {
   // Fetch real-time monitoring data
   const fetchRealTimeData = async () => {
     try {
-      console.log('🔄 Fetching real-time monitoring data...');
+      console.log('Fetching real-time monitoring data...');
 
       const [sessionsResponse, registrationsResponse, logsResponse] = await Promise.all([
         apiRequest('/api/admin/active-sessions', { method: 'GET' }),
@@ -330,7 +330,7 @@ const AdminDashboard: React.FC = () => {
         setSystemLogs(logsResponse.data.logs || []);
       }
 
-      console.log('✅ Real-time data updated');
+      console.log('Real-time data updated');
     } catch (error) {
       console.error('❌ Error fetching real-time data:', error);
     }
@@ -343,7 +343,7 @@ const AdminDashboard: React.FC = () => {
 
     try {
       setRefreshing(true);
-      console.log(`🔄 Processing refund for payment ${paymentId}...`);
+      console.log(`Processing refund for payment ${paymentId}...`);
 
       const response = await apiRequest(`/api/admin/payments/${paymentId}/refund`, {
         method: 'POST',
@@ -351,7 +351,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (response.success) {
-        console.log('✅ Refund processed successfully:', response.data);
+        console.log('Refund processed successfully:', response.data);
         await fetchAdminData(true);
         alert(`Refund processed successfully! Amount: ${formatCurrency(response.data.refundAmount)}`);
       } else {
@@ -369,7 +369,7 @@ const AdminDashboard: React.FC = () => {
   const handleUserAction = async (userId: string, action: string) => {
     try {
       setRefreshing(true);
-      console.log(`🔄 Executing user action: ${action} for user ${userId}`);
+      console.log(`Executing user action: ${action} for user ${userId}`);
 
       const response = await apiRequest(`/api/admin/actions/${action}`, {
         method: 'POST',
@@ -377,7 +377,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (response.success) {
-        console.log(`✅ User action ${action} completed:`, response.data);
+        console.log(`User action ${action} completed:`, response.data);
         await fetchAdminData(true);
         alert(`Action "${action}" completed successfully`);
       } else {
@@ -441,7 +441,7 @@ const AdminDashboard: React.FC = () => {
 
     try {
       setRefreshing(true);
-      console.log(`🔄 Executing delete action: ${deleteModal.type}`);
+      console.log(`Executing delete action: ${deleteModal.type}`);
 
       let endpoint = '';
       let method = 'DELETE';
@@ -472,7 +472,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (response.success) {
-        console.log(`✅ Delete action ${deleteModal.type} completed:`, response.data);
+        console.log(`Delete action ${deleteModal.type} completed:`, response.data);
         closeDeleteModal();
         await fetchAdminData(true);
         alert(`${deleteModal.title} completed successfully`);
@@ -497,7 +497,7 @@ const AdminDashboard: React.FC = () => {
 
     try {
       setRefreshing(true);
-      console.log(`🔄 Suspending user ${userId}...`);
+      console.log(`Suspending user ${userId}...`);
 
       const response = await apiRequest(`/api/admin/users/${userId}/suspend`, {
         method: 'POST',
@@ -505,7 +505,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (response.success) {
-        console.log('✅ User suspended successfully:', response.data);
+        console.log('User suspended successfully:', response.data);
         await fetchAdminData(true);
         alert(`User ${user.email} suspended successfully`);
       } else {
@@ -525,7 +525,7 @@ const AdminDashboard: React.FC = () => {
 
     try {
       setRefreshing(true);
-      console.log(`🔄 Unsuspending user ${userId}...`);
+      console.log(`Unsuspending user ${userId}...`);
 
       const response = await apiRequest(`/api/admin/users/${userId}/unsuspend`, {
         method: 'POST',
@@ -533,7 +533,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (response.success) {
-        console.log('✅ User unsuspended successfully:', response.data);
+        console.log('User unsuspended successfully:', response.data);
         await fetchAdminData(true);
         alert(`User ${user.email} unsuspended successfully`);
       } else {
@@ -816,7 +816,7 @@ const AdminDashboard: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      console.log('🎯 ADMIN OVERVIEW ACTIVATED');
+                      console.log('ADMIN OVERVIEW ACTIVATED');
                       setActiveTab('overview');
                       fetchAdminData(true);
                       fetchComprehensiveData();

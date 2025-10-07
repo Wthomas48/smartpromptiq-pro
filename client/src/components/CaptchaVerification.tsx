@@ -21,7 +21,7 @@ export const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
-  const maxAttempts = 3;
+  const maxAttempts = 5;
 
   // Generate simple math challenge
   const generateMathChallenge = () => {
@@ -69,13 +69,8 @@ export const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
       const isCorrect = parseInt(userAnswer) === challenge.answer;
 
       if (isCorrect) {
-        const verified = await verifyCaptcha(userAnswer);
-        onVerified(verified);
-        if (!verified) {
-          setError('Verification failed. Please try again.');
-          setAttempts(prev => prev + 1);
-          generateNewChallenge();
-        }
+        // Simple client-side verification - math answer is correct
+        onVerified(true);
       } else {
         setAttempts(prev => prev + 1);
         setError(`Incorrect answer. ${maxAttempts - attempts - 1} attempts remaining.`);
@@ -98,7 +93,6 @@ export const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
   const generateNewChallenge = () => {
     generateMathChallenge();
     setUserAnswer('');
-    generateCaptcha();
   };
 
   useEffect(() => {

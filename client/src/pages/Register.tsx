@@ -22,6 +22,8 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [userName, setUserName] = useState("");
+  const [submitAttempts, setSubmitAttempts] = useState(0);
+  const [lastSubmitTime, setLastSubmitTime] = useState(0);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -29,7 +31,6 @@ export default function Register() {
   // ✅ FIXED: Redirect authenticated users to dashboard
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      console.log('✅ User already authenticated, redirecting to dashboard');
       setLocation('/dashboard');
     }
   }, [isAuthenticated, authLoading, setLocation]);
@@ -41,8 +42,8 @@ export default function Register() {
     });
   };
 
-  // Simplified password validation - just check length
-  const isPasswordValid = formData.password.length >= 4;
+  // Fixed password validation - match backend requirement
+  const isPasswordValid = formData.password.length >= 6;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,15 +57,39 @@ export default function Register() {
       return;
     }
 
+    // Rate limiting - simple client-side protection (reduced from 3s to 1s)
+    const now = Date.now();
+    if (now - lastSubmitTime < 1000) { // 1 second cooldown
+      setError("Please wait a moment before trying again");
+      setIsLoading(false);
+      return;
+    }
+
+    // Track attempts (increased from 3 to 5 attempts)
+    if (submitAttempts >= 5) {
+      setError("Too many attempts. Please refresh the page and try again");
+      setIsLoading(false);
+      return;
+    }
+
+    setLastSubmitTime(now);
+    setSubmitAttempts(prev => prev + 1);
+
     // Simple validation
-    if (formData.password.length < 4) {
-      setError("Password must be at least 4 characters");
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      setIsLoading(false);
+      return;
+    }
+
+    // Basic email validation
+    if (!formData.email.includes('@') || !formData.email.includes('.')) {
+      setError("Please enter a valid email address");
       setIsLoading(false);
       return;
     }
 
     try {
-      console.log('🔍 Register: Attempting signup with authAPI...');
 
       // Extract name from email for simplicity
       const emailName = formData.email.split('@')[0];
@@ -82,6 +107,10 @@ export default function Register() {
       if (!data.success) {
         throw new Error(data.message || "Registration failed");
       }
+
+      // Reset rate limiting on success
+      setSubmitAttempts(0);
+      setLastSubmitTime(0);
 
       // Show success animation
       setUserName(firstName);
@@ -182,14 +211,30 @@ export default function Register() {
               </Alert>
             )}
 
-            {/* Simplified Registration Message */}
-            <Alert className="border-blue-200 bg-blue-50">
-              <Sparkles className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-700">
-                <strong>🚀 Quick Registration!</strong><br />
-                Just your email and password to get started with SmartPromptIQ.
-              </AlertDescription>
-            </Alert>
+            {/* Status Messages */}
+            {submitAttempts >= 3 ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Too many attempts. Please refresh the page to try again.
+                </AlertDescription>
+              </Alert>
+            ) : submitAttempts > 0 ? (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-700">
+                  Attempt {submitAttempts}/3 - Please wait between attempts for security.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="border-blue-200 bg-blue-50">
+                <Sparkles className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700">
+                  <strong>🚀 Quick Registration!</strong><br />
+                  Just your email and password to get started with SmartPromptIQ.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Hidden honeypot field for bot protection */}
             <input
@@ -232,9 +277,9 @@ export default function Register() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Choose a password (4+ characters)"
+                  placeholder="Choose a password (6+ characters)"
                   required
-                  minLength={4}
+                  minLength={6}
                   value={formData.password}
                   onChange={handleInputChange}
                   disabled={isLoading}
@@ -253,7 +298,7 @@ export default function Register() {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">Minimum 4 characters</p>
+              <p className="text-xs text-gray-500">Minimum 6 characters</p>
             </div>
           </CardContent>
 
@@ -261,7 +306,7 @@ export default function Register() {
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 h-12 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              disabled={isLoading || !isPasswordValid || !formData.email}
+              disabled={isLoading || !isPasswordValid || !formData.email || submitAttempts >= 3}
             >
               {isLoading ? (
                 <div className="flex items-center space-x-2">

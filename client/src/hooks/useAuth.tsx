@@ -49,7 +49,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // ✅ ULTRA-ROBUST: Response normalization function
   const normalizeAuthResponse = (response: any): { token: string; user: any } => {
-    console.log('🔍 Normalizing auth response:', response);
 
     let token: string | null = null;
     let user: any = null;
@@ -68,12 +67,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
            response.data?.userData ||
            response.session?.user;
 
-    console.log('🔍 Extracted from response:', {
-      hasToken: !!token,
-      tokenLength: token?.length,
-      hasUser: !!user,
-      userKeys: user ? Object.keys(user) : []
-    });
 
     if (!token || !user) {
       console.error('❌ Normalization failed:', {
@@ -90,33 +83,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // ✅ NEW: Comprehensive debugging function for user data validation (dev only)
   const debugUserData = (user: any, location: string) => {
     if (import.meta.env.DEV) {
-      console.log(`🔍 User data at ${location}:`, {
-        user,
-        hasUser: !!user,
-        userType: typeof user,
-        hasRole: !!user?.role,
-        roleValue: user?.role,
-        roleType: typeof user?.role,
-        hasRoles: !!user?.roles,
-        rolesValue: user?.roles,
-        rolesType: typeof user?.roles,
-        rolesIsArray: Array.isArray(user?.roles),
-        rolesLength: Array.isArray(user?.roles) ? user.roles.length : 'N/A',
-        hasPermissions: !!user?.permissions,
-        permissionsValue: user?.permissions,
-        permissionsType: typeof user?.permissions,
-        permissionsIsArray: Array.isArray(user?.permissions),
-        permissionsLength: Array.isArray(user?.permissions) ? user.permissions.length : 'N/A',
-        email: user?.email,
-        firstName: user?.firstName,
-        lastName: user?.lastName
-      });
+      // Debug user data in development mode
+      if (import.meta.env.DEV) {
+        console.log(`User data at ${location}:`, {
+          user,
+          hasUser: !!user,
+          userType: typeof user,
+          hasRole: !!user?.role,
+          roleValue: user?.role,
+          roleType: typeof user?.role,
+          hasRoles: !!user?.roles,
+          rolesValue: user?.roles,
+          rolesType: typeof user?.roles,
+          rolesIsArray: Array.isArray(user?.roles),
+          rolesLength: Array.isArray(user?.roles) ? user.roles.length : 'N/A',
+          hasPermissions: !!user?.permissions,
+          permissionsValue: user?.permissions,
+          permissionsType: typeof user?.permissions,
+          permissionsIsArray: Array.isArray(user?.permissions),
+          permissionsLength: Array.isArray(user?.permissions) ? user.permissions.length : 'N/A',
+          email: user?.email,
+          firstName: user?.firstName,
+          lastName: user?.lastName
+        });
+      }
     }
   };
 
   // Environment check on component mount (dev only)
   if (import.meta.env.DEV) {
-    console.log('🔍 AUTH ENV CHECK:', {
+    console.log('AUTH ENV CHECK:', {
       isClient: typeof window !== 'undefined',
       hasLocalStorage: typeof localStorage !== 'undefined',
       currentUrl: typeof window !== 'undefined' ? window.location.href : 'SSR',
@@ -133,14 +129,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // ✅ SUPABASE: First check Supabase session
       try {
         if (import.meta.env.DEV) {
-          console.log('🔍 checkAuth: Checking Supabase session...');
+          console.log('checkAuth: Checking Supabase session...');
         }
         const { supabase } = await import('@/lib/supabase');
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (!error && session?.user) {
           if (import.meta.env.DEV) {
-            console.log('✅ Supabase session found:', session.user);
+            console.log('Supabase session found:', session.user);
           }
 
           const supabaseUser = {
@@ -162,7 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           localStorage.setItem("user", JSON.stringify(supabaseUser));
 
           if (import.meta.env.DEV) {
-            console.log("✅ Authenticated with Supabase session");
+            console.log("Authenticated with Supabase session");
           }
           setIsLoading(false);
           return;
@@ -170,7 +166,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (supabaseError) {
         // Only log in development - this is normal for unauthenticated users
         if (import.meta.env.DEV) {
-          console.log('⚠️ Supabase session check failed (this is normal for unauthenticated users):', supabaseError);
+          console.log('Supabase session check failed (this is normal for unauthenticated users):', supabaseError);
         }
       }
 
@@ -185,7 +181,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           // ✅ ENHANCED: Verify token with backend using authAPI.me
           if (import.meta.env.DEV) {
-            console.log('🔍 checkAuth: Verifying token with backend...');
+            console.log('checkAuth: Verifying token with backend...');
           }
           const data = await authAPI.me();
 
@@ -210,7 +206,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             updateUser(mergedUserData);
 
             if (import.meta.env.DEV) {
-              console.log("✅ User authenticated with merged data:", mergedUserData);
+              console.log("User authenticated with merged data:", mergedUserData);
               debugUserData(mergedUserData, 'checkAuth - AFTER updateUser (merged)');
             }
             return;
@@ -218,13 +214,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch (backendError: any) {
           // Only log in development - this is normal for unauthenticated users
           if (import.meta.env.DEV) {
-            console.log("⚠️ Backend auth check failed (this is normal for unauthenticated users):", backendError);
+            console.log("Backend auth check failed (this is normal for unauthenticated users):", backendError);
           }
 
           // Check if it's an invalid token error
           if (backendError.message && backendError.message.includes('Invalid token')) {
             if (import.meta.env.DEV) {
-              console.log("🧹 Invalid token detected, clearing auth data...");
+              console.log("Invalid token detected, clearing auth data...");
             }
             // Clear invalid token and user data
             localStorage.removeItem("token");
@@ -248,13 +244,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         updateUser(storedUserData);
 
         if (import.meta.env.DEV) {
-          console.log("✅ User authenticated from storage:", storedUserData);
+          console.log("User authenticated from storage:", storedUserData);
           debugUserData(storedUserData, 'checkAuth - AFTER updateUser (stored)');
         }
       } else {
         // Only log in development - this is normal for unauthenticated users on landing page
         if (import.meta.env.DEV) {
-          console.log("ℹ️ No token found - user is not authenticated (this is normal for landing page)");
+          console.log("No token found - user is not authenticated (this is normal for landing page)");
         }
         setIsAuthenticated(false);
         setUser(null);
@@ -263,7 +259,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       // Only log in development - this is normal for unauthenticated users on landing page
       if (import.meta.env.DEV) {
-        console.log("ℹ️ Auth check completed with no authentication (this is normal for landing page):", error);
+        console.log("Auth check completed with no authentication (this is normal for landing page):", error);
       }
       setIsAuthenticated(false);
       setUser(null);
@@ -282,7 +278,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // If we have a token but no user data, or vice versa, clear both
       if ((storedToken && !storedUser) || (!storedToken && storedUser)) {
         if (import.meta.env.DEV) {
-          console.log("🧹 Inconsistent auth data detected, clearing...");
+          console.log("Inconsistent auth data detected, clearing...");
         }
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -295,7 +291,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // If we have both but the token looks invalid (too short, malformed, etc.)
       if (storedToken && storedToken.length < 20) {
         if (import.meta.env.DEV) {
-          console.log("🧹 Invalid token format detected, clearing...");
+          console.log("Invalid token format detected, clearing...");
         }
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -310,70 +306,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, []);
 
-  // ✅ HYBRID: Login using Supabase with backend fallback
+  // ✅ BACKEND ONLY: Login using backend authentication only
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log("🔐 Attempting hybrid login:", { email });
+      console.log("Attempting backend login:", { email });
 
-      // First try Supabase authentication
-      try {
-        const { supabase } = await import('@/lib/supabase');
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-
-        if (!error && data.user && data.session) {
-          console.log('✅ SUPABASE LOGIN SUCCESS:', data);
-
-          const userData = {
-            id: data.user.id,
-            email: data.user.email!,
-            firstName: data.user.user_metadata?.firstName || '',
-            lastName: data.user.user_metadata?.lastName || '',
-            role: (data.user.user_metadata?.role || 'USER') as 'USER' | 'ADMIN',
-            subscriptionTier: data.user.user_metadata?.subscriptionTier || 'free',
-            tokenBalance: data.user.user_metadata?.tokenBalance || 0
-          };
-
-          const authToken = data.session.access_token;
-          localStorage.setItem("token", authToken);
-          localStorage.setItem("user", JSON.stringify(userData));
-
-          setToken(authToken);
-          setIsAuthenticated(true);
-          updateUser(userData);
-
-          toast({
-            title: "Welcome back!",
-            description: `Signed in as ${userData.firstName || userData.email.split('@')[0]}`,
-          });
-
-          setTimeout(() => {
-            if (userData.role === 'ADMIN') {
-              setLocation("/admin");
-            } else {
-              setLocation("/dashboard");
-            }
-          }, 100);
-          return;
-        }
-      } catch (supabaseError: any) {
-        console.warn("⚠️ Supabase login failed, falling back to backend:", supabaseError.message);
-      }
-
-      // Fallback to backend authentication
-      console.log("🔄 Falling back to backend authentication");
+      // Use backend authentication only (Supabase disabled for now)
+      console.log("Using backend authentication");
       const response = await authAPI.login(email, password);
 
-      console.log("🔍 Backend login response:", response);
+      console.log("Backend login response:", response);
 
       if (response.success) {
         // ✅ ULTRA-ROBUST: Use normalization function
         try {
           const { token, user } = normalizeAuthResponse(response);
-          console.log('✅ Login response normalized successfully');
+          console.log('Login response normalized successfully');
 
           localStorage.setItem("token", token);
           localStorage.setItem("user", JSON.stringify(user));
@@ -414,82 +363,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ✅ HYBRID: Signup using Supabase with backend fallback
+  // ✅ BACKEND ONLY: Signup using backend authentication only
   const signup = async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
       setIsLoading(true);
-      console.log("🔐 Attempting hybrid signup:", { email, firstName, lastName });
+      console.log("Attempting backend signup:", { email, firstName, lastName });
 
-      // First try Supabase authentication
-      try {
-        const { supabase } = await import('@/lib/supabase');
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              firstName: firstName || '',
-              lastName: lastName || ''
-            }
-          }
-        });
-
-        if (!error && data.user) {
-          console.log('✅ SUPABASE SIGNUP SUCCESS:', data);
-
-          if (data.session) {
-            // User signed up and was immediately logged in
-            const userData = {
-              id: data.user.id,
-              email: data.user.email!,
-              firstName: firstName || '',
-              lastName: lastName || '',
-              role: (data.user.user_metadata?.role || 'USER') as 'USER' | 'ADMIN',
-              subscriptionTier: data.user.user_metadata?.subscriptionTier || 'free',
-              tokenBalance: data.user.user_metadata?.tokenBalance || 0
-            };
-
-            const authToken = data.session.access_token;
-            localStorage.setItem("token", authToken);
-            localStorage.setItem("user", JSON.stringify(userData));
-
-            setToken(authToken);
-            setIsAuthenticated(true);
-            updateUser(userData);
-
-            toast({
-              title: "Welcome to SmartPromptIQ!",
-              description: `Account created for ${firstName || email.split('@')[0]}! 🎉`,
-            });
-
-            setTimeout(() => {
-              setLocation("/dashboard");
-            }, 100);
-            return;
-          } else {
-            // User needs to verify email first
-            toast({
-              title: "Check your email",
-              description: "Please check your email and click the confirmation link to activate your account.",
-            });
-            return;
-          }
-        }
-      } catch (supabaseError: any) {
-        console.warn("⚠️ Supabase signup failed, falling back to backend:", supabaseError.message);
-      }
-
-      // Fallback to backend authentication
-      console.log("🔄 Falling back to backend registration");
+      // Use backend authentication only (Supabase disabled for now)
+      console.log("Using backend registration");
       const response = await authAPI.register(email, password, firstName, lastName);
 
-      console.log("🔍 Backend register response:", response);
+      console.log("Backend register response:", response);
 
       if (response.success) {
         // ✅ ULTRA-ROBUST: Use normalization function
         try {
           const { token, user } = normalizeAuthResponse(response);
-          console.log('✅ Signup response normalized successfully');
+          console.log('Signup response normalized successfully');
 
           // Create user with fallback values if needed
           const normalizedUser = {
@@ -588,7 +478,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     debugUserData(safeUser, 'updateUser - AFTER processing (safeUser)');
 
-    console.log('🔍 Setting safe user data:', safeUser);
+    console.log('Setting safe user data:', safeUser);
     setUser(safeUser);
     localStorage.setItem("user", JSON.stringify(safeUser));
 
@@ -630,7 +520,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error || !session?.user) {
-        console.log("🧹 No valid Supabase session, clearing auth data...");
+        console.log("No valid Supabase session, clearing auth data...");
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setIsAuthenticated(false);

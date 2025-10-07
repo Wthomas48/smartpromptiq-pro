@@ -186,7 +186,9 @@
       "Bash(start \"\" \"http://localhost:5173/simple-demo\")",
       "Bash(PORT=5000 node backend/src/server.js)",
       "Bash(start \"\" \"http://localhost:5175/simple-demo\")",
-      "Bash(del \"C:\\SmartPromptiq-pro\\client\\src\\pages\\SimpleDemo.tsx\")"
+      "Bash(del \"C:\\SmartPromptiq-pro\\client\\src\\pages\\SimpleDemo.tsx\")",
+      "Bash(start \"\" \"http://localhost:5173/questionnaire/marketing\")",
+      "Bash(start \"\" \"http://localhost:5173/generate\")"
     ],
     "deny": [],
     "ask": []
