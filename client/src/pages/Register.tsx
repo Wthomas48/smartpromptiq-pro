@@ -134,6 +134,19 @@ export default function Register() {
 
       console.log('✅ Validation passed, sending signup request');
 
+      // 📤 DETAILED LOGGING: Log exactly what we're sending to production
+      console.log('📤 Sending registration data:', {
+        email: signupData.email,
+        password: signupData.password ? '[HIDDEN - LENGTH: ' + signupData.password.length + ']' : 'NO PASSWORD',
+        firstName: signupData.firstName,
+        lastName: signupData.lastName,
+        originalFormData: {
+          email: formData.email,
+          password: formData.password ? '[HIDDEN - LENGTH: ' + formData.password.length + ']' : 'NO PASSWORD',
+          honeypot: formData.honeypot ? '[HONEYPOT FILLED]' : '[HONEYPOT EMPTY]'
+        }
+      });
+
       const data = await authAPI.signup(signupData);
 
       console.log('🔍 Register: Signup response:', data);

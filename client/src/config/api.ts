@@ -153,6 +153,8 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       };
 
       const deviceFingerprint = generateDeviceFingerprint();
+      console.log('🔐 Generated device fingerprint:', deviceFingerprint);
+      console.log('🔐 Device fingerprint length:', deviceFingerprint.length);
       options.headers = {
         ...options.headers,
         'X-Device-Fingerprint': deviceFingerprint,
@@ -165,7 +167,24 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       }
     }
 
+    // 📤 PRODUCTION DEBUG: Log final request details
+    console.log('📤 Final API Request Details:', {
+      url: fullUrl,
+      method: options.method,
+      hasAuthToken: options.headers?.['Authorization'] ? 'YES' : 'NO',
+      hasDeviceFingerprint: options.headers?.['X-Device-Fingerprint'] ? 'YES' : 'NO',
+      contentType: options.headers?.['Content-Type'],
+      origin: options.headers?.['Origin'],
+      allHeaders: Object.keys(options.headers || {})
+    });
+
     const response = await fetch(fullUrl, options);
+    console.log('📥 Response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      url: response.url
+    });
     if (import.meta.env.DEV) {
     }
 
@@ -533,6 +552,8 @@ export const demoApiRequest = async (method: string, url: string, body?: any) =>
       };
 
       const deviceFingerprint = generateDeviceFingerprint();
+      console.log('🔐 Generated device fingerprint:', deviceFingerprint);
+      console.log('🔐 Device fingerprint length:', deviceFingerprint.length);
       options.headers = {
         ...options.headers,
         'X-Device-Fingerprint': deviceFingerprint,
