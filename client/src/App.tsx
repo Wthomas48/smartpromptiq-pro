@@ -39,6 +39,7 @@ import Register from "@/pages/Register";
 import AdminLogin from "@/pages/AdminLogin";
 import AuthFormTest from "@/pages/AuthFormTest";
 import StripeKeyManager from "@/pages/StripeKeyManager";
+import { SupabaseSignupTest } from "@/components/SupabaseSignupTest";
 import LogoutPage from "@/pages/LogoutPage";
 import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -91,6 +92,7 @@ function Router() {
         <Route path="/register" component={Register} />
         <Route path="/admin/login" component={AdminLogin} />
         <Route path="/auth-test" component={AuthFormTest} />
+        <Route path="/supabase-test" component={SupabaseSignupTest} />
         <Route path="/admin" component={() => <AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/admin/dashboard" component={() => <AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/stripe-keys" component={StripeKeyManager} />
