@@ -125,40 +125,23 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       };
     }
 
-    // Add device fingerprint for production security
+    // Add simplified browser headers for Railway compatibility
     if (typeof window !== 'undefined') {
-      const generateDeviceFingerprint = (): string => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.textBaseline = 'top';
-          ctx.font = '14px Arial';
-          ctx.fillText('Device fingerprint', 2, 2);
-        }
-
-        const fingerprint = {
-          userAgent: navigator.userAgent,
-          language: navigator.language,
-          screen: `${screen.width}x${screen.height}`,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          platform: navigator.platform,
-          cookieEnabled: navigator.cookieEnabled,
-          canvas: canvas.toDataURL(),
-          timestamp: Date.now()
-        };
-
-        const fingerprintString = JSON.stringify(fingerprint);
-        const hash = btoa(fingerprintString).slice(0, 32);
-        return hash;
+      // Use simple, reliable browser identification instead of complex fingerprinting
+      const browserInfo = {
+        'User-Agent': navigator.userAgent,
+        'Accept-Language': navigator.language,
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-Client-Type': 'browser',
+        'X-Timestamp': Date.now().toString()
       };
 
-      const deviceFingerprint = generateDeviceFingerprint();
-      console.log('🔐 Generated device fingerprint:', deviceFingerprint);
-      console.log('🔐 Device fingerprint length:', deviceFingerprint.length);
       options.headers = {
         ...options.headers,
-        'X-Device-Fingerprint': deviceFingerprint,
+        ...browserInfo
       };
+
+      console.log('🔐 Using simplified browser headers for Railway compatibility');
     }
 
     if (body) {
@@ -407,13 +390,14 @@ export const authAPI = {
     try {
       console.log('📤 CLEAN SIGNUP REQUEST:', JSON.stringify(cleanUserData, null, 2));
 
-      // ✅ PROXY SERVER: Use auth endpoint through proxy server
+      // ✅ RAILWAY COMPATIBLE: Minimal headers to avoid middleware issues
       const response = await fetch(`${getApiBaseUrl()}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // NO Authorization header for registration
-          // NO extra headers that might cause 400 errors
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Client-Type': 'browser'
         },
         body: JSON.stringify(cleanUserData),
       });
@@ -437,9 +421,17 @@ export const authAPI = {
           isEmptyResponse: !data || Object.keys(data).length === 0
         });
 
-        // ✅ RAILWAY SPECIFIC: Handle empty 400 responses from production middleware
-        if (response.status === 400 && (!data || Object.keys(data).length === 0)) {
-          throw new Error('Registration failed - please check that all required fields are filled correctly. Email must be valid and password must be at least 6 characters.');
+        // ✅ RAILWAY SPECIFIC: Handle device fingerprint and middleware errors
+        if (response.status === 400) {
+          const errorMessage = data.message || data.error || '';
+
+          if (errorMessage.includes('Invalid device fingerprint')) {
+            throw new Error('Registration temporarily unavailable. Please try again in a few moments.');
+          }
+
+          if (!data || Object.keys(data).length === 0) {
+            throw new Error('Registration failed - please check that all required fields are filled correctly. Email must be valid and password must be at least 6 characters.');
+          }
         }
 
         throw new Error(data.message || data.error || `HTTP ${response.status}`);
