@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        .error {
+            color: red;
+            background: #ffe6e6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            background: #e6ffe6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .info {
+            color: blue;
+            background: #e6f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Direct Registration API Test</h1>
+    <p>This test uses pure JavaScript with no dependencies.</p>
+    
+    <div>
+        <button class="test-button" onclick="testDirectFetch()">Test 1: Direct Fetch</button>
+        <button class="test-button" onclick="testXMLHttpRequest()">Test 2: XMLHttpRequest</button>
+        <button class="test-button" onclick="testWithProxy()">Test 3: Test with CORS Proxy</button>
+        <button class="test-button" onclick="checkEndpoint()">Test 4: Check Endpoint Exists</button>
+    </div>
+    
+    <div id="output"></div>
+
+    <h3>Manual cURL Command:</h3>
+    <pre id="curl-command"></pre>
+
+    <script>
+        const API_URL = 'https://smartpromptiq.com/api/auth/register';
+        const output = document.getElementById('output');
+        
+        // Generate unique email
+        function getTestEmail() {
+            return `test_${Date.now()}_${Math.random().toString(36).substring(7)}@example.com`;
+        }
+
+        // Show cURL command
+        document.getElementById('curl-command').textContent = `curl -X POST ${API_URL} \\
+  -H "Content-Type: application/json" \\
+  -H "Accept: application/json" \\
+  -d '{"email":"test@example.com","password":"Password123!"}' \\
+  -v`;
+
+        // Test 1: Direct Fetch
+        async function testDirectFetch() {
+            output.innerHTML = '<div class="info">Testing with Fetch API...</div>';
+            
+            const testData = {
+                email: getTestEmail(),
+                password: 'TestPassword123!'
+            };
+
+            try {
+                console.log('Sending:', testData);
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const responseText = await response.text();
+                
+                output.innerHTML += `
+                    <div class="${response.ok ? 'success' : 'error'}">
+                        <strong>Status:</strong> ${response.status} ${response.statusText}<br>
+                        <strong>Response:</strong>
+                        <pre>${responseText}</pre>
+                    </div>
+                `;
+
+                // Log headers
+                const headers = {};
+                response.headers.forEach((value, key) => {
+                    headers[key] = value;
+                });
+                console.log('Response headers:', headers);
+
+            } catch (error) {
+                output.innerHTML += `
+                    <div class="error">
+                        <strong>Fetch Error:</strong> ${error.message}<br>
+                        <em>This might be a CORS issue or network error.</em>
+                    </div>
+                `;
+                console.error('Fetch error:', error);
+            }
+        }
+
+        // Test 2: XMLHttpRequest (older method, sometimes works when fetch doesn't)
+        function testXMLHttpRequest() {
+            output.innerHTML = '<div class="info">Testing with XMLHttpRequest...</div>';
+            
+            const xhr = new XMLHttpRequest();
+            const testData = {
+                email: getTestEmail(),
+                password: 'TestPassword123!'
+            };
+
+            xhr.open('POST', API_URL, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    output.innerHTML += `
+                        <div class="${xhr.status >= 200 && xhr.status < 300 ? 'success' : 'error'}">
+                            <strong>Status:</strong> ${xhr.status} ${xhr.statusText}<br>
+                            <strong>Response:</strong>
+                            <pre>${xhr.responseText || 'No response body'}</pre>
+                        </div>
+                    `;
+
+                    if (xhr.status === 0) {
+                        output.innerHTML += `
+                            <div class="error">
+                                Status 0 usually means:
+                                <ul>
+                                    <li>CORS is blocking the request</li>
+                                    <li>Network error (server unreachable)</li>
+                                    <li>Request was cancelled</li>
+                                </ul>
+                            </div>
+                        `;
+                    }
+                }
+            };
+
+            xhr.onerror = function() {
+                output.innerHTML += '<div class="error">XMLHttpRequest failed - likely CORS or network issue</div>';
+            };
+
+            console.log('Sending XMLHttpRequest:', testData);
+            xhr.send(JSON.stringify(testData));
+        }
+
+        // Test 3: Try with CORS proxy (for testing only)
+        async function testWithProxy() {
+            output.innerHTML = '<div class="info">Testing with CORS proxy...</div>';
+            
+            // Public CORS proxy - DO NOT use in production!
+            const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+            const targetUrl = API_URL;
+            
+            const testData = {
+                email: getTestEmail(),
+                password: 'TestPassword123!'
+            };
+
+            try {
+                const response = await fetch(proxyUrl + targetUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const responseText = await response.text();
+                
+                output.innerHTML += `
+                    <div class="${response.ok ? 'success' : 'error'}">
+                        <strong>Via CORS Proxy - Status:</strong> ${response.status}<br>
+                        <strong>Response:</strong>
+                        <pre>${responseText}</pre>
+                    </div>
+                    <div class="info">
+                        Note: If this works but direct requests don't, it's definitely a CORS issue.
+                    </div>
+                `;
+
+            } catch (error) {
+                output.innerHTML += `
+                    <div class="error">
+                        <strong>Proxy Error:</strong> ${error.message}<br>
+                        <em>The proxy might be down or rate-limited.</em>
+                    </div>
+                `;
+            }
+        }
+
+        // Test 4: Check if endpoint exists
+        async function checkEndpoint() {
+            output.innerHTML = '<div class="info">Checking if endpoint exists...</div>';
+            
+            // Try different methods to see what's available
+            const tests = [
+                { url: 'https://smartpromptiq.com/api', method: 'GET', desc: 'Base API' },
+                { url: 'https://smartpromptiq.com/api/auth', method: 'GET', desc: 'Auth endpoint' },
+                { url: API_URL, method: 'GET', desc: 'Register endpoint (GET)' },
+                { url: API_URL, method: 'OPTIONS', desc: 'Register endpoint (OPTIONS)' },
+            ];
+
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url, {
+                        method: test.method,
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    output.innerHTML += `
+                        <div class="${response.ok ? 'success' : 'error'}">
+                            ${test.desc}: ${response.status} ${response.statusText}
+                        </div>
+                    `;
+
+                } catch (error) {
+                    output.innerHTML += `
+                        <div class="error">
+                            ${test.desc}: Failed - ${error.message}
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Log console message
+        console.log('Direct API Test loaded. Click buttons to test different methods.');
+        console.log('API URL:', API_URL);
+        console.log('If all tests fail with CORS errors, the API needs to add proper CORS headers.');
+    </script>
+</body>
+</html>

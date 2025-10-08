@@ -8,6 +8,7 @@ import path from 'path';
 import { connectDatabase } from './config/database';
 
 import authRoutes from './routes/auth';
+import authProxyRoutes from './routes/authProxy';
 import userRoutes from './routes/users';
 import projectRoutes from './routes/projects';
 import billingRoutes from './routes/billing';
@@ -279,6 +280,7 @@ app.get('/api', (req, res) => {
 
 // Mount API routes
 app.use('/api/auth', authRoutes);
+app.use('/api', authProxyRoutes); // Mount proxy routes at /api/proxy/*
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/billing', billingRoutes);
