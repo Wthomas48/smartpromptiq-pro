@@ -394,25 +394,14 @@ export const authAPI = {
     }
   },
 
-  // Backend register fallback - Production-compatible implementation
+  // Backend register fallback - Railway production compatible
   register: async (email: string, password: string, firstName?: string, lastName?: string) => {
-    // ✅ PRODUCTION MIDDLEWARE COMPATIBLE: Send exactly what production expects
-    const userData = {
-      email: email.trim().toLowerCase(),
-      password: password.trim(), // Trim but don't lowercase passwords
-      firstName: firstName?.trim() || '',  // Always include firstName, even if empty
-      lastName: lastName?.trim() || '',    // Always include lastName, even if empty
-      // Add additional fields that production middleware might expect
-      name: firstName?.trim() || 'User',   // Fallback name field
-      fullName: `${firstName?.trim() || ''} ${lastName?.trim() || ''}`.trim() || 'User'
-    };
-
-    // Remove fields with empty values to avoid validation issues
+    // ✅ RAILWAY PRODUCTION FIX: Based on actual 400 error testing
     const cleanUserData = {
-      email: userData.email,
-      password: userData.password,
-      firstName: userData.firstName || 'User',  // Ensure never empty
-      lastName: userData.lastName || '',        // Can be empty
+      email: email.trim().toLowerCase(),
+      password: password, // Don't trim passwords - can break validation
+      firstName: firstName?.trim() || 'User',  // Railway requires non-empty firstName
+      lastName: lastName?.trim() || ''         // lastName can be empty
     };
 
     try {
@@ -444,8 +433,15 @@ export const authAPI = {
           status: response.status,
           message: data.message || data.error || 'Unknown error',
           errors: data.errors || data.validation || null,
-          fullResponse: data
+          fullResponse: data,
+          isEmptyResponse: !data || Object.keys(data).length === 0
         });
+
+        // ✅ RAILWAY SPECIFIC: Handle empty 400 responses from production middleware
+        if (response.status === 400 && (!data || Object.keys(data).length === 0)) {
+          throw new Error('Registration failed - please check that all required fields are filled correctly. Email must be valid and password must be at least 6 characters.');
+        }
+
         throw new Error(data.message || data.error || `HTTP ${response.status}`);
       }
 
