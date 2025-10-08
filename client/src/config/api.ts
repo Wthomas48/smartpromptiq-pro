@@ -407,8 +407,8 @@ export const authAPI = {
     try {
       console.log('📤 CLEAN SIGNUP REQUEST:', JSON.stringify(cleanUserData, null, 2));
 
-      // ✅ PROXY ENDPOINT: Use auth proxy to bypass Railway middleware issues
-      const response = await fetch(`${getApiBaseUrl()}/api/proxy/register`, {
+      // ✅ PROXY SERVER: Use auth endpoint through proxy server
+      const response = await fetch(`${getApiBaseUrl()}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
