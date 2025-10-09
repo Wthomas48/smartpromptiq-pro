@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { authAPI } from "@/config/api";
+import { useSecurityContext } from "@/components/SecurityProvider";
 import BrainLogo from "@/components/BrainLogo";
 import { Sparkles, Rocket, Crown, Eye, EyeOff, Lock, Mail, User, CheckCircle, AlertCircle } from "lucide-react";
 
@@ -27,6 +28,7 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { deviceFingerprint } = useSecurityContext();
 
   // ✅ FIXED: Redirect authenticated users to dashboard
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function Register() {
   const isPasswordValid = formData.password.length >= 6;
 
   // Client-side validation before API call
-  const validateSignupData = (data: { email: string; password: string; firstName: string; lastName: string }) => {
+  const validateSignupData = (data: { email: string; password: string; firstName: string; lastName: string; deviceFingerprint?: string }) => {
     const errors = [];
 
     if (!data.email || !data.email.includes('@')) {
@@ -59,6 +61,10 @@ export default function Register() {
 
     if (!data.firstName || data.firstName.trim().length === 0) {
       errors.push('First name is required');
+    }
+
+    if (!data.deviceFingerprint || data.deviceFingerprint.length < 10) {
+      errors.push('Security validation failed - please refresh the page and try again');
     }
 
     // lastName is optional in our app, so no validation needed
@@ -121,6 +127,7 @@ export default function Register() {
         password: formData.password, // Don't trim password!
         firstName: firstName.trim(),
         lastName: "", // Optional
+        deviceFingerprint: deviceFingerprint, // Include device fingerprint for Railway
       };
 
       // Validate data before sending

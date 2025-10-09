@@ -320,7 +320,7 @@ export const authAPI = {
   },
 
   // Supabase signup (existing)
-  signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
+  signup: async (userData: { email: string; password: string; firstName?: string; lastName?: string; deviceFingerprint?: string }) => {
     try {
       console.log('🚀 STARTING SIGNUP PROCESS:', { email: userData.email, firstName: userData.firstName });
 
@@ -337,7 +337,7 @@ export const authAPI = {
           console.error('❌ Supabase signup error, falling back to backend:', error);
         }
         // Fallback to backend registration
-        return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
+        return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName, userData.deviceFingerprint);
       }
 
       if (import.meta.env.DEV) {
@@ -348,7 +348,7 @@ export const authAPI = {
         if (import.meta.env.DEV) {
         }
         // Fallback to backend registration for immediate access
-        return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
+        return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName, userData.deviceFingerprint);
       }
 
       // Return in expected format for compatibility
@@ -373,18 +373,19 @@ export const authAPI = {
         console.error('❌ Signup API error, falling back to backend:', error);
       }
       // Final fallback to backend registration
-      return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName);
+      return authAPI.register(userData.email, userData.password, userData.firstName, userData.lastName, userData.deviceFingerprint);
     }
   },
 
   // Backend register fallback - Railway production compatible
-  register: async (email: string, password: string, firstName?: string, lastName?: string) => {
+  register: async (email: string, password: string, firstName?: string, lastName?: string, deviceFingerprint?: string) => {
     // ✅ RAILWAY PRODUCTION FIX: Based on actual 400 error testing
     const cleanUserData = {
       email: email.trim().toLowerCase(),
       password: password, // Don't trim passwords - can break validation
       firstName: firstName?.trim() || 'User',  // Railway requires non-empty firstName
-      lastName: lastName?.trim() || ''         // lastName can be empty
+      lastName: lastName?.trim() || '',        // lastName can be empty
+      deviceFingerprint: deviceFingerprint     // Include device fingerprint for Railway
     };
 
     try {
