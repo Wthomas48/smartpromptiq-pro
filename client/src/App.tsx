@@ -36,6 +36,7 @@ import Settings from "@/pages/Settings";
 import Demo from "@/pages/Demo";
 import SignIn from "@/pages/SignIn";
 import Register from "@/pages/Register";
+import SignUp from "@/pages/SignUp";
 import AdminLogin from "@/pages/AdminLogin";
 import AuthFormTest from "@/pages/AuthFormTest";
 import StripeKeyManager from "@/pages/StripeKeyManager";
@@ -90,6 +91,7 @@ function Router() {
         <Route path="/demo" component={Demo} />
         <Route path="/signin" component={SignIn} />
         <Route path="/register" component={Register} />
+        <Route path="/signup" component={SignUp} />
         <Route path="/admin/login" component={AdminLogin} />
         <Route path="/auth-test" component={AuthFormTest} />
         <Route path="/supabase-test" component={SupabaseSignupTest} />

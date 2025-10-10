@@ -5,20 +5,20 @@ import { apiRequest, authAPI } from "@/config/api";
 import { ensureSafeUser, isValidUser } from "@/utils/safeDataUtils";
 
 interface User {
-  id: string;
+  id: string | number;  // Backend can return number, frontend converts to string
   email: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;    // Required field from backend
+  lastName: string;     // Required field from backend
+  role: string;         // Required field from backend (USER/ADMIN)
+  roles: any[];         // Required array for validation
+  permissions: any[];   // Required array for validation
+  name?: string;        // Computed from firstName + lastName
   profileImageUrl?: string;
   subscriptionTier?: string;
   tokenBalance?: number;
   stripeCustomerId?: string;
   subscriptionStatus?: string;
-  role?: 'USER' | 'ADMIN';
   plan?: string;
-  name?: string;
-  roles?: any[];
-  permissions?: any[];
 }
 
 interface AuthContextType {
@@ -454,6 +454,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // ✅ ENHANCED: Centralized user data update using safe utilities
   const updateUser = (userData: any) => {
+    console.log('🔍 === UPDATE USER DEBUG START ===');
+    console.log('🔍 Received user data:', userData);
+    console.log('🔍 User data type:', typeof userData);
+    console.log('🔍 User data keys:', userData ? Object.keys(userData) : 'N/A');
+    console.log('🔍 User data JSON:', JSON.stringify(userData, null, 2));
+
     debugUserData(userData, 'updateUser - BEFORE processing');
 
     if (!userData) {
@@ -465,26 +471,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // ✅ USE SAFE UTILITY: Ensure safe data structure with comprehensive validation
     const safeUser = ensureSafeUser(userData);
 
+    console.log('🔍 SafeUser result:', safeUser);
+    console.log('🔍 SafeUser type:', typeof safeUser);
+    console.log('🔍 SafeUser keys:', safeUser ? Object.keys(safeUser) : 'N/A');
+
     if (!safeUser) {
       console.error('❌ updateUser: ensureSafeUser returned null');
+      console.log('🔍 ensureSafeUser returned null - stopping here');
       return;
     }
 
     // ✅ VALIDATE: Ensure the user object is valid
-    if (!isValidUser(safeUser)) {
+    console.log('🔍 Checking isValidUser...');
+    console.log('🔍 safeUser.id:', safeUser.id, '(type:', typeof safeUser.id, ')');
+    console.log('🔍 safeUser.email:', safeUser.email, '(type:', typeof safeUser.email, ')');
+    console.log('🔍 safeUser.role:', safeUser.role, '(type:', typeof safeUser.role, ')');
+    console.log('🔍 safeUser.roles:', safeUser.roles, '(isArray:', Array.isArray(safeUser.roles), ')');
+    console.log('🔍 safeUser.permissions:', safeUser.permissions, '(isArray:', Array.isArray(safeUser.permissions), ')');
+
+    const validationResult = isValidUser(safeUser);
+    console.log('🔍 isValidUser result:', validationResult);
+
+    if (!validationResult) {
       console.error('❌ updateUser: Invalid user object after safety processing:', safeUser);
+      console.log('🔍 Validation failed - stopping here');
       return;
     }
 
     debugUserData(safeUser, 'updateUser - AFTER processing (safeUser)');
 
-    console.log('Setting safe user data:', safeUser);
+    console.log('🔍 Setting safe user data:', safeUser);
     setUser(safeUser);
     localStorage.setItem("user", JSON.stringify(safeUser));
+
+    console.log('🔍 === UPDATE USER SUCCESS ===');
+    console.log('🔍 User state updated successfully');
 
     // Debug the state immediately after setting
     setTimeout(() => {
       debugUserData(safeUser, 'updateUser - AFTER setState (immediate)');
+      console.log('🔍 === UPDATE USER DEBUG END ===');
     }, 0);
   };
 

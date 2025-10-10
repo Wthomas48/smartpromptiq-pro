@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Eye, EyeOff, Lock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import Logo from "@/components/Logo";
 
 export default function AdminLogin() {
@@ -29,8 +29,16 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
-      // Use the proper authentication API for admin login
-      const response = await fetch('/api/auth/login', {
+      console.log('🔐 Admin login attempt:', { email: credentials.email });
+
+      // Use the API configuration to get the correct backend URL
+      const { getApiBaseUrl } = await import('@/config/api');
+      const apiBaseUrl = getApiBaseUrl();
+      const fullUrl = `${apiBaseUrl}/api/auth/login`;
+
+      console.log('🔍 Admin login URL:', fullUrl);
+
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -39,14 +47,16 @@ export default function AdminLogin() {
         body: JSON.stringify({
           email: credentials.email,
           password: credentials.password,
-          isAdminLogin: true  // Flag to indicate this is admin login
+          isAdminLogin: true
         })
       });
 
-      // Check if response has content before parsing JSON
-      const responseText = await response.text();
       console.log('🔍 Response status:', response.status);
-      console.log('🔍 Response text:', responseText);
+      console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      // Handle empty response
+      const responseText = await response.text();
+      console.log('🔍 Raw response:', responseText);
 
       if (!responseText) {
         throw new Error('Empty response from server');
@@ -57,60 +67,44 @@ export default function AdminLogin() {
         data = JSON.parse(responseText);
       } catch (parseError) {
         console.error('🔍 JSON parse error:', parseError);
-        throw new Error('Invalid JSON response from server');
+        console.error('🔍 Response text:', responseText);
+        throw new Error('Invalid response from server');
       }
 
-      if (response.ok && data.success) {
-        // Check if user has admin role
-        if (data.data.user.role === 'ADMIN') {
-          // Store token and user data
-          localStorage.setItem('token', data.data.token);
-          localStorage.setItem('user', JSON.stringify(data.data.user));
+      console.log('🔍 Parsed response:', data);
 
-          toast({
-            title: "Admin Access Granted",
-            description: "Welcome back, Administrator!",
-          });
-
-          // Force immediate redirect to admin dashboard
-          console.log('🚀 Admin login successful, redirecting to /admin');
-          setLocation('/admin');
-
-          // Update auth context after redirect to prevent useAuth from overriding
-          setTimeout(() => {
-            checkAuth();
-          }, 100);
-        } else {
-          toast({
-            title: "Access Denied",
-            description: "Admin role required.",
-            variant: "destructive"
-          });
-        }
-      } else {
-        toast({
-          title: "Access Denied",
-          description: data.message || "Invalid credentials.",
-          variant: "destructive"
-        });
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Login failed');
       }
-    } catch (error) {
+
+      // Check if user has admin role
+      if (data.data.user.role !== 'ADMIN') {
+        throw new Error('Admin role required');
+      }
+
+      // Store authentication data
+      localStorage.setItem('token', data.data.token);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
+
+      // Update auth context
+      await checkAuth();
+
+      toast({
+        title: "Admin Access Granted",
+        description: "Welcome back, Administrator!",
+      });
+
+      // Redirect to admin dashboard
+      console.log('🚀 Admin login successful, redirecting to /admin');
+      setLocation('/admin');
+    } catch (error: any) {
       console.error('Admin login error:', error);
 
-      // Check if the user was authenticated but doesn't have admin role
-      if (isAuthenticated && user && user.role !== 'ADMIN') {
-        toast({
-          title: "Access Denied",
-          description: "Admin role required.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to verify admin credentials.",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Access Denied",
+        description: error.message || "Invalid admin credentials.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }

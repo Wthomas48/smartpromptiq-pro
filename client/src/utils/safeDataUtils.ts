@@ -72,8 +72,8 @@ export const ensureSafeUser = (userData: any) => {
 
   // ✅ FIXED: Create safe user object without overwriting response properties
   const safeUser = {
-    // Core user properties with fallbacks
-    id: userData?.id || 'demo-user',
+    // Core user properties with fallbacks - convert ID to string if needed
+    id: userData?.id ? String(userData.id) : 'demo-user',
     email: userData?.email || '',
     firstName: userData?.firstName || '',
     lastName: userData?.lastName || '',
@@ -161,13 +161,29 @@ export const isValidArray = (value: any): value is any[] => {
 
 // ✅ Type guard for safe user objects
 export const isValidUser = (value: any): boolean => {
-  return value &&
-         typeof value === 'object' &&
-         typeof value.id === 'string' &&
-         typeof value.email === 'string' &&
-         (typeof value.role === 'string' || value.role === null || value.role === undefined) &&
-         Array.isArray(value.roles) &&
-         Array.isArray(value.permissions);
+  const checks = {
+    exists: !!value,
+    isObject: typeof value === 'object',
+    hasId: typeof value.id === 'string',
+    hasEmail: typeof value.email === 'string',
+    hasRole: (typeof value.role === 'string' || value.role === null || value.role === undefined),
+    hasRoles: Array.isArray(value.roles),
+    hasPermissions: Array.isArray(value.permissions)
+  };
+
+  console.log('🔍 isValidUser validation checks:', {
+    value,
+    checks,
+    failedChecks: Object.entries(checks).filter(([key, passed]) => !passed)
+  });
+
+  return checks.exists &&
+         checks.isObject &&
+         checks.hasId &&
+         checks.hasEmail &&
+         checks.hasRole &&
+         checks.hasRoles &&
+         checks.hasPermissions;
 };
 
 export default {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { apiRequest as originalApiRequest } from '@/config/api';
 
 // Simple wrapper to handle the API calls correctly
@@ -544,6 +544,196 @@ const AdminDashboard: React.FC = () => {
       alert(`Error: ${error.message || 'Unknown error'}`);
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  // Delete user handlers
+  const handleDeleteUser = async (userId: string, user: any, permanent: boolean = false) => {
+    const action = permanent ? 'permanently delete' : 'delete';
+    const confirmMessage = permanent
+      ? `Are you sure you want to PERMANENTLY delete user ${user.email}?\n\nThis action CANNOT be undone and will remove all user data permanently.`
+      : `Are you sure you want to delete user ${user.email}?\n\nThis will soft delete the user (can be restored later).`;
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      setRefreshing(true);
+      console.log(`${action} user:`, { userId, email: user.email, permanent });
+
+      const queryParam = permanent ? '?permanently=true' : '';
+      const response = await apiRequest(`/api/admin/users/${userId}${queryParam}`, {
+        method: 'DELETE'
+      });
+
+      if (response.success) {
+        console.log(`User ${action} completed:`, response);
+        await fetchAdminData(true);
+        alert(`User ${user.email} ${action}d successfully`);
+      } else {
+        throw new Error(response.message || `${action} failed`);
+      }
+    } catch (error: any) {
+      console.error(`❌ Error ${action}ing user:`, error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleRestoreUser = async (userId: string, user: any) => {
+    if (!confirm(`Are you sure you want to restore user ${user.email}?`)) return;
+
+    try {
+      setRefreshing(true);
+      console.log('Restore user:', { userId, email: user.email });
+
+      const response = await apiRequest(`/api/admin/users/${userId}/restore`, {
+        method: 'POST'
+      });
+
+      if (response.success) {
+        console.log('User restore completed:', response);
+        await fetchAdminData(true);
+        alert(`User ${user.email} restored successfully`);
+      } else {
+        throw new Error(response.message || 'Restore failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error restoring user:', error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Bulk actions for user management
+  const handleBulkUserAction = async (userIds: string[], action: string) => {
+    if (userIds.length === 0) {
+      alert('Please select users first');
+      return;
+    }
+
+    let confirmMessage = '';
+    switch (action) {
+      case 'delete':
+        confirmMessage = `Are you sure you want to delete ${userIds.length} users?`;
+        break;
+      case 'permanent_delete':
+        confirmMessage = `Are you sure you want to PERMANENTLY delete ${userIds.length} users?\n\nThis action CANNOT be undone!`;
+        break;
+      case 'suspend':
+        confirmMessage = `Are you sure you want to suspend ${userIds.length} users?`;
+        break;
+      case 'unsuspend':
+        confirmMessage = `Are you sure you want to unsuspend ${userIds.length} users?`;
+        break;
+      default:
+        confirmMessage = `Are you sure you want to perform "${action}" on ${userIds.length} users?`;
+    }
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      setRefreshing(true);
+      console.log('Bulk user action:', { userIds, action });
+
+      const response = await apiRequest('/api/admin/users/bulk', {
+        method: 'DELETE',
+        body: { userIds, action }
+      });
+
+      if (response.success) {
+        console.log('Bulk action completed:', response);
+        await fetchAdminData(true);
+        alert(response.message);
+      } else {
+        throw new Error(response.message || 'Bulk action failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error in bulk action:', error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Cleanup functions
+  const handleCleanupInactiveUsers = async (days: number = 90) => {
+    const confirmMessage = `Are you sure you want to cleanup users inactive for ${days} days?\n\nThis will permanently delete inactive user accounts.`;
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      setRefreshing(true);
+      console.log('Cleanup inactive users:', { days });
+
+      const response = await apiRequest('/api/admin/cleanup/inactive-users', {
+        method: 'POST',
+        body: { days }
+      });
+
+      if (response.success) {
+        console.log('Cleanup completed:', response);
+        await fetchAdminData(true);
+        alert(response.message);
+      } else {
+        throw new Error(response.message || 'Cleanup failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error in cleanup:', error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleCleanupTempData = async () => {
+    if (!confirm('Are you sure you want to cleanup temporary data?\n\nThis will clear temporary files, expired sessions, old logs, and cache.')) return;
+
+    try {
+      setRefreshing(true);
+      console.log('Cleanup temporary data');
+
+      const response = await apiRequest('/api/admin/cleanup/temp-data', {
+        method: 'POST'
+      });
+
+      if (response.success) {
+        console.log('Temp data cleanup completed:', response);
+        alert(`${response.message}\n\nCleaned: ${response.cleanup.tempFiles} files, ${response.cleanup.sessions} sessions, ${response.cleanup.logs} logs, ${response.cleanup.cache} cache entries`);
+      } else {
+        throw new Error(response.message || 'Cleanup failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error in temp cleanup:', error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // User settings and view handlers
+  const handleViewUser = (userId: string, user: any) => {
+    const userInfo = `
+User Details:
+ID: ${userId}
+Name: ${user.firstName} ${user.lastName}
+Email: ${user.email}
+Role: ${user.role}
+Status: ${user.status}
+Tokens: ${user.tokenBalance || 0}
+Total Spent: ${formatCurrency((user.totalSpent || 0) * 100)}
+Subscription: ${user.subscriptionTier || 'Free'}
+Created: ${formatDate(user.createdAt)}
+    `;
+    alert(userInfo);
+  };
+
+  const handleUserSettings = (userId: string, user: any) => {
+    const newRole = prompt(`Change role for ${user.email}?\nCurrent: ${user.role}\nEnter new role (USER/ADMIN):`, user.role);
+    if (newRole && (newRole === 'USER' || newRole === 'ADMIN')) {
+      alert(`Role changed to ${newRole} for ${user.email}\n(In a real app, this would update the database)`);
+    } else if (newRole) {
+      alert('Invalid role. Please enter USER or ADMIN');
     }
   };
 
@@ -1248,7 +1438,7 @@ const AdminDashboard: React.FC = () => {
 
         {/* Enhanced Tabs with All Monitoring Features */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-8 bg-white rounded-xl shadow-lg border border-gray-200/50 p-2 gap-1">
+          <TabsList className="grid w-full grid-cols-9 bg-white rounded-xl shadow-lg border border-gray-200/50 p-2 gap-1">
             <TabsTrigger
               value="overview"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
@@ -1262,6 +1452,13 @@ const AdminDashboard: React.FC = () => {
             >
               <Users className="mr-1" size={14} />
               Users
+            </TabsTrigger>
+            <TabsTrigger
+              value="deleted"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <Trash2 className="mr-1" size={14} />
+              Deleted
             </TabsTrigger>
             <TabsTrigger
               value="payments"
@@ -1526,12 +1723,22 @@ const AdminDashboard: React.FC = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openDeleteModal('user', user)}
+                              onClick={() => handleDeleteUser(user.id, user, false)}
                               disabled={refreshing}
                               className="text-red-600 hover:text-red-800"
-                              title="Delete User"
+                              title="Delete User (Soft Delete)"
                             >
                               <Trash2 size={12} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteUser(user.id, user, true)}
+                              disabled={refreshing}
+                              className="text-red-800 hover:text-red-900 border-red-300"
+                              title="Permanently Delete User"
+                            >
+                              <XCircle size={12} />
                             </Button>
                           </div>
                         </div>
@@ -1596,10 +1803,76 @@ const AdminDashboard: React.FC = () => {
           <TabsContent value="users" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>Manage and monitor user accounts</CardDescription>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>User Management</CardTitle>
+                    <CardDescription>Manage and monitor user accounts</CardDescription>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCleanupInactiveUsers(90)}
+                      disabled={refreshing}
+                      className="text-orange-600 hover:text-orange-800"
+                      title="Cleanup users inactive for 90+ days"
+                    >
+                      <Database size={14} className="mr-1" />
+                      Cleanup (90d)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCleanupTempData()}
+                      disabled={refreshing}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Cleanup temporary data and cache"
+                    >
+                      <Zap size={14} className="mr-1" />
+                      Clear Cache
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const userIds = ['1', '2', '3']; // Demo with first 3 users
+                        handleBulkUserAction(userIds, 'delete');
+                      }}
+                      disabled={refreshing}
+                      className="text-red-600 hover:text-red-800"
+                      title="Bulk delete first 3 users (Demo)"
+                    >
+                      <Trash2 size={14} className="mr-1" />
+                      Demo Bulk Delete
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const userIds = ['4', '5', '6']; // Demo with next 3 users
+                        handleBulkUserAction(userIds, 'suspend');
+                      }}
+                      disabled={refreshing}
+                      className="text-yellow-600 hover:text-yellow-800"
+                      title="Bulk suspend users 4-6 (Demo)"
+                    >
+                      <UserX size={14} className="mr-1" />
+                      Demo Bulk Suspend
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium">💡 User Action Guide:</p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    <span className="inline-block w-3 h-3 bg-blue-500 rounded-full mr-1"></span>View •
+                    <span className="inline-block w-3 h-3 bg-gray-500 rounded-full mr-1 ml-2"></span>Settings •
+                    <span className="inline-block w-3 h-3 bg-yellow-500 rounded-full mr-1 ml-2"></span>Suspend •
+                    <span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-1 ml-2"></span>Soft Delete •
+                    <span className="inline-block w-3 h-3 bg-red-800 rounded-full mr-1 ml-2"></span>Permanent Delete
+                  </p>
+                </div>
                 <div className="space-y-4">
                   {users.map((user) => (
                     <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -1626,13 +1899,142 @@ const AdminDashboard: React.FC = () => {
                           <span>Joined: {formatDate(user.createdAt)}</span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Eye size={16} />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Settings size={16} />
-                        </Button>
+                      <div className="flex items-center space-x-2">
+                        <Badge className={user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          {user.status}
+                        </Badge>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewUser(user.id, user)}
+                            disabled={refreshing}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="View User Details"
+                          >
+                            <Eye size={12} />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUserSettings(user.id, user)}
+                            disabled={refreshing}
+                            className="text-gray-600 hover:text-gray-800"
+                            title="User Settings"
+                          >
+                            <Settings size={12} />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSuspendUser(user.id, user)}
+                            disabled={refreshing}
+                            className="text-yellow-600 hover:text-yellow-800"
+                            title="Suspend User"
+                          >
+                            <UserX size={12} />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id, user, false)}
+                            disabled={refreshing}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete User (Soft Delete)"
+                          >
+                            <Trash2 size={12} />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id, user, true)}
+                            disabled={refreshing}
+                            className="text-red-800 hover:text-red-900 border-red-300"
+                            title="Permanently Delete User"
+                          >
+                            <XCircle size={12} />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="deleted" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>Deleted Users</CardTitle>
+                    <CardDescription>Manage and restore deleted user accounts</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchAdminData(true)}
+                      disabled={refreshing}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Refresh deleted users list"
+                    >
+                      <RefreshCw size={14} className="mr-1" />
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Mock deleted users data for demonstration */}
+                  {Array.from({ length: 5 }, (_, i) => ({
+                    id: 2000 + i,
+                    email: `deleted${i + 1}@example.com`,
+                    firstName: `Deleted`,
+                    lastName: `User ${i + 1}`,
+                    role: 'USER',
+                    status: 'deleted',
+                    deletedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString()
+                  })).map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg bg-red-50 border-red-200">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                          <UserX className="text-red-600" size={20} />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{user.firstName} {user.lastName}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="text-xs text-red-600">Deleted: {formatDate(user.deletedAt)}</div>
+                          <div className="text-xs text-gray-400">Created: {formatDate(user.createdAt)}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="destructive">Deleted</Badge>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRestoreUser(user.id, user)}
+                            disabled={refreshing}
+                            className="text-green-600 hover:text-green-800"
+                            title="Restore User"
+                          >
+                            <CheckCircle size={12} />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id, user, true)}
+                            disabled={refreshing}
+                            className="text-red-800 hover:text-red-900 border-red-300"
+                            title="Permanently Delete User"
+                          >
+                            <XCircle size={12} />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}

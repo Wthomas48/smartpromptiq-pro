@@ -296,18 +296,21 @@ export const authAPI = {
   },
 
   // Backend login fallback
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, options?: { isAdminLogin?: boolean }) => {
     try {
       if (import.meta.env.DEV) {
+        console.log('🔐 Backend login request:', { email, isAdminLogin: options?.isAdminLogin });
       }
 
       const response = await apiRequest('POST', '/api/auth/login', {
         email,
-        password
+        password,
+        isAdminLogin: options?.isAdminLogin || false
       });
 
       const result = await response.json();
       if (import.meta.env.DEV) {
+        console.log('🔐 Backend login response:', result);
       }
 
       return result;
@@ -377,29 +380,50 @@ export const authAPI = {
     }
   },
 
-  // Backend register fallback - Railway production compatible
+  // Backend register fallback - Use new fingerprint system
   register: async (email: string, password: string, firstName?: string, lastName?: string, deviceFingerprint?: string) => {
-    // ✅ RAILWAY PRODUCTION FIX: Based on actual 400 error testing
+    console.log('📤 RAW REGISTER PARAMS:', { email, password: '***', firstName, lastName, deviceFingerprint });
+
+    // Import the new fingerprint system
+    const { getFingerprint } = await import('../lib/fingerprint');
+
+    // Generate device fingerprint using new system
+    let fingerprint = deviceFingerprint;
+    try {
+      fingerprint = await getFingerprint();
+      console.log('🔐 Generated new v1 fingerprint:', fingerprint);
+    } catch (error) {
+      console.warn('⚠️ Failed to generate fingerprint:', error);
+      fingerprint = null;
+    }
+
     const cleanUserData = {
       email: email.trim().toLowerCase(),
-      password: password, // Don't trim passwords - can break validation
-      firstName: firstName?.trim() || 'User',  // Railway requires non-empty firstName
-      lastName: lastName?.trim() || '',        // lastName can be empty
-      deviceFingerprint: deviceFingerprint     // Include device fingerprint for Railway
+      password: password,
+      firstName: firstName?.trim() || 'User',
+      lastName: lastName?.trim() || ''
     };
 
     try {
       console.log('📤 CLEAN SIGNUP REQUEST:', JSON.stringify(cleanUserData, null, 2));
 
-      // ✅ RAILWAY COMPATIBLE: Minimal headers to avoid middleware issues
+      // Use new API client with fingerprint support
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-Client-Type': 'browser'
+      };
+
+      // Add fingerprint header if available
+      if (fingerprint) {
+        headers['X-Device-Fingerprint'] = fingerprint;
+      }
+
       const response = await fetch(`${getApiBaseUrl()}/api/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-Client-Type': 'browser'
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify(cleanUserData),
       });
 
@@ -413,6 +437,36 @@ export const authAPI = {
       // Check if response has error details
       const data = await response.json();
 
+      // One-time retry on fingerprint error
+      if (!response.ok && response.status === 400 &&
+          (data.message || '').includes('Invalid device fingerprint')) {
+        console.warn('🔄 Retrying registration with new fingerprint...');
+
+        // Clear cached fingerprint and generate new one
+        localStorage.removeItem('spiq_fp_v1');
+        const newFingerprint = await getFingerprint();
+
+        const retryHeaders = { ...headers };
+        retryHeaders['X-Device-Fingerprint'] = newFingerprint;
+
+        const retryResponse = await fetch(`${getApiBaseUrl()}/api/auth/register`, {
+          method: 'POST',
+          headers: retryHeaders,
+          credentials: 'include',
+          body: JSON.stringify(cleanUserData),
+        });
+
+        const retryData = await retryResponse.json();
+
+        if (!retryResponse.ok) {
+          console.error('📥 Retry also failed:', retryData);
+          throw new Error(retryData.message || 'Registration failed after retry');
+        }
+
+        console.log('📥 Retry Registration Success:', retryData);
+        return authAPI.transformRegistrationResponse(retryData);
+      }
+
       if (!response.ok) {
         console.error('📥 Registration failed:', {
           status: response.status,
@@ -422,29 +476,49 @@ export const authAPI = {
           isEmptyResponse: !data || Object.keys(data).length === 0
         });
 
-        // ✅ RAILWAY SPECIFIC: Handle device fingerprint and middleware errors
-        if (response.status === 400) {
-          const errorMessage = data.message || data.error || '';
-
-          if (errorMessage.includes('Invalid device fingerprint')) {
-            throw new Error('Registration temporarily unavailable. Please try again in a few moments.');
-          }
-
-          if (!data || Object.keys(data).length === 0) {
-            throw new Error('Registration failed - please check that all required fields are filled correctly. Email must be valid and password must be at least 6 characters.');
-          }
-        }
-
         throw new Error(data.message || data.error || `HTTP ${response.status}`);
       }
 
       console.log('📥 Registration Success:', data);
-      return data;
+      return authAPI.transformRegistrationResponse(data);
 
     } catch (error) {
       console.error('❌ Register request failed:', error);
       throw error;
     }
+  },
+
+  // Transform registration response to consistent format
+  transformRegistrationResponse: (data: any) => {
+    // ✅ TRANSFORM: Ensure response structure matches frontend expectations
+    if (data && data.data && data.data.user) {
+      // Transform the user object to ensure consistency
+      const transformedUser = {
+        id: String(data.data.user.id), // Ensure ID is string
+        email: data.data.user.email,
+        firstName: data.data.user.firstName || '',
+        lastName: data.data.user.lastName || '',
+        name: data.data.user.name || `${data.data.user.firstName || ''} ${data.data.user.lastName || ''}`.trim(),
+        role: data.data.user.role || 'USER',
+        roles: Array.isArray(data.data.user.roles) ? data.data.user.roles : [],
+        permissions: Array.isArray(data.data.user.permissions) ? data.data.user.permissions : [],
+        subscriptionTier: data.data.user.subscriptionTier || 'free',
+        tokenBalance: data.data.user.tokenBalance || 0
+      };
+
+      console.log('📥 Transformed User:', transformedUser);
+
+      return {
+        success: data.success,
+        message: data.message,
+        data: {
+          user: transformedUser,
+          token: data.data.token
+        }
+      };
+    }
+
+    return data;
   },
 
   me: async () => {
