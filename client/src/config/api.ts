@@ -28,16 +28,21 @@ const config = {
 
 // Determine the API base URL based on environment with enhanced validation
 export const getApiBaseUrl = (): string => {
-  // ✅ SIMPLE AND RELIABLE ROUTING
+  // ✅ FORCE LOCAL API FOR ALL DEVELOPMENT
+  const isDev = import.meta.env.DEV || import.meta.env.VITE_API_URL;
+  const forceLocal = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  if (isDev) {
+    console.log('🔧 DEV MODE: Using local API:', forceLocal);
+    return forceLocal;
+  }
+
   const currentUrl = typeof window !== 'undefined' ? window.location : null;
 
-
-  // ✅ LOCALHOST DEVELOPMENT: Only when specifically on localhost dev ports
-  if (currentUrl &&
-      currentUrl.hostname === 'localhost' &&
-      (currentUrl.port === '5173' || currentUrl.port === '5174' || currentUrl.port === '5175' || currentUrl.port === '5178' || currentUrl.port === '5179')) {
+  // ✅ FORCE LOCAL DEVELOPMENT: Always use local server when on localhost
+  if (currentUrl && currentUrl.hostname === 'localhost') {
     const localApi = 'http://localhost:5000';
-    console.log('🔧 DEV MODE: Using local server:', localApi);
+    console.log('🔧 DEV MODE: Force using local server:', localApi);
     return localApi;
   }
 
