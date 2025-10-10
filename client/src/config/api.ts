@@ -37,6 +37,7 @@ export const getApiBaseUrl = (): string => {
       currentUrl.hostname === 'localhost' &&
       (currentUrl.port === '5173' || currentUrl.port === '5174' || currentUrl.port === '5175' || currentUrl.port === '5178' || currentUrl.port === '5179')) {
     const localApi = 'http://localhost:5000';
+    console.log('🔧 DEV MODE: Using local server:', localApi);
     return localApi;
   }
 
