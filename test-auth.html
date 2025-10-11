@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth API Test</title>
+</head>
+<body>
+    <h1>Auth API Test</h1>
+    <button onclick="testFetch()">Test with Fetch API</button>
+    <button onclick="testXHR()">Test with XMLHttpRequest</button>
+    <div id="result"></div>
+
+    <script>
+        async function testFetch() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing with Fetch API...';
+
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'Password123!',
+                        firstName: 'Test',
+                        lastName: 'User'
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Fetch API Response:', data);
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <h2>FETCH SUCCESS!</h2>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<h2>FETCH ERROR:</h2><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                resultDiv.innerHTML = `<h2>FETCH ERROR:</h2><pre>${error.message}</pre><p>This might be a CORS issue or network error.</p>`;
+            }
+        }
+
+        function testXHR() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing with XMLHttpRequest...';
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'http://localhost:5000/api/auth/register', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    console.log('XHR Status:', xhr.status);
+                    console.log('XHR Response:', xhr.responseText);
+
+                    if (xhr.status === 201 || xhr.status === 200) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            resultDiv.innerHTML = `
+                                <h2>XHR SUCCESS!</h2>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            `;
+                        } catch (e) {
+                            resultDiv.innerHTML = `<h2>XHR Parse Error:</h2><pre>${xhr.responseText}</pre>`;
+                        }
+                    } else {
+                        resultDiv.innerHTML = `
+                            <h2>XHR ERROR:</h2>
+                            <p>Status: ${xhr.status}</p>
+                            <p>Response:</p>
+                            <pre>${xhr.responseText || 'No response body'}</pre>
+                            <p>Status 0 usually means:</p>
+                            <ul>
+                                <li>CORS is blocking the request</li>
+                                <li>Network error (server unreachable)</li>
+                                <li>Request was cancelled</li>
+                            </ul>
+                        `;
+                    }
+                }
+            };
+
+            xhr.onerror = function() {
+                console.error('XHR Network Error');
+                resultDiv.innerHTML = '<h2>XHR Network Error</h2><p>XMLHttpRequest failed - likely CORS or network issue</p>';
+            };
+
+            const requestData = JSON.stringify({
+                email: 'test@example.com',
+                password: 'Password123!',
+                firstName: 'Test',
+                lastName: 'User'
+            });
+
+            xhr.send(requestData);
+        }
+    </script>
+</body>
+</html>

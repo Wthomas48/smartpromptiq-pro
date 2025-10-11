@@ -1,5 +1,6 @@
 // middleware/rateLimiter.cjs
 const { rateLimit, MemoryStore } = require('express-rate-limit');
+const { getClientIp } = require('../utils/clientIp.cjs');
 
 // Initialize Redis connection if available
 let redis;
@@ -111,12 +112,27 @@ const createRateLimiter = (tier = 'free', customConfig = {}) => {
     max: config.max,
     standardHeaders: config.standardHeaders,
     legacyHeaders: config.legacyHeaders,
+
+    // KEY FIX: Use real client IP for rate limiting
+    keyGenerator: (req) => {
+      const clientIP = getClientIp(req);
+      console.log(`🔍 Rate limiting key for ${tier}: ${clientIP} (was: ${req.ip})`);
+      return clientIP;
+    },
+
+    // SILENCE the ERL validation warning about X-Forwarded-For
+    validate: {
+      trustProxy: false, // Disable validation since we handle proxy manually
+      xForwardedForHeader: false
+    },
+
     handler: (req, res) => {
       const retryAfter = Math.ceil(config.windowMs / 1000);
       const now = new Date();
       const resetTime = new Date(now.getTime() + config.windowMs);
+      const clientIP = getClientIp(req);
 
-      console.log(`🚫 Rate limit exceeded for ${req.ip} on tier ${tier}`);
+      console.log(`🚫 Rate limit exceeded for ${clientIP} on tier ${tier}`);
 
       res.status(429).json({
         error: config.message,
@@ -134,13 +150,12 @@ const createRateLimiter = (tier = 'free', customConfig = {}) => {
       }
 
       // Skip for health checks and options requests
-      if (req.path === '/health' || req.method === 'OPTIONS') {
+      if (req.path === '/health' || req.path === '/api/health' || req.method === 'OPTIONS') {
         return true;
       }
 
       return false;
     }
-    // Removed onLimitReached as it's deprecated
   });
 };
 
@@ -164,15 +179,21 @@ const ipRateLimiter = rateLimit({
   max: 100, // 100 requests per minute per IP
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getClientIp,
+  validate: {
+    trustProxy: false,
+    xForwardedForHeader: false
+  },
   handler: (req, res) => {
-    console.log(`🚫 IP rate limit exceeded for ${req.ip}`);
+    const clientIP = getClientIp(req);
+    console.log(`🚫 IP rate limit exceeded for ${clientIP}`);
     res.status(429).json({
       error: 'Too many requests from this IP, please try again later',
       retryAfter: 60
     });
   },
   skip: (req) => {
-    return req.path === '/health' || req.method === 'OPTIONS';
+    return req.path === '/health' || req.path === '/api/health' || req.method === 'OPTIONS';
   }
 });
 
@@ -181,20 +202,30 @@ const burstProtection = rateLimit({
   store: createStore('burst'),
   windowMs: 10 * 1000, // 10 seconds
   max: (req) => {
+    const clientIP = getClientIp(req);
     // More lenient for localhost development
-    if (req.ip === '127.0.0.1' || req.ip === '::1' || req.hostname === 'localhost') {
+    if (clientIP === '127.0.0.1' || clientIP === '::1' || req.hostname === 'localhost') {
       return 100; // 100 requests per 10 seconds for localhost
     }
     return 10; // 10 requests per 10 seconds for other IPs
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getClientIp,
+  validate: {
+    trustProxy: false,
+    xForwardedForHeader: false
+  },
   handler: (req, res) => {
-    console.log(`🚫 Burst protection triggered for ${req.ip}`);
+    const clientIP = getClientIp(req);
+    console.log(`🚫 Burst protection triggered for ${clientIP}`);
     res.status(429).json({
       error: 'Too many requests too quickly, please slow down',
       retryAfter: 10
     });
+  },
+  skip: (req) => {
+    return req.path === '/health' || req.path === '/api/health' || req.method === 'OPTIONS';
   }
 });
 
@@ -210,6 +241,22 @@ const cleanup = () => {
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup);
 
+// General rate limiter following modern pattern
+const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
+const max = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 200);
+
+const generalLimiter = rateLimit({
+  windowMs,
+  max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => getClientIp(req),
+  requestWasSuccessful: (_req, res) => res.statusCode < 400,
+  validate: {
+    xForwardedForHeader: false
+  }
+});
+
 module.exports = {
   createRateLimiter,
   demoRateLimiter,
@@ -219,6 +266,7 @@ module.exports = {
   dynamicRateLimiter,
   ipRateLimiter,
   burstProtection,
+  generalLimiter,
   cleanup,
   redis
 };
