@@ -3,6 +3,10 @@ const path = require('path');
 const fs = require('fs');
 
 // Import rate limiter middleware
+// TEMPORARILY DISABLED - Importing this module causes X-Forwarded-For validation errors
+// The rate limiters are instantiated at module load time, before trust proxy is set
+// We use the legacy Map-based rate limiting instead
+/*
 const {
   createRateLimiter,
   demoRateLimiter,
@@ -10,6 +14,7 @@ const {
   ipRateLimiter,
   burstProtection
 } = require('./middleware/rateLimiter.cjs');
+*/
 
 console.log('🚀 RAILWAY SERVER STARTING...');
 console.log('Current time:', new Date().toISOString());
