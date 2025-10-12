@@ -52,19 +52,28 @@ app.use((req, res, next) => {
     'http://localhost:8080'
   ];
 
-  if (allowedOrigins.includes(origin)) {
+  // Handle all origins permissively for now (debugging)
+  if (origin) {
     res.header('Access-Control-Allow-Origin', origin);
-    console.log('✅ CORS allowed for origin:', origin);
-  } else if (origin) {
-    console.log('⚠️ CORS blocked for origin:', origin);
-    // Set a permissive header for now to allow requests
-    res.header('Access-Control-Allow-Origin', origin);
+    if (allowedOrigins.includes(origin)) {
+      console.log('✅ CORS allowed for origin:', origin);
+    } else {
+      console.log('⚠️ CORS allowing non-whitelisted origin:', origin);
+    }
+  } else {
+    // Handle null origin (local file:// protocol)
+    res.header('Access-Control-Allow-Origin', '*');
+    console.log('⚠️ CORS null origin - using wildcard');
   }
+
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Device-Fingerprint, X-Client-Type, Origin, Cache-Control, Pragma');
+  res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
+
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    console.log('🔍 OPTIONS preflight request from origin:', origin || 'null');
+    return res.status(200).end();
   }
   next();
 });
