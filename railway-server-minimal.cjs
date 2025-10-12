@@ -19,6 +19,11 @@ console.log('Working directory:', process.cwd());
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy for Railway deployment (behind nginx/Railway proxy)
+// This is required for express-rate-limit to work correctly with X-Forwarded-For header
+app.set('trust proxy', true);
+console.log('🔗 Trust proxy enabled for Railway');
+
 // Minimal essential middleware
 app.use(express.json({ limit: '1mb' }));
 
@@ -26,6 +31,17 @@ app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = [
+    // Production domains
+    'https://smartpromptiq.com',
+    'https://www.smartpromptiq.com',
+    'https://smartpromptiq.net',
+    'https://www.smartpromptiq.net',
+    // Railway deployment URLs
+    'https://smartpromptiq.up.railway.app',
+    'https://smartpromptiq-pro.up.railway.app',
+    'https://smartpromptiq.railway.app',
+    'https://smartpromptiq-pro.railway.app',
+    // Local development
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
@@ -33,11 +49,7 @@ app.use((req, res, next) => {
     'http://localhost:5000',
     'http://localhost:5001',
     'http://localhost:5002',
-    'http://localhost:8080',
-    'https://smartpromptiq.up.railway.app',
-    'https://smartpromptiq-pro.up.railway.app',
-    'https://smartpromptiq.railway.app',
-    'https://smartpromptiq-pro.railway.app'
+    'http://localhost:8080'
   ];
 
   if (allowedOrigins.includes(origin)) {
@@ -45,7 +57,7 @@ app.use((req, res, next) => {
   }
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Origin, Cache-Control, Pragma');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Device-Fingerprint, X-Client-Type, Origin, Cache-Control, Pragma');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
