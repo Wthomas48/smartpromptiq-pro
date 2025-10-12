@@ -65,11 +65,11 @@ app.use((req, res, next) => {
 });
 
 // 🛡️ REDIS-BASED RATE LIMITING MIDDLEWARE
-// Apply global IP-based rate limiting
-app.use(ipRateLimiter);
-
-// Apply burst protection
-app.use(burstProtection);
+// TEMPORARILY DISABLED - Rate limiters are causing X-Forwarded-For validation errors
+// The limiters are instantiated when imported (before trust proxy is set)
+// We rely on the per-route rate limiters instead (registration, demo, etc.)
+// app.use(ipRateLimiter);
+// app.use(burstProtection);
 
 // 🛡️ SECURITY MIDDLEWARE LAYER (Legacy - keeping as fallback)
 // Rate limiting storage
