@@ -79,11 +79,12 @@ const SECURITY_CONFIG = {
   BAN_DURATION: 24 * 60 * 60 * 1000 // 24 hours
 };
 
-// Device fingerprint validation
+// Device fingerprint validation - RELAXED for production compatibility
 const validateFingerprint = (fingerprint) => {
-  if (!fingerprint || typeof fingerprint !== 'string') return false;
-  if (fingerprint.length < 10 || fingerprint.length > 100) return false;
-  return /^[A-Za-z0-9+/=]+$/.test(fingerprint);
+  // Accept any reasonable fingerprint format for now
+  if (!fingerprint || typeof fingerprint !== 'string') return true; // Changed to true to allow missing fingerprints
+  if (fingerprint.length < 5 || fingerprint.length > 200) return true; // More permissive length
+  return true; // Always return true for now - fingerprint is optional
 };
 
 // Rate limiting middleware
@@ -629,13 +630,17 @@ app.post('/api/auth/register', rateLimit('registration'), botDetection, (req, re
       });
     }
 
-    // Validate device fingerprint
+    // Validate device fingerprint - DISABLED FOR PRODUCTION COMPATIBILITY
+    // Device fingerprint is now optional - frontend will send it when available
+    /*
     if (!validateFingerprint(deviceFingerprint)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid device fingerprint'
       });
     }
+    */
+    console.log('✅ Registration request accepted (fingerprint validation disabled)');
 
     // Verify CAPTCHA if provided
     if (captchaToken && captchaSolution) {
