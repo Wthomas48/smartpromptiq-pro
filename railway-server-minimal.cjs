@@ -16,10 +16,11 @@ const {
 } = require('./middleware/rateLimiter.cjs');
 */
 
-console.log('🚀 RAILWAY SERVER STARTING...');
+console.log('🚀 RAILWAY SERVER STARTING... (v2.0 - FORCE REBUILD)');
 console.log('Current time:', new Date().toISOString());
 console.log('Node version:', process.version);
 console.log('Working directory:', process.cwd());
+console.log('✅ Rate limiter import is commented out - no X-Forwarded-For errors');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
