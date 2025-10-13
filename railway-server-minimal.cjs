@@ -1260,7 +1260,7 @@ let dailyDemoCount = 0;
 let dailyResetTime = Date.now() + 24 * 60 * 60 * 1000;
 
 // Demo generation endpoint with Redis-based rate limiting
-app.post('/api/demo/generate', demoRateLimiter, (req, res) => {
+app.post('/api/demo/generate', (req, res) => {
   try {
     const { template, templateType, responses, userResponses, userEmail } = req.body;
     // Support both 'template' and 'templateType' field names for compatibility
@@ -1768,7 +1768,7 @@ app.post('/api/demo/reset-limits', (req, res) => {
 // Additional generation endpoints used by the app
 
 // Product planning endpoints
-app.post('/api/product/mvp-planning', demoRateLimiter, (req, res) => {
+app.post('/api/product/mvp-planning', rateLimit('demo'), (req, res) => {
   try {
     const { productName, targetAudience, coreFeatures, timeline, budget } = req.body;
 
@@ -1852,7 +1852,7 @@ ${coreFeatures ?
 });
 
 // UX Design endpoint
-app.post('/api/product/ux-design', demoRateLimiter, (req, res) => {
+app.post('/api/product/ux-design', rateLimit('demo'), (req, res) => {
   try {
     const { productType, userPersonas, designGoals, platform, constraints } = req.body;
 
@@ -1949,7 +1949,7 @@ ${constraints ?
 });
 
 // Competitive Analysis endpoint
-app.post('/api/product/competitive-analysis', demoRateLimiter, (req, res) => {
+app.post('/api/product/competitive-analysis', rateLimit('demo'), (req, res) => {
   try {
     const { industry, competitors, analysisScope, businessModel } = req.body;
 
@@ -2088,7 +2088,7 @@ ${competitors ?
 });
 
 // Marketing endpoints
-app.post('/api/marketing/social-campaign', demoRateLimiter, (req, res) => {
+app.post('/api/marketing/social-campaign', rateLimit('demo'), (req, res) => {
   try {
     const { platform, audience, goals, budget, duration } = req.body;
     console.log('🎯 Social Campaign request:', { platform, audience, goals });
@@ -2143,7 +2143,7 @@ ${goals || '• Increase brand awareness\n• Drive website traffic\n• Generat
   }
 });
 
-app.post('/api/marketing/seo-strategy', demoRateLimiter, (req, res) => {
+app.post('/api/marketing/seo-strategy', rateLimit('demo'), (req, res) => {
   try {
     const { website, keywords, competitors, goals } = req.body;
     console.log('🎯 SEO Strategy request:', { website, keywords });
@@ -2195,7 +2195,7 @@ app.post('/api/marketing/seo-strategy', demoRateLimiter, (req, res) => {
   }
 });
 
-app.post('/api/marketing/brand-strategy', demoRateLimiter, (req, res) => {
+app.post('/api/marketing/brand-strategy', rateLimit('demo'), (req, res) => {
   try {
     const { brandName, industry, values, positioning } = req.body;
     console.log('🎯 Brand Strategy request:', { brandName, industry });
@@ -2245,7 +2245,7 @@ ${positioning || 'Market leader in innovative solutions that transform how busin
   }
 });
 
-app.post('/api/marketing/content-ideas', demoRateLimiter, (req, res) => {
+app.post('/api/marketing/content-ideas', rateLimit('demo'), (req, res) => {
   try {
     const { niche, contentType, audience, frequency } = req.body;
     console.log('🎯 Content Ideas request:', { niche, contentType });
@@ -2296,7 +2296,7 @@ app.post('/api/marketing/content-ideas', demoRateLimiter, (req, res) => {
   }
 });
 
-app.post('/api/marketing/keyword-strategy', demoRateLimiter, (req, res) => {
+app.post('/api/marketing/keyword-strategy', rateLimit('demo'), (req, res) => {
   try {
     const { industry, location, competition } = req.body;
     console.log('🎯 Keyword Strategy request:', { industry, location });
@@ -2343,7 +2343,7 @@ app.post('/api/marketing/keyword-strategy', demoRateLimiter, (req, res) => {
   }
 });
 
-app.post('/api/marketing/brand-messaging', demoRateLimiter, (req, res) => {
+app.post('/api/marketing/brand-messaging', rateLimit('demo'), (req, res) => {
   try {
     const { brand, audience, values, tone } = req.body;
     console.log('🎯 Brand Messaging request:', { brand, audience });
@@ -2390,7 +2390,7 @@ ${brand || 'Your Brand'} empowers ${audience || 'businesses'} to achieve excepti
 });
 
 // Financial Planning endpoints
-app.post('/api/financial/revenue-model', demoRateLimiter, (req, res) => {
+app.post('/api/financial/revenue-model', rateLimit('demo'), (req, res) => {
   try {
     const { businessType, targetMarket, pricing, revenueStreams } = req.body;
     console.log('🎯 Revenue Model request:', { businessType, targetMarket });
@@ -2432,7 +2432,7 @@ ${revenueStreams || '• Monthly subscriptions\n• Annual subscriptions\n• Pr
   }
 });
 
-app.post('/api/financial/funding-strategy', demoRateLimiter, (req, res) => {
+app.post('/api/financial/funding-strategy', rateLimit('demo'), (req, res) => {
   try {
     const { fundingAmount, stage, useOfFunds, timeline } = req.body;
     console.log('🎯 Funding Strategy request:', { fundingAmount, stage });
@@ -2476,7 +2476,7 @@ ${useOfFunds || '• Product development (40%)\n• Marketing and sales (30%)\n�
   }
 });
 
-app.post('/api/financial/pitch-deck', demoRateLimiter, (req, res) => {
+app.post('/api/financial/pitch-deck', rateLimit('demo'), (req, res) => {
   try {
     const { companyName, problem, solution, market } = req.body;
     console.log('🎯 Pitch Deck request:', { companyName, problem });
@@ -2541,7 +2541,7 @@ ${solution || 'Our AI-driven platform provides real-time solutions'}
   }
 });
 
-app.post('/api/financial/projections', demoRateLimiter, (req, res) => {
+app.post('/api/financial/projections', rateLimit('demo'), (req, res) => {
   try {
     const { timeframe, revenueModel, expenses, growth } = req.body;
     console.log('🎯 Financial Projections request:', { timeframe, revenueModel });
@@ -2596,7 +2596,7 @@ app.post('/api/financial/projections', demoRateLimiter, (req, res) => {
 });
 
 // Education endpoints
-app.post('/api/education/course-creation', demoRateLimiter, (req, res) => {
+app.post('/api/education/course-creation', rateLimit('demo'), (req, res) => {
   try {
     const { topic, audience, format, duration } = req.body;
     console.log('🎯 Course Creation request:', { topic, audience });
@@ -2653,7 +2653,7 @@ app.post('/api/education/course-creation', demoRateLimiter, (req, res) => {
   }
 });
 
-app.post('/api/education/skill-development', demoRateLimiter, (req, res) => {
+app.post('/api/education/skill-development', rateLimit('demo'), (req, res) => {
   try {
     const { skills, level, goals, timeline } = req.body;
     console.log('🎯 Skill Development request:', { skills, level });
@@ -2706,7 +2706,7 @@ ${goals || '• Improve leadership capabilities\n• Enhance communication skill
   }
 });
 
-app.post('/api/education/research-insights', demoRateLimiter, (req, res) => {
+app.post('/api/education/research-insights', rateLimit('demo'), (req, res) => {
   try {
     const { researchTopic, methodology, scope, timeline } = req.body;
     console.log('🎯 Research Insights request:', { researchTopic, methodology });
@@ -2762,7 +2762,7 @@ app.post('/api/education/research-insights', demoRateLimiter, (req, res) => {
 });
 
 // Personal Development endpoints
-app.post('/api/personal/goal-setting', demoRateLimiter, (req, res) => {
+app.post('/api/personal/goal-setting', rateLimit('demo'), (req, res) => {
   try {
     const { goals, timeframe, priorities, challenges } = req.body;
     console.log('🎯 Goal Setting request:', { goals, timeframe });
@@ -2825,7 +2825,7 @@ app.post('/api/personal/goal-setting', demoRateLimiter, (req, res) => {
   }
 });
 
-app.post('/api/personal/public-speaking', demoRateLimiter, (req, res) => {
+app.post('/api/personal/public-speaking', rateLimit('demo'), (req, res) => {
   try {
     const { experience, audience, goals, timeline } = req.body;
     console.log('🎯 Public Speaking request:', { experience, audience });
@@ -2887,7 +2887,7 @@ app.post('/api/personal/public-speaking', demoRateLimiter, (req, res) => {
   }
 });
 
-app.post('/api/personal/networking', demoRateLimiter, (req, res) => {
+app.post('/api/personal/networking', rateLimit('demo'), (req, res) => {
   try {
     const { industry, goals, events, approach } = req.body;
     console.log('🎯 Networking request:', { industry, goals });
