@@ -2,6 +2,7 @@
 const cors = require('cors');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 require('dotenv').config();
 
 // Initialize Stripe
@@ -14,16 +15,43 @@ if (stripeKey && !stripeKey.includes('your_stripe')) {
   console.log('⚠️ Stripe not configured - using demo mode');
 }
 
-// Connect to SQLite database (local development only)
+// Database connection - PostgreSQL for production, SQLite for local
 let db = null;
 let dbConnected = false;
+let isPostgres = false;
 
-// Only use SQLite in local development
-if (process.env.NODE_ENV !== 'production') {
+// Check for PostgreSQL connection (Railway production)
+if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('postgresql')) {
+  console.log('🐘 Connecting to PostgreSQL database...');
+  isPostgres = true;
+
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+
+  // Test connection
+  pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+      console.error('❌ PostgreSQL connection error:', err.message);
+      dbConnected = false;
+    } else {
+      console.log('✅ Connected to PostgreSQL database');
+      dbConnected = true;
+    }
+  });
+
+  db = pool;
+
+} else if (process.env.NODE_ENV !== 'production') {
+  // Use SQLite for local development
+  console.log('💾 Connecting to SQLite database...');
+  isPostgres = false;
+
   const dbPath = path.join(__dirname, 'backend', 'prisma', 'dev.db');
   db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-      console.error('❌ Database connection error:', err);
+      console.error('❌ SQLite connection error:', err);
       dbConnected = false;
     } else {
       console.log('✅ Connected to SQLite database:', dbPath);
@@ -31,33 +59,85 @@ if (process.env.NODE_ENV !== 'production') {
     }
   });
 } else {
-  console.log('⚠️ Production mode - database disabled (use PostgreSQL for production)');
+  console.log('⚠️ No database configured - using demo mode');
   dbConnected = false;
 }
 
-// Promisify database methods
-const dbGet = (sql, params = []) => {
+// Promisify database methods - works with both PostgreSQL and SQLite
+const dbGet = async (sql, params = []) => {
   if (!dbConnected || !db) {
-    return Promise.resolve(null); // Return null when database not available
+    return null; // Return null when database not available
   }
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
+
+  if (isPostgres) {
+    // PostgreSQL
+    try {
+      const result = await db.query(sql, params);
+      return result.rows[0] || null;
+    } catch (err) {
+      console.error('Database query error:', err);
+      throw err;
+    }
+  } else {
+    // SQLite
+    return new Promise((resolve, reject) => {
+      db.get(sql, params, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
     });
-  });
+  }
 };
 
-const dbAll = (sql, params = []) => {
+const dbAll = async (sql, params = []) => {
   if (!dbConnected || !db) {
-    return Promise.resolve([]); // Return empty array when database not available
+    return []; // Return empty array when database not available
   }
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
+
+  if (isPostgres) {
+    // PostgreSQL
+    try {
+      const result = await db.query(sql, params);
+      return result.rows || [];
+    } catch (err) {
+      console.error('Database query error:', err);
+      throw err;
+    }
+  } else {
+    // SQLite
+    return new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
     });
-  });
+  }
+};
+
+// Database run method (for INSERT/UPDATE/DELETE)
+const dbRun = async (sql, params = []) => {
+  if (!dbConnected || !db) {
+    return { changes: 0 };
+  }
+
+  if (isPostgres) {
+    // PostgreSQL
+    try {
+      const result = await db.query(sql, params);
+      return { changes: result.rowCount || 0 };
+    } catch (err) {
+      console.error('Database query error:', err);
+      throw err;
+    }
+  } else {
+    // SQLite
+    return new Promise((resolve, reject) => {
+      db.run(sql, params, function(err) {
+        if (err) reject(err);
+        else resolve({ changes: this.changes });
+      });
+    });
+  }
 };
 
 const app = express();

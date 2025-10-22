@@ -48,6 +48,7 @@
         "ioredis": "^5.8.0",
         "morgan": "^1.10.0",
         "node-fetch": "^3.3.2",
+        "pg": "^8.16.3",
         "rate-limit-redis": "^4.2.2",
         "redis": "^5.8.3",
         "sqlite3": "^5.1.7",

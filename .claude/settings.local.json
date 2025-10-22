@@ -195,7 +195,9 @@
       "Bash(start \"\" \"http://localhost:5174/signup\")",
       "Bash(start \"\" \"http://localhost:5175/signup\")",
       "Bash(PORT=5002 node index.cjs)",
-      "Bash(PORT=5001 node index.cjs)"
+      "Bash(PORT=5001 node index.cjs)",
+      "Bash(git log:*)",
+      "Bash(xcopy:*)"
     ],
     "deny": [],
     "ask": []
