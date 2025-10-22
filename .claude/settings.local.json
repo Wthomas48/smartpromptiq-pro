@@ -197,7 +197,8 @@
       "Bash(PORT=5002 node index.cjs)",
       "Bash(PORT=5001 node index.cjs)",
       "Bash(git log:*)",
-      "Bash(xcopy:*)"
+      "Bash(xcopy:*)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []
