@@ -1,6 +1,47 @@
 ﻿const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
+require('dotenv').config();
+
+// Initialize Stripe
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+let stripe = null;
+if (stripeKey && !stripeKey.includes('your_stripe')) {
+  stripe = require('stripe')(stripeKey);
+  console.log('✅ Stripe initialized');
+} else {
+  console.log('⚠️ Stripe not configured - using demo mode');
+}
+
+// Connect to SQLite database
+const dbPath = path.join(__dirname, 'backend', 'prisma', 'dev.db');
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('❌ Database connection error:', err);
+  } else {
+    console.log('✅ Connected to SQLite database:', dbPath);
+  }
+});
+
+// Promisify database methods
+const dbGet = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, result) => {
+      if (err) reject(err);
+      else resolve(result);
+    });
+  });
+};
+
+const dbAll = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+};
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -171,7 +212,8 @@ app.use(cors({
     'X-Requested-With',
     'X-Timestamp',
     'x-client-type',
-    'x-requested-with'
+    'x-requested-with',
+    'x-timestamp'
   ],
   exposedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']
@@ -204,7 +246,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Device-Fingerprint, X-Client-Type, Accept, Origin, Cache-Control, Pragma, User-Agent, Accept-Language, X-Requested-With, X-Timestamp, x-client-type, x-requested-with'
+    'Content-Type, Authorization, X-Device-Fingerprint, X-Client-Type, Accept, Origin, Cache-Control, Pragma, User-Agent, Accept-Language, X-Requested-With, X-Timestamp, x-client-type, x-requested-with, x-timestamp'
   );
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
 
@@ -509,10 +551,8 @@ app.get('/api/info', (req, res) => {
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName } = req.body;
-    // COMPLETELY DISABLE FINGERPRINT VALIDATION FOR NOW
-    const fp = 'dev-bypass-' + Date.now(); // Always provide a valid fingerprint
 
-    console.log('🔧 Development mode: Bypassing fingerprint validation');
+    console.log('📝 Registration request received:', { email, firstName, lastName });
 
     // Basic validation
     if (!email || !password) {
@@ -522,15 +562,56 @@ app.post('/api/auth/register', async (req, res) => {
       });
     }
 
-    // Simulate user creation (in real app, you'd save to database)
-    const userId = Date.now();
+    // Check if user already exists
+    const existingUser = await dbGet('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already registered'
+      });
+    }
+
+    // Generate user ID using timestamp-based method similar to cuid
+    const userId = 'cm' + Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
     const token = `jwt-${userId}-${Date.now()}`;
     const fullName = `${firstName || 'User'} ${lastName || ''}`.trim();
+    const now = Date.now();
 
-    console.log('✅ User registration successful:', { email, fingerprint: !!fp });
+    // Hash password (in production, use bcrypt)
+    const bcrypt = require('crypto');
+    const hashedPassword = bcrypt.createHash('sha256').update(password).digest('hex');
 
-    // Store fingerprint association for anti-abuse tracking
-    // In production: db.users.create({ email, password, fingerprint: fp, ip: req.ip })
+    // Insert user into database
+    await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO users (
+          id, email, password, firstName, lastName, role,
+          subscriptionTier, subscriptionStatus, tokenBalance,
+          isActive, emailVerified, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          email.toLowerCase(),
+          hashedPassword,
+          firstName || 'User',
+          lastName || '',
+          'USER',
+          'free',
+          'active',
+          5, // Initial token balance
+          1, // isActive
+          0, // emailVerified
+          now,
+          now
+        ],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this);
+        }
+      );
+    });
+
+    console.log('✅ User saved to database:', { userId, email });
 
     res.status(201).json({
       success: true,
@@ -543,7 +624,7 @@ app.post('/api/auth/register', async (req, res) => {
           lastName: lastName || '',
           name: fullName,
           role: 'USER',
-          registeredAt: new Date().toISOString()
+          registeredAt: new Date(now).toISOString()
         },
         token
       }
@@ -892,76 +973,147 @@ let deletedUserIds = new Set();
 let suspendedUserIds = new Set();
 
 // Additional admin endpoints for dashboard
-app.get('/api/admin/stats', (req, res) => {
+app.get('/api/admin/stats', async (req, res) => {
   try {
-    console.log('Admin stats request');
+    console.log('📊 Admin stats request - Fetching LIVE data from database...');
+
+    // Get total users count
+    const totalUsersResult = await dbGet('SELECT COUNT(*) as count FROM users');
+    const totalUsers = totalUsersResult.count;
+
+    // Get active users today (users who logged in today)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const activeUsersTodayResult = await dbGet(
+      'SELECT COUNT(*) as count FROM users WHERE lastLogin >= ?',
+      [todayStart.toISOString()]
+    );
+    const activeUsersToday = activeUsersTodayResult.count;
+
+    // Calculate total revenue from token transactions
+    const revenueResult = await dbGet(
+      'SELECT SUM(costInCents) as total FROM token_transactions WHERE type = ? AND costInCents IS NOT NULL',
+      ['purchase']
+    );
+    const totalRevenue = (revenueResult.total || 0) / 100; // Convert cents to dollars
+
+    // Get pending payments (subscriptions in incomplete state)
+    const pendingPaymentsResult = await dbGet(
+      'SELECT COUNT(*) as count FROM subscriptions WHERE status IN (?, ?)',
+      ['incomplete', 'past_due']
+    );
+    const pendingPayments = pendingPaymentsResult.count;
+
+    console.log('✅ Live stats fetched:', { totalUsers, activeUsersToday, totalRevenue, pendingPayments });
+
     res.status(200).json({
       success: true,
       data: {
-        totalUsers: 1250,
-        activeUsersToday: 320,
-        totalRevenue: 45000,
-        pendingPayments: 15,
+        totalUsers,
+        activeUsersToday,
+        totalRevenue,
+        pendingPayments,
         systemStatus: 'operational'
       }
     });
   } catch (error) {
+    console.error('❌ Database error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch stats', error: error.message });
   }
 });
 
-app.get('/api/admin/users', (req, res) => {
+app.get('/api/admin/users', async (req, res) => {
   try {
     const { limit } = req.query;
-    console.log('Admin users request:', { limit });
+    console.log('👥 Admin users request - Fetching LIVE data from database:', { limit });
 
-    // Generate all users first
-    const allUsers = Array.from({ length: parseInt(limit) || 10 }, (_, i) => ({
-      id: i + 1,
-      email: `user${i + 1}@example.com`,
-      firstName: `User`,
-      lastName: `${i + 1}`,
-      role: i === 0 ? 'ADMIN' : 'USER',
-      status: suspendedUserIds.has(i + 1) ? 'suspended' : 'active',
-      createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-      subscriptionTier: ['Free', 'Pro', 'Premium'][Math.floor(Math.random() * 3)],
-      subscriptionStatus: Math.random() > 0.2 ? 'active' : 'expired',
-      tokenBalance: Math.floor(Math.random() * 10000),
-      totalSpent: Math.random() * 100,
-      lastActiveAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString()
+    // Fetch real users from database
+    const users = await dbAll(
+      `SELECT id, email, firstName, lastName, role, isActive, subscriptionTier, subscriptionStatus,
+              tokenBalance, createdAt, lastLogin, tokensPurchased, tokensUsed
+       FROM users
+       ORDER BY createdAt DESC
+       LIMIT ?`,
+      [parseInt(limit) || 10]
+    );
+
+    // Get total count
+    const totalResult = await dbGet('SELECT COUNT(*) as count FROM users');
+    const total = totalResult.count;
+
+    // Transform data for frontend
+    const transformedUsers = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      role: user.role,
+      status: user.isActive ? 'active' : 'suspended',
+      createdAt: user.createdAt,
+      subscriptionTier: user.subscriptionTier,
+      subscriptionStatus: user.subscriptionStatus,
+      tokenBalance: user.tokenBalance,
+      totalSpent: user.tokensPurchased, // Using tokensPurchased as proxy for total spent
+      lastActiveAt: user.lastLogin || user.createdAt
     }));
 
-    // Filter out deleted users
-    const users = allUsers.filter(user => !deletedUserIds.has(user.id));
+    console.log(`✅ Fetched ${transformedUsers.length} users from database (total: ${total})`);
 
     res.status(200).json({
       success: true,
-      data: { users, total: users.length }
+      data: { users: transformedUsers, total }
     });
   } catch (error) {
+    console.error('❌ Database error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch users', error: error.message });
   }
 });
 
-app.get('/api/admin/payments', (req, res) => {
+app.get('/api/admin/payments', async (req, res) => {
   try {
     const { limit } = req.query;
-    console.log('Admin payments request:', { limit });
+    console.log('💳 Admin payments request - Fetching LIVE data from database:', { limit });
 
-    const payments = Array.from({ length: parseInt(limit) || 10 }, (_, i) => ({
-      id: `pay_${i + 1}`,
-      userId: i + 1,
-      amount: Math.floor(Math.random() * 100) + 10,
-      status: Math.random() > 0.1 ? 'completed' : 'pending',
-      createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-      description: 'Pro subscription'
+    // Fetch real token transactions (purchases) from database with user email
+    const transactions = await dbAll(
+      `SELECT t.id, t.userId, t.costInCents, t.tokens, t.packageType, t.stripePaymentIntentId, t.createdAt,
+              u.email as userEmail
+       FROM token_transactions t
+       LEFT JOIN users u ON t.userId = u.id
+       WHERE t.type = ? AND t.costInCents IS NOT NULL
+       ORDER BY t.createdAt DESC
+       LIMIT ?`,
+      ['purchase', parseInt(limit) || 10]
+    );
+
+    // Get total count
+    const totalResult = await dbGet(
+      'SELECT COUNT(*) as count FROM token_transactions WHERE type = ? AND costInCents IS NOT NULL',
+      ['purchase']
+    );
+    const total = totalResult.count;
+
+    // Transform data for frontend
+    const payments = transactions.map(tx => ({
+      id: tx.id,
+      userId: tx.userId,
+      userEmail: tx.userEmail || 'N/A',
+      amount: (tx.costInCents || 0) / 100, // Convert cents to dollars
+      currency: 'USD',
+      status: 'completed', // Transactions in DB are completed
+      stripePaymentId: tx.stripePaymentIntentId || 'N/A',
+      createdAt: tx.createdAt,
+      description: `${tx.packageType || 'Token'} purchase - ${tx.tokens} tokens`
     }));
+
+    console.log(`✅ Fetched ${payments.length} payments from database (total: ${total})`);
 
     res.status(200).json({
       success: true,
-      data: { payments, total: 500 }
+      data: { payments, total }
     });
   } catch (error) {
+    console.error('❌ Database error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch payments', error: error.message });
   }
 });
@@ -1246,6 +1398,240 @@ app.post('/api/admin/cleanup/temp-data', (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to cleanup temporary data', error: error.message });
+  }
+});
+
+// Stripe Webhook Handler (must be before express.json() middleware)
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    if (!stripe || !webhookSecret || webhookSecret.includes('your_webhook')) {
+      console.log('⚠️ Stripe webhook not configured - ignoring event');
+      return res.status(200).json({ received: true });
+    }
+
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    console.log('✅ Stripe webhook event received:', event.type);
+
+  } catch (err) {
+    console.error('❌ Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object;
+      console.log('💳 Payment successful:', session.id);
+
+      // Update user subscription in database
+      const { userId, planId, billingCycle } = session.metadata;
+
+      if (userId) {
+        try {
+          const now = Date.now();
+          const nextBillingDate = billingCycle === 'yearly'
+            ? now + 365 * 24 * 60 * 60 * 1000
+            : now + 30 * 24 * 60 * 60 * 1000;
+
+          // Update user subscription
+          await new Promise((resolve, reject) => {
+            db.run(
+              `UPDATE users
+               SET subscriptionTier = ?,
+                   subscriptionStatus = ?,
+                   stripeCustomerId = ?,
+                   stripeSubscriptionId = ?,
+                   subscriptionEndDate = ?,
+                   updatedAt = ?
+               WHERE id = ?`,
+              [
+                planId,
+                'active',
+                session.customer,
+                session.subscription,
+                nextBillingDate,
+                now,
+                userId
+              ],
+              function(err) {
+                if (err) reject(err);
+                else resolve(this);
+              }
+            );
+          });
+
+          // Record the transaction
+          const transactionId = 'cm' + Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
+          await new Promise((resolve, reject) => {
+            db.run(
+              `INSERT INTO token_transactions (
+                id, userId, type, tokens, balanceBefore, balanceAfter,
+                costInCents, packageType, stripePaymentIntentId, createdAt
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                transactionId,
+                userId,
+                'purchase',
+                0, // Subscription doesn't add tokens directly
+                0,
+                0,
+                session.amount_total,
+                `subscription_${planId}_${billingCycle}`,
+                session.payment_intent,
+                now
+              ],
+              function(err) {
+                if (err) reject(err);
+                else resolve(this);
+              }
+            );
+          });
+
+          console.log('✅ User subscription updated:', userId, planId);
+        } catch (error) {
+          console.error('❌ Failed to update subscription:', error);
+        }
+      }
+      break;
+    }
+
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted': {
+      const subscription = event.data.object;
+      console.log('🔄 Subscription status changed:', subscription.id, subscription.status);
+
+      // Update subscription status in database
+      try {
+        await new Promise((resolve, reject) => {
+          db.run(
+            `UPDATE users
+             SET subscriptionStatus = ?, updatedAt = ?
+             WHERE stripeSubscriptionId = ?`,
+            [subscription.status, Date.now(), subscription.id],
+            function(err) {
+              if (err) reject(err);
+              else resolve(this);
+            }
+          );
+        });
+        console.log('✅ Subscription status updated');
+      } catch (error) {
+        console.error('❌ Failed to update subscription status:', error);
+      }
+      break;
+    }
+
+    default:
+      console.log(`Unhandled event type: ${event.type}`);
+  }
+
+  // Return a response to acknowledge receipt of the event
+  res.json({ received: true });
+});
+
+// Billing endpoints
+app.get('/api/billing/info', async (req, res) => {
+  try {
+    console.log('💳 Billing info request');
+
+    // TODO: Get user from auth token
+    // For now, return default billing info
+    res.status(200).json({
+      currentPlan: 'free',
+      billingCycle: 'monthly',
+      nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      usage: {
+        prompts: 2,
+        tokens: 150,
+        categories: 1
+      },
+      paymentMethod: null // No payment method for free plan
+    });
+  } catch (error) {
+    console.error('❌ Billing info error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch billing info', error: error.message });
+  }
+});
+
+app.post('/api/billing/upgrade', async (req, res) => {
+  try {
+    const { planId, billingCycle } = req.body;
+    console.log('💳 Upgrade request:', { planId, billingCycle });
+
+    // Check if Stripe is configured
+    if (!stripe) {
+      console.log('⚠️ Stripe not configured - simulating upgrade');
+      return res.status(200).json({
+        success: true,
+        message: `Subscription upgraded to ${planId} (${billingCycle})! (Demo mode - Stripe not configured)`,
+        checkoutUrl: null
+      });
+    }
+
+    // Map plan IDs to prices
+    const priceMap = {
+      'starter_monthly': process.env.STRIPE_PRICE_STARTER_MONTHLY || 'price_1234_starter_monthly',
+      'starter_yearly': process.env.STRIPE_PRICE_STARTER_YEARLY || 'price_1234_starter_yearly',
+      'pro_monthly': process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_1234_pro_monthly',
+      'pro_yearly': process.env.STRIPE_PRICE_PRO_YEARLY || 'price_1234_pro_yearly',
+      'enterprise_monthly': process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_1234_enterprise_monthly',
+      'enterprise_yearly': process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_1234_enterprise_yearly'
+    };
+
+    const priceKey = `${planId}_${billingCycle}`;
+    const priceId = priceMap[priceKey];
+
+    if (!priceId) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid plan: ${planId} (${billingCycle})`
+      });
+    }
+
+    // Get or create customer (in production, get from auth token)
+    // For now, use email from request or create a test customer
+    const customerEmail = req.body.email || 'customer@example.com';
+
+    // Create Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      customer_email: customerEmail,
+      success_url: `${process.env.CLIENT_URL || 'http://localhost:5173'}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.CLIENT_URL || 'http://localhost:5173'}/billing?canceled=true`,
+      metadata: {
+        planId,
+        billingCycle,
+        userId: req.body.userId || 'demo-user'
+      }
+    });
+
+    console.log('✅ Stripe checkout session created:', session.id);
+
+    return res.status(200).json({
+      success: true,
+      checkoutUrl: session.url,
+      sessionId: session.id
+    });
+
+  } catch (error) {
+    console.error('❌ Upgrade error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create checkout session',
+      error: error.message
+    });
   }
 });
 

@@ -38,7 +38,7 @@
         "db:utils": "tsx scripts/db-utils.ts"
     },
     "dependencies": {
-        "@prisma/client": "^6.16.2",
+        "@prisma/client": "^6.17.1",
         "compression": "^1.7.4",
         "cors": "^2.8.5",
         "dotenv": "^17.2.2",
@@ -50,6 +50,7 @@
         "node-fetch": "^3.3.2",
         "rate-limit-redis": "^4.2.2",
         "redis": "^5.8.3",
+        "sqlite3": "^5.1.7",
         "stripe": "^18.5.0"
     },
     "devDependencies": {
