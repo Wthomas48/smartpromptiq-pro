@@ -14,18 +14,32 @@ if (stripeKey && !stripeKey.includes('your_stripe')) {
   console.log('⚠️ Stripe not configured - using demo mode');
 }
 
-// Connect to SQLite database
-const dbPath = path.join(__dirname, 'backend', 'prisma', 'dev.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('❌ Database connection error:', err);
-  } else {
-    console.log('✅ Connected to SQLite database:', dbPath);
-  }
-});
+// Connect to SQLite database (local development only)
+let db = null;
+let dbConnected = false;
+
+// Only use SQLite in local development
+if (process.env.NODE_ENV !== 'production') {
+  const dbPath = path.join(__dirname, 'backend', 'prisma', 'dev.db');
+  db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+      console.error('❌ Database connection error:', err);
+      dbConnected = false;
+    } else {
+      console.log('✅ Connected to SQLite database:', dbPath);
+      dbConnected = true;
+    }
+  });
+} else {
+  console.log('⚠️ Production mode - database disabled (use PostgreSQL for production)');
+  dbConnected = false;
+}
 
 // Promisify database methods
 const dbGet = (sql, params = []) => {
+  if (!dbConnected || !db) {
+    return Promise.resolve(null); // Return null when database not available
+  }
   return new Promise((resolve, reject) => {
     db.get(sql, params, (err, result) => {
       if (err) reject(err);
@@ -35,6 +49,9 @@ const dbGet = (sql, params = []) => {
 };
 
 const dbAll = (sql, params = []) => {
+  if (!dbConnected || !db) {
+    return Promise.resolve([]); // Return empty array when database not available
+  }
   return new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => {
       if (err) reject(err);
@@ -975,11 +992,26 @@ let suspendedUserIds = new Set();
 // Additional admin endpoints for dashboard
 app.get('/api/admin/stats', async (req, res) => {
   try {
-    console.log('📊 Admin stats request - Fetching LIVE data from database...');
+    console.log('📊 Admin stats request - Fetching data...');
+
+    // If no database, return mock data
+    if (!dbConnected) {
+      console.log('⚠️ Database not connected - returning demo data');
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalUsers: 0,
+          activeUsersToday: 0,
+          totalRevenue: 0,
+          pendingPayments: 0,
+          systemStatus: 'operational'
+        }
+      });
+    }
 
     // Get total users count
     const totalUsersResult = await dbGet('SELECT COUNT(*) as count FROM users');
-    const totalUsers = totalUsersResult.count;
+    const totalUsers = totalUsersResult?.count || 0;
 
     // Get active users today (users who logged in today)
     const todayStart = new Date();
