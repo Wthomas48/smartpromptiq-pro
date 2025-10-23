@@ -104,8 +104,8 @@ const SUBSCRIPTION_TIERS = {
       'Basic analytics'
     ],
     stripeIds: {
-      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2K7',  // Starter Monthly - $14.99
-      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2K8'   // Starter Yearly - $149.90
+      monthly: 'price_1SLEQEKtG2uGDhSNKNwviQW5',  // Starter Monthly - $14.99 (LIVE)
+      yearly: 'price_1SLERlKtG2uGDhSNBSoBkI1g'   // Starter Yearly - $149.90 (LIVE)
     },
     rateLimits: {
       promptsPerDay: 50,
@@ -133,8 +133,8 @@ const SUBSCRIPTION_TIERS = {
       'API access'
     ],
     stripeIds: {
-      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2K9',  // Pro Monthly - $49.99
-      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2L0'   // Pro Yearly - $499.00
+      monthly: 'price_1SLETWKtG2uGDhSN6iRuJ3w9',  // Pro Monthly - $49.99 (LIVE)
+      yearly: 'price_1SLEVOKtG2uGDhSNw0FMcGiU'   // Pro Yearly - $499.00 (LIVE)
     },
     rateLimits: {
       promptsPerDay: 200,
@@ -162,8 +162,8 @@ const SUBSCRIPTION_TIERS = {
       'Advanced integrations'
     ],
     stripeIds: {
-      monthly: 'price_1QKrTdJNxVjDuJxhRtAMo2L1',  // Business Monthly - $149.99
-      yearly: 'price_1QKrTdJNxVjDuJxhRtAMo2L2'   // Business Yearly - $1499.00
+      monthly: 'price_1SLEX6KtG2uGDhSNfdCzenXl',  // Business/Enterprise Monthly - $149.99 (LIVE)
+      yearly: 'price_1SLEYiKtG2uGDhSNIsrTlBSu'   // Business/Enterprise Yearly - $1499.00 (LIVE)
     },
     rateLimits: {
       promptsPerDay: 500,
