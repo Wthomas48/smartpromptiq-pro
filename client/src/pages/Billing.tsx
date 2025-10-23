@@ -54,16 +54,33 @@ interface BillingInfo {
 
 export default function Billing() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
   // Fetch billing information
-  const { data: billingInfo, isLoading } = useQuery<BillingInfo>({
+  const { data: billingInfo, isLoading, error } = useQuery<BillingInfo>({
     queryKey: ["/api/billing/info"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/billing/info");
-      return await response.json();
+      const result = await response.json();
+      // Backend returns {success, data}, extract the data
+      const apiData = result.data || result;
+
+      // Transform backend data to frontend format
+      return {
+        currentPlan: apiData.user?.subscriptionTier?.toLowerCase() || "free",
+        billingCycle: apiData.user?.billingCycle || "monthly",
+        nextBillingDate: apiData.user?.subscriptionEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        usage: {
+          prompts: apiData.user?.monthlyUsage?.tokensUsed || 0,
+          tokens: apiData.user?.tokenBalance || 0,
+          categories: 0 // Not tracked in backend yet
+        },
+        paymentMethod: apiData.stripe?.paymentMethod || undefined
+      };
     },
+    enabled: isAuthenticated, // Only fetch if user is authenticated
+    retry: false
   });
 
   // Subscription plans
@@ -198,6 +215,39 @@ export default function Billing() {
     }
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading billing information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth required message
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Authentication Required</CardTitle>
+            <CardDescription className="text-center">
+              Please sign in to view your billing information
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button onClick={() => window.location.href = '/signin'}>
+              Go to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <section className="py-20">
@@ -213,7 +263,7 @@ export default function Billing() {
           </div>
 
           {/* Current Usage */}
-          {billingInfo && (
+          {billingInfo && billingInfo.usage && (
             <Card className="mb-8">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
