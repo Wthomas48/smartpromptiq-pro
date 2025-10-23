@@ -8,7 +8,7 @@ const { authenticate } = require('../middleware/auth');
 const { TOKEN_PACKAGES, SUBSCRIPTION_TIERS, calculateOptimalTokenCost } = require('../../../shared/pricing/pricingConfig');
 const usageAnalytics = require('../utils/usageAnalytics');
 const costCalculator = require('../utils/costCalculator');
-const prisma = require('../config/database');
+const { prisma } = require('../config/database');
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -368,6 +368,144 @@ router.get('/info', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve billing information'
+    });
+  }
+});
+
+/**
+ * POST /api/billing/upgrade - Upgrade/change subscription plan
+ */
+router.post('/upgrade', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { planId, billingCycle = 'monthly' } = req.body;
+
+    // Map frontend plan IDs to backend tier IDs
+    const planMapping = {
+      'free': 'free',
+      'starter': 'starter',
+      'pro': 'pro',
+      'enterprise': 'business' // Frontend uses 'enterprise', backend uses 'business'
+    };
+
+    const tierId = planMapping[planId] || planId;
+
+    // Validate tier
+    const tierInfo = SUBSCRIPTION_TIERS[tierId];
+    if (!tierInfo) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid subscription tier'
+      });
+    }
+
+    // LOCAL DEVELOPMENT MODE: Skip Stripe and just update the user's tier
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🧪 DEV MODE: Simulating upgrade to ${tierId} (${billingCycle})`);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionTier: tierId.toUpperCase(),
+          subscriptionStatus: 'active',
+          billingCycle: billingCycle,
+          tokenBalance: tierInfo.tokensPerMonth || 0
+        }
+      });
+
+      return res.json({
+        success: true,
+        message: `Successfully upgraded to ${tierInfo.name} plan (DEV MODE - No charge)`,
+        devMode: true
+      });
+    }
+
+    // Handle free tier "upgrade" (cancellation)
+    if (tierId === 'free') {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { stripeSubscriptionId: true }
+      });
+
+      if (user?.stripeSubscriptionId) {
+        // Cancel existing subscription
+        await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          subscriptionTier: 'free',
+          subscriptionStatus: 'active',
+          billingCycle: 'monthly'
+        }
+      });
+
+      return res.json({
+        success: true,
+        message: 'Downgraded to free tier'
+      });
+    }
+
+    // Get or create Stripe customer
+    let user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    let customerId = user.stripeCustomerId;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`.trim(),
+        metadata: { userId }
+      });
+
+      customerId = customer.id;
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { stripeCustomerId: customerId }
+      });
+    }
+
+    // Create Stripe Checkout Session for subscription
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      line_items: [{
+        price: tierInfo.stripeIds[billingCycle],
+        quantity: 1,
+      }],
+      mode: 'subscription',
+      success_url: `${process.env.FRONTEND_URL}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL}/billing?canceled=true`,
+      metadata: {
+        userId,
+        tier: tierId,
+        billingCycle
+      }
+    });
+
+    res.json({
+      success: true,
+      checkoutUrl: session.url,
+      sessionId: session.id
+    });
+
+  } catch (error) {
+    console.error('❌ Upgrade error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode
+    });
+
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to upgrade subscription',
+      details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
     });
   }
 });
