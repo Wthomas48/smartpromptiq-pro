@@ -70,8 +70,8 @@ export default function Home() {
             </div>
 
             <h1 className="hero-title">
-              Master AI Prompting. Build Powerful Tools.<br />
-              <span className="gradient-text">All in One Platform.</span>
+              Master AI Prompting Build Powerful Tools<br />
+              <span className="gradient-text">All in One Platform</span>
             </h1>
 
             <p className="hero-description">
