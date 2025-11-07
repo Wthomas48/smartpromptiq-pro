@@ -570,6 +570,10 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+// Register Academy API routes
+console.log('🔗 Loading Academy routes...');
+require('./academy-routes.cjs')(app);
+
 // Serve static files
 const clientDistPath = path.join(__dirname, 'client', 'dist');
 console.log('📁 Frontend path:', clientDistPath);
@@ -589,7 +593,7 @@ app.post('/api/auth/login', (req, res) => {
 
   // Check for admin credentials
   const adminEmails = ['admin@admin.com', 'admin@smartpromptiq.net', 'admin@smartpromptiq.com'];
-  const adminPassword = 'admin123'; // Demo admin password
+  const adminPassword = 'Admin123!'; // Admin password
 
   if (isAdminLogin || adminEmails.includes(email)) {
     // Admin login validation
@@ -3860,6 +3864,96 @@ app.post('/api/billing/webhook', (req, res) => {
   } catch (error) {
     console.error('❌ Webhook handler error:', error);
     res.status(500).json({ error: 'Webhook handler failed' });
+  }
+});
+
+// Subscription upgrade endpoint - Creates Stripe Checkout Session
+app.post('/api/billing/upgrade', async (req, res) => {
+  try {
+    console.log('💳 Subscription upgrade request:', req.body);
+    const { tierId, planId, billingCycle } = req.body;
+    const tier = tierId || planId; // Support both field names
+
+    // Initialize Stripe
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+    // Price mapping for Stripe
+    const priceMap = {
+      'starter_monthly': process.env.STRIPE_STARTER_MONTHLY_PRICE_ID || 'price_starter_monthly',
+      'starter_yearly': process.env.STRIPE_STARTER_YEARLY_PRICE_ID || 'price_starter_yearly',
+      'professional_monthly': process.env.STRIPE_PRO_MONTHLY_PRICE_ID || 'price_pro_monthly',
+      'professional_yearly': process.env.STRIPE_PRO_YEARLY_PRICE_ID || 'price_pro_yearly',
+      'enterprise_monthly': process.env.STRIPE_ENTERPRISE_MONTHLY_PRICE_ID || 'price_enterprise_monthly',
+      'enterprise_yearly': process.env.STRIPE_ENTERPRISE_YEARLY_PRICE_ID || 'price_enterprise_yearly'
+    };
+
+    const priceId = priceMap[`${tier}_${billingCycle}`];
+
+    if (!priceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid plan or billing cycle'
+      });
+    }
+
+    // Create Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      line_items: [{
+        price: priceId,
+        quantity: 1
+      }],
+      success_url: `${process.env.FRONTEND_URL || 'https://smartpromptiq.com'}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'https://smartpromptiq.com'}/billing?canceled=true`,
+      metadata: {
+        tierId: tier,
+        billingCycle: billingCycle
+      }
+    });
+
+    console.log('✅ Stripe Checkout Session created:', session.id);
+
+    // Return checkout URL for redirect
+    res.json({
+      success: true,
+      checkoutUrl: session.url,
+      sessionId: session.id
+    });
+
+  } catch (error) {
+    console.error('❌ Upgrade error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create checkout session',
+      error: error.message
+    });
+  }
+});
+
+// Feedback rating endpoint
+app.post('/api/feedback/rating', (req, res) => {
+  try {
+    console.log('⭐ Rating submission received:', req.body);
+    const { rating, feedback } = req.body;
+
+    res.json({
+      success: true,
+      message: 'Thank you for your feedback!',
+      data: {
+        rating: rating,
+        feedback: feedback,
+        submittedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Feedback error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit feedback',
+      error: error.message
+    });
   }
 });
 
