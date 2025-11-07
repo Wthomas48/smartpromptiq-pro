@@ -17,8 +17,11 @@ export const authenticate = async (
 ) => {
   try {
     const authHeader = req.headers.authorization;
+    console.log(`🔐 Auth check for ${req.method} ${req.path}:`);
+    console.log(`   Authorization header:`, authHeader ? `${authHeader.substring(0, 30)}...` : 'MISSING');
 
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log(`❌ No Bearer token found - returning 401`);
       return res.status(401).json({
         success: false,
         message: 'Access token required'

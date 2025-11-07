@@ -1,4 +1,5 @@
 import sgMail from '@sendgrid/mail';
+import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 
@@ -16,26 +17,78 @@ interface EmailTemplate {
   text: string;
 }
 
+type MailProvider = 'sendgrid' | 'smtp' | 'none';
+
 class EmailService {
   private isConfigured: boolean = false;
+  private provider: MailProvider = 'none';
+  private smtpTransporter: nodemailer.Transporter | null = null;
 
   constructor() {
     this.initialize();
   }
 
   private initialize() {
-    if (process.env.EMAIL_ENABLED === 'true' && process.env.SENDGRID_API_KEY) {
+    const mailProvider = (process.env.MAIL_PROVIDER || 'sendgrid').toLowerCase();
+
+    if (process.env.EMAIL_ENABLED !== 'true') {
+      console.log('📧 Email service disabled - emails will be logged only');
+      this.isConfigured = false;
+      this.provider = 'none';
+      return;
+    }
+
+    // Initialize SendGrid if selected
+    if (mailProvider === 'sendgrid' && process.env.SENDGRID_API_KEY) {
       try {
         sgMail.setApiKey(process.env.SENDGRID_API_KEY);
         this.isConfigured = true;
+        this.provider = 'sendgrid';
         console.log('📧 Email service configured with SendGrid');
       } catch (error) {
-        console.error('📧 Failed to configure email service:', error);
+        console.error('📧 Failed to configure SendGrid:', error);
         this.isConfigured = false;
+        this.provider = 'none';
+      }
+    }
+    // Initialize SMTP (Zoho, Gmail, etc.) if selected
+    else if (mailProvider === 'smtp') {
+      const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_SECURE, SMTP_TLS_REJECT_UNAUTHORIZED } = process.env;
+
+      if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
+        console.warn('⚠️ SMTP configuration incomplete - emails will be logged only');
+        console.warn('Required: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS');
+        this.isConfigured = false;
+        this.provider = 'none';
+        return;
+      }
+
+      try {
+        this.smtpTransporter = nodemailer.createTransport({
+          host: SMTP_HOST,
+          port: Number(SMTP_PORT),
+          secure: MAIL_SECURE === 'true', // true for 465, false for 587
+          auth: {
+            user: SMTP_USER,
+            pass: SMTP_PASS,
+          },
+          tls: {
+            rejectUnauthorized: SMTP_TLS_REJECT_UNAUTHORIZED !== 'false',
+          },
+        });
+
+        this.isConfigured = true;
+        this.provider = 'smtp';
+        console.log(`📧 Email service configured with SMTP (${SMTP_HOST}:${SMTP_PORT})`);
+      } catch (error) {
+        console.error('📧 Failed to configure SMTP:', error);
+        this.isConfigured = false;
+        this.provider = 'none';
       }
     } else {
       console.log('📧 Email service not configured - emails will be logged only');
       this.isConfigured = false;
+      this.provider = 'none';
     }
   }
 
@@ -424,6 +477,238 @@ The SmartPromptIQ Pro Team
 
 © 2024 SmartPromptIQ Pro. All rights reserved.
 Manage your subscription: {{billingUrl}}`
+      },
+
+      academyEnrollment: {
+        subject: '🎓 Welcome to {{courseTitle}} - SmartPromptIQ Academy',
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Academy Enrollment Confirmation</title>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f8fafc; margin: 0; padding: 0; }
+              .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #9333ea 0%, #4f46e5 100%); color: white; padding: 40px 30px; text-align: center; }
+              .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+              .content { padding: 40px 30px; }
+              .course-info { background: linear-gradient(135deg, #f3e8ff 0%, #e0e7ff 100%); padding: 20px; border-radius: 8px; margin: 20px 0; }
+              .course-stat { display: flex; align-items: center; margin: 10px 0; }
+              .stat-icon { background: linear-gradient(135deg, #9333ea 0%, #4f46e5 100%); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-weight: bold; }
+              .cta-button { display: inline-block; background: linear-gradient(135deg, #9333ea 0%, #4f46e5 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+              .next-steps { background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; }
+              .next-steps li { margin: 10px 0; }
+              .footer { background-color: #f8fafc; padding: 20px 30px; text-align: center; color: #666; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>🎓 Enrollment Successful!</h1>
+                <p>Welcome to SmartPromptIQ Academy</p>
+              </div>
+              <div class="content">
+                <h2>Hi {{name}},</h2>
+                <p>Congratulations! You've successfully enrolled in <strong>{{courseTitle}}</strong>. Get ready to level up your skills!</p>
+
+                <div class="course-info">
+                  <h3 style="margin-top: 0; color: #6b21a8;">Course Overview</h3>
+                  <div class="course-stat">
+                    <div class="stat-icon">📚</div>
+                    <div>
+                      <strong>{{lessonCount}} Lessons</strong><br>
+                      Comprehensive curriculum designed by experts
+                    </div>
+                  </div>
+                  <div class="course-stat">
+                    <div class="stat-icon">⏱️</div>
+                    <div>
+                      <strong>{{duration}} minutes</strong><br>
+                      Total course duration
+                    </div>
+                  </div>
+                  <div class="course-stat">
+                    <div class="stat-icon">🎯</div>
+                    <div>
+                      <strong>{{difficulty}}</strong><br>
+                      Difficulty level
+                    </div>
+                  </div>
+                  {{#if instructor}}
+                  <div class="course-stat">
+                    <div class="stat-icon">👨‍🏫</div>
+                    <div>
+                      <strong>{{instructor}}</strong><br>
+                      Your instructor
+                    </div>
+                  </div>
+                  {{/if}}
+                </div>
+
+                <div class="next-steps">
+                  <h3>🚀 Next Steps:</h3>
+                  <ol>
+                    <li><strong>Start Learning:</strong> Click the button below to access your course</li>
+                    <li><strong>Track Progress:</strong> Complete lessons to earn your certificate</li>
+                    <li><strong>Join Community:</strong> Connect with fellow learners</li>
+                    <li><strong>Get Support:</strong> Reach out if you need help along the way</li>
+                  </ol>
+                </div>
+
+                <p style="text-align: center;">
+                  <a href="{{courseUrl}}" class="cta-button">Start Learning Now</a>
+                </p>
+
+                <p>Pro tip: Set aside dedicated time each week to complete lessons. Consistency is key to success!</p>
+
+                <p>Happy learning!<br>The SmartPromptIQ Academy Team</p>
+              </div>
+              <div class="footer">
+                <p>© 2024 SmartPromptIQ Academy. All rights reserved.</p>
+                <p>View all your courses: <a href="{{dashboardUrl}}">My Learning Dashboard</a></p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+        text: `Enrollment Successful! - SmartPromptIQ Academy
+
+Hi {{name}},
+
+Congratulations! You've successfully enrolled in {{courseTitle}}. Get ready to level up your skills!
+
+Course Overview:
+📚 {{lessonCount}} Lessons - Comprehensive curriculum designed by experts
+⏱️ {{duration}} minutes - Total course duration
+🎯 {{difficulty}} - Difficulty level
+{{#if instructor}}👨‍🏫 {{instructor}} - Your instructor{{/if}}
+
+Next Steps:
+1. Start Learning: Access your course at {{courseUrl}}
+2. Track Progress: Complete lessons to earn your certificate
+3. Join Community: Connect with fellow learners
+4. Get Support: Reach out if you need help along the way
+
+Pro tip: Set aside dedicated time each week to complete lessons. Consistency is key to success!
+
+Happy learning!
+The SmartPromptIQ Academy Team
+
+© 2024 SmartPromptIQ Academy. All rights reserved.
+View all your courses: {{dashboardUrl}}`
+      },
+
+      academyCertificate: {
+        subject: '🏆 Congratulations! You Earned a Certificate - {{courseTitle}}',
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Certificate Earned</title>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f8fafc; margin: 0; padding: 0; }
+              .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%); color: white; padding: 50px 30px; text-align: center; }
+              .header h1 { margin: 0; font-size: 32px; font-weight: bold; }
+              .trophy { font-size: 80px; margin: 20px 0; }
+              .content { padding: 40px 30px; }
+              .certificate-preview { border: 3px solid #f59e0b; border-radius: 8px; padding: 30px; margin: 20px 0; text-align: center; background: linear-gradient(135deg, #fef3c7 0%, #fee2e2 100%); }
+              .achievement-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+              .stat-box { background-color: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; }
+              .stat-number { font-size: 24px; font-weight: bold; color: #f59e0b; }
+              .cta-button { display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #dc2626 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+              .footer { background-color: #f8fafc; padding: 20px 30px; text-align: center; color: #666; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <div class="trophy">🏆</div>
+                <h1>Congratulations!</h1>
+                <p>You've completed the course</p>
+              </div>
+              <div class="content">
+                <h2>Amazing Achievement, {{name}}!</h2>
+                <p>You've successfully completed <strong>{{courseTitle}}</strong> and earned your certificate!</p>
+
+                <div class="certificate-preview">
+                  <h3 style="color: #92400e; margin-top: 0;">Certificate of Completion</h3>
+                  <p style="font-size: 18px; margin: 20px 0;"><strong>{{name}}</strong></p>
+                  <p>has successfully completed</p>
+                  <p style="font-size: 20px; font-weight: bold; color: #92400e; margin: 15px 0;">{{courseTitle}}</p>
+                  <p style="font-size: 14px; color: #666;">{{completionDate}}</p>
+                  <p style="font-size: 14px; color: #666;">Certificate ID: {{certificateId}}</p>
+                </div>
+
+                <div class="achievement-stats">
+                  <div class="stat-box">
+                    <div class="stat-number">{{lessonsCompleted}}</div>
+                    <div>Lessons Completed</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="stat-number">{{timeSpent}}</div>
+                    <div>Hours Invested</div>
+                  </div>
+                </div>
+
+                <p style="text-align: center;">
+                  <a href="{{certificateUrl}}" class="cta-button">Download Certificate</a>
+                </p>
+
+                <p><strong>Share Your Achievement:</strong></p>
+                <p>Don't forget to share your certificate on LinkedIn and other professional networks. Let the world know about your accomplishment!</p>
+
+                <p><strong>What's Next?</strong></p>
+                <ul>
+                  <li>Explore more courses in the Academy</li>
+                  <li>Apply your new skills in real projects</li>
+                  <li>Join our community of certified professionals</li>
+                </ul>
+
+                <p>Keep up the excellent work!<br>The SmartPromptIQ Academy Team</p>
+              </div>
+              <div class="footer">
+                <p>© 2024 SmartPromptIQ Academy. All rights reserved.</p>
+                <p>View your certificates: <a href="{{dashboardUrl}}">My Learning Dashboard</a></p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+        text: `Congratulations! You Earned a Certificate - SmartPromptIQ Academy
+
+Hi {{name}},
+
+🏆 AMAZING ACHIEVEMENT! 🏆
+
+You've successfully completed {{courseTitle}} and earned your certificate!
+
+Certificate Details:
+- Course: {{courseTitle}}
+- Completion Date: {{completionDate}}
+- Certificate ID: {{certificateId}}
+- Lessons Completed: {{lessonsCompleted}}
+- Time Invested: {{timeSpent}} hours
+
+Download your certificate: {{certificateUrl}}
+
+Share Your Achievement:
+Don't forget to share your certificate on LinkedIn and other professional networks. Let the world know about your accomplishment!
+
+What's Next?
+• Explore more courses in the Academy
+• Apply your new skills in real projects
+• Join our community of certified professionals
+
+Keep up the excellent work!
+The SmartPromptIQ Academy Team
+
+© 2024 SmartPromptIQ Academy. All rights reserved.
+View your certificates: {{dashboardUrl}}`
       }
     };
 
@@ -432,29 +717,53 @@ Manage your subscription: {{billingUrl}}`
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@smartpromptiq.com';
-      const fromName = process.env.SENDGRID_FROM_NAME || 'SmartPromptIQ Pro';
+      const fromEmail = process.env.FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || 'noreply@smartpromptiq.com';
+      const fromName = process.env.FROM_NAME || process.env.SENDGRID_FROM_NAME || 'SmartPromptIQ Pro';
+      const replyTo = process.env.REPLY_TO || fromEmail;
 
-      const msg = {
-        to: options.to,
-        from: {
-          email: fromEmail,
-          name: fromName
-        },
-        subject: options.subject,
-        text: options.text || options.html.replace(/<[^>]*>/g, ''),
-        html: options.html
-      };
-
-      if (this.isConfigured) {
-        await sgMail.send(msg);
-        console.log(`📧 Email sent successfully to ${options.to}: ${options.subject}`);
-        return true;
-      } else {
-        console.log(`📧 Email would be sent to ${options.to}: ${options.subject}`);
+      if (!this.isConfigured) {
+        console.log(`📧 [Mock] Email would be sent to ${options.to}: ${options.subject}`);
         console.log(`📧 Content preview: ${options.html.substring(0, 200)}...`);
         return true; // Return true for development purposes
       }
+
+      // SendGrid provider
+      if (this.provider === 'sendgrid') {
+        const msg = {
+          to: options.to,
+          from: {
+            email: fromEmail,
+            name: fromName
+          },
+          replyTo: replyTo,
+          subject: options.subject,
+          text: options.text || options.html.replace(/<[^>]*>/g, ''),
+          html: options.html
+        };
+
+        await sgMail.send(msg);
+        console.log(`📧 Email sent via SendGrid to ${options.to}: ${options.subject}`);
+        return true;
+      }
+
+      // SMTP provider (Zoho, Gmail, etc.)
+      if (this.provider === 'smtp' && this.smtpTransporter) {
+        const mailOptions = {
+          from: `"${fromName}" <${fromEmail}>`,
+          to: options.to,
+          replyTo: replyTo,
+          subject: options.subject,
+          text: options.text || options.html.replace(/<[^>]*>/g, ''),
+          html: options.html
+        };
+
+        const info = await this.smtpTransporter.sendMail(mailOptions);
+        console.log(`📧 Email sent via SMTP to ${options.to}: ${options.subject}`);
+        console.log(`📧 Message ID: ${info.messageId}`);
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error('📧 Failed to send email:', error);
       return false;
@@ -560,6 +869,61 @@ Manage your subscription: {{billingUrl}}`
     });
   }
 
+  async sendAcademyEnrollmentEmail(
+    to: string,
+    name: string,
+    courseData: {
+      title: string;
+      slug: string;
+      lessonCount: number;
+      duration: number;
+      difficulty: string;
+      instructor?: string;
+    }
+  ): Promise<boolean> {
+    const courseUrl = `${process.env.FRONTEND_URL}/academy/course/${courseData.slug}`;
+    const dashboardUrl = `${process.env.FRONTEND_URL}/academy/dashboard`;
+
+    return this.sendTemplateEmail(to, 'academyEnrollment', {
+      name,
+      email: to,
+      courseTitle: courseData.title,
+      lessonCount: courseData.lessonCount,
+      duration: courseData.duration,
+      difficulty: courseData.difficulty.charAt(0).toUpperCase() + courseData.difficulty.slice(1),
+      instructor: courseData.instructor || null,
+      courseUrl,
+      dashboardUrl
+    });
+  }
+
+  async sendAcademyCertificateEmail(
+    to: string,
+    name: string,
+    certificateData: {
+      courseTitle: string;
+      certificateId: string;
+      completionDate: string;
+      lessonsCompleted: number;
+      timeSpent: number;
+    }
+  ): Promise<boolean> {
+    const certificateUrl = `${process.env.FRONTEND_URL}/academy/certificate/${certificateData.certificateId}`;
+    const dashboardUrl = `${process.env.FRONTEND_URL}/academy/dashboard`;
+
+    return this.sendTemplateEmail(to, 'academyCertificate', {
+      name,
+      email: to,
+      courseTitle: certificateData.courseTitle,
+      certificateId: certificateData.certificateId,
+      completionDate: certificateData.completionDate,
+      lessonsCompleted: certificateData.lessonsCompleted,
+      timeSpent: certificateData.timeSpent,
+      certificateUrl,
+      dashboardUrl
+    });
+  }
+
   // Test email functionality
   async sendTestEmail(to: string): Promise<boolean> {
     return this.sendEmail({
@@ -582,7 +946,8 @@ Manage your subscription: {{billingUrl}}`
   getStatus(): { configured: boolean; provider: string } {
     return {
       configured: this.isConfigured,
-      provider: this.isConfigured ? 'SendGrid' : 'Mock'
+      provider: this.provider === 'sendgrid' ? 'SendGrid' :
+                this.provider === 'smtp' ? 'SMTP' : 'Mock'
     };
   }
 }
