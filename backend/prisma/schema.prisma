@@ -4,120 +4,124 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String?  @unique
+  id        String  @id @default(cuid())
+  email     String  @unique
+  username  String? @unique
   password  String
   firstName String?
   lastName  String?
   avatar    String?
-  role      String   @default("USER")
-  
+  role      String  @default("USER")
+
   // Subscription and billing
-  subscriptionTier     String   @default("free") // free, starter, pro, business, enterprise
-  subscriptionStatus   String   @default("active") // active, canceled, past_due, incomplete
-  subscriptionEndDate  DateTime?
-  billingCycle         String   @default("monthly") // monthly, yearly
-  
+  subscriptionTier    String    @default("free") // free, starter, pro, business, enterprise
+  subscriptionStatus  String    @default("active") // active, canceled, past_due, incomplete
+  subscriptionEndDate DateTime?
+  billingCycle        String    @default("monthly") // monthly, yearly
+
   // Stripe integration
-  stripeCustomerId     String?  @unique
-  stripeSubscriptionId String?  @unique
-  
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+
   // Token management
-  tokenBalance         Int      @default(5) // Current token balance
-  tokensPurchased      Int      @default(0) // Lifetime tokens purchased
-  tokensUsed           Int      @default(0) // Lifetime tokens used
-  
+  tokenBalance    Int @default(5) // Current token balance
+  tokensPurchased Int @default(0) // Lifetime tokens purchased
+  tokensUsed      Int @default(0) // Lifetime tokens used
+
   // Legacy fields (for backward compatibility)
-  plan                 String   @default("FREE")
-  generationsUsed      Int      @default(0)
-  generationsLimit     Int      @default(10)
-  
+  plan             String @default("FREE")
+  generationsUsed  Int    @default(0)
+  generationsLimit Int    @default(10)
+
   // Usage tracking
-  monthlyTokensUsed    Int      @default(0) // Resets monthly for subscription users
-  monthlyResetDate     DateTime @default(now())
-  lastTokenPurchase    DateTime?
-  
+  monthlyTokensUsed Int       @default(0) // Resets monthly for subscription users
+  monthlyResetDate  DateTime  @default(now())
+  lastTokenPurchase DateTime?
+
   // Account status
-  emailVerified        Boolean  @default(false)
-  isActive             Boolean  @default(true)
-  suspensionReason     String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  emailVerified    Boolean @default(false)
+  isActive         Boolean @default(true)
+  suspensionReason String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   lastLogin DateTime?
-  
-  teams            TeamMember[]
-  projects         Project[]
-  generations      Generation[]
-  analytics        Analytics[]
-  templates        Template[]
-  subscriptions    Subscription[]
-  tokenTransactions TokenTransaction[]
-  usageLogs        UsageLog[]
-  prompts          Prompt[]
-  feedback         Feedback[]
+
+  teams                  TeamMember[]
+  projects               Project[]
+  generations            Generation[]
+  analytics              Analytics[]
+  templates              Template[]
+  subscriptions          Subscription[]
+  tokenTransactions      TokenTransaction[]
+  usageLogs              UsageLog[]
+  prompts                Prompt[]
+  feedback               Feedback[]
   customCategoryRequests CustomCategoryRequest[]
-  notifications    Notification[]
-  
+  notifications          Notification[]
+  enrollments            Enrollment[]
+  lessonProgress         LessonProgress[]
+  certificates           Certificate[]
+  courseReviews          CourseReview[]
+
   @@map("users")
 }
 
 model Team {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String?
-  maxMembers  Int @default(5)
-  
+  maxMembers  Int     @default(5)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   members  TeamMember[]
   projects Project[]
-  
+
   @@map("teams")
 }
 
 model TeamMember {
-  id     String   @id @default(cuid())
+  id     String @id @default(cuid())
   userId String
   teamId String
-  role   String   @default("MEMBER")
-  
+  role   String @default("MEMBER")
+
   joinedAt DateTime @default(now())
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  
+
   @@unique([userId, teamId])
   @@map("team_members")
 }
 
 model Project {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String?
   category    String
-  status      String   @default("ACTIVE")
-  
+  status      String  @default("ACTIVE")
+
   settings String?
   metadata String?
-  
+
   userId String
   teamId String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   team        Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
   generations Generation[]
-  
+
   @@map("projects")
 }
 
@@ -125,7 +129,7 @@ model Generation {
   id        String @id @default(cuid())
   projectId String
   userId    String
-  
+
   prompt     String
   response   String
   model      String
@@ -134,126 +138,126 @@ model Generation {
   cost       Float?
   quality    Int?
   metadata   String?
-  
+
   createdAt DateTime @default(now())
-  
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+
   @@map("generations")
 }
 
 model Template {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String?
   category    String
-  content     String   // Renamed from 'prompt' to match frontend
-  tags        String?  // Tags as comma-separated string
-  isPublic    Boolean  @default(false)
-  
-  usageCount  Int      @default(0)
-  rating      Float?
-  
-  userId      String
-  teamId      String?  // Added for team templates
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  content     String // Renamed from 'prompt' to match frontend
+  tags        String? // Tags as comma-separated string
+  isPublic    Boolean @default(false)
+
+  usageCount Int    @default(0)
+  rating     Float?
+
+  userId String
+  teamId String? // Added for team templates
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("templates")
 }
 
 model Analytics {
-  id     String   @id @default(cuid())
+  id     String @id @default(cuid())
   userId String
-  
+
   event    String
   category String
   value    Float?
   metadata String?
-  
+
   timestamp DateTime @default(now())
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("analytics")
 }
 
 // New models for token-based pricing system
 
 model Subscription {
-  id                  String   @id @default(cuid())
-  userId              String
-  
+  id     String @id @default(cuid())
+  userId String
+
   // Subscription details
-  tier                String   // free, starter, pro, business, enterprise
-  status              String   // active, canceled, past_due, incomplete, trialing
-  billingCycle        String   // monthly, yearly
-  
+  tier         String // free, starter, pro, business, enterprise
+  status       String // active, canceled, past_due, incomplete, trialing
+  billingCycle String // monthly, yearly
+
   // Pricing information (in cents)
-  priceInCents        Int
-  tokensPerMonth      Int      // -1 for unlimited
-  maxTokenRollover    Int      // -1 for unlimited
-  
+  priceInCents     Int
+  tokensPerMonth   Int // -1 for unlimited
+  maxTokenRollover Int // -1 for unlimited
+
   // Stripe integration
   stripeSubscriptionId String? @unique
-  stripePriceId       String?
-  
+  stripePriceId        String?
+
   // Billing dates
-  currentPeriodStart  DateTime
-  currentPeriodEnd    DateTime
-  cancelAtPeriodEnd   Boolean  @default(false)
-  canceledAt          DateTime?
-  
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean   @default(false)
+  canceledAt         DateTime?
+
   // Trial information
-  trialStart          DateTime?
-  trialEnd            DateTime?
-  
+  trialStart DateTime?
+  trialEnd   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("subscriptions")
 }
 
 model TokenTransaction {
-  id              String   @id @default(cuid())
-  userId          String
-  
+  id     String @id @default(cuid())
+  userId String
+
   // Transaction details
-  type            String   // purchase, usage, rollover, expiration, refund, bonus
-  tokens          Int      // Positive for credits, negative for debits
-  balanceBefore   Int      // Token balance before transaction
-  balanceAfter    Int      // Token balance after transaction
-  
+  type          String // purchase, usage, rollover, expiration, refund, bonus
+  tokens        Int // Positive for credits, negative for debits
+  balanceBefore Int // Token balance before transaction
+  balanceAfter  Int // Token balance after transaction
+
   // Cost tracking (in cents)
-  costInCents     Int?     // For purchases and usage cost tracking
-  
+  costInCents Int? // For purchases and usage cost tracking
+
   // Purchase information
-  packageType     String?  // small, medium, large, bulk, subscription
+  packageType           String? // small, medium, large, bulk, subscription
   stripePaymentIntentId String?
-  
+
   // Usage information
   promptComplexity String? // simple, standard, complex, custom
-  model           String?  // gpt3_5_turbo, gpt4, claude_sonnet, etc.
-  category        String?  // Category of prompt generated
-  
+  model            String? // gpt3_5_turbo, gpt4, claude_sonnet, etc.
+  category         String? // Category of prompt generated
+
   // Token expiration
-  expiresAt       DateTime? // For purchased tokens (90 days)
-  isExpired       Boolean   @default(false)
-  
+  expiresAt DateTime? // For purchased tokens (90 days)
+  isExpired Boolean   @default(false)
+
   // Metadata
-  description     String?   // Human readable description
-  metadata        String?   // JSON metadata
-  
+  description String? // Human readable description
+  metadata    String? // JSON metadata
+
   createdAt DateTime @default(now())
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId, createdAt])
   @@index([userId, type])
   @@index([expiresAt])
@@ -261,40 +265,40 @@ model TokenTransaction {
 }
 
 model UsageLog {
-  id                String   @id @default(cuid())
-  userId            String
-  
+  id     String @id @default(cuid())
+  userId String
+
   // Request details
-  endpoint          String   // /api/prompts/generate, /api/prompts/refine, etc.
-  method            String   // GET, POST, PUT, DELETE
-  
+  endpoint String // /api/prompts/generate, /api/prompts/refine, etc.
+  method   String // GET, POST, PUT, DELETE
+
   // Usage metrics
-  tokensConsumed    Int      @default(0)
-  promptComplexity  String?  // simple, standard, complex, custom
-  model             String?  // AI model used
-  category          String?  // Prompt category
-  
+  tokensConsumed   Int     @default(0)
+  promptComplexity String? // simple, standard, complex, custom
+  model            String? // AI model used
+  category         String? // Prompt category
+
   // Performance metrics
-  responseTime      Int?     // Response time in milliseconds
-  success           Boolean  @default(true)
-  errorCode         String?  // Error code if failed
-  
+  responseTime Int? // Response time in milliseconds
+  success      Boolean @default(true)
+  errorCode    String? // Error code if failed
+
   // Cost tracking (in cents)
-  costInCents       Int      @default(0)
-  marginInCents     Int      @default(0) // Revenue - Cost
-  
+  costInCents   Int @default(0)
+  marginInCents Int @default(0) // Revenue - Cost
+
   // Request metadata
-  userAgent         String?
-  ipAddress         String?
-  
+  userAgent String?
+  ipAddress String?
+
   // Rate limiting
-  rateLimitHit      Boolean  @default(false)
-  rateLimitType     String?  // hourly, daily, api_minute
-  
+  rateLimitHit  Boolean @default(false)
+  rateLimitType String? // hourly, daily, api_minute
+
   createdAt DateTime @default(now())
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId, createdAt])
   @@index([userId, endpoint])
   @@index([createdAt])
@@ -302,47 +306,47 @@ model UsageLog {
 }
 
 model Prompt {
-  id            String   @id @default(cuid())
-  title         String
-  content       String
-  category      String
-  isFavorite    Boolean  @default(false)
-  
+  id         String  @id @default(cuid())
+  title      String
+  content    String
+  category   String
+  isFavorite Boolean @default(false)
+
   // Questionnaire data and customization
-  questionnaire String?  // JSON of questionnaire responses
-  customization String?  // JSON of customization settings
-  
+  questionnaire String? // JSON of questionnaire responses
+  customization String? // JSON of customization settings
+
   // Usage tracking
-  usageCount    Int      @default(0)
-  lastUsed      DateTime?
-  
-  userId        String
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  usageCount Int       @default(0)
+  lastUsed   DateTime?
+
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId, category])
   @@index([userId, isFavorite])
   @@map("prompts")
 }
 
 model Feedback {
-  id          String   @id @default(cuid())
-  rating      Int      // 1-5 star rating
-  email       String?  // Optional email for follow-up
-  feedback    String?  // Optional text feedback
-  page        String?  // Page where feedback was submitted
-  userAgent   String?  // Browser/device info
-  
-  userId      String
-  
+  id        String  @id @default(cuid())
+  rating    Int // 1-5 star rating
+  email     String? // Optional email for follow-up
+  feedback  String? // Optional text feedback
+  page      String? // Page where feedback was submitted
+  userAgent String? // Browser/device info
+
+  userId String
+
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([rating])
   @@index([submittedAt])
@@ -350,33 +354,33 @@ model Feedback {
 }
 
 model CustomCategoryRequest {
-  id              String   @id @default(cuid())
-  categoryName    String
-  description     String
-  industryType    String?
-  useCase         String?
-  targetAudience  String?
-  priority        String   @default("medium") // low, medium, high, urgent
-  
+  id             String  @id @default(cuid())
+  categoryName   String
+  description    String
+  industryType   String?
+  useCase        String?
+  targetAudience String?
+  priority       String  @default("medium") // low, medium, high, urgent
+
   // Contact info
-  email           String
-  companyName     String?
-  phone           String?
-  
+  email       String
+  companyName String?
+  phone       String?
+
   // Status tracking
-  status          String   @default("pending") // pending, reviewing, approved, in_development, completed, rejected
-  submittedAt     DateTime @default(now())
-  reviewedAt      DateTime?
-  implementedAt   DateTime?
-  
+  status        String    @default("pending") // pending, reviewing, approved, in_development, completed, rejected
+  submittedAt   DateTime  @default(now())
+  reviewedAt    DateTime?
+  implementedAt DateTime?
+
   // Admin fields
-  reviewedBy      String?  // Admin user ID
-  adminNotes      String?
-  
-  userId          String
-  
+  reviewedBy String? // Admin user ID
+  adminNotes String?
+
+  userId String
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([status])
   @@index([priority])
@@ -385,22 +389,283 @@ model CustomCategoryRequest {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  type      String   // custom_category_request, custom_category_update, system_alert, etc.
-  title     String
-  message   String
-  data      String?  // JSON data for additional context
-  
-  userId    String?  // null for admin notifications
-  isRead    Boolean  @default(false)
-  
-  createdAt DateTime @default(now())
+  id      String  @id @default(cuid())
+  type    String // custom_category_request, custom_category_update, system_alert, etc.
+  title   String
+  message String
+  data    String? // JSON data for additional context
+
+  userId String? // null for admin notifications
+  isRead Boolean @default(false)
+
+  createdAt DateTime  @default(now())
   readAt    DateTime?
-  
+
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// ============================================
+// SMARTPROMPTIQ ACADEMY MODELS
+// ============================================
+
+model Course {
+  id          String @id @default(cuid())
+  title       String
+  description String
+  slug        String @unique
+  category    String // prompt-engineering, devops, design, trading, finance
+  difficulty  String // beginner, intermediate, advanced
+  duration    Int // in minutes
+
+  // Access control
+  accessTier String // free, smartpromptiq_included, pro, certification
+  priceUSD   Int    @default(0) // price in cents (0 for free)
+
+  // Content
+  thumbnailUrl String?
+  videoUrl     String? // intro video
+  syllabus     String? // JSON array of topics
+
+  // Metadata
+  isPublished Boolean @default(false)
+  order       Int     @default(0)
+  instructor  String?
+  tags        String? // comma-separated
+
+  // Stats
+  enrollmentCount Int    @default(0)
+  averageRating   Float?
+  reviewCount     Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lessons     Lesson[]
+  enrollments Enrollment[]
+  reviews     CourseReview[]
+
+  @@index([accessTier])
+  @@index([category])
+  @@index([isPublished])
+  @@map("academy_courses")
+}
+
+model Lesson {
+  id          String  @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+
+  // Content
+  content  String // Rich text/markdown
+  videoUrl String?
+  duration Int // in minutes
+  order    Int
+
+  // Resources
+  downloadUrl        String? // PDF, templates, etc
+  codeSnippet        String? // Example code
+  quizData           String? // JSON quiz questions
+  exerciseData       String? // JSON hands-on exercise
+  playgroundExamples String? // JSON playground examples
+
+  // Access
+  isPublished Boolean @default(false)
+  isFree      Boolean @default(false) // Preview lesson
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+
+  @@index([courseId])
+  @@index([isPublished])
+  @@map("academy_lessons")
+}
+
+model Enrollment {
+  id       String @id @default(cuid())
+  userId   String
+  courseId String
+
+  // Enrollment type
+  enrollmentType String // free, smartpromptiq_included, purchased, pro_subscription, certification
+
+  // Payment (if applicable)
+  paidAmount Int? // in cents
+  paymentId  String? // Stripe payment intent ID
+
+  // Status
+  status   String @default("active") // active, completed, dropped, expired
+  progress Float  @default(0) // percentage (0-100)
+
+  // Timestamps
+  enrolledAt     DateTime  @default(now())
+  completedAt    DateTime?
+  expiresAt      DateTime? // for time-limited access
+  lastAccessedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+  @@map("academy_enrollments")
+}
+
+model LessonProgress {
+  id       String @id @default(cuid())
+  userId   String
+  lessonId String
+
+  // Progress tracking
+  completed    Boolean @default(false)
+  timeSpent    Int     @default(0) // seconds
+  lastPosition Int? // for video progress (seconds)
+
+  // Quiz/assessment
+  quizScore    Int? // percentage
+  quizAttempts Int  @default(0)
+
+  // Notes
+  userNotes String?
+
+  // Rating & Feedback
+  rating   Int? // 1-5 stars
+  feedback String? // Text feedback from user
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+  @@map("academy_lesson_progress")
+}
+
+model Certificate {
+  id       String  @id @default(cuid())
+  userId   String
+  courseId String? // null for general certifications
+
+  // Certificate details
+  certificateType String // course_completion, certification_exam, specialization
+  certificateUrl  String // URL to PDF certificate
+  certificateCode String @unique // Verification code
+
+  // Metadata
+  title       String // e.g., "Certified Prompt Engineer"
+  description String?
+  skills      String? // JSON array of skills
+
+  // Validity
+  issuedAt  DateTime  @default(now())
+  expiresAt DateTime? // for time-limited certifications
+  isRevoked Boolean   @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([certificateCode])
+  @@map("academy_certificates")
+}
+
+model CourseReview {
+  id       String @id @default(cuid())
+  userId   String
+  courseId String
+
+  // Review content
+  rating     Int // 1-5 stars
+  reviewText String?
+
+  // Metadata
+  isVerifiedPurchase Boolean @default(false)
+  wasHelpful         Int     @default(0) // upvote count
+
+  // Status
+  isPublished Boolean @default(true)
+  isFlagged   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([rating])
+  @@map("academy_course_reviews")
+}
+
+model AcademySubscription {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Subscription tier: academy_basic, academy_pro, all_access
+  tier         String @default("free")
+  status       String @default("active") // active, canceled, past_due, expired
+  billingCycle String @default("monthly") // monthly, yearly
+
+  // Pricing (in cents)
+  priceInCents Int @default(0)
+
+  // Stripe integration
+  stripeSubscriptionId String? @unique
+  stripePriceId        String?
+
+  // Billing dates
+  currentPeriodStart DateTime @default(now())
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean  @default(false)
+
+  // Trial
+  trialStart DateTime?
+  trialEnd   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("academy_subscriptions")
+}
+
+model LearningAnalytics {
+  id       String  @id @default(cuid())
+  userId   String
+  courseId String?
+
+  // Time tracking
+  date      DateTime @default(now())
+  timeSpent Int // seconds
+
+  // Activity
+  lessonsCompleted Int    @default(0)
+  quizzesCompleted Int    @default(0)
+  averageQuizScore Float?
+
+  // Engagement
+  loginCount Int @default(0)
+  streakDays Int @default(0)
+
+  // XP/Gamification
+  xpEarned Int @default(0)
+
+  @@index([userId])
+  @@index([date])
+  @@map("academy_learning_analytics")
 }

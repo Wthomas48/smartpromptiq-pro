@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star } from "lucide-react";
+import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star, GraduationCap } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import BrainLogo from "@/components/BrainLogo";
@@ -47,8 +47,10 @@ export default function Navigation() {
   const mainNavItems = [
     { href: "/dashboard", label: "Dashboard", icon: null, badge: null },
     { href: "/categories", label: "Create Prompt", icon: null, badge: "Start Here!", special: true },
+    { href: "/academy", label: "Academy", icon: GraduationCap, badge: "57 Courses", academySpecial: true },
     { href: "/teams", label: "Teams", icon: Users, badge: "4 Active" },
-    { href: "/documentation", label: "Docs", icon: null, badge: null }
+    { href: "/documentation", label: "Docs", icon: null, badge: null },
+    { href: "/contact", label: "Contact", icon: null, badge: null }
   ];
 
   const categoryNavItems = [
@@ -87,6 +89,8 @@ export default function Navigation() {
                       : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
                   } ${
                     item.special ? 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200/50 dark:border-purple-500/20 hover:shadow-md transition-all' : ''
+                  } ${
+                    (item as any).academySpecial ? 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200/50 dark:border-purple-500/20 hover:shadow-md transition-all' : ''
                   }`}
                 >
                   {item.icon && <item.icon className="w-4 h-4" />}
@@ -95,6 +99,8 @@ export default function Navigation() {
                     <span className={`inline-flex items-center justify-center px-2 h-5 text-xs font-bold rounded-full ${
                       item.special
                         ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm animate-pulse'
+                        : (item as any).academySpecial
+                        ? 'text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-sm'
                         : 'text-white bg-indigo-600'
                     }`}>
                       {item.badge}
@@ -159,6 +165,16 @@ export default function Navigation() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border shadow-lg">
+                  <DropdownMenuItem asChild>
+                    <Link href="/academy" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <GraduationCap className="w-4 h-4 mr-2 text-purple-600" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Academy</span>
+                        <span className="text-xs text-gray-500">57 Courses Available</span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/tokens" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
                       <Coins className="w-4 h-4 mr-2 text-indigo-600" />
@@ -244,6 +260,8 @@ export default function Navigation() {
                     location === item.href
                       ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
+                  } ${
+                    (item as any).academySpecial ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -255,6 +273,8 @@ export default function Navigation() {
                     <span className={`inline-flex items-center justify-center px-2 h-5 text-xs font-bold rounded-full ${
                       item.special
                         ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm animate-pulse'
+                        : (item as any).academySpecial
+                        ? 'text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-sm'
                         : 'text-white bg-indigo-600'
                     }`}>
                       {item.badge}

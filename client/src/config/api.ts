@@ -28,36 +28,40 @@ const config = {
 
 // Determine the API base URL based on environment with enhanced validation
 export const getApiBaseUrl = (): string => {
-  // ✅ FORCE LOCAL API FOR ALL DEVELOPMENT
-  const isDev = import.meta.env.DEV || import.meta.env.VITE_API_URL;
-  const forceLocal = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  // ✅ CHECK: Only use DEV mode, not VITE_API_URL (which can be empty string)
+  const isDev = import.meta.env.DEV;
 
+  // In development mode, check for explicit API URL or default to localhost
   if (isDev) {
-    console.log('🔧 DEV MODE: Using local API:', forceLocal);
-    return forceLocal;
-  }
-
-  const currentUrl = typeof window !== 'undefined' ? window.location : null;
-
-  // ✅ FORCE LOCAL DEVELOPMENT: Always use local server when on localhost
-  if (currentUrl && currentUrl.hostname === 'localhost') {
-    const localApi = 'http://localhost:5000';
-    console.log('🔧 DEV MODE: Force using local server:', localApi);
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const localApi = apiUrl && apiUrl.trim() !== '' ? apiUrl : 'http://localhost:5000';
+    console.log('🔧 DEV MODE: Using API:', localApi);
     return localApi;
   }
 
-  // ✅ EVERYTHING ELSE: Use same origin (production, staging, any other domain)
-  if (currentUrl && currentUrl.hostname !== 'localhost') {
-    return ''; // Empty string = same origin
+  // ✅ PRODUCTION MODE: Use same-origin or explicit production URL
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+
+    // Force localhost in browser (for testing production builds locally)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      const localApi = 'http://localhost:5000';
+      console.log('🔧 LOCAL TESTING: Using local server:', localApi);
+      return localApi;
+    }
+
+    // Production domains - use same origin (empty string)
+    if (hostname.includes('smartpromptiq.com') ||
+        hostname.includes('railway.app') ||
+        hostname.includes('vercel.app') ||
+        hostname.includes('netlify.app')) {
+      console.log('🚀 PRODUCTION: Using same-origin API');
+      return ''; // Empty string = same origin
+    }
   }
 
-  // ✅ SERVER-SIDE OR DEV FALLBACK
-  if (import.meta.env.DEV) {
-    const localApi = 'http://localhost:5000';
-    return localApi;
-  }
-
-  // ✅ FINAL FALLBACK: Always return empty string for production
+  // ✅ FINAL FALLBACK: Same origin for production
+  console.log('🚀 FALLBACK: Using same-origin API');
   return '';
 
   // In production, determine backend URL with enhanced validation

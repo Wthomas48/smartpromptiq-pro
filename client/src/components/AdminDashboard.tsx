@@ -5,10 +5,22 @@ import { apiRequest as originalApiRequest } from '@/config/api';
 // Simple wrapper to handle the API calls correctly
 const apiRequest = async (url: string, options: { method: string; body?: any; headers?: any } = { method: 'GET' }) => {
   try {
+    // Check if user is authenticated before making admin requests
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('Not authenticated. Please login as admin.');
+    }
+
     const response = await originalApiRequest(options.method || 'GET', url, options.body);
     return await response.json();
   } catch (error: any) {
     console.error('❌ API Error:', error);
+
+    // Check if error is related to authentication
+    if (error.message?.includes('Invalid token') || error.message?.includes('Unauthorized') || error.message?.includes('401')) {
+      throw new Error('Admin authentication required. Please login as admin first.');
+    }
+
     throw error;
   }
 };
@@ -108,6 +120,7 @@ const AdminDashboard: React.FC = () => {
   const [securityData, setSecurityData] = useState<any>(null);
   const [emailData, setEmailData] = useState<any>(null);
   const [systemData, setSystemData] = useState<any>(null);
+  const [academyData, setAcademyData] = useState<any>(null);
 
   // Delete functionality state
   const [deleteModal, setDeleteModal] = useState<{
@@ -134,6 +147,15 @@ const AdminDashboard: React.FC = () => {
       else setLoading(true);
 
       console.log('Fetching admin data from live APIs...');
+
+      // Check authentication first
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('⚠️ No authentication token - cannot fetch admin data');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
 
       // Fetch dashboard stats from real backend
       const statsResponse = await apiRequest('/api/admin/stats', {
@@ -203,16 +225,22 @@ const AdminDashboard: React.FC = () => {
       }
 
       console.log('Admin data fetched successfully from live backend');
-    } catch (error) {
-      console.error('❌ Error fetching admin data from live backend:', error);
+    } catch (error: any) {
+      // Don't log errors if it's just an authentication issue (user not logged in)
+      if (error.message?.includes('Admin authentication required') || error.message?.includes('Not authenticated')) {
+        console.warn('⚠️ Admin authentication required - user not logged in as admin');
+      } else {
+        // Only log actual errors
+        console.error('❌ Error fetching admin data from live backend:', error);
 
-      // NO MOCK DATA - Show error state instead
+        // Show user-friendly error message for real errors
+        alert('Failed to fetch admin data from backend. Please check your connection and try refreshing.');
+      }
+
+      // NO MOCK DATA - Show error state
       setStats(null);
       setUsers([]);
       setPayments([]);
-
-      // Show user-friendly error message
-      alert('Failed to fetch admin data from backend. Please check your connection and try refreshing.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -220,9 +248,15 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAdminData();
-    fetchRealTimeData(); // Also fetch real-time data on initial load
-    fetchComprehensiveData(); // Fetch all monitoring data
+    // ✅ Only fetch data on initial load if user is authenticated
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetchAdminData();
+      fetchRealTimeData(); // Also fetch real-time data on initial load
+      fetchComprehensiveData(); // Fetch all monitoring data
+    } else {
+      console.warn('⚠️ Initial data fetch skipped - not authenticated');
+    }
   }, []);
 
   // Enhanced state for real-time monitoring
@@ -259,12 +293,20 @@ const AdminDashboard: React.FC = () => {
     try {
       console.log('Fetching comprehensive admin data...');
 
+      // Check authentication first
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('⚠️ No authentication token - skipping comprehensive data fetch');
+        return;
+      }
+
       // ✅ ENABLED: Backend restarted with new endpoints
-      const [tokenResponse, securityResponse, emailResponse, systemResponse] = await Promise.all([
+      const [tokenResponse, securityResponse, emailResponse, systemResponse, academyResponse] = await Promise.all([
         apiRequest('/api/admin/token-monitoring?timeframe=30d', { method: 'GET' }),
         apiRequest('/api/admin/password-security', { method: 'GET' }),
         apiRequest('/api/admin/email-management?timeframe=30d', { method: 'GET' }),
-        apiRequest('/api/admin/system-monitoring', { method: 'GET' })
+        apiRequest('/api/admin/system-monitoring', { method: 'GET' }),
+        apiRequest('/api/academy/admin/stats', { method: 'GET' })
       ]);
 
       console.log('New admin endpoints enabled - backend running with comprehensive features');
@@ -288,14 +330,32 @@ const AdminDashboard: React.FC = () => {
         setSystemData(systemResponse.data);
         console.log('System monitoring data loaded');
       }
-    } catch (error) {
+
+      if (academyResponse.success) {
+        setAcademyData(academyResponse.data);
+        console.log('Academy data loaded');
+      }
+    } catch (error: any) {
       console.error('❌ Error fetching comprehensive data:', error);
+
+      // Show user-friendly error if authentication failed
+      if (error.message?.includes('Admin authentication required') || error.message?.includes('Invalid token')) {
+        console.warn('⚠️ Admin authentication required for comprehensive data');
+        // Don't show alert - just log the warning
+      }
     }
   };
 
   // Auto-refresh for real-time monitoring
   useEffect(() => {
     const interval = setInterval(() => {
+      // ✅ Only refresh if user is authenticated
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('⚠️ Auto-refresh skipped - not authenticated');
+        return;
+      }
+
       if (activeTab === 'overview' || activeTab === 'analytics') {
         fetchRealTimeData();
       }
@@ -311,6 +371,13 @@ const AdminDashboard: React.FC = () => {
   const fetchRealTimeData = async () => {
     try {
       console.log('Fetching real-time monitoring data...');
+
+      // Check authentication first
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('⚠️ No authentication token - skipping real-time data fetch');
+        return;
+      }
 
       const [sessionsResponse, registrationsResponse, logsResponse] = await Promise.all([
         apiRequest('/api/admin/active-sessions', { method: 'GET' }),
@@ -331,8 +398,13 @@ const AdminDashboard: React.FC = () => {
       }
 
       console.log('Real-time data updated');
-    } catch (error) {
-      console.error('❌ Error fetching real-time data:', error);
+    } catch (error: any) {
+      // Don't log errors if it's just an authentication issue
+      if (error.message?.includes('Admin authentication required') || error.message?.includes('Not authenticated')) {
+        console.warn('⚠️ Admin authentication required for real-time data');
+      } else {
+        console.error('❌ Error fetching real-time data:', error);
+      }
     }
   };
 
@@ -1438,7 +1510,7 @@ Created: ${formatDate(user.createdAt)}
 
         {/* Enhanced Tabs with All Monitoring Features */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-9 bg-white rounded-xl shadow-lg border border-gray-200/50 p-2 gap-1">
+          <TabsList className="grid w-full grid-cols-10 bg-white rounded-xl shadow-lg border border-gray-200/50 p-2 gap-1">
             <TabsTrigger
               value="overview"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
@@ -1452,6 +1524,13 @@ Created: ${formatDate(user.createdAt)}
             >
               <Users className="mr-1" size={14} />
               Users
+            </TabsTrigger>
+            <TabsTrigger
+              value="academy"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-indigo-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <Sparkles className="mr-1" size={14} />
+              Academy
             </TabsTrigger>
             <TabsTrigger
               value="deleted"
@@ -2642,6 +2721,187 @@ Created: ${formatDate(user.createdAt)}
                     <RefreshCw className="w-4 h-4" />
                     Refresh System Data
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Academy Tab */}
+          <TabsContent value="academy" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Overview Stats */}
+              <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-purple-700 flex items-center gap-2">
+                    <Sparkles size={20} />
+                    Total Courses
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-purple-900">
+                    {academyData?.overview?.totalCourses || 0}
+                  </div>
+                  <p className="text-sm text-purple-600 mt-1">
+                    {academyData?.overview?.publishedCourses || 0} published
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-blue-700 flex items-center gap-2">
+                    <Users size={20} />
+                    Enrollments
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-blue-900">
+                    {academyData?.overview?.totalEnrollments || 0}
+                  </div>
+                  <p className="text-sm text-blue-600 mt-1">
+                    {academyData?.overview?.activeEnrollments || 0} active
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-green-700 flex items-center gap-2">
+                    <CheckCircle size={20} />
+                    Completed
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-900">
+                    {academyData?.overview?.completedCourses || 0}
+                  </div>
+                  <p className="text-sm text-green-600 mt-1">
+                    {academyData?.overview?.completionRate || 0}% completion rate
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-amber-700 flex items-center gap-2">
+                    <Briefcase size={20} />
+                    Certificates
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-amber-900">
+                    {academyData?.overview?.totalCertificates || 0}
+                  </div>
+                  <p className="text-sm text-amber-600 mt-1">
+                    {academyData?.overview?.totalLessons || 0} total lessons
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Top Courses and Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="text-purple-600" />
+                    Top Courses
+                  </CardTitle>
+                  <CardDescription>Most popular courses by enrollment</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {academyData?.topCourses && academyData.topCourses.length > 0 ? (
+                      academyData.topCourses.map((course: any, index: number) => (
+                        <div key={course.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900">{course.title}</div>
+                              <div className="text-sm text-gray-600">
+                                {course.category} · {course.difficulty}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-purple-600">{course._count?.enrollments || 0}</div>
+                            <div className="text-xs text-gray-500">enrollments</div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-center py-4">No course data available</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="text-blue-600" />
+                    Recent Enrollments
+                  </CardTitle>
+                  <CardDescription>Latest course enrollments</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {academyData?.recentActivity && academyData.recentActivity.length > 0 ? (
+                      academyData.recentActivity.slice(0, 5).map((enrollment: any) => (
+                        <div key={enrollment.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                          <div>
+                            <div className="font-medium text-gray-900">{enrollment.course?.title || 'Unknown Course'}</div>
+                            <div className="text-sm text-gray-600">
+                              {new Date(enrollment.enrolledAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <Badge variant={enrollment.status === 'active' ? 'default' : 'secondary'}>
+                            {enrollment.status}
+                          </Badge>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-center py-4">No recent enrollments</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Growth Metrics */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="text-indigo-600" />
+                  Academy Growth Metrics
+                </CardTitle>
+                <CardDescription>Performance overview (Last 30 days)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-700">
+                      {academyData?.overview?.recentEnrollments || 0}
+                    </div>
+                    <div className="text-sm text-purple-600 mt-1">New Enrollments</div>
+                    <div className="text-xs text-purple-500 mt-2">Last 30 days</div>
+                  </div>
+                  <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
+                    <div className="text-2xl font-bold text-green-700">
+                      {academyData?.overview?.completionRate || 0}%
+                    </div>
+                    <div className="text-sm text-green-600 mt-1">Completion Rate</div>
+                    <div className="text-xs text-green-500 mt-2">Overall average</div>
+                  </div>
+                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-700">
+                      {academyData?.overview?.totalLessons || 0}
+                    </div>
+                    <div className="text-sm text-blue-600 mt-1">Total Lessons</div>
+                    <div className="text-xs text-blue-500 mt-2">Across all courses</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

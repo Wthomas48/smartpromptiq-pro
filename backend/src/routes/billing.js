@@ -399,9 +399,9 @@ router.post('/upgrade', authenticate, async (req, res) => {
       });
     }
 
-    // LOCAL DEVELOPMENT MODE: Skip Stripe and just update the user's tier
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🧪 DEV MODE: Simulating upgrade to ${tierId} (${billingCycle})`);
+    // LOCAL DEVELOPMENT MODE: Skip Stripe if ENABLE_STRIPE is false
+    if (process.env.ENABLE_STRIPE === 'false') {
+      console.log(`🧪 DEV MODE (ENABLE_STRIPE=false): Simulating upgrade to ${tierId} (${billingCycle})`);
 
       await prisma.user.update({
         where: { id: userId },
