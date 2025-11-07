@@ -70,12 +70,12 @@ export default function Home() {
             </div>
 
             <h1 className="hero-title">
-              Transform Ideas into<br />
-              <span className="gradient-text">AI-Powered Blueprints</span>
+              Master AI Prompting. Build Powerful Tools.<br />
+              <span className="gradient-text">All in One Platform.</span>
             </h1>
-            
+
             <p className="hero-description">
-              Smart PromptIQ revolutionizes how you create. Our intelligent questionnaires guide you through generating comprehensive, AI-powered prompts for business strategies, creative briefs, and technical projects—transforming your ideas into actionable blueprints that drive results.
+              SmartPromptIQ combines professional AI prompt engineering education (57 courses, 555+ lessons) with powerful execution tools. Learn the theory in our Academy, then immediately apply it with Pro tools. One platform. Zero friction.
             </p>
             
             <div className="cta-buttons">
@@ -112,6 +112,132 @@ export default function Home() {
                 </div>
                 <div className="stat-label">Support Available</div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Two Superpowers Section - NEW */}
+        <section className="py-20 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="inline-block px-4 py-2 bg-gradient-to-r from-purple-100 to-blue-100 rounded-full mb-4">
+                <span className="text-sm font-semibold text-purple-700">🎯 ONE PLATFORM, TWO SUPERPOWERS</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
+                The Only Platform Where <span className="gradient-text">Learning Meets Execution</span>
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Stop switching between education platforms and execution tools. SmartPromptIQ gives you both in one seamless experience.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8 mt-16">
+              {/* Academy Card */}
+              <div className="bg-gradient-to-br from-purple-50 via-purple-100 to-indigo-100 rounded-3xl p-8 border-2 border-purple-200 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <div className="text-5xl mb-4">📚</div>
+                <h3 className="text-3xl font-extrabold text-gray-900 mb-3">
+                  SmartPromptIQ Academy
+                </h3>
+                <p className="text-gray-700 text-lg mb-6 leading-relaxed">
+                  Master prompt engineering with expert-led courses, interactive lessons, and earn professional certificates that prove your skills.
+                </p>
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>57 expert courses</strong> from industry leaders</span>
+                  </li>
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>555+ interactive lessons</strong> with hands-on practice</span>
+                  </li>
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>Audio learning & quizzes</strong> for every style</span>
+                  </li>
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>Professional certificates</strong> to share on LinkedIn</span>
+                  </li>
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>Live playground</strong> to test your prompts</span>
+                  </li>
+                </ul>
+                <div className="bg-white/70 backdrop-blur rounded-xl p-4 mb-6 border border-purple-200">
+                  <p className="text-sm text-purple-800 font-semibold mb-2">🎯 Perfect for:</p>
+                  <p className="text-gray-700 text-sm">
+                    Students • Career changers • Professionals upskilling • Educators building AI knowledge
+                  </p>
+                </div>
+                <button
+                  onClick={() => setLocation('/academy')}
+                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 px-6 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  <i className="fas fa-graduation-cap mr-2"></i>
+                  Explore Academy →
+                </button>
+              </div>
+
+              {/* Pro Tools Card */}
+              <div className="bg-gradient-to-br from-blue-50 via-cyan-100 to-blue-100 rounded-3xl p-8 border-2 border-blue-200 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <div className="text-5xl mb-4">⚡</div>
+                <h3 className="text-3xl font-extrabold text-gray-900 mb-3">
+                  SmartPromptIQ Pro
+                </h3>
+                <p className="text-gray-700 text-lg mb-6 leading-relaxed">
+                  Generate production-ready AI prompts instantly with smart questionnaires, professional templates, and team collaboration tools.
+                </p>
+                <ul className="space-y-3 mb-8">
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>AI-powered generation</strong> with smart questionnaires</span>
+                  </li>
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>50+ professional templates</strong> for every use case</span>
+                  </li>
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>Team collaboration</strong> with shared workspaces</span>
+                  </li>
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>API access</strong> for integrations & automation</span>
+                  </li>
+                  <li className="flex items-center text-gray-700 text-base">
+                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
+                    <span><strong>Advanced analytics</strong> to track performance</span>
+                  </li>
+                </ul>
+                <div className="bg-white/70 backdrop-blur rounded-xl p-4 mb-6 border border-blue-200">
+                  <p className="text-sm text-blue-800 font-semibold mb-2">🚀 Perfect for:</p>
+                  <p className="text-gray-700 text-sm">
+                    Agencies • Startups • Product teams • Consultants • Marketing teams executing campaigns
+                  </p>
+                </div>
+                <button
+                  onClick={() => setLocation('/pricing')}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 px-6 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  <i className="fas fa-rocket mr-2"></i>
+                  Try Pro Tools →
+                </button>
+              </div>
+            </div>
+
+            {/* Value Proposition Bar */}
+            <div className="mt-16 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-2xl p-8 text-center text-white shadow-2xl">
+              <h4 className="text-2xl font-bold mb-3">✨ Get Both for Just $49/month</h4>
+              <p className="text-lg text-purple-100 mb-6">
+                Full Academy access (57 courses) + Pro Tools (200 AI prompts/month). One login. One platform. Zero friction.
+              </p>
+              <button
+                onClick={() => setLocation('/pricing')}
+                className="bg-white text-purple-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-50 transition-all duration-200 shadow-lg inline-flex items-center"
+              >
+                <i className="fas fa-star mr-2"></i>
+                View All Plans & Pricing
+              </button>
             </div>
           </div>
         </section>

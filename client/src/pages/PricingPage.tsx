@@ -102,8 +102,9 @@ export default function PricingPage() {
       price: 0,
       billingCycle: billingCycle,
       features: [
-        '5 free prompts',
-        'Basic categories',
+        '3 Academy courses (basics)',
+        'First lesson of each course',
+        '5 playground tests',
         'Community support'
       ],
       limits: {
@@ -120,20 +121,49 @@ export default function PricingPage() {
       support: 'Community'
     },
     {
+      id: 'academy',
+      name: 'Academy Only',
+      description: 'Perfect for students and learners',
+      price: billingCycle === 'yearly' ? 24000 : 2900, // $240/year (save $108) or $29/month
+      billingCycle: billingCycle,
+      badge: 'For Learners',
+      features: [
+        'All 57 courses + 555 lessons',
+        'Audio learning & quizzes',
+        'Earn certificates',
+        '50 playground tests/month',
+        'Community forum access',
+        'Email support'
+      ],
+      limits: {
+        tokensPerMonth: 0, // No Pro tool prompts
+        maxTokenRollover: 0,
+        teamMembers: 1,
+        apiCalls: 0
+      },
+      rateLimits: {
+        promptsPerDay: 0,
+        promptsPerHour: 0,
+        apiCallsPerMinute: 0
+      },
+      support: 'Email'
+    },
+    {
       id: 'starter',
-      name: 'Starter',
-      description: 'Ideal for individuals and small projects',
-      price: billingCycle === 'yearly' ? 14990 : 1499, // $149.90/year or $14.99/month
+      name: 'Pro',
+      description: 'Full platform: Academy + Pro Tools',
+      price: billingCycle === 'yearly' ? 40800 : 4900, // $408/year (save $180) or $49/month
       billingCycle: billingCycle,
       popular: true,
       badge: 'Most Popular',
       buttonLabel: 'Choose Plan',
       features: [
+        '✨ Everything in Academy, PLUS:',
         '200 AI prompts per month',
-        'All categories',
-        'Email support',
-        'Templates',
-        'Basic analytics'
+        '50+ professional templates',
+        'Advanced analytics',
+        'Priority email support',
+        'Export & integrations'
       ],
       limits: {
         tokensPerMonth: 200,
@@ -149,23 +179,25 @@ export default function PricingPage() {
       support: 'Email'
     },
     {
-      id: 'pro',
-      name: 'Pro',
-      description: 'Perfect for teams and power users',
-      price: billingCycle === 'yearly' ? 49900 : 4999, // $499/year or $49.99/month
+      id: 'team',
+      name: 'Team Pro',
+      description: 'For small teams (2-5 people)',
+      price: billingCycle === 'yearly' ? 82800 : 9900, // $828/year (save $360) or $99/month
       billingCycle: billingCycle,
+      badge: 'Best for Teams',
       features: [
-        '1,000 AI prompts/month',
-        'Priority support',
-        'Advanced analytics',
-        'Team collaboration',
-        'API access'
+        '✨ Everything in Pro, PLUS:',
+        '1,000 AI prompts/month (5x more)',
+        '2-5 team member seats',
+        'Team collaboration workspace',
+        '100 API calls/month',
+        'Priority chat support'
       ],
       limits: {
         tokensPerMonth: 1000,
         maxTokenRollover: 200,
         teamMembers: 5,
-        apiCalls: 1000
+        apiCalls: 100
       },
       rateLimits: {
         promptsPerDay: 200,
@@ -175,22 +207,25 @@ export default function PricingPage() {
       support: 'Priority'
     },
     {
-      id: 'business',
-      name: 'Business',
-      description: 'Designed for growing businesses',
-      price: billingCycle === 'yearly' ? 149900 : 14999, // $1,499/year or $149.99/month
+      id: 'enterprise',
+      name: 'Enterprise',
+      description: 'For large teams and organizations',
+      price: billingCycle === 'yearly' ? 299900 : 29900, // $2,999/year or $299/month
       billingCycle: billingCycle,
+      badge: 'Contact Sales',
       features: [
-        '5,000 AI prompts/month',
-        '24/7 support',
-        'Custom categories',
+        '✨ Everything in Team Pro, PLUS:',
+        '5,000+ AI prompts/month',
+        'Unlimited team members',
+        'Custom branding & certificates',
         'White-label options',
-        'Advanced integrations'
+        'Dedicated account manager',
+        'SSO & advanced security'
       ],
       limits: {
         tokensPerMonth: 5000,
         maxTokenRollover: 1000,
-        teamMembers: 25,
+        teamMembers: -1, // Unlimited
         apiCalls: 10000
       },
       rateLimits: {
@@ -339,10 +374,10 @@ export default function PricingPage() {
               </div>
             </div>
             <h1 className="text-4xl font-bold text-slate-900 mb-4">
-              Choose Your AI Prompt Generation Plan
+              Learn Prompt Engineering. Build AI Tools. All in One Platform.
             </h1>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8">
-              Flexible pricing options for individuals, teams, and enterprises. 
+              Choose Academy Only for education, Pro for full platform access, or Team Pro for collaboration.
               Start free or choose a plan that scales with your needs.
             </p>
             
@@ -384,9 +419,9 @@ export default function PricingPage() {
           </div>
 
           {/* Pricing Tiers */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-16">
             {tiersLoading ? (
-              Array.from({ length: 4 }).map((_, i) => (
+              Array.from({ length: 5 }).map((_, i) => (
                 <Card key={i} className="animate-pulse">
                   <CardContent className="p-6">
                     <div className="h-32 bg-gray-200 rounded"></div>
@@ -420,70 +455,96 @@ export default function PricingPage() {
                   <tr className="border-b">
                     <th className="text-left p-3 font-medium">Feature</th>
                     <th className="text-center p-3 font-medium">Free</th>
-                    <th className="text-center p-3 font-medium">Starter</th>
+                    <th className="text-center p-3 font-medium">Academy</th>
                     <th className="text-center p-3 font-medium">Pro</th>
-                    <th className="text-center p-3 font-medium">Business</th>
+                    <th className="text-center p-3 font-medium">Team Pro</th>
+                    <th className="text-center p-3 font-medium">Enterprise</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b">
-                    <td className="p-3">Monthly Prompts</td>
-                    <td className="text-center p-3">5</td>
-                    <td className="text-center p-3">200</td>
-                    <td className="text-center p-3">1,000</td>
-                    <td className="text-center p-3">5,000</td>
+                  <tr className="border-b bg-purple-50">
+                    <td className="p-3 font-semibold">ACADEMY FEATURES</td>
+                    <td className="text-center p-3"></td>
+                    <td className="text-center p-3"></td>
+                    <td className="text-center p-3"></td>
+                    <td className="text-center p-3"></td>
+                    <td className="text-center p-3"></td>
                   </tr>
                   <tr className="border-b">
-                    <td className="p-3">Categories</td>
-                    <td className="text-center p-3">Basic</td>
-                    <td className="text-center p-3">All</td>
-                    <td className="text-center p-3">All + Priority</td>
-                    <td className="text-center p-3">All + Custom</td>
+                    <td className="p-3">Academy Courses</td>
+                    <td className="text-center p-3">3 courses</td>
+                    <td className="text-center p-3">All 57</td>
+                    <td className="text-center p-3">All 57</td>
+                    <td className="text-center p-3">All 57</td>
+                    <td className="text-center p-3">All 57</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3">Certificates</td>
+                    <td className="text-center p-3">❌</td>
+                    <td className="text-center p-3">✅</td>
+                    <td className="text-center p-3">✅</td>
+                    <td className="text-center p-3">✅</td>
+                    <td className="text-center p-3">✅ Custom</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3">Playground Tests</td>
+                    <td className="text-center p-3">5/month</td>
+                    <td className="text-center p-3">50/month</td>
+                    <td className="text-center p-3">200/month</td>
+                    <td className="text-center p-3">500/month</td>
+                    <td className="text-center p-3">Unlimited</td>
+                  </tr>
+                  <tr className="border-b bg-blue-50">
+                    <td className="p-3 font-semibold">PRO TOOLS</td>
+                    <td className="text-center p-3"></td>
+                    <td className="text-center p-3"></td>
+                    <td className="text-center p-3"></td>
+                    <td className="text-center p-3"></td>
+                    <td className="text-center p-3"></td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3">AI Prompts/Month</td>
+                    <td className="text-center p-3">❌</td>
+                    <td className="text-center p-3">❌</td>
+                    <td className="text-center p-3">200</td>
+                    <td className="text-center p-3">1,000</td>
+                    <td className="text-center p-3">5,000+</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3">Templates</td>
+                    <td className="text-center p-3">❌</td>
+                    <td className="text-center p-3">❌</td>
+                    <td className="text-center p-3">50+</td>
+                    <td className="text-center p-3">50+</td>
+                    <td className="text-center p-3">Unlimited</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3">Team Members</td>
+                    <td className="text-center p-3">1</td>
+                    <td className="text-center p-3">1</td>
+                    <td className="text-center p-3">1</td>
+                    <td className="text-center p-3">2-5</td>
+                    <td className="text-center p-3">Unlimited</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-3">API Access</td>
+                    <td className="text-center p-3">❌</td>
+                    <td className="text-center p-3">❌</td>
+                    <td className="text-center p-3">❌</td>
+                    <td className="text-center p-3">100/mo</td>
+                    <td className="text-center p-3">10,000/mo</td>
                   </tr>
                   <tr className="border-b">
                     <td className="p-3">Support</td>
                     <td className="text-center p-3">Community</td>
                     <td className="text-center p-3">Email</td>
                     <td className="text-center p-3">Priority</td>
-                    <td className="text-center p-3">24/7</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-3">Templates</td>
-                    <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">✅</td>
-                    <td className="text-center p-3">✅</td>
-                    <td className="text-center p-3">✅</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-3">Analytics</td>
-                    <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">Basic</td>
-                    <td className="text-center p-3">Advanced</td>
-                    <td className="text-center p-3">Advanced</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-3">Team Collaboration</td>
-                    <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">✅</td>
-                    <td className="text-center p-3">✅</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-3">API Access</td>
-                    <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">✅</td>
-                    <td className="text-center p-3">✅</td>
+                    <td className="text-center p-3">Priority + Chat</td>
+                    <td className="text-center p-3">Dedicated Manager</td>
                   </tr>
                   <tr className="border-b">
                     <td className="p-3">White-label</td>
                     <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">❌</td>
-                    <td className="text-center p-3">✅</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-3">Advanced Integrations</td>
                     <td className="text-center p-3">❌</td>
                     <td className="text-center p-3">❌</td>
                     <td className="text-center p-3">❌</td>
@@ -605,9 +666,9 @@ export default function PricingPage() {
                     </div>
 
                     {/* Subscription Tiers */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                       {tiersLoading ? (
-                        Array.from({ length: 4 }).map((_, i) => (
+                        Array.from({ length: 5 }).map((_, i) => (
                           <Card key={i} className="animate-pulse">
                             <CardContent className="p-6">
                               <div className="h-32 bg-gray-200 rounded"></div>

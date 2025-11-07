@@ -25,6 +25,9 @@ import customCategoryRoutes from './routes/custom-categories';
 import ratingRoutes from './routes/rating';
 import demoRoutes from './routes/demo';
 import categoryRoutes from './routes/categories';
+import utilsRoutes from './routes/utils';
+import academyRoutes from './routes/academy';
+import contactRoutes from './routes/contact';
 
 dotenv.config();
 
@@ -98,9 +101,9 @@ app.use(cors({
   origin: (origin, callback) => {
     console.log('🌐 CORS REQUEST from origin:', origin);
 
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) {
-      console.log('✅ CORS: No origin - allowed');
+    // Allow requests with no origin or null origin (mobile apps, curl, file:// protocol, etc.)
+    if (!origin || origin === 'null') {
+      console.log('✅ CORS: No origin or null origin - allowed (file://, mobile apps, etc.)');
       return callback(null, true);
     }
 
@@ -161,6 +164,9 @@ app.use(cors({
     'Content-Type',
     'Authorization',
     'X-Requested-With',
+    'X-Device-Fingerprint',
+    'X-Timestamp',
+    'X-Client-Type',
     'Accept',
     'Origin',
     'Cache-Control',
@@ -175,6 +181,7 @@ app.use(cors({
     'Sec-Fetch-Site',
     'Sec-Fetch-Dest'
   ],
+  exposedHeaders: ['Content-Length', 'X-Request-Id'],
   optionsSuccessStatus: 200
 }));
 
@@ -295,6 +302,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/custom-categories', customCategoryRoutes);
 app.use('/api/rating', ratingRoutes);
 app.use('/api/demo', demoRoutes);
+app.use('/api/utils', utilsRoutes);
+app.use('/api/academy', academyRoutes);
+app.use('/api/contact', contactRoutes);
 app.use('/api', generateRoutes);
 app.use('/api/personal', categoryRoutes);
 app.use('/api/product', categoryRoutes);

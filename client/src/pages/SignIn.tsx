@@ -41,17 +41,18 @@ export default function SignIn() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [captchaVerified, setCaptchaVerified] = useState(false);
+  const [justSignedUp, setJustSignedUp] = useState(false);
   const [, setLocation] = useLocation();
   const { login, signup, isAuthenticated, isLoading: authLoading } = useAuth();
   const { deviceFingerprint, checkRateLimit } = useSecurityContext();
 
-  // ✅ FIXED: Redirect authenticated users to dashboard
+  // ✅ FIXED: Redirect authenticated users to dashboard (but NOT new signups)
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    if (!authLoading && isAuthenticated && !justSignedUp) {
       console.log('✅ User already authenticated, redirecting to dashboard');
       setLocation('/dashboard');
     }
-  }, [isAuthenticated, authLoading, setLocation]);
+  }, [isAuthenticated, authLoading, setLocation, justSignedUp]);
 
   // Check URL parameters to determine initial mode
   useEffect(() => {
@@ -128,7 +129,12 @@ export default function SignIn() {
 
       await signup(email, password, firstName, lastName);
       console.log('✅ Signup successful with security verification');
-      // The auth hook will handle the redirect to dashboard
+
+      // Mark as new signup to prevent auto-redirect to dashboard
+      setJustSignedUp(true);
+
+      // Redirect new users to onboarding instead of dashboard
+      setLocation('/onboarding')
     } catch (err: any) {
       debugLog("Signup Error", err);
       console.error('❌ Signup error:', err);

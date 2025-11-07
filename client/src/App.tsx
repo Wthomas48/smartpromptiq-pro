@@ -47,9 +47,20 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 import Navigation from "@/components/Navigation";
+import AcademyNavigation from "@/components/AcademyNavigation";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AdminRoute from "@/components/AdminRoute";
 import { SecurityProvider } from "@/components/SecurityProvider";
+import Academy from "@/pages/Academy";
+import AcademyCourses from "@/pages/AcademyCourses";
+import AcademyCourseDetail from "@/pages/AcademyCourseDetail";
+import AcademyDashboard from "@/pages/AcademyDashboard";
+import AcademyLessonViewer from "@/pages/AcademyLessonViewer";
+import AcademyDocumentation from "@/pages/AcademyDocumentation";
+import AcademyReviews from "@/pages/AcademyReviews";
+import AcademyFAQ from "@/pages/AcademyFAQ";
+import Contact from "@/pages/Contact";
+import Onboarding from "@/pages/Onboarding";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -69,6 +80,9 @@ function Router() {
   // Check if current route is admin route
   const isAdminRoute = location.startsWith('/admin');
 
+  // Check if current route is academy route
+  const isAcademyRoute = location.startsWith('/academy');
+
   // Show loading state while checking authentication (with timeout)
   if (isLoading && !forceLoad) {
     return (
@@ -84,10 +98,12 @@ function Router() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Only show Navigation for non-admin routes */}
-      {!isAdminRoute && <Navigation />}
+      {/* Show appropriate navigation based on route */}
+      {!isAdminRoute && !isAcademyRoute && <Navigation />}
+      {isAcademyRoute && <AcademyNavigation />}
       <Switch>
         {/* Public routes - always accessible */}
+        <Route path="/onboarding" component={Onboarding} />
         <Route path="/demo" component={Demo} />
         <Route path="/signin" component={SignIn} />
         <Route path="/register" component={Register} />
@@ -105,6 +121,16 @@ function Router() {
         <Route path="/verify-email/:token" component={VerifyEmail} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password/:token" component={ResetPassword} />
+
+      {/* Academy Routes */}
+      <Route path="/academy" component={Academy} />
+      <Route path="/academy/courses" component={AcademyCourses} />
+      <Route path="/academy/course/:slug" component={AcademyCourseDetail} />
+      <Route path="/academy/lesson/:lessonId" component={AcademyLessonViewer} />
+      <Route path="/academy/dashboard" component={AcademyDashboard} />
+      <Route path="/academy/documentation" component={AcademyDocumentation} />
+      <Route path="/academy/reviews" component={AcademyReviews} />
+      <Route path="/academy/faq" component={AcademyFAQ} />
 
       {/* ALL ROUTES NOW PUBLICLY ACCESSIBLE - FULL ADMIN ACCESS */}
       <Route path="/" component={Home} />
@@ -129,6 +155,7 @@ function Router() {
       <Route path="/custom-questionnaire" component={CustomQuestionnaire} />
       <Route path="/documentation" component={Documentation} />
       <Route path="/settings" component={Settings} />
+      <Route path="/contact" component={Contact} />
 
       {/* Fallback route */}
       <Route component={NotFound} />
