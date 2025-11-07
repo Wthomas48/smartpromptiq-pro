@@ -3,8 +3,28 @@
  * This file contains all Academy-related endpoints
  */
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+let prisma = null;
+
+// Lazy-load Prisma Client to avoid initialization errors
+function getPrisma() {
+  if (!prisma) {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      prisma = new PrismaClient({
+        datasources: {
+          db: {
+            url: process.env.DATABASE_URL,
+          },
+        },
+      });
+      console.log('✅ Prisma Client initialized for Academy routes');
+    } catch (error) {
+      console.error('❌ Failed to initialize Prisma Client:', error.message);
+      throw error;
+    }
+  }
+  return prisma;
+}
 
 module.exports = function(app) {
   console.log('📚 Registering Academy API routes...');
@@ -16,6 +36,7 @@ module.exports = function(app) {
   app.get('/api/academy/courses', async (req, res) => {
     try {
       console.log('📚 Fetching Academy courses...');
+      const prisma = getPrisma();
       const { category, difficulty, accessTier } = req.query;
 
       const where = {
@@ -63,6 +84,7 @@ module.exports = function(app) {
     try {
       const { slug } = req.params;
       console.log('📚 Fetching course:', slug);
+      const prisma = getPrisma();
 
       const course = await prisma.course.findUnique({
         where: { slug },
@@ -118,6 +140,7 @@ module.exports = function(app) {
     try {
       const { lessonId } = req.params;
       console.log('📖 Fetching lesson:', lessonId);
+      const prisma = getPrisma();
 
       const lesson = await prisma.lesson.findUnique({
         where: { id: lessonId },
