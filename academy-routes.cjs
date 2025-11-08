@@ -216,5 +216,57 @@ module.exports = function(app) {
     }
   });
 
+  /**
+   * GET /api/academy/my-courses
+   * Get user's enrolled courses (requires authentication)
+   */
+  app.get('/api/academy/my-courses', async (req, res) => {
+    try {
+      // For now, return empty array since we don't have full auth system in Railway
+      // In production, you'd check req.user or JWT token
+      console.log('📚 Fetching user enrollments...');
+      res.json({
+        success: true,
+        data: [] // User has no enrollments yet - free courses are auto-accessible
+      });
+    } catch (error) {
+      console.error('❌ Error fetching enrollments:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch enrollments',
+        error: error.message,
+      });
+    }
+  });
+
+  /**
+   * POST /api/academy/enroll/:courseId
+   * Enroll in a course (requires authentication)
+   */
+  app.post('/api/academy/enroll/:courseId', async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      console.log('📝 Enrollment request for course:', courseId);
+
+      // For free courses, enrollment is automatic
+      // In production, this would create an enrollment record
+      res.json({
+        success: true,
+        message: 'Successfully enrolled in course',
+        data: {
+          courseId,
+          enrolledAt: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error enrolling in course:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to enroll in course',
+        error: error.message,
+      });
+    }
+  });
+
   console.log('✅ Academy API routes registered successfully (PostgreSQL mode)');
 };
