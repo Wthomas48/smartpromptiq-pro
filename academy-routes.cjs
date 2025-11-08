@@ -36,10 +36,10 @@ module.exports = function(app) {
           COUNT(DISTINCT l.id) as lesson_count,
           COUNT(DISTINCT e.id) as enrollment_count,
           COUNT(DISTINCT r.id) as review_count
-        FROM "Course" c
-        LEFT JOIN "Lesson" l ON l."courseId" = c.id AND l."isPublished" = true
-        LEFT JOIN "Enrollment" e ON e."courseId" = c.id
-        LEFT JOIN "Review" r ON r."courseId" = c.id
+        FROM academy_courses c
+        LEFT JOIN academy_lessons l ON l."courseId" = c.id AND l."isPublished" = true
+        LEFT JOIN academy_enrollments e ON e."courseId" = c.id
+        LEFT JOIN academy_course_reviews r ON r."courseId" = c.id
         WHERE c."isPublished" = true
         GROUP BY c.id
         ORDER BY c."order" ASC, c."createdAt" DESC
@@ -95,9 +95,9 @@ module.exports = function(app) {
           c.*,
           COUNT(DISTINCT e.id) as enrollment_count,
           COUNT(DISTINCT r.id) as review_count
-        FROM "Course" c
-        LEFT JOIN "Enrollment" e ON e."courseId" = c.id
-        LEFT JOIN "Review" r ON r."courseId" = c.id
+        FROM academy_courses c
+        LEFT JOIN academy_enrollments e ON e."courseId" = c.id
+        LEFT JOIN academy_course_reviews r ON r."courseId" = c.id
         WHERE c.slug = $1
         GROUP BY c.id
       `;
@@ -116,7 +116,7 @@ module.exports = function(app) {
       // Get lessons for this course
       const lessonsQuery = `
         SELECT id, title, description, duration, "order", "isFree"
-        FROM "Lesson"
+        FROM academy_lessons
         WHERE "courseId" = $1 AND "isPublished" = true
         ORDER BY "order" ASC
       `;
@@ -164,8 +164,8 @@ module.exports = function(app) {
       // Get lesson with course info
       const lessonQuery = `
         SELECT l.*, c.id as "courseId", c.title as "courseTitle", c.slug
-        FROM "Lesson" l
-        JOIN "Course" c ON c.id = l."courseId"
+        FROM academy_lessons l
+        JOIN academy_courses c ON c.id = l."courseId"
         WHERE l.id = $1
       `;
 
@@ -183,7 +183,7 @@ module.exports = function(app) {
       // Get all lessons in this course
       const allLessonsQuery = `
         SELECT id, title, "order"
-        FROM "Lesson"
+        FROM academy_lessons
         WHERE "courseId" = $1 AND "isPublished" = true
         ORDER BY "order" ASC
       `;
