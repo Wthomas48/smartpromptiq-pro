@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import AcademyNavigation from '@/components/AcademyNavigation';
 import { apiRequest } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Course {
   id: string;
@@ -22,6 +23,7 @@ interface Course {
 }
 
 const AcademyCourses: React.FC = () => {
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
@@ -83,6 +85,11 @@ const AcademyCourses: React.FC = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-700 pt-32 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {user?.firstName && (
+            <p className="text-purple-100 text-lg mb-2 font-medium">
+              Welcome back, {user.firstName}! 👋
+            </p>
+          )}
           <h1 className="text-5xl font-extrabold text-white mb-4">
             Course Catalog
           </h1>
