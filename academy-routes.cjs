@@ -268,5 +268,183 @@ module.exports = function(app) {
     }
   });
 
+  /**
+   * POST /api/academy/lesson/:lessonId/rating
+   * Submit a rating/feedback for a lesson
+   */
+  app.post('/api/academy/lesson/:lessonId/rating', async (req, res) => {
+    try {
+      const { lessonId } = req.params;
+      const { rating, feedback } = req.body;
+
+      console.log(`⭐ Rating submission for lesson ${lessonId}: ${rating} stars`);
+
+      // Validate rating
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({
+          success: false,
+          message: 'Rating must be between 1 and 5',
+        });
+      }
+
+      const pool = getPool();
+
+      // For now, we'll store ratings in a simple feedback table
+      // In production, you'd associate with userId from JWT token
+      const insertQuery = `
+        INSERT INTO academy_lesson_ratings (
+          "lessonId",
+          "userId",
+          rating,
+          feedback,
+          "createdAt",
+          "updatedAt"
+        ) VALUES ($1, $2, $3, $4, NOW(), NOW())
+        RETURNING id, rating, feedback, "createdAt"
+      `;
+
+      // Use 'anonymous' as userId for now (in production, get from auth token)
+      const userId = 'anonymous-' + Date.now();
+
+      const result = await pool.query(insertQuery, [
+        lessonId,
+        userId,
+        rating,
+        feedback || null
+      ]);
+
+      console.log(`✅ Rating saved: ${rating} stars for lesson ${lessonId}`);
+
+      res.json({
+        success: true,
+        message: 'Rating submitted successfully',
+        data: result.rows[0]
+      });
+    } catch (error) {
+      console.error('❌ Error submitting rating:', error);
+
+      // If table doesn't exist, create it on the fly
+      if (error.code === '42P01') {
+        try {
+          const pool = getPool();
+          await pool.query(`
+            CREATE TABLE IF NOT EXISTS academy_lesson_ratings (
+              id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+              "lessonId" TEXT NOT NULL,
+              "userId" TEXT NOT NULL,
+              rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+              feedback TEXT,
+              "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+              "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+          `);
+
+          console.log('✅ Created academy_lesson_ratings table');
+
+          // Retry the insert
+          const { lessonId } = req.params;
+          const { rating, feedback } = req.body;
+          const userId = 'anonymous-' + Date.now();
+
+          const insertQuery = `
+            INSERT INTO academy_lesson_ratings (
+              "lessonId",
+              "userId",
+              rating,
+              feedback,
+              "createdAt",
+              "updatedAt"
+            ) VALUES ($1, $2, $3, $4, NOW(), NOW())
+            RETURNING id, rating, feedback, "createdAt"
+          `;
+
+          const result = await pool.query(insertQuery, [
+            lessonId,
+            userId,
+            rating,
+            feedback || null
+          ]);
+
+          return res.json({
+            success: true,
+            message: 'Rating submitted successfully',
+            data: result.rows[0]
+          });
+        } catch (createError) {
+          console.error('❌ Error creating table:', createError);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to submit rating',
+            error: createError.message,
+          });
+        }
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to submit rating',
+        error: error.message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/academy/lesson/:lessonId/ratings
+   * Get all ratings for a lesson
+   */
+  app.get('/api/academy/lesson/:lessonId/ratings', async (req, res) => {
+    try {
+      const { lessonId } = req.params;
+      const pool = getPool();
+
+      const query = `
+        SELECT
+          rating,
+          feedback,
+          "createdAt"
+        FROM academy_lesson_ratings
+        WHERE "lessonId" = $1
+        ORDER BY "createdAt" DESC
+      `;
+
+      const result = await pool.query(query, [lessonId]);
+
+      // Calculate average rating
+      const ratings = result.rows;
+      const avgRating = ratings.length > 0
+        ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+        : 0;
+
+      res.json({
+        success: true,
+        data: {
+          ratings: ratings,
+          averageRating: Math.round(avgRating * 10) / 10,
+          totalRatings: ratings.length
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error fetching ratings:', error);
+
+      // If table doesn't exist, return empty data
+      if (error.code === '42P01') {
+        return res.json({
+          success: true,
+          data: {
+            ratings: [],
+            averageRating: 0,
+            totalRatings: 0
+          }
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch ratings',
+        error: error.message,
+      });
+    }
+  });
+
   console.log('✅ Academy API routes registered successfully (PostgreSQL mode)');
 };
