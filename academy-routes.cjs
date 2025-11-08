@@ -1,33 +1,25 @@
 /**
  * Academy API Routes for Railway Deployment
- * This file contains all Academy-related endpoints
+ * Uses direct PostgreSQL queries instead of Prisma to avoid initialization issues
  */
 
-let prisma = null;
+const { Pool } = require('pg');
 
-// Lazy-load Prisma Client to avoid initialization errors
-function getPrisma() {
-  if (!prisma) {
-    try {
-      const { PrismaClient } = require('@prisma/client');
-      prisma = new PrismaClient({
-        datasources: {
-          db: {
-            url: process.env.DATABASE_URL,
-          },
-        },
-      });
-      console.log('✅ Prisma Client initialized for Academy routes');
-    } catch (error) {
-      console.error('❌ Failed to initialize Prisma Client:', error.message);
-      throw error;
-    }
+let pool = null;
+
+function getPool() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    });
+    console.log('✅ PostgreSQL connection pool created for Academy routes');
   }
-  return prisma;
+  return pool;
 }
 
 module.exports = function(app) {
-  console.log('📚 Registering Academy API routes...');
+  console.log('📚 Registering Academy API routes (using direct PostgreSQL)...');
 
   /**
    * GET /api/academy/courses
@@ -36,29 +28,40 @@ module.exports = function(app) {
   app.get('/api/academy/courses', async (req, res) => {
     try {
       console.log('📚 Fetching Academy courses...');
-      const prisma = getPrisma();
-      const { category, difficulty, accessTier } = req.query;
+      const pool = getPool();
 
-      const where = {
-        isPublished: true,
-      };
+      const query = `
+        SELECT
+          c.*,
+          COUNT(DISTINCT l.id) as lesson_count,
+          COUNT(DISTINCT e.id) as enrollment_count,
+          COUNT(DISTINCT r.id) as review_count
+        FROM "Course" c
+        LEFT JOIN "Lesson" l ON l."courseId" = c.id AND l."isPublished" = true
+        LEFT JOIN "Enrollment" e ON e."courseId" = c.id
+        LEFT JOIN "Review" r ON r."courseId" = c.id
+        WHERE c."isPublished" = true
+        GROUP BY c.id
+        ORDER BY c."order" ASC, c."createdAt" DESC
+      `;
 
-      if (category) where.category = category;
-      if (difficulty) where.difficulty = difficulty;
-      if (accessTier) where.accessTier = accessTier;
+      const result = await pool.query(query);
 
-      const courses = await prisma.course.findMany({
-        where,
-        orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
-        include: {
-          _count: {
-            select: {
-              lessons: true,
-              enrollments: true,
-              reviews: true,
-            },
-          },
+      // Format response to match Prisma format
+      const courses = result.rows.map(row => ({
+        ...row,
+        _count: {
+          lessons: parseInt(row.lesson_count) || 0,
+          enrollments: parseInt(row.enrollment_count) || 0,
+          reviews: parseInt(row.review_count) || 0,
         },
+      }));
+
+      // Remove the count fields from the main object
+      courses.forEach(course => {
+        delete course.lesson_count;
+        delete course.enrollment_count;
+        delete course.review_count;
       });
 
       console.log(`✅ Found ${courses.length} courses`);
@@ -84,43 +87,59 @@ module.exports = function(app) {
     try {
       const { slug } = req.params;
       console.log('📚 Fetching course:', slug);
-      const prisma = getPrisma();
+      const pool = getPool();
 
-      const course = await prisma.course.findUnique({
-        where: { slug },
-        include: {
-          lessons: {
-            where: { isPublished: true },
-            orderBy: { order: 'asc' },
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              duration: true,
-              order: true,
-              isFree: true,
-            },
-          },
-          _count: {
-            select: {
-              enrollments: true,
-              reviews: true,
-            },
-          },
-        },
-      });
+      // Get course with counts
+      const courseQuery = `
+        SELECT
+          c.*,
+          COUNT(DISTINCT e.id) as enrollment_count,
+          COUNT(DISTINCT r.id) as review_count
+        FROM "Course" c
+        LEFT JOIN "Enrollment" e ON e."courseId" = c.id
+        LEFT JOIN "Review" r ON r."courseId" = c.id
+        WHERE c.slug = $1
+        GROUP BY c.id
+      `;
 
-      if (!course) {
+      const courseResult = await pool.query(courseQuery, [slug]);
+
+      if (courseResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           message: 'Course not found',
         });
       }
 
-      console.log(`✅ Course found: ${course.title} with ${course.lessons.length} lessons`);
+      const course = courseResult.rows[0];
+
+      // Get lessons for this course
+      const lessonsQuery = `
+        SELECT id, title, description, duration, "order", "isFree"
+        FROM "Lesson"
+        WHERE "courseId" = $1 AND "isPublished" = true
+        ORDER BY "order" ASC
+      `;
+
+      const lessonsResult = await pool.query(lessonsQuery, [course.id]);
+
+      // Format response
+      const formattedCourse = {
+        ...course,
+        lessons: lessonsResult.rows,
+        _count: {
+          enrollments: parseInt(course.enrollment_count) || 0,
+          reviews: parseInt(course.review_count) || 0,
+        },
+      };
+
+      delete formattedCourse.enrollment_count;
+      delete formattedCourse.review_count;
+
+      console.log(`✅ Course found: ${course.title} with ${lessonsResult.rows.length} lessons`);
       res.json({
         success: true,
-        data: course,
+        data: formattedCourse,
       });
     } catch (error) {
       console.error('❌ Error fetching course:', error);
@@ -134,50 +153,55 @@ module.exports = function(app) {
 
   /**
    * GET /api/academy/lesson/:lessonId
-   * Get lesson content (accessible for free lessons)
+   * Get lesson content
    */
   app.get('/api/academy/lesson/:lessonId', async (req, res) => {
     try {
       const { lessonId } = req.params;
       console.log('📖 Fetching lesson:', lessonId);
-      const prisma = getPrisma();
+      const pool = getPool();
 
-      const lesson = await prisma.lesson.findUnique({
-        where: { id: lessonId },
-        include: {
-          course: {
-            include: {
-              lessons: {
-                where: { isPublished: true },
-                orderBy: { order: 'asc' },
-              },
-            },
-          },
-        },
-      });
+      // Get lesson with course info
+      const lessonQuery = `
+        SELECT l.*, c.id as "courseId", c.title as "courseTitle", c.slug
+        FROM "Lesson" l
+        JOIN "Course" c ON c.id = l."courseId"
+        WHERE l.id = $1
+      `;
 
-      if (!lesson) {
+      const lessonResult = await pool.query(lessonQuery, [lessonId]);
+
+      if (lessonResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           message: 'Lesson not found',
         });
       }
 
-      // Find next and previous lessons
-      const currentIndex = lesson.course.lessons.findIndex((l) => l.id === lessonId);
-      const nextLesson = currentIndex < lesson.course.lessons.length - 1
-        ? lesson.course.lessons[currentIndex + 1]
-        : null;
-      const previousLesson = currentIndex > 0
-        ? lesson.course.lessons[currentIndex - 1]
-        : null;
+      const row = lessonResult.rows[0];
 
-      console.log(`✅ Lesson found: ${lesson.title}`);
+      // Get all lessons in this course
+      const allLessonsQuery = `
+        SELECT id, title, "order"
+        FROM "Lesson"
+        WHERE "courseId" = $1 AND "isPublished" = true
+        ORDER BY "order" ASC
+      `;
+
+      const allLessonsResult = await pool.query(allLessonsQuery, [row.courseId]);
+      const allLessons = allLessonsResult.rows;
+
+      // Find current, next, and previous lessons
+      const currentIndex = allLessons.findIndex(l => l.id === lessonId);
+      const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+      const previousLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+
+      console.log(`✅ Lesson found: ${row.title}`);
       res.json({
         success: true,
         data: {
-          lesson,
-          course: lesson.course,
+          lesson: row,
+          course: { id: row.courseId, title: row.courseTitle, slug: row.slug, lessons: allLessons },
           nextLesson,
           previousLesson,
         },
@@ -192,5 +216,5 @@ module.exports = function(app) {
     }
   });
 
-  console.log('✅ Academy API routes registered successfully');
+  console.log('✅ Academy API routes registered successfully (PostgreSQL mode)');
 };
