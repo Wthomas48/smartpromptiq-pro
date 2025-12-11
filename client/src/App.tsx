@@ -59,8 +59,28 @@ import AcademyLessonViewer from "@/pages/AcademyLessonViewer";
 import AcademyDocumentation from "@/pages/AcademyDocumentation";
 import AcademyReviews from "@/pages/AcademyReviews";
 import AcademyFAQ from "@/pages/AcademyFAQ";
+import AcademySignIn from "@/pages/AcademySignIn";
+import AcademySignUp from "@/pages/AcademySignUp";
+import AcademySearch from "@/pages/AcademySearch";
+import AcademyLearningPaths from "@/pages/AcademyLearningPaths";
 import Contact from "@/pages/Contact";
 import Onboarding from "@/pages/Onboarding";
+// BuilderIQ - App Creation Platform
+import BuilderIQ from "@/pages/BuilderIQ";
+import BuilderIQQuestionnaire from "@/pages/BuilderIQQuestionnaire";
+import BuilderIQBlueprint from "@/pages/BuilderIQBlueprint";
+import BuilderIQTemplates from "@/pages/BuilderIQTemplates";
+import BuilderIQAgents from "@/pages/BuilderIQAgents";
+// Gamification & Marketplace
+import GamificationDashboard from "@/pages/GamificationDashboard";
+import Marketplace from "@/pages/Marketplace";
+import { GamificationProvider } from "@/contexts/GamificationContext";
+// Prompt Hub - Playground, Deployment, Builder Marketplace
+import PromptPlayground from "@/pages/PromptPlayground";
+import DeploymentHub from "@/pages/DeploymentHub";
+import AppBuilderMarketplace from "@/pages/AppBuilderMarketplace";
+// BuilderIQ Story Analysis - Analyze user stories for app suggestions
+import BuilderIQStoryAnalysis from "@/pages/BuilderIQStoryAnalysis";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -83,6 +103,10 @@ function Router() {
   // Check if current route is academy route
   const isAcademyRoute = location.startsWith('/academy');
 
+  // Check if current route is builderiq route
+  // BuilderIQ should show navigation like other pages
+  const isBuilderIQRoute = false; // BuilderIQ is now part of main app flow with navigation
+
   // Show loading state while checking authentication (with timeout)
   if (isLoading && !forceLoad) {
     return (
@@ -99,7 +123,7 @@ function Router() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Show appropriate navigation based on route */}
-      {!isAdminRoute && !isAcademyRoute && <Navigation />}
+      {!isAdminRoute && !isAcademyRoute && !isBuilderIQRoute && <Navigation />}
       {isAcademyRoute && <AcademyNavigation />}
       <Switch>
         {/* Public routes - always accessible */}
@@ -122,8 +146,20 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password/:token" component={ResetPassword} />
 
+      {/* BuilderIQ Routes - App Creation Platform */}
+      <Route path="/builderiq" component={BuilderIQ} />
+      <Route path="/builderiq/questionnaire" component={BuilderIQQuestionnaire} />
+      <Route path="/builderiq/blueprint" component={BuilderIQBlueprint} />
+      <Route path="/builderiq/templates" component={BuilderIQTemplates} />
+      <Route path="/builderiq/templates/:industry" component={BuilderIQTemplates} />
+      <Route path="/builderiq/agents" component={BuilderIQAgents} />
+      <Route path="/builderiq/story" component={BuilderIQStoryAnalysis} />
+
       {/* Academy Routes */}
       <Route path="/academy" component={Academy} />
+      <Route path="/academy/signin" component={AcademySignIn} />
+      <Route path="/academy/signup" component={AcademySignUp} />
+      <Route path="/academy/search" component={AcademySearch} />
       <Route path="/academy/courses" component={AcademyCourses} />
       <Route path="/academy/course/:slug" component={AcademyCourseDetail} />
       <Route path="/academy/lesson/:lessonId" component={AcademyLessonViewer} />
@@ -131,9 +167,12 @@ function Router() {
       <Route path="/academy/documentation" component={AcademyDocumentation} />
       <Route path="/academy/reviews" component={AcademyReviews} />
       <Route path="/academy/faq" component={AcademyFAQ} />
+      <Route path="/academy/paths" component={AcademyLearningPaths} />
+      <Route path="/academy/learning-paths" component={AcademyLearningPaths} />
 
       {/* ALL ROUTES NOW PUBLICLY ACCESSIBLE - FULL ADMIN ACCESS */}
       <Route path="/" component={Home} />
+      <Route path="/home" component={Home} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/categories" component={Categories} />
       <Route path="/questionnaire/:category" component={Questionnaire} />
@@ -157,6 +196,17 @@ function Router() {
       <Route path="/settings" component={Settings} />
       <Route path="/contact" component={Contact} />
 
+      {/* Gamification & Marketplace */}
+      <Route path="/rewards" component={GamificationDashboard} />
+      <Route path="/progress" component={GamificationDashboard} />
+      <Route path="/marketplace" component={Marketplace} />
+
+      {/* Prompt Hub - Playground, Deployment, Builder Marketplace */}
+      <Route path="/playground" component={PromptPlayground} />
+      <Route path="/deployment-hub" component={DeploymentHub} />
+      <Route path="/app-builders" component={AppBuilderMarketplace} />
+      <Route path="/builders" component={AppBuilderMarketplace} />
+
       {/* Fallback route */}
       <Route component={NotFound} />
     </Switch>
@@ -172,8 +222,10 @@ function App() {
           <SecurityProvider>
             <TooltipProvider>
               <RatingSystemProvider>
-                <Toaster />
-                <Router />
+                <GamificationProvider>
+                  <Toaster />
+                  <Router />
+                </GamificationProvider>
               </RatingSystemProvider>
             </TooltipProvider>
           </SecurityProvider>

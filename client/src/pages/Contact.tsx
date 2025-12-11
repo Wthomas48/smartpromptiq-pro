@@ -414,7 +414,7 @@ const Contact: React.FC = () => {
                       Read Documentation
                     </h3>
                     <p className="text-sm text-gray-700 mb-4">
-                      Detailed guides and tutorials for using SmartPromptIQ and the Academy.
+                      Detailed guides and tutorials for using SmartPromptIQ™ and the Academy.
                     </p>
                     <a
                       href="/academy/documentation"

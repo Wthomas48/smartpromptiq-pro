@@ -26,16 +26,18 @@ const Academy: React.FC = () => {
                 Learn from industry experts. Get hands-on with real AI tools. Earn recognized certifications. Join the fastest-growing community of AI prompt engineers.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Link href="/academy/courses">
+                <Link href="/academy/signup">
                   <span className="bg-white text-purple-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-gray-50 transition shadow-lg flex items-center justify-center cursor-pointer">
                     <i className="fas fa-rocket mr-2"></i>
                     Start Learning Free
                   </span>
                 </Link>
-                <button className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white/10 transition flex items-center justify-center">
-                  <i className="fas fa-play-circle mr-2"></i>
-                  Watch Demo
-                </button>
+                <Link href="/academy/courses">
+                  <span className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white/10 transition flex items-center justify-center cursor-pointer">
+                    <i className="fas fa-book-open mr-2"></i>
+                    Browse Courses
+                  </span>
+                </Link>
               </div>
               <div className="flex items-center space-x-6 text-sm">
                 <div className="flex items-center space-x-2">
@@ -107,7 +109,7 @@ const Academy: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-extrabold text-gray-900 mb-4">
-              Why SmartPromptIQ Academy?
+              Why SmartPromptIQ™ Academy?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               The most comprehensive, hands-on prompt engineering education platform.
@@ -176,16 +178,16 @@ const Academy: React.FC = () => {
             Join 10,000+ engineers building the future with AI. Start learning today—no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/academy/courses">
+            <Link href="/academy/signup">
               <span className="bg-white text-purple-600 px-10 py-5 rounded-lg font-bold text-xl hover:bg-gray-50 transition shadow-2xl cursor-pointer inline-block">
                 <i className="fas fa-rocket mr-2"></i>
-                Browse Courses
+                Get Started Free
               </span>
             </Link>
-            <Link href="/academy/dashboard">
+            <Link href="/academy/signin">
               <span className="bg-transparent border-2 border-white text-white px-10 py-5 rounded-lg font-bold text-xl hover:bg-white/10 transition cursor-pointer inline-block">
-                <i className="fas fa-graduation-cap mr-2"></i>
-                My Dashboard
+                <i className="fas fa-sign-in-alt mr-2"></i>
+                Sign In
               </span>
             </Link>
           </div>

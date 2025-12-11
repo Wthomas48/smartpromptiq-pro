@@ -94,18 +94,22 @@ async function main() {
   console.log('✅ Test user created: test@smartpromptiq.com');
 
   // ============================================
-  // SEED ACADEMY COURSES
+  // SEED ACADEMY COURSES & LESSONS
   // ============================================
   console.log('\n🎓 Seeding Academy courses...');
 
   // Import and run academy seed
   const { execSync } = require('child_process');
   try {
-    execSync('ts-node prisma/seed-academy-full.ts', { stdio: 'inherit' });
+    execSync('npx tsx prisma/seed-academy-full.ts', { stdio: 'inherit' });
     console.log('✅ Academy courses seeded successfully!');
+
+    console.log('\n📚 Seeding Academy lessons...');
+    execSync('npx tsx prisma/seed-academy-lessons.ts', { stdio: 'inherit' });
+    console.log('✅ Academy lessons seeded successfully!');
   } catch (error) {
-    console.error('❌ Failed to seed Academy courses:', error);
-    console.log('⚠️  Continuing without Academy courses...');
+    console.error('❌ Failed to seed Academy data:', error);
+    console.log('⚠️  Continuing without Academy courses/lessons...');
   }
 
   console.log('\n✅ Database seeded successfully!');

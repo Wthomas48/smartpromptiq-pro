@@ -3,6 +3,8 @@
 /vite.config.ts
 /tsconfig.json
 /tsconfig.node.json
+/nul
+nul
 
 # Only use client directory for frontend builds
 !/client/

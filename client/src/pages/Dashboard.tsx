@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
   User, Plus, Zap, Star, BarChart3, Settings, CreditCard,
   Users, FileText, Clock, TrendingUp, Award, Target,
-  Lightbulb, Calendar, Activity, BookOpen
+  Lightbulb, Calendar, Activity, BookOpen, Gift, Rocket,
+  ExternalLink, DollarSign, Sparkles, Code, Globe, ShoppingCart, Mic
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import ReferralWidget from '@/components/ReferralWidget';
+import { VoiceAssistant } from '@/components/VoiceAssistant';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -32,8 +35,16 @@ export default function Dashboard() {
   const quickActions = [
     { icon: Plus, title: 'Create New Prompt', description: 'Start with questionnaire flow', action: '/categories', color: 'bg-blue-500' },
     { icon: FileText, title: 'Browse Templates', description: 'Explore prompt templates', action: '/templates', color: 'bg-green-500' },
-    { icon: BarChart3, title: 'View Analytics', description: 'Track your performance', action: '/analytics', color: 'bg-purple-500' },
-    { icon: Users, title: 'Team Collaboration', description: 'Work with your team', action: '/teams', color: 'bg-orange-500' }
+    { icon: Rocket, title: 'Deploy Your App', description: 'Launch on 30+ platforms', action: '/deployment-hub', color: 'bg-purple-500' },
+    { icon: Code, title: 'BuilderIQ Studio', description: 'AI-powered app builder', action: '/builderiq', color: 'bg-orange-500' }
+  ];
+
+  // Top deployment partners with affiliate links
+  const deploymentPartners = [
+    { name: 'Replit', logo: '🔄', tagline: 'Code & Deploy', url: 'https://replit.com/refer/wthomas19542', color: 'bg-orange-500' },
+    { name: 'Shopify', logo: '🛒', tagline: 'E-commerce', url: 'https://www.shopify.com/affiliates?ref=smartpromptiq', color: 'bg-green-500' },
+    { name: 'Vercel', logo: '▲', tagline: 'Fast Hosting', url: 'https://vercel.com/partners?ref=smartpromptiq', color: 'bg-gray-800' },
+    { name: 'Webflow', logo: '🎨', tagline: 'No-Code Design', url: 'https://webflow.com/affiliates?ref=smartpromptiq', color: 'bg-blue-500' },
   ];
 
   const handleQuickAction = (action: string) => {
@@ -51,7 +62,7 @@ export default function Dashboard() {
                 Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!
               </h1>
               <p className="text-gray-600 mt-1">
-                Here's what's happening with your SmartPromptIQ account today.
+                Here's what's happening with your SmartPromptIQ™ account today.
               </p>
             </div>
             <div className="flex items-center space-x-3">
@@ -158,6 +169,39 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Deploy Your Prompts - Revenue Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+              <Rocket className="w-5 h-5 mr-2 text-purple-500" />
+              Deploy Your Prompts
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => handleQuickAction('/deployment-hub')}>
+              View All 30+ Platforms
+              <ExternalLink className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {deploymentPartners.map((partner, index) => (
+              <Card
+                key={index}
+                className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] border-2 hover:border-purple-300"
+                onClick={() => window.open(partner.url, '_blank')}
+              >
+                <CardContent className="p-4 text-center">
+                  <div className={`w-12 h-12 mx-auto mb-2 rounded-xl ${partner.color} flex items-center justify-center text-2xl`}>
+                    {partner.logo}
+                  </div>
+                  <h3 className="font-semibold text-gray-900">{partner.name}</h3>
+                  <Badge variant="outline" className="mt-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    {partner.tagline}
+                  </Badge>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Activity */}
@@ -250,6 +294,50 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
+            {/* Referral Widget - only show when logged in */}
+            {user && (
+              <Card className="overflow-hidden border-0 bg-transparent shadow-none">
+                <ReferralWidget variant="card" />
+              </Card>
+            )}
+
+            {/* Premium Features Upsell */}
+            <Card className="bg-gradient-to-br from-purple-600 to-indigo-700 text-white border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center text-white">
+                  <Sparkles className="w-5 h-5 mr-2 text-yellow-300" />
+                  Unlock Pro Features
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center">
+                    <Star className="w-4 h-4 mr-2 text-yellow-300" />
+                    Unlimited prompt generation
+                  </li>
+                  <li className="flex items-center">
+                    <Code className="w-4 h-4 mr-2 text-yellow-300" />
+                    Priority access to BuilderIQ
+                  </li>
+                  <li className="flex items-center">
+                    <Globe className="w-4 h-4 mr-2 text-yellow-300" />
+                    Deploy to 30+ platforms
+                  </li>
+                  <li className="flex items-center">
+                    <ShoppingCart className="w-4 h-4 mr-2 text-yellow-300" />
+                    E-commerce templates
+                  </li>
+                </ul>
+                <Button
+                  className="w-full mt-4 bg-white text-purple-700 hover:bg-gray-100"
+                  onClick={() => handleQuickAction('/pricing')}
+                >
+                  Upgrade Now
+                  <TrendingUp className="w-4 h-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Recent Tips */}
             <Card>
               <CardHeader>
@@ -304,7 +392,7 @@ export default function Dashboard() {
                       Account Active
                     </h3>
                     <p className="text-green-700 text-sm">
-                      Your SmartPromptIQ account is fully operational. All features are available.
+                      Your SmartPromptIQ™ account is fully operational. All features are available.
                     </p>
                   </div>
                 </div>
@@ -321,6 +409,36 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Voice Assistant - Floating Button */}
+      <VoiceAssistant
+        position="bottom-right"
+        size="md"
+        personality="friendly"
+        showTranscript={true}
+        onCommand={(command) => {
+          // Handle voice commands for navigation
+          const lowerCmd = command.toLowerCase();
+          if (lowerCmd.includes('create') || lowerCmd.includes('new prompt')) {
+            handleQuickAction('/categories');
+          } else if (lowerCmd.includes('template')) {
+            handleQuickAction('/templates');
+          } else if (lowerCmd.includes('deploy')) {
+            handleQuickAction('/deployment-hub');
+          } else if (lowerCmd.includes('builder') || lowerCmd.includes('studio')) {
+            handleQuickAction('/builderiq');
+          } else if (lowerCmd.includes('pricing') || lowerCmd.includes('upgrade')) {
+            handleQuickAction('/pricing');
+          } else if (lowerCmd.includes('setting')) {
+            handleQuickAction('/settings');
+          } else if (lowerCmd.includes('academy') || lowerCmd.includes('learn')) {
+            handleQuickAction('/academy');
+          }
+        }}
+        onTranscript={(transcript) => {
+          console.log('Voice transcript:', transcript);
+        }}
+      />
     </div>
   );
 }

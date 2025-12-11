@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
+import AcademySearchBar from './AcademySearchBar';
 
 const AcademyNavigation: React.FC = () => {
   const [location] = useLocation();
@@ -20,13 +21,16 @@ const AcademyNavigation: React.FC = () => {
                 <i className="fas fa-brain text-white text-xl"></i>
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-700 bg-clip-text text-transparent">
-                SmartPromptIQ Academy
+                SmartPromptIQ™ Academy
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
+            {/* Search Bar */}
+            <AcademySearchBar />
+
             <Link href="/academy/courses">
               <span
                 className={`font-medium transition cursor-pointer ${
@@ -102,12 +106,12 @@ const AcademyNavigation: React.FC = () => {
               </>
             ) : (
               <>
-                <Link href="/signin">
+                <Link href="/academy/signin">
                   <span className="text-gray-700 hover:text-purple-600 font-medium transition cursor-pointer">
                     Sign In
                   </span>
                 </Link>
-                <Link href="/signup">
+                <Link href="/academy/signup">
                   <span className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition cursor-pointer inline-block">
                     Start Free
                   </span>
@@ -170,12 +174,12 @@ const AcademyNavigation: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Link href="/signin">
+                    <Link href="/academy/signin">
                       <span className="block text-gray-700 hover:text-purple-600 font-medium cursor-pointer">
                         Sign In
                       </span>
                     </Link>
-                    <Link href="/signup">
+                    <Link href="/academy/signup">
                       <span className="block bg-gradient-to-r from-purple-600 to-indigo-700 text-white px-6 py-2 rounded-lg font-semibold text-center cursor-pointer">
                         Start Free
                       </span>

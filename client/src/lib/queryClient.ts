@@ -29,11 +29,15 @@ export async function apiRequest(
 
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+      console.log(`✅ Token found and added to headers:`, token.substring(0, 20) + '...');
+    } else {
+      console.warn(`⚠️ NO TOKEN FOUND in localStorage!`);
     }
 
     const baseUrl = getApiBaseUrl();
     const fullUrl = `${baseUrl}${url}`;
     console.log(`🌐 QueryClient API Request: ${method} ${fullUrl}`);
+    console.log(`📋 Headers:`, headers);
 
     const res = await fetch(fullUrl, {
       method,
@@ -62,11 +66,15 @@ export const getQueryFn: <T>(options: {
 
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
+        console.log(`✅ useQuery Token found:`, token.substring(0, 20) + '...');
+      } else {
+        console.warn(`⚠️ useQuery NO TOKEN FOUND in localStorage!`);
       }
 
       const baseUrl = getApiBaseUrl();
       const fullUrl = `${baseUrl}${url}`;
       console.log(`🌐 QueryClient GET Request: ${fullUrl}`);
+      console.log(`📋 useQuery Headers:`, headers);
 
       const res = await fetch(fullUrl, {
         headers,

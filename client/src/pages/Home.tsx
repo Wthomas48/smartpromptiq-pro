@@ -66,24 +66,31 @@ export default function Home() {
                 <BrainLogo size={100} animate={true} variant="filled" className="hero-brain-logo" />
                 <BrainLogo size={100} animate={true} variant="outline" className="hero-brain-logo-outline" />
               </div>
-              <div className="hero-badge">Revolutionary AI-Powered Platform</div>
+              <div className="hero-badge">The Complete AI Prompt Engineering & App Creation Platform</div>
             </div>
 
             <h1 className="hero-title">
-              Master AI Prompting Build Powerful Tools<br />
-              <span className="gradient-text">All in One Platform</span>
+              Learn the Skills, Use the Tools<br />
+              <span className="gradient-text">Build Real Solutions</span>
             </h1>
 
             <p className="hero-description">
-              SmartPromptIQ combines professional AI prompt engineering education (57 courses, 555+ lessons) with powerful execution tools. Learn the theory in our Academy, then immediately apply it with Pro tools. One platform. Zero friction.
+              SmartPromptIQ™ unifies deep AI education with done-for-you prompt systems.
+              Master prompting through 57 courses and 555 lessons, then use BuilderIQ and Pro Tools
+              to generate full app specifications, blueprints, prompts, and deployment strategies.
             </p>
-            
+
+            <p className="hero-tagline" style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.9)', marginTop: '-0.5rem', marginBottom: '1.5rem', fontStyle: 'italic' }}>
+              Your ideas deserve more than theory — they deserve creation.<br />
+              <span style={{ fontWeight: 600 }}>Welcome to the future of intelligent building.</span>
+            </p>
+
             <div className="cta-buttons">
               <button onClick={handleGetStarted} className="btn btn-primary">
-                ✨ Start Creating Magic
+                ✨ Start Building Smarter
               </button>
               <button onClick={handleDemo} className="btn btn-secondary">
-                🎮 Try Demo
+                🎮 Launch the Demo
               </button>
             </div>
             
@@ -238,6 +245,129 @@ export default function Home() {
                 <i className="fas fa-star mr-2"></i>
                 View All Plans & Pricing
               </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Chrome Extension Section - NEW */}
+        <section className="py-20 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="inline-block px-4 py-2 bg-gradient-to-r from-orange-500/20 to-yellow-500/20 rounded-full mb-4 border border-orange-500/30">
+                <span className="text-sm font-semibold text-orange-300">🧩 CHROME EXTENSION — COMING SOON</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
+                SmartPromptIQ <span className="bg-gradient-to-r from-orange-400 to-yellow-400 bg-clip-text text-transparent">Everywhere You Work</span>
+              </h2>
+              <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+                Access the full power of SmartPromptIQ directly in your browser — no tab switching, no context lost
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8 items-center">
+              {/* Extension Preview */}
+              <div className="relative">
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 border border-purple-500/30 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-2xl">
+                      🧠
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">SmartPromptIQ Extension</h3>
+                      <p className="text-gray-400 text-sm">v1.0 • Chrome Web Store</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <div className="flex items-center gap-2 text-green-400 text-sm mb-2">
+                        <span>✓</span> Active on this page
+                      </div>
+                      <p className="text-gray-300 text-sm">Ready to generate prompts for any website or application</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 rounded-lg text-sm font-semibold">
+                        Generate Prompt
+                      </button>
+                      <button className="flex-1 bg-white/10 text-white py-2 px-4 rounded-lg text-sm font-semibold border border-white/20">
+                        Open Dashboard
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="absolute -top-4 -right-4 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  FREE with Pro
+                </div>
+              </div>
+
+              {/* Benefits List */}
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center text-2xl flex-shrink-0 border border-purple-500/30">
+                    ⚡
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-1">Instant Access Anywhere</h4>
+                    <p className="text-gray-400">Generate prompts on any website — ChatGPT, Claude, Gemini, or your favorite AI tool. One click, instant results</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center text-2xl flex-shrink-0 border border-green-500/30">
+                    🎯
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-1">Context-Aware Generation</h4>
+                    <p className="text-gray-400">The extension reads the page context and suggests the perfect prompts for your current task</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-yellow-500/20 flex items-center justify-center text-2xl flex-shrink-0 border border-orange-500/30">
+                    📚
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-1">Your Prompt Library</h4>
+                    <p className="text-gray-400">Access all your saved prompts, templates, and favorites instantly from any browser tab</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center text-2xl flex-shrink-0 border border-blue-500/30">
+                    🔄
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-1">Seamless Sync</h4>
+                    <p className="text-gray-400">Everything syncs with your SmartPromptIQ account — prompts, history, and preferences across all devices</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500/20 to-rose-500/20 flex items-center justify-center text-2xl flex-shrink-0 border border-pink-500/30">
+                    🚀
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-1">One-Click Insert</h4>
+                    <p className="text-gray-400">Generate and insert prompts directly into any text field — no copy-paste needed</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Coming Soon CTA */}
+            <div className="mt-12 text-center">
+              <div className="inline-flex items-center gap-4 bg-white/5 rounded-2xl p-6 border border-white/10">
+                <div className="text-4xl">🧩</div>
+                <div className="text-left">
+                  <h4 className="text-xl font-bold text-white">Get Early Access</h4>
+                  <p className="text-gray-400">Be the first to know when the Chrome Extension launches</p>
+                </div>
+                <button
+                  onClick={() => setLocation('/signin?mode=signup')}
+                  className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-6 py-3 rounded-xl font-bold hover:from-orange-600 hover:to-yellow-600 transition-all duration-200 shadow-lg"
+                >
+                  Join Waitlist
+                </button>
+              </div>
             </div>
           </div>
         </section>

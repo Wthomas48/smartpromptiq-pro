@@ -118,7 +118,7 @@ export default function AdminLogin() {
           <div className="flex items-center justify-center mb-4">
             <Logo size={48} />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">SmartPromptIQ</h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">SmartPromptIQ™</h1>
           <p className="text-slate-600">Administrator Portal</p>
         </div>
 
@@ -218,7 +218,7 @@ export default function AdminLogin() {
                 onClick={() => setLocation('/landing')}
                 className="text-slate-500 hover:text-slate-700"
               >
-                ← Back to SmartPromptIQ
+                ← Back to SmartPromptIQ™
               </Button>
             </div>
           </CardContent>
@@ -226,7 +226,7 @@ export default function AdminLogin() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-slate-500">
-          <p>© 2024 SmartPromptIQ. All rights reserved.</p>
+          <p>© 2024 SmartPromptIQ™. All rights reserved.</p>
           <p className="mt-1">Administrator Portal v1.0</p>
         </div>
       </div>

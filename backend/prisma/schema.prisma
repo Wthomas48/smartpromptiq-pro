@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -668,4 +668,333 @@ model LearningAnalytics {
   @@index([userId])
   @@index([date])
   @@map("academy_learning_analytics")
+}
+
+// ============================================
+// BUILDERIQ - APP CREATION PLATFORM
+// ============================================
+
+model BuilderIQTemplate {
+  id          String @id @default(cuid())
+  title       String
+  description String
+  slug        String @unique
+
+  // Categorization
+  industry    String // healthcare, finance, ecommerce, education, legal, realestate, entertainment, automotive, travel, fitness, restaurant, nonprofit
+  category    String // crm, inventory, booking, analytics, support, marketplace, portal, management
+  subcategory String? // more specific categorization
+
+  // Template content
+  promptContent    String // The actual master prompt
+  blueprint        String? // JSON: structured blueprint data
+  features         String? // JSON: array of features included
+  techStack        String? // JSON: recommended tech stack
+  userActions      String? // JSON: possible user actions
+  compliance       String? // JSON: compliance requirements
+  monetization     String? // JSON: monetization strategies
+
+  // Metadata
+  complexity    String @default("medium") // simple, medium, complex, enterprise
+  estimatedTime String? // "2-4 weeks", "1-2 months", etc.
+  targetUsers   String? // JSON: array of target user personas
+  designStyle   String? // minimal, professional, playful, corporate, spiritual, futuristic
+  colorScheme   String? // JSON: color palette
+
+  // Stats & Discovery
+  usageCount  Int     @default(0)
+  rating      Float?
+  reviewCount Int     @default(0)
+  isFeatured  Boolean @default(false)
+  isPublished Boolean @default(true)
+  order       Int     @default(0)
+
+  // AI Generation flags
+  includesAuth      Boolean @default(true)
+  includesPayments  Boolean @default(false)
+  includesAI        Boolean @default(false)
+  includesAnalytics Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  savedByUsers BuilderIQSavedTemplate[]
+
+  @@index([industry])
+  @@index([category])
+  @@index([complexity])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@map("builderiq_templates")
+}
+
+model BuilderIQQuestionnaire {
+  id          String @id @default(cuid())
+  title       String
+  description String?
+
+  // Questionnaire type
+  industry String? // null = universal, or specific industry
+  category String? // null = universal, or specific category
+
+  // Questions structure (JSON)
+  questions String // JSON: array of question objects with branching logic
+
+  // Metadata
+  isActive    Boolean @default(true)
+  order       Int     @default(0)
+  version     Int     @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([industry])
+  @@index([category])
+  @@index([isActive])
+  @@map("builderiq_questionnaires")
+}
+
+model BuilderIQSession {
+  id     String @id @default(cuid())
+  userId String
+
+  // Session data
+  sessionType  String // questionnaire, template_customization, story_mode, voice
+  status       String @default("in_progress") // in_progress, completed, abandoned
+
+  // Input data
+  responses       String? // JSON: questionnaire responses
+  storyInput      String? // Natural language input from story mode
+  voiceTranscript String? // Voice input transcript
+  selectedTemplate String? // Template ID if started from template
+
+  // Generated output
+  generatedBlueprint String? // JSON: the final blueprint
+  generatedPrompt    String? // The generated master prompt
+  appName            String?
+  appDescription     String?
+
+  // User persona data
+  userPersonas String? // JSON: generated user personas
+
+  // Metadata
+  industry    String?
+  category    String?
+  complexity  String?
+  designStyle String?
+  colorScheme String?
+
+  // Collaboration
+  collaborators String? // JSON: array of user IDs
+  isShared      Boolean @default(false)
+  shareCode     String? @unique
+
+  // Voice/audio features
+  voiceEnabled   Boolean @default(false)
+  lastVoiceInput DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([industry])
+  @@index([shareCode])
+  @@map("builderiq_sessions")
+}
+
+model BuilderIQSavedTemplate {
+  id         String @id @default(cuid())
+  userId     String
+  templateId String
+
+  // Customizations
+  customizations String? // JSON: user's customizations to the template
+  notes          String?
+  isFavorite     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  template BuilderIQTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templateId])
+  @@index([userId])
+  @@map("builderiq_saved_templates")
+}
+
+model BuilderIQGeneratedApp {
+  id     String @id @default(cuid())
+  userId String
+
+  // App details
+  name        String
+  description String?
+  industry    String
+  category    String
+
+  // Generated content
+  masterPrompt     String // The complete generated prompt
+  blueprint        String // JSON: structured blueprint
+  features         String // JSON: feature list
+  techStack        String? // JSON: tech recommendations
+  userPersonas     String? // JSON: user personas
+  compliance       String? // JSON: compliance requirements
+  monetization     String? // JSON: monetization strategy
+  marketingCopy    String? // JSON: generated marketing materials
+
+  // Design
+  designStyle String?
+  colorScheme String?
+  logoSuggestions String? // JSON: logo/brand suggestions
+
+  // Session reference
+  sessionId String?
+
+  // Stats
+  exportCount Int @default(0)
+  lastExportedAt DateTime?
+
+  // Status
+  status String @default("draft") // draft, finalized, exported, in_development
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([industry])
+  @@index([status])
+  @@map("builderiq_generated_apps")
+}
+
+model BuilderIQIndustry {
+  id          String @id @default(cuid())
+  name        String @unique
+  displayName String
+  description String?
+  icon        String? // emoji or icon name
+  color       String? // hex color for UI
+
+  // Industry-specific data
+  commonFeatures    String? // JSON: common features in this industry
+  complianceNeeds   String? // JSON: typical compliance requirements
+  targetAudiences   String? // JSON: common target audiences
+  trendingFeatures  String? // JSON: trending features in 2024-2025
+
+  // Stats
+  templateCount Int @default(0)
+  popularity    Int @default(0)
+
+  isActive Boolean @default(true)
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("builderiq_industries")
+}
+
+// ============================================
+// REFERRAL SYSTEM
+// ============================================
+
+model ReferralCode {
+  id     String @id @default(cuid())
+  userId String @unique // Each user has one referral code
+
+  // The unique referral code (e.g., "JOHN2024" or auto-generated)
+  code String @unique
+
+  // Customizable reward settings
+  referrerRewardTokens Int @default(50) // Tokens the referrer gets
+  refereeRewardTokens  Int @default(25) // Tokens the new user gets
+
+  // Stats
+  totalReferrals       Int @default(0)
+  successfulReferrals  Int @default(0) // Referrals that converted to paid
+  totalEarnings        Int @default(0) // Total tokens earned from referrals
+
+  // Status
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  referrals Referral[]
+
+  @@index([code])
+  @@index([userId])
+  @@map("referral_codes")
+}
+
+model Referral {
+  id             String @id @default(cuid())
+  referralCodeId String
+  referrerId     String // User who referred
+  refereeId      String // User who was referred
+
+  // Status tracking
+  status String @default("pending") // pending, signed_up, converted, rewarded, expired
+
+  // Reward tracking
+  referrerRewarded   Boolean   @default(false)
+  refereeRewarded    Boolean   @default(false)
+  referrerRewardDate DateTime?
+  refereeRewardDate  DateTime?
+
+  // Token rewards given
+  referrerTokensAwarded Int @default(0)
+  refereeTokensAwarded  Int @default(0)
+
+  // Conversion tracking
+  signedUpAt  DateTime  @default(now())
+  convertedAt DateTime? // When referee made first purchase/upgraded
+
+  // Attribution
+  referralSource String? // signup, landing_page, share_link, email
+  utmCampaign    String?
+  utmMedium      String?
+  utmSource      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  referralCode ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Cascade)
+
+  @@unique([referrerId, refereeId]) // Can't refer same person twice
+  @@index([referrerId])
+  @@index([refereeId])
+  @@index([status])
+  @@index([referralCodeId])
+  @@map("referrals")
+}
+
+model ReferralReward {
+  id     String @id @default(cuid())
+  userId String
+
+  // Reward details
+  type        String // referrer_signup, referrer_conversion, referee_welcome, milestone_bonus
+  tokens      Int // Tokens awarded
+  description String?
+
+  // Source
+  referralId String? // Link to the referral that triggered this
+
+  // Status
+  status    String   @default("credited") // credited, pending, expired, revoked
+  creditedAt DateTime @default(now())
+
+  // Milestone tracking
+  milestoneType String? // first_referral, 5_referrals, 10_referrals, 25_referrals, 50_referrals, 100_referrals
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@map("referral_rewards")
 }

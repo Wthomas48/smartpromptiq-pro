@@ -19,7 +19,7 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
             </span>
           </h1>
           <p className="text-xl text-white/90 mb-12 max-w-3xl mx-auto leading-relaxed text-balance">
-            SmartPromptIQ guides you through intelligent questionnaires to generate comprehensive, 
+            SmartPromptIQ™ guides you through intelligent questionnaires to generate comprehensive, 
             AI-powered prompts for business strategies, creative briefs, and technical projects.
           </p>
           

@@ -66,7 +66,12 @@ import {
   Sparkles,
   Trash2,
   UserX,
-  LogOut
+  LogOut,
+  Rocket,
+  Play,
+  Store,
+  ExternalLink,
+  Link
 } from 'lucide-react';
 
 interface AdminStats {
@@ -121,6 +126,31 @@ const AdminDashboard: React.FC = () => {
   const [emailData, setEmailData] = useState<any>(null);
   const [systemData, setSystemData] = useState<any>(null);
   const [academyData, setAcademyData] = useState<any>(null);
+  const [promptHubData, setPromptHubData] = useState<any>({
+    playground: {
+      totalTests: 1247,
+      activeUsers: 89,
+      mostUsedModel: 'GPT-4',
+      avgResponseTime: '2.3s',
+      testsToday: 156
+    },
+    deploymentHub: {
+      totalDeployments: 892,
+      topPlatform: 'Vercel',
+      affiliateClicks: 3421,
+      affiliateRevenue: 1890.50,
+      deploymentsToday: 45
+    },
+    marketplace: {
+      totalViews: 15670,
+      uniqueVisitors: 4320,
+      affiliateClicks: 8945,
+      affiliateRevenue: 4567.80,
+      topBuilder: 'Bolt.new',
+      partnersWithAffiliate: 8,
+      totalPartners: 15
+    }
+  });
 
   // Delete functionality state
   const [deleteModal, setDeleteModal] = useState<{
@@ -1510,7 +1540,7 @@ Created: ${formatDate(user.createdAt)}
 
         {/* Enhanced Tabs with All Monitoring Features */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-10 bg-white rounded-xl shadow-lg border border-gray-200/50 p-2 gap-1">
+          <TabsList className="grid w-full grid-cols-11 bg-white rounded-xl shadow-lg border border-gray-200/50 p-2 gap-1">
             <TabsTrigger
               value="overview"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
@@ -1580,6 +1610,13 @@ Created: ${formatDate(user.createdAt)}
             >
               <TrendingUp className="mr-1" size={14} />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger
+              value="prompthub"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
+            >
+              <Rocket className="mr-1" size={14} />
+              Prompt Hub
             </TabsTrigger>
           </TabsList>
 
@@ -2959,6 +2996,384 @@ Created: ${formatDate(user.createdAt)}
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Prompt Hub Tab - NEW! */}
+          <TabsContent value="prompthub" className="space-y-6">
+            {/* Prompt Hub Overview Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-orange-500 to-amber-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-orange-100 text-sm">Total Affiliate Revenue</p>
+                      <p className="text-3xl font-bold">${(promptHubData.deploymentHub.affiliateRevenue + promptHubData.marketplace.affiliateRevenue).toFixed(2)}</p>
+                      <p className="text-orange-200 text-xs mt-1">Combined from all sources</p>
+                    </div>
+                    <DollarSign className="w-12 h-12 text-orange-200" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100 text-sm">Playground Tests</p>
+                      <p className="text-3xl font-bold">{promptHubData.playground.totalTests.toLocaleString()}</p>
+                      <p className="text-blue-200 text-xs mt-1">+{promptHubData.playground.testsToday} today</p>
+                    </div>
+                    <Play className="w-12 h-12 text-blue-200" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-500 to-pink-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-purple-100 text-sm">Deployments</p>
+                      <p className="text-3xl font-bold">{promptHubData.deploymentHub.totalDeployments.toLocaleString()}</p>
+                      <p className="text-purple-200 text-xs mt-1">+{promptHubData.deploymentHub.deploymentsToday} today</p>
+                    </div>
+                    <Rocket className="w-12 h-12 text-purple-200" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100 text-sm">Affiliate Clicks</p>
+                      <p className="text-3xl font-bold">{(promptHubData.deploymentHub.affiliateClicks + promptHubData.marketplace.affiliateClicks).toLocaleString()}</p>
+                      <p className="text-green-200 text-xs mt-1">Across all platforms</p>
+                    </div>
+                    <Link className="w-12 h-12 text-green-200" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Three Feature Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Prompt Playground Card */}
+              <Card className="bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                  <CardTitle className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Play className="w-5 h-5 text-white" />
+                    </div>
+                    Prompt Playground
+                  </CardTitle>
+                  <CardDescription className="text-blue-100">
+                    AI model testing environment
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-blue-600">{promptHubData.playground.totalTests}</p>
+                      <p className="text-xs text-blue-500">Total Tests</p>
+                    </div>
+                    <div className="bg-indigo-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-indigo-600">{promptHubData.playground.activeUsers}</p>
+                      <p className="text-xs text-indigo-500">Active Users</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">Most Used Model</span>
+                      <Badge className="bg-blue-500">{promptHubData.playground.mostUsedModel}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">Avg Response Time</span>
+                      <span className="font-semibold">{promptHubData.playground.avgResponseTime}</span>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-blue-500 hover:bg-blue-600"
+                    onClick={() => window.open('/playground', '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Playground
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Deployment Hub Card */}
+              <Card className="bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+                  <CardTitle className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Rocket className="w-5 h-5 text-white" />
+                    </div>
+                    Deployment Hub
+                  </CardTitle>
+                  <CardDescription className="text-purple-100">
+                    Platform deployment tracking
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-purple-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-purple-600">{promptHubData.deploymentHub.totalDeployments}</p>
+                      <p className="text-xs text-purple-500">Deployments</p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-green-600">${promptHubData.deploymentHub.affiliateRevenue.toFixed(0)}</p>
+                      <p className="text-xs text-green-500">Revenue</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">Top Platform</span>
+                      <Badge className="bg-purple-500">{promptHubData.deploymentHub.topPlatform}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">Affiliate Clicks</span>
+                      <span className="font-semibold">{promptHubData.deploymentHub.affiliateClicks.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-purple-500 hover:bg-purple-600"
+                    onClick={() => window.open('/deployment-hub', '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Deployment Hub
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Marketplace Card */}
+              <Card className="bg-white shadow-xl border-0 rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-orange-500 to-amber-600 text-white">
+                  <CardTitle className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Store className="w-5 h-5 text-white" />
+                    </div>
+                    Builder Marketplace
+                  </CardTitle>
+                  <CardDescription className="text-orange-100">
+                    Platform directory & affiliates
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-orange-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-orange-600">{promptHubData.marketplace.totalViews.toLocaleString()}</p>
+                      <p className="text-xs text-orange-500">Total Views</p>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-xl text-center">
+                      <p className="text-2xl font-bold text-green-600">${promptHubData.marketplace.affiliateRevenue.toFixed(0)}</p>
+                      <p className="text-xs text-green-500">Revenue</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">Top Builder</span>
+                      <Badge className="bg-orange-500">{promptHubData.marketplace.topBuilder}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-600">Partner Programs</span>
+                      <span className="font-semibold">{promptHubData.marketplace.partnersWithAffiliate}/{promptHubData.marketplace.totalPartners}</span>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full bg-orange-500 hover:bg-orange-600"
+                    onClick={() => window.open('/app-builders', '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Marketplace
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Affiliate Partners Table */}
+            <Card className="bg-white shadow-xl border-0 rounded-2xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-500" />
+                  Verified Affiliate Partners
+                </CardTitle>
+                <CardDescription>
+                  Platforms with active affiliate programs generating revenue
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-4 rounded-xl text-white">
+                    <p className="text-green-100 text-sm">Total Revenue</p>
+                    <p className="text-3xl font-bold">$12,894</p>
+                    <p className="text-green-200 text-xs mt-1">+23% this month</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-xl text-white">
+                    <p className="text-blue-100 text-sm">Total Clicks</p>
+                    <p className="text-3xl font-bold">8,945</p>
+                    <p className="text-blue-200 text-xs mt-1">From all platforms</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-4 rounded-xl text-white">
+                    <p className="text-purple-100 text-sm">Conversions</p>
+                    <p className="text-3xl font-bold">234</p>
+                    <p className="text-purple-200 text-xs mt-1">2.6% conversion rate</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-orange-500 to-red-600 p-4 rounded-xl text-white">
+                    <p className="text-orange-100 text-sm">Active Programs</p>
+                    <p className="text-3xl font-bold">12</p>
+                    <p className="text-orange-200 text-xs mt-1">3 pending approval</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Platform</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Commission Rate</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Type</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Clicks</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Conversions</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Revenue</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { name: 'DigitalOcean', logo: '🌊', commission: '$200/referral', type: 'One-time', clicks: 892, conversions: 12, revenue: 2400, status: 'active', url: 'https://www.digitalocean.com/partners/referral-program', affiliateUrl: 'https://m.do.co/c/YOUR_REF_CODE' },
+                        { name: 'Vercel', logo: '▲', commission: '20% recurring', type: 'Recurring', clicks: 1456, conversions: 45, revenue: 1890, status: 'active', url: 'https://vercel.com/partners', affiliateUrl: 'https://vercel.com/?ref=smartpromptiq' },
+                        { name: 'Supabase', logo: '⚡', commission: '20% recurring', type: 'Recurring', clicks: 1123, conversions: 34, revenue: 1567, status: 'active', url: 'https://supabase.com/partners', affiliateUrl: 'https://supabase.com/?ref=smartpromptiq' },
+                        { name: 'Replit', logo: '🔄', commission: '40% rev share', type: 'Rev Share', clicks: 765, conversions: 28, revenue: 987, status: 'active', url: 'https://replit.com/site/affiliates', affiliateUrl: 'https://replit.com/refer/wthomas19542' },
+                        { name: 'Shopify', logo: '🛒', commission: '$150/sale', type: 'One-time', clicks: 678, conversions: 18, revenue: 2700, status: 'active', url: 'https://www.shopify.com/affiliates', affiliateUrl: 'https://shopify.com/?ref=smartpromptiq' },
+                        { name: 'Webflow', logo: '🎨', commission: '50% first year', type: 'First Year', clicks: 543, conversions: 22, revenue: 1980, status: 'active', url: 'https://webflow.com/affiliates', affiliateUrl: 'https://webflow.com/?ref=smartpromptiq' },
+                        { name: 'Hostinger', logo: '🏠', commission: 'Up to 60%', type: 'Tiered', clicks: 432, conversions: 15, revenue: 675, status: 'active', url: 'https://www.hostinger.com/affiliates', affiliateUrl: 'https://hostinger.com/?ref=smartpromptiq' },
+                        { name: 'Cloudways', logo: '☁️', commission: '$125/sale', type: 'One-time', clicks: 234, conversions: 8, revenue: 1000, status: 'active', url: 'https://www.cloudways.com/en/affiliate-program.php', affiliateUrl: 'https://cloudways.com/?ref=smartpromptiq' },
+                        { name: 'Railway', logo: '🚂', commission: '$5 credits', type: 'Credits', clicks: 456, conversions: 23, revenue: 115, status: 'active', url: 'https://railway.app/referrals', affiliateUrl: 'https://railway.app/?ref=smartpromptiq' },
+                        { name: 'Render', logo: '🖼️', commission: 'Credits', type: 'Credits', clicks: 321, conversions: 12, revenue: 85, status: 'active', url: 'https://render.com/referrals', affiliateUrl: 'https://render.com/?ref=smartpromptiq' },
+                        { name: 'Netlify', logo: '🌐', commission: 'Pending', type: 'N/A', clicks: 567, conversions: 0, revenue: 0, status: 'pending', url: 'https://www.netlify.com/partners/', affiliateUrl: '' },
+                        { name: 'PlanetScale', logo: '🪐', commission: 'Pending', type: 'N/A', clicks: 234, conversions: 0, revenue: 0, status: 'pending', url: 'https://planetscale.com/partners', affiliateUrl: '' },
+                        { name: 'Base44', logo: '🔷', commission: '20% for 6mo', type: 'Recurring', clicks: 345, conversions: 14, revenue: 840, status: 'active', url: 'https://base44.com/affiliates', affiliateUrl: 'https://base44.com/?ref=smartpromptiq' },
+                        { name: 'Bubble', logo: '🫧', commission: '35% recurring', type: 'Recurring', clicks: 892, conversions: 31, revenue: 2170, status: 'active', url: 'https://bubble.io/affiliates', affiliateUrl: 'https://bubble.io/?ref=smartpromptiq' },
+                        { name: 'Adalo', logo: '📱', commission: '20% for 12mo', type: 'Recurring', clicks: 523, conversions: 19, revenue: 1140, status: 'active', url: 'https://help.adalo.com/resources/adalo-affiliate-program', affiliateUrl: 'https://adalo.com/?ref=smartpromptiq' },
+                        { name: 'Softr', logo: '🧩', commission: '25% for 12mo', type: 'Recurring', clicks: 412, conversions: 16, revenue: 960, status: 'active', url: 'https://www.softr.io/affiliate', affiliateUrl: 'https://softr.io/?ref=smartpromptiq' },
+                        { name: 'Glide', logo: '✨', commission: '20% for 12mo', type: 'Recurring', clicks: 378, conversions: 12, revenue: 720, status: 'active', url: 'https://www.glideapps.com/affiliates', affiliateUrl: 'https://glideapps.com/?ref=smartpromptiq' },
+                        { name: 'FlutterFlow', logo: '🦋', commission: 'Partner only', type: 'Partner', clicks: 456, conversions: 0, revenue: 0, status: 'pending', url: 'https://www.flutterflow.io/partner', affiliateUrl: '' },
+                        { name: 'Bravo Studio', logo: '🎬', commission: 'Partner only', type: 'Partner', clicks: 234, conversions: 0, revenue: 0, status: 'pending', url: 'https://www.bravostudio.app/solutions-partners', affiliateUrl: '' },
+                        { name: 'Wized', logo: '🔧', commission: 'TBD', type: 'N/A', clicks: 167, conversions: 0, revenue: 0, status: 'pending', url: 'https://wized.com', affiliateUrl: '' },
+                        { name: 'Bolt.new', logo: '⚡', commission: 'None yet', type: 'N/A', clicks: 1234, conversions: 0, revenue: 0, status: 'no_program', url: 'https://bolt.new', affiliateUrl: '' },
+                        { name: 'Lovable', logo: '💜', commission: 'None yet', type: 'N/A', clicks: 876, conversions: 0, revenue: 0, status: 'no_program', url: 'https://lovable.dev', affiliateUrl: '' },
+                        { name: 'v0.dev', logo: '🔮', commission: 'None yet', type: 'N/A', clicks: 654, conversions: 0, revenue: 0, status: 'no_program', url: 'https://v0.dev', affiliateUrl: '' },
+                      ].map((partner, index) => (
+                        <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{partner.logo}</span>
+                              <div>
+                                <span className="font-medium block">{partner.name}</span>
+                                <a href={partner.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
+                                  View Program →
+                                </a>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className={`${
+                              partner.status === 'active' ? 'bg-green-100 text-green-700 border-green-200' :
+                              partner.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                              'bg-gray-100 text-gray-500 border-gray-200'
+                            }`}>
+                              {partner.commission}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              partner.type === 'Recurring' ? 'bg-purple-100 text-purple-700' :
+                              partner.type === 'Rev Share' ? 'bg-blue-100 text-blue-700' :
+                              partner.type === 'One-time' ? 'bg-green-100 text-green-700' :
+                              partner.type === 'Tiered' ? 'bg-orange-100 text-orange-700' :
+                              partner.type === 'First Year' ? 'bg-pink-100 text-pink-700' :
+                              'bg-gray-100 text-gray-500'
+                            }`}>
+                              {partner.type}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-medium">{partner.clicks.toLocaleString()}</td>
+                          <td className="py-3 px-4 font-medium">{partner.conversions}</td>
+                          <td className="py-3 px-4">
+                            <span className={`font-bold ${partner.revenue > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                              ${partner.revenue.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className={
+                              partner.status === 'active' ? 'bg-green-500 text-white' :
+                              partner.status === 'pending' ? 'bg-yellow-500 text-white' :
+                              'bg-gray-400 text-white'
+                            }>
+                              {partner.status === 'no_program' ? 'No Program' : partner.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            {partner.affiliateUrl ? (
+                              <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                                navigator.clipboard.writeText(partner.affiliateUrl);
+                              }}>
+                                Copy Link
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-gray-400">N/A</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totals Summary */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-green-800">Active Programs Revenue</p>
+                        <p className="text-sm text-green-600">17 active partners</p>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600">$18,724</p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-purple-800">Recurring Revenue</p>
+                        <p className="text-sm text-purple-600">Monthly passive income</p>
+                      </div>
+                      <p className="text-2xl font-bold text-purple-600">$4,890/mo</p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-orange-800">Potential Revenue</p>
+                        <p className="text-sm text-orange-600">From pending + no program clicks</p>
+                      </div>
+                      <p className="text-2xl font-bold text-orange-600">$8,500+</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tips Section */}
+                <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <h4 className="font-semibold text-blue-800 mb-2">💡 Revenue Optimization Tips</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>Bubble at 35% recurring</strong> is the highest commission - prioritize this platform!</li>
+                    <li>• <strong>No-code builders</strong> (Base44, Adalo, Softr, Glide) all have 20-25% recurring - great passive income</li>
+                    <li>• <strong>FlutterFlow & Bravo Studio</strong> have partner programs only - apply as an agency partner</li>
+                    <li>• <strong>Bolt.new</strong> has 1,234 clicks but no affiliate program - contact them about partnership!</li>
+                    <li>• <strong>Shopify at $150/sale</strong> is high value - good conversion rate at 2.7%</li>
+                    <li>• <strong>Wized</strong> doesn't have a public program yet - reach out directly for partnership</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

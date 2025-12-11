@@ -1,0 +1,920 @@
+# SmartPromptIQ Academy - Complete Course Catalog
+## Organized by Learning Tracks & Pricing Tiers
+
+---
+
+## 🆓 FREE TIER COURSES (Public Access)
+*Perfect for getting started - No credit card required*
+
+### 1. **Prompt Writing 101**
+- **Duration:** 3 hours
+- **Lessons:** 12
+- **Level:** Beginner
+- **Description:** Master the fundamentals of prompt engineering. Learn structure, context, and how to write clear, effective prompts.
+- **What You'll Learn:**
+  - Anatomy of a great prompt
+  - Context and clarity principles
+  - Common prompt mistakes to avoid
+  - Basic prompt patterns
+  - Testing and iteration strategies
+- **Projects:** 3 hands-on exercises
+- **Certificate:** Completion badge
+
+### 2. **Introduction to AI Prompting**
+- **Duration:** 2 hours
+- **Lessons:** 8
+- **Level:** Beginner
+- **Description:** Understand how AI language models work and how to communicate with them effectively.
+- **What You'll Learn:**
+  - How AI models process prompts
+  - Token limits and context windows
+  - Temperature and parameter settings
+  - Prompt vs. fine-tuning
+  - Ethical AI usage
+- **Projects:** 2 guided labs
+- **Certificate:** Completion badge
+
+### 3. **SmartPromptIQ Product Tour**
+- **Duration:** 1.5 hours
+- **Lessons:** 6
+- **Level:** Beginner
+- **Description:** Complete walkthrough of SmartPromptIQ platform features and capabilities.
+- **What You'll Learn:**
+  - Platform navigation
+  - Basic prompt execution
+  - Understanding routing
+  - Saving and organizing prompts
+  - Collaboration features
+- **Projects:** Platform setup exercise
+- **Certificate:** Completion badge
+
+---
+
+## 🎁 SMARTPROMPTIQ SUBSCRIBER TIER (Included with Subscription)
+*Free for all SmartPromptIQ customers*
+
+### SmartPromptIQ Mastery Track (20 lessons total)
+
+#### 4. **SmartPromptIQ Basics**
+- **Duration:** 4 hours
+- **Lessons:** 15
+- **Level:** Beginner
+- **Description:** Complete guide to getting the most from your SmartPromptIQ subscription.
+- **Modules:**
+  - Module 1: Platform Deep Dive
+  - Module 2: Basic Routing & Execution
+  - Module 3: Workspace Management
+  - Module 4: Prompt Templates Library
+  - Module 5: Integration Basics
+- **Projects:** 5 real-world scenarios
+- **Certificate:** SmartPromptIQ User Certificate
+
+#### 5. **Advanced Routing & Execution**
+- **Duration:** 5 hours
+- **Lessons:** 18
+- **Level:** Intermediate
+- **Description:** Master SmartPromptIQ's intelligent routing system and advanced execution modes.
+- **Modules:**
+  - Module 1: Understanding Routing Logic
+  - Module 2: Custom Routing Rules
+  - Module 3: Multi-Model Execution
+  - Module 4: Conditional Prompting
+  - Module 5: Performance Optimization
+- **Projects:** Build a multi-step routing workflow
+- **Certificate:** Advanced User Certificate
+
+#### 6. **Advanced Prompt Chaining**
+- **Duration:** 6 hours
+- **Lessons:** 20
+- **Level:** Advanced
+- **Description:** Build complex, multi-step prompt systems that solve sophisticated problems.
+- **Modules:**
+  - Module 1: Sequential Prompting
+  - Module 2: Conditional Logic
+  - Module 3: Data Passing Between Prompts
+  - Module 4: Error Handling
+  - Module 5: Chain Optimization
+- **Projects:** Build an automated research system
+- **Certificate:** Prompt Architect Certificate
+
+#### 7. **Team Workflows & Collaboration**
+- **Duration:** 3 hours
+- **Lessons:** 12
+- **Level:** Intermediate
+- **Description:** Set up and manage team-based prompting workflows in SmartPromptIQ.
+- **What You'll Learn:**
+  - Team workspace setup
+  - Sharing prompts and templates
+  - Version control and branching
+  - Role-based permissions
+  - Collaborative prompt development
+  - Performance analytics for teams
+- **Projects:** Design a team workflow
+- **Certificate:** Team Administrator Certificate
+
+#### 8. **50+ SmartPromptIQ Templates Library**
+- **Format:** Template Collection + Video Tutorials
+- **Description:** Pre-built, customizable prompt templates for common business tasks.
+- **Categories:**
+  - Content Creation (10 templates)
+  - Data Analysis (8 templates)
+  - Customer Support (12 templates)
+  - Sales & Marketing (10 templates)
+  - Development & DevOps (10 templates)
+- **Each template includes:**
+  - Ready-to-use prompt
+  - Customization guide
+  - Use case examples
+  - Video walkthrough
+
+#### 9. **Monthly Live Q&A Sessions**
+- **Format:** Live webinar (1 hour monthly)
+- **Description:** Interactive sessions with SmartPromptIQ experts
+- **Topics:**
+  - Platform updates and new features
+  - Advanced techniques
+  - Troubleshooting common issues
+  - Community showcases
+  - Open Q&A
+
+---
+
+## 💎 PRO ACCESS TIER ($49/month or $399/year)
+*Everything in Free + SmartPromptIQ Tiers, plus 50+ advanced courses*
+
+### Foundation Track (For All Pro Members)
+
+#### 10. **Prompt Engineering Fundamentals**
+- **Duration:** 8 hours
+- **Lessons:** 25
+- **Level:** Beginner to Intermediate
+- **Description:** Comprehensive foundation in professional prompt engineering.
+- **Modules:**
+  - Module 1: Prompt Anatomy & Structure
+  - Module 2: Context Management
+  - Module 3: Output Control & Formatting
+  - Module 4: Prompt Debugging
+  - Module 5: Version Control for Prompts
+- **Projects:** 8 progressive exercises
+- **Certificate:** Prompt Engineer Foundation
+
+#### 11. **AI Model Comparison & Selection**
+- **Duration:** 4 hours
+- **Lessons:** 15
+- **Level:** Intermediate
+- **Description:** Learn when to use GPT-4, Claude, Gemini, and other models.
+- **What You'll Learn:**
+  - Model strengths and weaknesses
+  - Cost vs. performance tradeoffs
+  - Use case matching
+  - Model switching strategies
+  - Benchmark interpretation
+- **Projects:** Multi-model comparison project
+- **Certificate:** AI Model Expert
+
+### Advanced Prompt Engineering Track
+
+#### 12. **Advanced Prompt Patterns**
+- **Duration:** 8 hours
+- **Lessons:** 24
+- **Level:** Advanced
+- **Description:** Master sophisticated prompt design patterns used by experts.
+- **Modules:**
+  - Module 1: Chain-of-Thought Prompting
+  - Module 2: Few-Shot Learning
+  - Module 3: Self-Consistency Methods
+  - Module 4: Tree of Thoughts
+  - Module 5: ReAct Pattern (Reasoning + Acting)
+  - Module 6: Prompt Decomposition
+- **Projects:** Build a complex reasoning system
+- **Certificate:** Advanced Prompt Architect
+
+#### 13. **Prompt Debugging & Optimization**
+- **Duration:** 6 hours
+- **Lessons:** 18
+- **Level:** Advanced
+- **Description:** Systematic approaches to fixing and improving prompts.
+- **What You'll Learn:**
+  - Common failure patterns
+  - Debugging methodology
+  - A/B testing prompts
+  - Performance metrics
+  - Cost optimization
+  - Latency reduction
+- **Projects:** Debug and optimize 10 real-world prompts
+- **Certificate:** Prompt Optimization Specialist
+
+#### 14. **Multi-Agent Prompt Systems**
+- **Duration:** 10 hours
+- **Lessons:** 30
+- **Level:** Advanced
+- **Description:** Build systems with multiple AI agents working together.
+- **Modules:**
+  - Module 1: Agent Architecture Design
+  - Module 2: Inter-Agent Communication
+  - Module 3: Task Distribution
+  - Module 4: Consensus Mechanisms
+  - Module 5: Agent Specialization
+- **Projects:** Build a multi-agent research team
+- **Certificate:** Multi-Agent Systems Expert
+
+#### 15. **Prompt Security & Safety**
+- **Duration:** 5 hours
+- **Lessons:** 15
+- **Level:** Intermediate
+- **Description:** Protect against prompt injection, jailbreaking, and misuse.
+- **What You'll Learn:**
+  - Prompt injection attacks
+  - Defense strategies
+  - Content filtering
+  - PII protection
+  - Adversarial testing
+  - Compliance considerations
+- **Projects:** Build secure prompt systems
+- **Certificate:** AI Security Specialist
+
+### Domain-Specific Tracks
+
+#### 16. **DevOps Automation with AI**
+- **Duration:** 10 hours
+- **Lessons:** 30
+- **Level:** Intermediate
+- **Description:** Build AI-powered DevOps workflows and automation systems.
+- **Modules:**
+  - Module 1: Infrastructure as Code Generation
+  - Module 2: Automated Deployment Scripts
+  - Module 3: Log Analysis & Debugging
+  - Module 4: Performance Monitoring Prompts
+  - Module 5: Incident Response Automation
+  - Module 6: Documentation Generation
+- **Projects:** Build complete CI/CD prompt system
+- **Certificate:** AI DevOps Engineer
+
+#### 17. **Kubernetes & Container Prompting**
+- **Duration:** 6 hours
+- **Lessons:** 20
+- **Level:** Advanced
+- **Description:** AI-powered container orchestration and management.
+- **What You'll Learn:**
+  - Kubernetes manifest generation
+  - Dockerfile optimization
+  - Troubleshooting containerized apps
+  - Helm chart creation
+  - Security scanning automation
+- **Projects:** Automated k8s deployment system
+- **Certificate:** Container AI Specialist
+
+#### 18. **AI Design Systems**
+- **Duration:** 6 hours
+- **Lessons:** 18
+- **Level:** Intermediate
+- **Description:** Create stunning designs with AI for UI/UX, branding, and graphics.
+- **Modules:**
+  - Module 1: UI/UX Prompting Techniques
+  - Module 2: Brand Identity Generation
+  - Module 3: Design System Creation
+  - Module 4: Asset Generation Workflows
+  - Module 5: Design Critiques with AI
+- **Projects:** Complete brand identity system
+- **Certificate:** AI Design Specialist
+
+#### 19. **Advanced Design Automation**
+- **Duration:** 8 hours
+- **Lessons:** 25
+- **Level:** Advanced
+- **Description:** Build AI-powered design workflows and creative systems.
+- **What You'll Learn:**
+  - Midjourney mastery
+  - DALL-E 3 advanced techniques
+  - Figma + AI integration
+  - Batch design generation
+  - Style consistency
+  - Design QA automation
+- **Projects:** Automated design production pipeline
+- **Certificate:** Design Automation Expert
+
+#### 20. **Trading & Finance AI**
+- **Duration:** 12 hours
+- **Lessons:** 35
+- **Level:** Advanced
+- **Description:** Build AI trading strategies and financial analysis systems.
+- **Modules:**
+  - Module 1: Market Analysis Prompts
+  - Module 2: Trading Strategy Development
+  - Module 3: Risk Assessment Systems
+  - Module 4: Portfolio Optimization
+  - Module 5: Financial Report Analysis
+  - Module 6: Sentiment Analysis
+  - Module 7: Automated Trading Signals
+- **Projects:** Complete trading analysis system
+- **Certificate:** Financial AI Specialist
+
+#### 21. **Algorithmic Trading with AI**
+- **Duration:** 10 hours
+- **Lessons:** 28
+- **Level:** Expert
+- **Description:** Advanced algorithmic trading using AI prompts.
+- **What You'll Learn:**
+  - Backtesting strategies with AI
+  - Real-time market analysis
+  - Risk management prompts
+  - Multi-asset strategies
+  - Compliance and regulation
+- **Projects:** Build and test a trading algorithm
+- **Certificate:** Algorithmic Trading Expert
+
+#### 22. **Content Creation & Marketing**
+- **Duration:** 7 hours
+- **Lessons:** 22
+- **Level:** Intermediate
+- **Description:** Master AI-powered content creation for marketing.
+- **Modules:**
+  - Module 1: SEO-Optimized Content
+  - Module 2: Social Media Campaigns
+  - Module 3: Email Marketing Automation
+  - Module 4: Ad Copy Generation
+  - Module 5: Brand Voice Consistency
+- **Projects:** Complete content marketing campaign
+- **Certificate:** AI Content Marketer
+
+#### 23. **Video & Podcast Script Writing**
+- **Duration:** 5 hours
+- **Lessons:** 16
+- **Level:** Intermediate
+- **Description:** Create compelling scripts for video and audio content.
+- **What You'll Learn:**
+  - Story structure with AI
+  - Dialogue generation
+  - Scene descriptions
+  - Hook and retention techniques
+  - Script formatting
+- **Projects:** 10-episode podcast series outline
+- **Certificate:** AI Scriptwriter
+
+#### 24. **Data Analysis & Visualization**
+- **Duration:** 9 hours
+- **Lessons:** 26
+- **Level:** Intermediate to Advanced
+- **Description:** Analyze data and create insights using AI prompts.
+- **Modules:**
+  - Module 1: Data Cleaning Prompts
+  - Module 2: Statistical Analysis
+  - Module 3: Visualization Recommendations
+  - Module 4: Report Generation
+  - Module 5: Predictive Analytics
+- **Projects:** Complete data analysis pipeline
+- **Certificate:** AI Data Analyst
+
+#### 25. **SQL & Database Prompting**
+- **Duration:** 6 hours
+- **Lessons:** 20
+- **Level:** Intermediate
+- **Description:** Generate and optimize SQL queries with AI.
+- **What You'll Learn:**
+  - Complex query generation
+  - Database schema design
+  - Query optimization
+  - Data migration scripts
+  - Database documentation
+- **Projects:** Build a database optimization system
+- **Certificate:** Database AI Specialist
+
+#### 26. **Customer Support Automation**
+- **Duration:** 7 hours
+- **Lessons:** 22
+- **Level:** Intermediate
+- **Description:** Build AI-powered customer support systems.
+- **Modules:**
+  - Module 1: Response Template Creation
+  - Module 2: Sentiment Analysis
+  - Module 3: Escalation Logic
+  - Module 4: Knowledge Base Integration
+  - Module 5: Multi-Language Support
+- **Projects:** Complete support bot system
+- **Certificate:** Support Automation Specialist
+
+#### 27. **Sales Enablement with AI**
+- **Duration:** 6 hours
+- **Lessons:** 18
+- **Level:** Intermediate
+- **Description:** AI-powered sales processes and materials.
+- **What You'll Learn:**
+  - Personalized outreach
+  - Proposal generation
+  - Objection handling
+  - Sales script creation
+  - CRM automation
+- **Projects:** Complete sales playbook
+- **Certificate:** AI Sales Engineer
+
+#### 28. **Legal Document Analysis**
+- **Duration:** 8 hours
+- **Lessons:** 24
+- **Level:** Advanced
+- **Description:** Use AI to analyze and draft legal documents.
+- **What You'll Learn:**
+  - Contract review automation
+  - Legal research prompts
+  - Document comparison
+  - Risk identification
+  - Compliance checking
+- **Projects:** Contract analysis system
+- **Certificate:** Legal AI Specialist
+
+#### 29. **Healthcare & Medical Prompting**
+- **Duration:** 10 hours
+- **Lessons:** 30
+- **Level:** Advanced
+- **Description:** AI applications in healthcare and medical research.
+- **Modules:**
+  - Module 1: Medical Literature Review
+  - Module 2: Clinical Note Summarization
+  - Module 3: Patient Communication
+  - Module 4: Diagnosis Support (informational)
+  - Module 5: HIPAA Compliance
+- **Projects:** Medical research assistant system
+- **Certificate:** Healthcare AI Specialist
+
+#### 30. **Education & E-Learning**
+- **Duration:** 7 hours
+- **Lessons:** 22
+- **Level:** Intermediate
+- **Description:** Create educational content and learning systems with AI.
+- **What You'll Learn:**
+  - Curriculum development
+  - Assessment creation
+  - Personalized learning paths
+  - Feedback generation
+  - Interactive lessons
+- **Projects:** Complete course outline generator
+- **Certificate:** EdTech AI Specialist
+
+### Technical & Development Tracks
+
+#### 31. **Code Generation & Review**
+- **Duration:** 9 hours
+- **Lessons:** 28
+- **Level:** Advanced
+- **Description:** Master AI-assisted software development.
+- **Modules:**
+  - Module 1: Code Generation Best Practices
+  - Module 2: Code Review Automation
+  - Module 3: Debugging Strategies
+  - Module 4: Documentation Generation
+  - Module 5: Test Case Creation
+  - Module 6: Refactoring Prompts
+- **Projects:** Build a code assistant system
+- **Certificate:** AI Software Engineer
+
+#### 32. **API Integration Prompting**
+- **Duration:** 6 hours
+- **Lessons:** 20
+- **Level:** Intermediate
+- **Description:** Connect AI to external APIs and services.
+- **What You'll Learn:**
+  - API documentation analysis
+  - Request generation
+  - Response parsing
+  - Error handling
+  - Authentication flows
+- **Projects:** Multi-API integration system
+- **Certificate:** API Integration Specialist
+
+#### 33. **No-Code/Low-Code with AI**
+- **Duration:** 5 hours
+- **Lessons:** 16
+- **Level:** Beginner to Intermediate
+- **Description:** Build applications without traditional coding using AI.
+- **What You'll Learn:**
+  - Zapier + AI workflows
+  - Airtable automation
+  - Notion AI integration
+  - Make.com scenarios
+  - Bubble.io with AI
+- **Projects:** Complete no-code app
+- **Certificate:** No-Code AI Builder
+
+#### 34. **Python for Prompt Engineers**
+- **Duration:** 10 hours
+- **Lessons:** 30
+- **Level:** Intermediate
+- **Description:** Use Python to scale and automate prompt workflows.
+- **Modules:**
+  - Module 1: Python Basics for Prompting
+  - Module 2: API Integration
+  - Module 3: Batch Processing
+  - Module 4: Data Pipeline Creation
+  - Module 5: Prompt Management Systems
+- **Projects:** Automated prompt execution pipeline
+- **Certificate:** Python Prompt Engineer
+
+#### 35. **JavaScript & Web Integration**
+- **Duration:** 8 hours
+- **Lessons:** 24
+- **Level:** Intermediate
+- **Description:** Integrate AI prompts into web applications.
+- **What You'll Learn:**
+  - Frontend AI integration
+  - Real-time prompt execution
+  - User input handling
+  - Response streaming
+  - Error management
+- **Projects:** AI-powered web app
+- **Certificate:** Web AI Developer
+
+### Specialized Advanced Tracks
+
+#### 36. **Prompt Architecture & Design Patterns**
+- **Duration:** 12 hours
+- **Lessons:** 36
+- **Level:** Expert
+- **Description:** Enterprise-grade prompt system architecture.
+- **Modules:**
+  - Module 1: System Design Principles
+  - Module 2: Scalability Patterns
+  - Module 3: Microservices Architecture
+  - Module 4: Load Balancing
+  - Module 5: Caching Strategies
+  - Module 6: Monitoring & Observability
+- **Projects:** Design enterprise prompt system
+- **Certificate:** Prompt Solutions Architect
+
+#### 37. **Fine-Tuning & Custom Models**
+- **Duration:** 15 hours
+- **Lessons:** 40
+- **Level:** Expert
+- **Description:** When and how to fine-tune custom AI models.
+- **What You'll Learn:**
+  - Fine-tuning vs. prompting
+  - Dataset preparation
+  - Training process
+  - Evaluation metrics
+  - Deployment strategies
+  - Cost analysis
+- **Projects:** Fine-tune a custom model
+- **Certificate:** AI Model Engineer
+
+#### 38. **RAG (Retrieval-Augmented Generation)**
+- **Duration:** 10 hours
+- **Lessons:** 30
+- **Level:** Advanced
+- **Description:** Build knowledge-enhanced AI systems.
+- **Modules:**
+  - Module 1: RAG Architecture
+  - Module 2: Vector Databases
+  - Module 3: Embedding Strategies
+  - Module 4: Retrieval Optimization
+  - Module 5: Context Window Management
+- **Projects:** Custom knowledge base system
+- **Certificate:** RAG Systems Expert
+
+#### 39. **LangChain & Framework Mastery**
+- **Duration:** 12 hours
+- **Lessons:** 35
+- **Level:** Advanced
+- **Description:** Master LangChain and other AI orchestration frameworks.
+- **What You'll Learn:**
+  - LangChain fundamentals
+  - Chain composition
+  - Memory management
+  - Agent creation
+  - Tool integration
+  - LlamaIndex usage
+- **Projects:** Multi-chain application
+- **Certificate:** Framework Specialist
+
+#### 40. **Prompt Engineering for Enterprise**
+- **Duration:** 14 hours
+- **Lessons:** 40
+- **Level:** Expert
+- **Description:** Deploy and manage AI at enterprise scale.
+- **Modules:**
+  - Module 1: Governance & Compliance
+  - Module 2: Security & Privacy
+  - Module 3: Cost Management
+  - Module 4: Team Training Programs
+  - Module 5: Change Management
+  - Module 6: ROI Measurement
+- **Projects:** Enterprise deployment plan
+- **Certificate:** Enterprise AI Leader
+
+### Research & Innovation Track
+
+#### 41. **AI Research Methods**
+- **Duration:** 10 hours
+- **Lessons:** 28
+- **Level:** Advanced
+- **Description:** Use AI to accelerate research and discovery.
+- **What You'll Learn:**
+  - Literature review automation
+  - Hypothesis generation
+  - Experiment design
+  - Data analysis
+  - Academic writing assistance
+- **Projects:** Complete research paper outline
+- **Certificate:** AI Research Specialist
+
+#### 42. **Prompt Engineering for Scientific Computing**
+- **Duration:** 12 hours
+- **Lessons:** 32
+- **Level:** Advanced
+- **Description:** AI applications in scientific research.
+- **Modules:**
+  - Module 1: Mathematical Problem Solving
+  - Module 2: Scientific Simulation Design
+  - Module 3: Data Visualization
+  - Module 4: Paper Analysis
+  - Module 5: Grant Writing Support
+- **Projects:** Scientific workflow automation
+- **Certificate:** Scientific AI Engineer
+
+#### 43. **Creative Writing with AI**
+- **Duration:** 8 hours
+- **Lessons:** 24
+- **Level:** Intermediate
+- **Description:** Write novels, stories, and creative content with AI.
+- **What You'll Learn:**
+  - Story structure
+  - Character development
+  - World-building
+  - Dialogue writing
+  - Editing workflows
+  - Publishing preparation
+- **Projects:** Complete short story or novel chapter
+- **Certificate:** AI Creative Writer
+
+#### 44. **Game Development & Interactive Fiction**
+- **Duration:** 9 hours
+- **Lessons:** 26
+- **Level:** Intermediate to Advanced
+- **Description:** Create game narratives and interactive experiences.
+- **What You'll Learn:**
+  - Branching narratives
+  - NPC dialogue systems
+  - Quest generation
+  - World lore creation
+  - Game balance prompts
+- **Projects:** Interactive story game
+- **Certificate:** Game AI Developer
+
+### Workshops & Masterclasses (Included in Pro)
+
+#### 45. **Weekly Live Workshops**
+- **Format:** Live sessions (2 hours weekly)
+- **Description:** Hands-on workshops on trending topics
+- **Rotating Topics:**
+  - Prompt optimization techniques
+  - New model features
+  - Community showcase
+  - Industry case studies
+  - Tool integration demos
+
+#### 46. **Monthly Case Study Deep Dives**
+- **Format:** Recorded + live discussion (3 hours monthly)
+- **Description:** Detailed analysis of real-world implementations
+- **Examples:**
+  - How Company X saved $1M with AI
+  - Building a viral AI product
+  - Enterprise deployment stories
+  - Failure case studies & lessons
+
+#### 47. **Quarterly Hackathons**
+- **Format:** Virtual event (48 hours)
+- **Description:** Build AI projects, compete, win prizes
+- **Categories:**
+  - Best automation workflow
+  - Most creative use case
+  - Biggest time saver
+  - Community choice award
+
+---
+
+## 🏆 CERTIFICATION TRACKS ($299 one-time + 1 year Pro included)
+
+### Certified Prompt Engineer (CPE)
+
+#### 48. **CPE Comprehensive Program**
+- **Duration:** 40+ hours
+- **Lessons:** 50+ lessons across all foundation courses
+- **Level:** Beginner to Advanced
+- **Requirements:**
+  - Complete all foundation courses
+  - Pass 10 module quizzes (80% minimum)
+  - Submit 5 capstone projects
+  - Pass final certification exam (85% minimum)
+- **Includes:**
+  - All Pro courses
+  - 1-year Pro membership
+  - Certification exam (2 attempts)
+  - Digital certificate & badge
+  - LinkedIn verification
+  - Resume template
+  - Job board access
+- **Final Exam:** 100 questions, 3 hours
+- **Certificate:** Certified Prompt Engineer (CPE)
+- **Valid:** 2 years (renewable)
+
+### Certified SmartPromptIQ Architect (CSA)
+
+#### 49. **CSA Advanced Program**
+- **Duration:** 60+ hours
+- **Lessons:** 75+ lessons
+- **Level:** Advanced to Expert
+- **Requirements:**
+  - Active SmartPromptIQ subscription
+  - Complete CPE or equivalent experience
+  - Complete all SmartPromptIQ mastery courses
+  - Complete advanced architecture course
+  - Submit enterprise deployment capstone
+  - Pass architecture exam (90% minimum)
+- **Includes:**
+  - Everything in CPE
+  - Advanced architecture training
+  - Enterprise case studies
+  - 1-on-1 mentorship session
+  - Priority job placement support
+- **Final Exam:** Architecture design challenge + written exam
+- **Certificate:** Certified SmartPromptIQ Architect (CSA)
+- **Valid:** 2 years (renewable)
+
+### Domain Specialist Certifications
+
+#### 50. **Certified DevOps AI Engineer**
+- **Duration:** 35 hours
+- **Focus:** DevOps + AI specialization
+- **Requirements:** Complete DevOps track + capstone
+- **Certificate:** DevOps AI Specialist
+
+#### 51. **Certified AI Design Specialist**
+- **Duration:** 30 hours
+- **Focus:** Design + AI specialization
+- **Requirements:** Complete design track + portfolio
+- **Certificate:** Design AI Specialist
+
+#### 52. **Certified Financial AI Engineer**
+- **Duration:** 40 hours
+- **Focus:** Finance + AI specialization
+- **Requirements:** Complete trading track + trading project
+- **Certificate:** Financial AI Specialist
+
+#### 53. **Certified Enterprise AI Architect**
+- **Duration:** 50 hours
+- **Focus:** Enterprise deployment specialization
+- **Requirements:** Complete enterprise track + deployment plan
+- **Certificate:** Enterprise AI Architect
+
+---
+
+## 📚 BONUS CONTENT & RESOURCES
+
+### Additional Learning Materials (All Pro Members)
+
+#### 54. **Prompt Template Library** (500+ Templates)
+- Categorized by use case
+- Fully customizable
+- Regular updates
+- Community contributions
+
+#### 55. **AI Model Comparison Database**
+- Real-time model performance data
+- Cost calculators
+- Use case recommendations
+- Updated weekly
+
+#### 56. **Community Forum & Discord**
+- 24/7 peer support
+- Expert office hours
+- Project showcases
+- Job postings
+- Networking events
+
+#### 57. **Resource Library**
+- E-books and guides
+- Cheat sheets
+- Video tutorials
+- Podcast series
+- Newsletter archive
+
+---
+
+## 🎯 LEARNING PATHS (Recommended Course Sequences)
+
+### Path 1: Complete Beginner → Professional
+1. Prompt Writing 101 (Free)
+2. Introduction to AI Prompting (Free)
+3. SmartPromptIQ Product Tour (Free)
+4. Prompt Engineering Fundamentals (Pro)
+5. Advanced Prompt Patterns (Pro)
+6. Choose domain specialization
+7. Certified Prompt Engineer
+
+### Path 2: SmartPromptIQ User → Power User
+1. SmartPromptIQ Product Tour (Free)
+2. SmartPromptIQ Basics (Included)
+3. Advanced Routing & Execution (Included)
+4. Advanced Prompt Chaining (Included)
+5. Team Workflows (Included)
+6. Certified SmartPromptIQ Architect
+
+### Path 3: Developer → AI Engineer
+1. Prompt Writing 101 (Free)
+2. Code Generation & Review (Pro)
+3. API Integration Prompting (Pro)
+4. Python for Prompt Engineers (Pro)
+5. RAG Systems (Pro)
+6. LangChain Mastery (Pro)
+7. Certified Prompt Engineer
+
+### Path 4: Marketer → AI Marketing Specialist
+1. Prompt Writing 101 (Free)
+2. Content Creation & Marketing (Pro)
+3. AI Design Systems (Pro)
+4. Sales Enablement (Pro)
+5. Customer Support Automation (Pro)
+6. Domain certification
+
+### Path 5: Finance Professional → AI Trading Expert
+1. Prompt Writing 101 (Free)
+2. Data Analysis & Visualization (Pro)
+3. Trading & Finance AI (Pro)
+4. Algorithmic Trading (Pro)
+5. Python for Prompt Engineers (Pro)
+6. Certified Financial AI Engineer
+
+---
+
+## 📊 COURSE STATISTICS SUMMARY
+
+**Total Courses:** 57+ (not counting workshops and events)
+**Total Learning Hours:** 400+ hours
+**Total Lessons:** 1,200+ individual lessons
+**Total Projects:** 100+ hands-on projects
+**Total Certificates:** 15+ professional credentials
+
+**By Level:**
+- Beginner: 8 courses
+- Intermediate: 22 courses
+- Advanced: 20 courses
+- Expert: 7 courses
+
+**By Track:**
+- Foundation: 5 courses
+- SmartPromptIQ Mastery: 4 courses
+- DevOps: 2 courses
+- Design: 2 courses
+- Finance: 2 courses
+- Marketing: 3 courses
+- Development: 7 courses
+- Data & Analytics: 2 courses
+- Business: 4 courses
+- Research: 4 courses
+- Specialized: 10 courses
+- Certifications: 5 programs
+
+**By Pricing:**
+- Free: 3 courses
+- Included with SmartPromptIQ: 6 courses
+- Pro ($49/mo): 48+ courses
+- Certification ($299): 5 programs
+
+---
+
+## 🚀 COMING SOON
+
+### Q2 2025 Releases
+- Multimodal Prompting (Images + Text)
+- Voice AI & Audio Processing
+- Blockchain & Web3 AI Applications
+- Startup Builder Bootcamp
+
+### Q3 2025 Releases
+- AI for Climate & Sustainability
+- Quantum Computing Prompts
+- Robotics & IoT Integration
+- Advanced MLOps
+
+### Q4 2025 Releases
+- AI Ethics & Governance
+- Neuroscience Applications
+- Space Tech & Aerospace AI
+- Meta-Learning & Self-Improving Systems
+
+---
+
+## 💡 CUSTOM ENTERPRISE COURSES
+
+**Available for Organizations:**
+- Custom course development
+- Company-specific use cases
+- Private training sessions
+- White-label academy deployment
+- On-site workshops
+- Dedicated support team
+
+**Contact:** enterprise@smartpromptiq.academy
+
+---
+
+*Course catalog updated: November 2025*
+*Prices and content subject to change*
+*Visit academy.smartpromptiq.com for latest updates*

@@ -55,6 +55,107 @@ router.get('/courses', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/academy/search
+ * Search courses and lessons
+ * IMPORTANT: Must be defined BEFORE /courses/:slug to avoid route collision
+ */
+router.get('/search', async (req: Request, res: Response) => {
+  try {
+    const { q, category, difficulty, accessTier } = req.query;
+
+    if (!q || typeof q !== 'string' || q.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query must be at least 2 characters',
+      });
+    }
+
+    const searchTerm = q.trim().toLowerCase();
+
+    // Build filter conditions
+    // Note: SQLite doesn't support mode: 'insensitive', so we use contains which is case-sensitive
+    // Production (PostgreSQL) should use mode: 'insensitive' for case-insensitive search
+    const courseWhere: any = {
+      isPublished: true,
+      OR: [
+        { title: { contains: searchTerm } },
+        { description: { contains: searchTerm } },
+        { tags: { contains: searchTerm } },
+        { instructor: { contains: searchTerm } },
+      ],
+    };
+
+    if (category) courseWhere.category = category;
+    if (difficulty) courseWhere.difficulty = difficulty;
+    if (accessTier) courseWhere.accessTier = accessTier;
+
+    // Search courses and lessons in parallel
+    const [courses, lessons] = await Promise.all([
+      prisma.course.findMany({
+        where: courseWhere,
+        include: {
+          _count: {
+            select: {
+              lessons: true,
+              enrollments: true,
+            },
+          },
+        },
+        take: 20, // Limit results
+        orderBy: [
+          { enrollmentCount: 'desc' },
+          { averageRating: 'desc' },
+        ],
+      }),
+      prisma.lesson.findMany({
+        where: {
+          isPublished: true,
+          OR: [
+            { title: { contains: searchTerm } },
+            { description: { contains: searchTerm } },
+            { content: { contains: searchTerm } },
+          ],
+        },
+        include: {
+          course: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              category: true,
+            },
+          },
+        },
+        take: 20,
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        query: searchTerm,
+        courses: {
+          count: courses.length,
+          results: courses,
+        },
+        lessons: {
+          count: lessons.length,
+          results: lessons,
+        },
+        totalResults: courses.length + lessons.length,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error searching:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Search failed',
+      error: error.message,
+    });
+  }
+});
+
+/**
  * GET /api/academy/courses/:slug
  * Get single course by slug with lessons
  */

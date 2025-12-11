@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star, GraduationCap } from "lucide-react";
+import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import BrainLogo from "@/components/BrainLogo";
@@ -48,7 +48,9 @@ export default function Navigation() {
     { href: "/dashboard", label: "Dashboard", icon: null, badge: null },
     { href: "/categories", label: "Create Prompt", icon: null, badge: "Start Here!", special: true },
     { href: "/academy", label: "Academy", icon: GraduationCap, badge: "57 Courses", academySpecial: true },
-    { href: "/teams", label: "Teams", icon: Users, badge: "4 Active" },
+    { href: "/builderiq", label: "BuilderIQ", icon: ShoppingBag, badge: "NEW", builderSpecial: true },
+    { href: "/app-builders", label: "App Market", icon: Store, badge: "100+", marketSpecial: true },
+    { href: "/teams", label: "Teams", icon: Users, badge: null },
     { href: "/documentation", label: "Docs", icon: null, badge: null },
     { href: "/contact", label: "Contact", icon: null, badge: null }
   ];
@@ -73,7 +75,7 @@ export default function Navigation() {
           {/* Logo */}
           <Link href="/landing" className="flex items-center space-x-3" aria-label="SmartPromptIQ Home">
             <BrainLogo size={32} animate={true} />
-            <span className="text-xl font-bold text-slate-900 dark:text-white">SmartPromptIQ</span>
+            <span className="text-xl font-bold text-slate-900 dark:text-white">SmartPromptIQ™</span>
           </Link>
           
           {/* Desktop Navigation */}
@@ -91,6 +93,10 @@ export default function Navigation() {
                     item.special ? 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200/50 dark:border-purple-500/20 hover:shadow-md transition-all' : ''
                   } ${
                     (item as any).academySpecial ? 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200/50 dark:border-purple-500/20 hover:shadow-md transition-all' : ''
+                  } ${
+                    (item as any).builderSpecial ? 'bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200/50 dark:border-teal-500/20 hover:shadow-md transition-all' : ''
+                  } ${
+                    (item as any).marketSpecial ? 'bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200/50 dark:border-orange-500/20 hover:shadow-md transition-all' : ''
                   }`}
                 >
                   {item.icon && <item.icon className="w-4 h-4" />}
@@ -101,6 +107,10 @@ export default function Navigation() {
                         ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm animate-pulse'
                         : (item as any).academySpecial
                         ? 'text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-sm'
+                        : (item as any).builderSpecial
+                        ? 'text-white bg-gradient-to-r from-teal-500 to-cyan-500 shadow-sm'
+                        : (item as any).marketSpecial
+                        ? 'text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
                         : 'text-white bg-indigo-600'
                     }`}>
                       {item.badge}
@@ -108,7 +118,7 @@ export default function Navigation() {
                   )}
                 </Link>
               ))}
-              
+
               {/* Categories Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -261,7 +271,11 @@ export default function Navigation() {
                       ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
                   } ${
-                    (item as any).academySpecial ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200' : ''
+                    (item as any).academySpecial ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 dark:from-purple-900/20 dark:to-indigo-900/20 dark:border-purple-500/20' : ''
+                  } ${
+                    (item as any).builderSpecial ? 'bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 dark:from-teal-900/20 dark:to-cyan-900/20 dark:border-teal-500/20' : ''
+                  } ${
+                    (item as any).marketSpecial ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 dark:from-orange-900/20 dark:to-amber-900/20 dark:border-orange-500/20' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -275,6 +289,10 @@ export default function Navigation() {
                         ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm animate-pulse'
                         : (item as any).academySpecial
                         ? 'text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-sm'
+                        : (item as any).builderSpecial
+                        ? 'text-white bg-gradient-to-r from-teal-500 to-cyan-500 shadow-sm'
+                        : (item as any).marketSpecial
+                        ? 'text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
                         : 'text-white bg-indigo-600'
                     }`}>
                       {item.badge}
@@ -282,7 +300,7 @@ export default function Navigation() {
                   )}
                 </Link>
               ))}
-              
+
               <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
                 <div className="text-sm font-medium text-gray-500 dark:text-gray-400 px-3 py-2">Categories</div>
                 {categoryNavItems.map((item) => (

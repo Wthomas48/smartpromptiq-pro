@@ -11,16 +11,26 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { 
-  Sparkles, 
-  Shield, 
-  Zap, 
-  Users, 
+import {
+  Sparkles,
+  Shield,
+  Zap,
+  Users,
   CreditCard,
   CheckCircle,
   HelpCircle,
   ArrowRight
 } from 'lucide-react';
+import {
+  PRICING_TIERS,
+  TOKEN_PACKAGES,
+  STRIPE_PRICE_IDS,
+  formatPrice,
+  calculateYearlySavings,
+  getStripePriceId,
+  type PricingTier as ConfigPricingTier,
+  type TokenPackage as ConfigTokenPackage
+} from '@/config/pricing';
 
 interface PricingTier {
   id: string;
@@ -93,189 +103,47 @@ export default function PricingPage() {
     }
   }, [toast]);
 
-  // Mock pricing tiers data
-  const mockTiers: PricingTier[] = [
-    {
-      id: 'free',
-      name: 'Free',
-      description: 'Perfect for getting started',
-      price: 0,
-      billingCycle: billingCycle,
-      features: [
-        '3 Academy courses (basics)',
-        'First lesson of each course',
-        '5 playground tests',
-        'Community support'
-      ],
-      limits: {
-        tokensPerMonth: 5,
-        maxTokenRollover: 0,
-        teamMembers: 1,
-        apiCalls: 0
-      },
-      rateLimits: {
-        promptsPerDay: 5,
-        promptsPerHour: 2,
-        apiCallsPerMinute: 0
-      },
-      support: 'Community'
+  // Use centralized pricing tiers from config
+  const mockTiers: PricingTier[] = PRICING_TIERS.map(tier => ({
+    id: tier.id === 'pro' ? 'starter' : tier.id === 'team_pro' ? 'team' : tier.id,
+    name: tier.name,
+    description: tier.description,
+    price: billingCycle === 'yearly' ? tier.yearlyPrice : tier.monthlyPrice,
+    billingCycle: billingCycle,
+    features: tier.features.map(f => f.startsWith('Everything') ? `✨ ${f}` : f),
+    limits: {
+      tokensPerMonth: tier.limits.tokensPerMonth,
+      maxTokenRollover: tier.limits.maxTokenRollover,
+      teamMembers: tier.limits.teamMembers,
+      apiCalls: tier.limits.apiCalls
     },
-    {
-      id: 'academy',
-      name: 'Academy Only',
-      description: 'Perfect for students and learners',
-      price: billingCycle === 'yearly' ? 24000 : 2900, // $240/year (save $108) or $29/month
-      billingCycle: billingCycle,
-      badge: 'For Learners',
-      features: [
-        'All 57 courses + 555 lessons',
-        'Audio learning & quizzes',
-        'Earn certificates',
-        '50 playground tests/month',
-        'Community forum access',
-        'Email support'
-      ],
-      limits: {
-        tokensPerMonth: 0, // No Pro tool prompts
-        maxTokenRollover: 0,
-        teamMembers: 1,
-        apiCalls: 0
-      },
-      rateLimits: {
-        promptsPerDay: 0,
-        promptsPerHour: 0,
-        apiCallsPerMinute: 0
-      },
-      support: 'Email'
-    },
-    {
-      id: 'starter',
-      name: 'Pro',
-      description: 'Full platform: Academy + Pro Tools',
-      price: billingCycle === 'yearly' ? 40800 : 4900, // $408/year (save $180) or $49/month
-      billingCycle: billingCycle,
-      popular: true,
-      badge: 'Most Popular',
-      buttonLabel: 'Choose Plan',
-      features: [
-        '✨ Everything in Academy, PLUS:',
-        '200 AI prompts per month',
-        '50+ professional templates',
-        'Advanced analytics',
-        'Priority email support',
-        'Export & integrations'
-      ],
-      limits: {
-        tokensPerMonth: 200,
-        maxTokenRollover: 50,
-        teamMembers: 1,
-        apiCalls: 100
-      },
-      rateLimits: {
-        promptsPerDay: 50,
-        promptsPerHour: 10,
-        apiCallsPerMinute: 5
-      },
-      support: 'Email'
-    },
-    {
-      id: 'team',
-      name: 'Team Pro',
-      description: 'For small teams (2-5 people)',
-      price: billingCycle === 'yearly' ? 82800 : 9900, // $828/year (save $360) or $99/month
-      billingCycle: billingCycle,
-      badge: 'Best for Teams',
-      features: [
-        '✨ Everything in Pro, PLUS:',
-        '1,000 AI prompts/month (5x more)',
-        '2-5 team member seats',
-        'Team collaboration workspace',
-        '100 API calls/month',
-        'Priority chat support'
-      ],
-      limits: {
-        tokensPerMonth: 1000,
-        maxTokenRollover: 200,
-        teamMembers: 5,
-        apiCalls: 100
-      },
-      rateLimits: {
-        promptsPerDay: 200,
-        promptsPerHour: 50,
-        apiCallsPerMinute: 20
-      },
-      support: 'Priority'
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      description: 'For large teams and organizations',
-      price: billingCycle === 'yearly' ? 299900 : 29900, // $2,999/year or $299/month
-      billingCycle: billingCycle,
-      badge: 'Contact Sales',
-      features: [
-        '✨ Everything in Team Pro, PLUS:',
-        '5,000+ AI prompts/month',
-        'Unlimited team members',
-        'Custom branding & certificates',
-        'White-label options',
-        'Dedicated account manager',
-        'SSO & advanced security'
-      ],
-      limits: {
-        tokensPerMonth: 5000,
-        maxTokenRollover: 1000,
-        teamMembers: -1, // Unlimited
-        apiCalls: 10000
-      },
-      rateLimits: {
-        promptsPerDay: 500,
-        promptsPerHour: 100,
-        apiCallsPerMinute: 100
-      },
-      support: '24/7'
-    }
-  ];
+    rateLimits: tier.rateLimits,
+    support: tier.support === 'community' ? 'Community' :
+             tier.support === 'email' ? 'Email' :
+             tier.support === 'priority' ? 'Priority' :
+             tier.support === 'priority_chat' ? 'Priority' :
+             tier.support === 'dedicated' ? '24/7' : 'Community',
+    badge: tier.badge,
+    popular: tier.popular,
+    buttonLabel: tier.popular ? 'Choose Plan' : undefined,
+    stripePriceId: billingCycle === 'yearly'
+      ? getStripePriceId(tier.id, 'yearly')
+      : getStripePriceId(tier.id, 'monthly')
+  }));
 
   // Use mock data instead of API calls
   const tiers = mockTiers;
   const tiersLoading = false;
 
-  // Mock token packages
-  const mockTokenPackages: TokenPackage[] = [
-    {
-      key: 'small',
-      tokens: 25,
-      priceInCents: 499,
-      pricePerToken: 19.96,
-      stripeId: 'price_tokens_25',
-      savings: 0
-    },
-    {
-      key: 'medium',
-      tokens: 100,
-      priceInCents: 1799,
-      pricePerToken: 17.99,
-      stripeId: 'price_tokens_100',
-      savings: 10
-    },
-    {
-      key: 'large',
-      tokens: 500,
-      priceInCents: 7999,
-      pricePerToken: 16.00,
-      stripeId: 'price_tokens_500',
-      savings: 20
-    },
-    {
-      key: 'bulk',
-      tokens: 1000,
-      priceInCents: 14999,
-      pricePerToken: 15.00,
-      stripeId: 'price_tokens_1000',
-      savings: 25
-    }
-  ];
+  // Use centralized token packages from config
+  const mockTokenPackages: TokenPackage[] = TOKEN_PACKAGES.map(pkg => ({
+    key: pkg.key,
+    tokens: pkg.tokens,
+    priceInCents: pkg.priceInCents,
+    pricePerToken: pkg.pricePerToken,
+    stripeId: `price_tokens_${pkg.tokens}`,
+    savings: pkg.savings
+  }));
 
   const tokenPackages = mockTokenPackages;
   const packagesLoading = false;

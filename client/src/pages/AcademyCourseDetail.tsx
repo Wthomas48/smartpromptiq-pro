@@ -72,6 +72,15 @@ const AcademyCourseDetail: React.FC = () => {
 
     setCheckingEnrollment(true);
     try {
+      // Only check enrollment if user is authenticated
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('📊 No token - user not logged in, assuming not enrolled');
+        setIsEnrolled(false);
+        setCheckingEnrollment(false);
+        return;
+      }
+
       const response = await apiRequest('GET', '/api/academy/my-courses');
       const data = await response.json();
 
@@ -82,9 +91,13 @@ const AcademyCourseDetail: React.FC = () => {
         setIsEnrolled(enrolled);
         console.log('📊 Enrollment status:', { courseId: course.id, enrolled });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error checking enrollment:', error);
-      // If we can't check, assume not enrolled
+      // If token is invalid, clear it and assume not enrolled
+      if (error?.message?.includes('Invalid token') || error?.message?.includes('401')) {
+        console.log('📊 Invalid token - clearing and assuming not enrolled');
+        localStorage.removeItem('token');
+      }
       setIsEnrolled(false);
     } finally {
       setCheckingEnrollment(false);
@@ -101,8 +114,8 @@ const AcademyCourseDetail: React.FC = () => {
     });
 
     if (!isAuthenticated || !token) {
-      console.log('⚠️ Not authenticated, redirecting to sign in...');
-      window.location.href = '/signin?redirect=' + window.location.pathname;
+      console.log('⚠️ Not authenticated, redirecting to Academy sign in...');
+      window.location.href = '/academy/signin?redirect=' + encodeURIComponent(window.location.pathname);
       return;
     }
 

@@ -179,9 +179,13 @@ export default function FeedbackPopup({ isOpen, onClose }: FeedbackPopupProps) {
               placeholder="Tell us about your experience or suggest improvements..."
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              rows={3}
-              className="mt-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none"
+              rows={4}
+              maxLength={1000}
+              className="mt-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-y min-h-[100px] max-h-[300px]"
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-right">
+              {feedback.length}/1000 characters
+            </p>
           </div>
 
           {/* Action Buttons */}

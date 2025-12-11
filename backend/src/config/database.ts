@@ -15,7 +15,7 @@ export const connectDatabase = async () => {
     console.log('✅ Database connected successfully');
   } catch (error) {
     console.error('❌ Database connection failed:', error);
-    process.exit(1);
+    console.log('⚠️ Continuing without database connection for development...');
   }
 };
 

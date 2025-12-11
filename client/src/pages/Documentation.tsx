@@ -154,8 +154,8 @@ export default function Documentation() {
   const faqs = [
     {
       id: 'what-is-smartpromptiq',
-      question: 'What is SmartPromptIQ Pro?',
-      answer: 'SmartPromptIQ Pro is an advanced AI-powered platform that generates professional, industry-specific prompts for businesses, educators, and individuals. Our intelligent system uses questionnaires to understand your needs and creates tailored prompts that deliver exceptional results.'
+      question: 'What is SmartPromptIQ™ Pro?',
+      answer: 'SmartPromptIQ™ Pro is an advanced AI-powered platform that generates professional, industry-specific prompts for businesses, educators, and individuals. Our intelligent system uses questionnaires to understand your needs and creates tailored prompts that deliver exceptional results.'
     },
     {
       id: 'how-does-ai-work',
@@ -207,7 +207,7 @@ export default function Documentation() {
   const tutorials = [
     {
       title: 'Quick Start Guide',
-      description: 'Get up and running with SmartPromptIQ Pro in under 5 minutes',
+      description: 'Get up and running with SmartPromptIQ™ Pro in under 5 minutes',
       duration: '5 min',
       level: 'Beginner',
       steps: ['Create account', 'Choose category', 'Complete questionnaire', 'Generate your first prompt']
@@ -250,14 +250,14 @@ export default function Documentation() {
           <div className="text-center">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 mb-6">
               <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">SmartPromptIQ Pro Documentation</span>
+              <span className="text-sm font-medium">SmartPromptIQ™ Pro Documentation</span>
             </div>
             <h1 className="text-5xl font-bold mb-6">
               Everything You Need to Know
             </h1>
             <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
               Complete documentation, tutorials, and guides to help you master AI-powered prompt generation 
-              and unlock your creative potential with SmartPromptIQ Pro.
+              and unlock your creative potential with SmartPromptIQ™ Pro.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button 
@@ -321,9 +321,9 @@ export default function Documentation() {
             {activeSection === 'getting-started' && (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-3xl font-bold text-slate-900 mb-4">Getting Started with SmartPromptIQ Pro</h2>
+                  <h2 className="text-3xl font-bold text-slate-900 mb-4">Getting Started with SmartPromptIQ™ Pro</h2>
                   <p className="text-slate-600 text-lg mb-8">
-                    Welcome to SmartPromptIQ Pro! This guide will help you get up and running quickly with our AI-powered prompt generation platform.
+                    Welcome to SmartPromptIQ™ Pro! This guide will help you get up and running quickly with our AI-powered prompt generation platform.
                   </p>
                 </div>
 
@@ -398,7 +398,7 @@ export default function Documentation() {
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900 mb-4">Core Features</h2>
                   <p className="text-slate-600 text-lg mb-8">
-                    Explore the powerful features that make SmartPromptIQ Pro the leading AI prompt generation platform.
+                    Explore the powerful features that make SmartPromptIQ™ Pro the leading AI prompt generation platform.
                   </p>
                 </div>
 
@@ -593,7 +593,7 @@ export default function Documentation() {
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900 mb-4">API Reference</h2>
                   <p className="text-slate-600 text-lg mb-8">
-                    Integrate SmartPromptIQ Pro into your applications with our comprehensive REST API.
+                    Integrate SmartPromptIQ™ Pro into your applications with our comprehensive REST API.
                   </p>
                 </div>
 
@@ -720,7 +720,7 @@ export default function Documentation() {
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900 mb-4">Video Tutorials</h2>
                   <p className="text-slate-600 text-lg mb-8">
-                    Step-by-step video guides to help you master SmartPromptIQ Pro and get the most out of our AI platform.
+                    Step-by-step video guides to help you master SmartPromptIQ™ Pro and get the most out of our AI platform.
                   </p>
                 </div>
 
@@ -785,7 +785,7 @@ export default function Documentation() {
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900 mb-4">Frequently Asked Questions</h2>
                   <p className="text-slate-600 text-lg mb-8">
-                    Find answers to the most common questions about SmartPromptIQ Pro, pricing, features, and more.
+                    Find answers to the most common questions about SmartPromptIQ™ Pro, pricing, features, and more.
                   </p>
                 </div>
 
@@ -821,7 +821,7 @@ export default function Documentation() {
                     </div>
                     <h3 className="text-2xl font-bold text-slate-900 mb-4">Still Have Questions?</h3>
                     <p className="text-slate-600 mb-6 max-w-2xl mx-auto">
-                      Can't find what you're looking for? Our support team is here to help you succeed with SmartPromptIQ Pro.
+                      Can't find what you're looking for? Our support team is here to help you succeed with SmartPromptIQ™ Pro.
                     </p>
                     <div className="flex flex-wrap justify-center gap-4">
                       <Button>
@@ -1006,7 +1006,7 @@ export default function Documentation() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="font-bold text-lg mb-4">SmartPromptIQ Pro</h3>
+              <h3 className="font-bold text-lg mb-4">SmartPromptIQ™ Pro</h3>
               <p className="text-slate-400 text-sm mb-4">
                 AI-powered prompt generation for professionals, teams, and enterprises.
               </p>
@@ -1051,7 +1051,7 @@ export default function Documentation() {
             </div>
           </div>
           <div className="border-t border-slate-800 mt-8 pt-8 text-center text-sm text-slate-400">
-            <p>&copy; 2024 SmartPromptIQ Pro. All rights reserved. Empowering creativity with AI.</p>
+            <p>&copy; 2024 SmartPromptIQ™ Pro. All rights reserved. Empowering creativity with AI.</p>
           </div>
         </div>
       </footer>

@@ -1,13 +1,30 @@
-﻿import express from 'express';
+import express from 'express';
 import Stripe from 'stripe';
 import { authenticate } from '../middleware/auth';
 import prisma from '../config/database';
 import emailService from '../utils/emailService';
+import {
+  getPricingTiers,
+  getTokenPackages,
+  getStripePriceIds,
+  getPlanFromPriceId,
+  getSubscriptionTier,
+  getGenerationLimits,
+  validatePricingConfiguration
+} from '../config/pricing';
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16'
 });
+
+// Log pricing configuration status on startup
+const pricingValidation = validatePricingConfiguration();
+if (!pricingValidation.valid) {
+  console.warn('⚠️ Missing Stripe Price IDs:', pricingValidation.missing.join(', '));
+} else {
+  console.log('✅ All Stripe Price IDs configured');
+}
 
 // Create Stripe customer and subscription
 router.post('/subscribe', authenticate, async (req, res) => {
@@ -66,17 +83,24 @@ router.post('/purchase-tokens', authenticate, async (req, res) => {
       where: { id: req.user!.id }
     });
 
-    // Token packages mapping (from pricingConfig.js)
-    const tokenPackages = {
+    // Get token packages from centralized pricing config
+    const tokenPackagesArray = getTokenPackages();
+    const tokenPackagesMap: Record<string, { tokens: number; priceInCents: number; stripeId: string }> = {};
+    tokenPackagesArray.forEach(pkg => {
+      tokenPackagesMap[pkg.key] = {
+        tokens: pkg.tokens,
+        priceInCents: pkg.priceInCents,
+        stripeId: pkg.stripePriceId
+      };
+    });
+
+    // Legacy addon mappings for backward compatibility
+    const legacyPackages: Record<string, { tokens: number; priceInCents: number; stripeId: string }> = {
       addon_small: { tokens: 20, priceInCents: 500, stripeId: 'price_1QKrTdJNxVjDuJxhRtAMo2L3' },
-      addon_medium: { tokens: 50, priceInCents: 1000, stripeId: 'price_1QKrTdJNxVjDuJxhRtAMo2L4' },
-      small: { tokens: 25, priceInCents: 499, stripeId: 'price_tokens_25' },
-      medium: { tokens: 100, priceInCents: 1799, stripeId: 'price_tokens_100' },
-      large: { tokens: 500, priceInCents: 7999, stripeId: 'price_tokens_500' },
-      bulk: { tokens: 1000, priceInCents: 14999, stripeId: 'price_tokens_1000' }
+      addon_medium: { tokens: 50, priceInCents: 1000, stripeId: 'price_1QKrTdJNxVjDuJxhRtAMo2L4' }
     };
 
-    const tokenPackage = tokenPackages[packageKey];
+    const tokenPackage = tokenPackagesMap[packageKey] || legacyPackages[packageKey];
     if (!tokenPackage) {
       return res.status(400).json({
         success: false,
@@ -201,6 +225,64 @@ router.get('/info', authenticate, async (req, res) => {
   }
 });
 
+// Get pricing tiers (public endpoint)
+router.get('/pricing', async (req, res) => {
+  try {
+    const tiers = getPricingTiers();
+    const billingCycle = (req.query.billingCycle as string) || 'monthly';
+
+    // Return tiers with proper price based on billing cycle
+    const formattedTiers = tiers.map(tier => ({
+      id: tier.id,
+      name: tier.name,
+      description: tier.description,
+      price: billingCycle === 'yearly' ? tier.yearlyPrice : tier.monthlyPrice,
+      billingCycle,
+      stripePriceId: billingCycle === 'yearly' ? tier.stripePriceYearly : tier.stripePriceMonthly,
+      features: tier.features,
+      limits: tier.limits,
+      rateLimits: tier.rateLimits,
+      support: tier.support,
+      badge: tier.badge,
+      popular: tier.popular
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        tiers: formattedTiers,
+        billingCycle
+      }
+    });
+  } catch (error) {
+    console.error('Pricing error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve pricing'
+    });
+  }
+});
+
+// Get token packages (public endpoint)
+router.get('/token-packages', async (req, res) => {
+  try {
+    const packages = getTokenPackages();
+
+    res.json({
+      success: true,
+      data: {
+        packages
+      }
+    });
+  } catch (error) {
+    console.error('Token packages error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve token packages'
+    });
+  }
+});
+
 // Stripe webhook
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature']!;
@@ -243,44 +325,71 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   const customer = subscription.customer as string;
-  
+
   const user = await prisma.user.findFirst({
     where: { stripeCustomerId: customer }
   });
 
   if (user) {
-    const planMapping: { [key: string]: string } = {
-      // New Starter Plan
-      'price_1QKrTdJNxVjDuJxhRtAMo2K7': 'STARTER',  // Monthly
-      'price_1QKrTdJNxVjDuJxhRtAMo2K8': 'STARTER',  // Yearly
-
-      // Updated Pro Plan
-      'price_1QKrTdJNxVjDuJxhRtAMo2K9': 'PRO',      // Monthly
-      'price_1QKrTdJNxVjDuJxhRtAMo2L0': 'PRO',      // Yearly
-
-      // Updated Business Plan (renamed from Enterprise)
-      'price_1QKrTdJNxVjDuJxhRtAMo2L1': 'BUSINESS', // Monthly
-      'price_1QKrTdJNxVjDuJxhRtAMo2L2': 'BUSINESS', // Yearly
-
-      // Legacy price IDs for backward compatibility
-      'price_pro_monthly': 'PRO',
-      'price_team_monthly': 'BUSINESS',
-      'price_enterprise_monthly': 'BUSINESS'
-    };
-
     const priceId = subscription.items.data[0].price.id;
-    const plan = planMapping[priceId] || 'FREE';
 
+    // Use centralized pricing config to get plan from price ID
+    const plan = getPlanFromPriceId(priceId);
+    const subscriptionTier = getSubscriptionTier(plan);
+    const generationsLimit = getGenerationLimits(plan);
+
+    // Determine billing cycle
+    const billingCycle = subscription.items.data[0].price.recurring?.interval === 'year' ? 'yearly' : 'monthly';
+    const priceInCents = subscription.items.data[0].price.unit_amount || 0;
+
+    console.log(`📊 Subscription update: priceId=${priceId}, plan=${plan}, tier=${subscriptionTier}, limits=${generationsLimit}`);
+
+    // Update user record
     await prisma.user.update({
       where: { id: user.id },
       data: {
         plan: plan as any,
+        subscriptionTier: subscriptionTier as any,
         stripeSubscriptionId: subscription.id,
         subscriptionStatus: subscription.status,
         subscriptionEndDate: new Date(subscription.current_period_end * 1000),
-        generationsLimit: plan === 'STARTER' ? 200 : plan === 'PRO' ? 1000 : plan === 'BUSINESS' ? 5000 : 5
+        generationsLimit: generationsLimit
       }
     });
+
+    // Create or update AcademySubscription record
+    try {
+      await prisma.academySubscription.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          tier: subscriptionTier,
+          status: subscription.status,
+          billingCycle: billingCycle,
+          priceInCents: priceInCents,
+          stripeSubscriptionId: subscription.id,
+          stripePriceId: priceId,
+          currentPeriodStart: new Date(subscription.current_period_start * 1000),
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end
+        },
+        update: {
+          tier: subscriptionTier,
+          status: subscription.status,
+          billingCycle: billingCycle,
+          priceInCents: priceInCents,
+          stripePriceId: priceId,
+          currentPeriodStart: new Date(subscription.current_period_start * 1000),
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end
+        }
+      });
+
+      console.log(`✅ Created/updated AcademySubscription for user ${user.id}, tier: ${subscriptionTier}`);
+    } catch (academySubError) {
+      console.error('⚠️ Failed to create AcademySubscription (non-critical):', academySubError);
+      // Continue even if this fails - user record is updated
+    }
   }
 }
 
@@ -294,10 +403,25 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription)
       where: { id: user.id },
       data: {
         plan: 'FREE',
+        subscriptionTier: 'free',
         subscriptionStatus: 'canceled',
         generationsLimit: 5
       }
     });
+
+    // Update AcademySubscription to canceled
+    try {
+      await prisma.academySubscription.update({
+        where: { userId: user.id },
+        data: {
+          tier: 'free',
+          status: 'canceled'
+        }
+      });
+      console.log(`✅ Canceled AcademySubscription for user ${user.id}`);
+    } catch (error) {
+      console.error('⚠️ Failed to cancel AcademySubscription (non-critical):', error);
+    }
   }
 }
 

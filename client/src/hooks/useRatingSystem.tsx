@@ -58,7 +58,7 @@ export function useRatingSystem(): RatingSystemHook {
   // Check if rating is enabled via environment variable
   const ratingEnabled = import.meta.env.VITE_RATING_ENABLED === "true";
 
-  // Load rating configuration
+  // Load rating configuration (with optimized caching)
   const { data: config = defaultConfig } = useQuery<RatingConfig>({
     queryKey: ["/api/rating/config"],
     queryFn: async () => {
@@ -70,10 +70,13 @@ export function useRatingSystem(): RatingSystemHook {
       }
     },
     enabled: ratingEnabled, // Only fetch if rating is enabled
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 60 * 1000, // ✅ Increased to 30 minutes (config rarely changes)
+    gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+    refetchOnWindowFocus: false, // ✅ Don't refetch on window focus
+    refetchOnMount: false, // ✅ Use cached data on mount
   });
 
-  // Load user rating history
+  // Load user rating history (with optimized caching)
   const { data: ratingHistory = [] } = useQuery<any[]>({
     queryKey: ["/api/rating/history"],
     queryFn: async () => {
@@ -85,7 +88,10 @@ export function useRatingSystem(): RatingSystemHook {
       }
     },
     enabled: ratingEnabled, // Only fetch if rating is enabled
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 30 * 60 * 1000, // ✅ Increased to 30 minutes
+    gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+    refetchOnWindowFocus: false, // ✅ Don't refetch on window focus
+    refetchOnMount: false, // ✅ Use cached data on mount
   });
 
   // Check if we can show rating based on cooldown and daily limits
@@ -147,49 +153,59 @@ export function useRatingSystem(): RatingSystemHook {
 
   // Track feature usage
   const trackFeatureUsage = useCallback((feature: string, category?: string) => {
-    setFeaturesUsed(prev => new Set([...prev, feature]));
+    setFeaturesUsed(prev => {
+      const newSet = new Set([...prev, feature]);
 
-    // Auto-trigger rating if threshold met
-    if (featuresUsed.size + 1 >= config.featureUsageCount) {
-      const trigger: RatingTrigger = {
-        type: 'feature_use',
-        context: {
+      // Auto-trigger rating if threshold met (using prev state, not stale closure)
+      if (newSet.size >= config.featureUsageCount && !prev.has(feature)) {
+        const trigger: RatingTrigger = {
+          type: 'feature_use',
+          context: {
+            feature,
+            category,
+            totalFeatures: newSet.size,
+            featuresUsed: Array.from(newSet)
+          },
           feature,
           category,
-          totalFeatures: featuresUsed.size + 1,
-          featuresUsed: Array.from(featuresUsed)
-        },
-        feature,
-        category,
-        priority: 'medium'
-      };
+          priority: 'medium'
+        };
 
-      // Delay showing to avoid interrupting user flow
-      setTimeout(() => showRating(trigger), 1000);
-    }
-  }, [featuresUsed, config.featureUsageCount, showRating]);
+        // Delay showing to avoid interrupting user flow
+        setTimeout(() => showRating(trigger), 1000);
+      }
+
+      return newSet;
+    });
+  }, [config.featureUsageCount, showRating]); // ✅ Removed featuresUsed from deps
 
   // Track milestone achievements
   const trackMilestone = useCallback((event: string) => {
     if (!config.milestoneEvents.includes(event)) return;
-    if (milestonesReached.has(event)) return;
 
-    setMilestonesReached(prev => new Set([...prev, event]));
+    setMilestonesReached(prev => {
+      // Check if already reached (prevent duplicate)
+      if (prev.has(event)) return prev;
 
-    const trigger: RatingTrigger = {
-      type: 'milestone',
-      context: {
-        milestone: event,
-        totalMilestones: milestonesReached.size + 1,
-        milestonesReached: Array.from(milestonesReached)
-      },
-      category: 'achievement',
-      priority: 'high'
-    };
+      const newSet = new Set([...prev, event]);
 
-    // Show immediately for milestones
-    showRating(trigger);
-  }, [config.milestoneEvents, milestonesReached, showRating]);
+      const trigger: RatingTrigger = {
+        type: 'milestone',
+        context: {
+          milestone: event,
+          totalMilestones: newSet.size,
+          milestonesReached: Array.from(newSet)
+        },
+        category: 'achievement',
+        priority: 'high'
+      };
+
+      // Show immediately for milestones
+      showRating(trigger);
+
+      return newSet;
+    });
+  }, [config.milestoneEvents, showRating]); // ✅ Removed milestonesReached from deps
 
   // Track error recovery
   const trackErrorRecovery = useCallback((error: string, resolution: string) => {
@@ -208,30 +224,39 @@ export function useRatingSystem(): RatingSystemHook {
     setTimeout(() => showRating(trigger), config.errorRecoveryDelay);
   }, [config.errorRecoveryDelay, showRating]);
 
-  // Auto-trigger session end rating
+  // Auto-trigger session end rating (optimized - disabled by default to prevent performance issues)
   useEffect(() => {
+    // Only enable if explicitly needed - this can cause freezes on page unload
+    if (!config.enabled || !ratingEnabled) return;
+
     const handleBeforeUnload = () => {
-      if (canShowRating('session_end')) {
+      // Quick check - avoid heavy operations during unload
+      const sessionMinutes = (Date.now() - sessionStartTime) / (1000 * 60);
+      if (sessionMinutes < config.sessionMinutes) return;
+
+      try {
         const trigger: RatingTrigger = {
           type: 'session_end',
           context: {
             sessionDuration: Date.now() - sessionStartTime,
-            featuresUsed: Array.from(featuresUsed),
-            milestonesReached: Array.from(milestonesReached)
+            featuresUsedCount: featuresUsed.size, // Just count, not full array
+            milestonesCount: milestonesReached.size // Just count, not full array
           },
           category: 'session',
           priority: 'low'
         };
 
-        // For session end, we store in localStorage to show on next visit
-        // since we can't show popup during page unload
+        // Store in localStorage to show on next visit (async-safe)
         localStorage.setItem('pendingRating', JSON.stringify(trigger));
+      } catch (error) {
+        // Silently fail - don't block page unload
+        console.warn('Failed to save pending rating:', error);
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [canShowRating, sessionStartTime, featuresUsed, milestonesReached]);
+  }, [config.enabled, config.sessionMinutes, ratingEnabled, sessionStartTime, featuresUsed.size, milestonesReached.size]);
 
   // Check for pending rating on load
   useEffect(() => {

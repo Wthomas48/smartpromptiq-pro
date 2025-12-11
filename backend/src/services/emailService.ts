@@ -1,4 +1,3 @@
-import sgMail from '@sendgrid/mail';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
@@ -17,7 +16,7 @@ interface EmailTemplate {
   text: string;
 }
 
-type MailProvider = 'sendgrid' | 'smtp' | 'none';
+type MailProvider = 'smtp' | 'none';
 
 class EmailService {
   private isConfigured: boolean = false;
@@ -29,7 +28,7 @@ class EmailService {
   }
 
   private initialize() {
-    const mailProvider = (process.env.MAIL_PROVIDER || 'sendgrid').toLowerCase();
+    const mailProvider = (process.env.MAIL_PROVIDER || 'smtp').toLowerCase();
 
     if (process.env.EMAIL_ENABLED !== 'true') {
       console.log('📧 Email service disabled - emails will be logged only');
@@ -38,21 +37,8 @@ class EmailService {
       return;
     }
 
-    // Initialize SendGrid if selected
-    if (mailProvider === 'sendgrid' && process.env.SENDGRID_API_KEY) {
-      try {
-        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-        this.isConfigured = true;
-        this.provider = 'sendgrid';
-        console.log('📧 Email service configured with SendGrid');
-      } catch (error) {
-        console.error('📧 Failed to configure SendGrid:', error);
-        this.isConfigured = false;
-        this.provider = 'none';
-      }
-    }
-    // Initialize SMTP (Zoho, Gmail, etc.) if selected
-    else if (mailProvider === 'smtp') {
+    // Initialize SMTP (Zoho, Gmail, etc.)
+    if (mailProvider === 'smtp') {
       const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_SECURE, SMTP_TLS_REJECT_UNAUTHORIZED } = process.env;
 
       if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
@@ -717,33 +703,14 @@ View your certificates: {{dashboardUrl}}`
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      const fromEmail = process.env.FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || 'noreply@smartpromptiq.com';
-      const fromName = process.env.FROM_NAME || process.env.SENDGRID_FROM_NAME || 'SmartPromptIQ Pro';
+      const fromEmail = process.env.FROM_EMAIL || 'noreply@smartpromptiq.com';
+      const fromName = process.env.FROM_NAME || 'SmartPromptIQ';
       const replyTo = process.env.REPLY_TO || fromEmail;
 
       if (!this.isConfigured) {
         console.log(`📧 [Mock] Email would be sent to ${options.to}: ${options.subject}`);
         console.log(`📧 Content preview: ${options.html.substring(0, 200)}...`);
         return true; // Return true for development purposes
-      }
-
-      // SendGrid provider
-      if (this.provider === 'sendgrid') {
-        const msg = {
-          to: options.to,
-          from: {
-            email: fromEmail,
-            name: fromName
-          },
-          replyTo: replyTo,
-          subject: options.subject,
-          text: options.text || options.html.replace(/<[^>]*>/g, ''),
-          html: options.html
-        };
-
-        await sgMail.send(msg);
-        console.log(`📧 Email sent via SendGrid to ${options.to}: ${options.subject}`);
-        return true;
       }
 
       // SMTP provider (Zoho, Gmail, etc.)
@@ -946,8 +913,7 @@ View your certificates: {{dashboardUrl}}`
   getStatus(): { configured: boolean; provider: string } {
     return {
       configured: this.isConfigured,
-      provider: this.provider === 'sendgrid' ? 'SendGrid' :
-                this.provider === 'smtp' ? 'SMTP' : 'Mock'
+      provider: this.provider === 'smtp' ? 'SMTP (Zoho)' : 'Mock'
     };
   }
 }

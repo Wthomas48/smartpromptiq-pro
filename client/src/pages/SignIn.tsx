@@ -170,7 +170,7 @@ export default function SignIn() {
                 <CheckCircle className="w-12 h-12 text-white" />
               </div>
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                🎉 Welcome to SmartPromptIQ!
+                🎉 Welcome to SmartPromptIQ™!
               </h1>
               <h2 className="text-2xl font-semibold text-green-600 mb-2">
                 Hello {userName}! 👋
@@ -211,7 +211,7 @@ export default function SignIn() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900">
-            SmartPromptIQ
+            SmartPromptIQ™
           </CardTitle>
           <CardDescription className="text-gray-600">
             {isSignUp ? "Create your account to get started" : "Welcome back! Please sign in to continue"}
@@ -424,7 +424,7 @@ export default function SignIn() {
         </CardContent>
         <div className="px-6 py-4 border-t bg-gray-50">
           <p className="text-xs text-center text-gray-500">
-            Secure authentication powered by SmartPromptIQ
+            Secure authentication powered by SmartPromptIQ™
           </p>
           <p className="text-xs text-center text-gray-400 mt-1">
             build: signup-fix-2025-09-22-1

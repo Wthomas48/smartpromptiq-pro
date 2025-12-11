@@ -27,7 +27,10 @@ import demoRoutes from './routes/demo';
 import categoryRoutes from './routes/categories';
 import utilsRoutes from './routes/utils';
 import academyRoutes from './routes/academy';
+import academyBillingRoutes from './routes/academy-billing';
 import contactRoutes from './routes/contact';
+import builderiqRoutes from './routes/builderiq';
+import referralRoutes from './routes/referral';
 
 dotenv.config();
 
@@ -304,7 +307,10 @@ app.use('/api/rating', ratingRoutes);
 app.use('/api/demo', demoRoutes);
 app.use('/api/utils', utilsRoutes);
 app.use('/api/academy', academyRoutes);
+app.use('/api/academy/billing', academyBillingRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/builderiq', builderiqRoutes);
+app.use('/api/referral', referralRoutes);
 app.use('/api', generateRoutes);
 app.use('/api/personal', categoryRoutes);
 app.use('/api/product', categoryRoutes);

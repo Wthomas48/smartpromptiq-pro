@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -195,19 +195,20 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
     submitRatingMutation.mutate(ratingData);
   };
 
-  const renderStars = (rating: number, onRate: (rating: number) => void, hover?: number) => {
+  // Memoize renderStars to prevent recreation on every render
+  const renderStars = useCallback((rating: number, onRate: (rating: number) => void, hover?: number) => {
     return (
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center justify-center space-x-1 sm:space-x-2">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             onClick={() => onRate(star)}
             onMouseEnter={() => setHoveredStar(star)}
             onMouseLeave={() => setHoveredStar(0)}
-            className="transition-transform hover:scale-110 focus:outline-none"
+            className="transition-transform hover:scale-110 active:scale-95 focus:outline-none touch-manipulation"
           >
             <Star
-              className={`w-8 h-8 transition-colors ${
+              className={`w-7 h-7 sm:w-8 sm:h-8 transition-colors ${
                 star <= (hover || rating)
                   ? 'text-yellow-400 fill-yellow-400'
                   : 'text-gray-300 hover:text-yellow-300'
@@ -217,9 +218,10 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
         ))}
       </div>
     );
-  };
+  }, []); // Empty deps - only needs to be created once
 
-  const getStepProgress = () => {
+  // Memoize progress calculation
+  const stepProgress = useMemo(() => {
     switch (currentStep) {
       case 'overall': return 25;
       case 'detailed': return 50;
@@ -227,9 +229,10 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
       case 'complete': return 100;
       default: return 0;
     }
-  };
+  }, [currentStep]);
 
-  const getTriggerTitle = () => {
+  // Memoize trigger title
+  const triggerTitle = useMemo(() => {
     switch (trigger.type) {
       case 'feature_use': return `How was your experience with ${trigger.feature || 'this feature'}?`;
       case 'session_end': return 'How was your session today?';
@@ -238,20 +241,20 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
       case 'manual': return 'We\'d love your feedback!';
       default: return 'Rate Your Experience';
     }
-  };
+  }, [trigger.type, trigger.feature]);
 
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center space-x-2">
-              <Heart className="w-6 h-6 text-red-500" />
-              <span>{getTriggerTitle()}</span>
+            <DialogTitle className="flex items-center space-x-2 text-sm sm:text-base">
+              <Heart className="w-5 h-5 sm:w-6 sm:h-6 text-red-500 flex-shrink-0" />
+              <span className="line-clamp-2">{triggerTitle}</span>
             </DialogTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -259,24 +262,32 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
 
         {/* Progress Bar */}
         <div className="space-y-2">
-          <Progress value={getStepProgress()} className="h-2" />
-          <div className="flex justify-between text-xs text-gray-500">
+          <Progress value={stepProgress} className="h-2" />
+          <div className="hidden sm:flex justify-between text-xs text-gray-500">
             <span>Overall Rating</span>
             <span>Category Details</span>
             <span>Feedback</span>
             <span>Complete</span>
+          </div>
+          <div className="flex sm:hidden justify-between text-xs text-gray-500">
+            <span>Overall</span>
+            <span>Details</span>
+            <span>Feedback</span>
+            <span>Done</span>
           </div>
         </div>
 
         <div className="space-y-6">
           {/* Overall Rating Step */}
           {currentStep === 'overall' && (
-            <div className="text-center space-y-6">
+            <div className="text-center space-y-4 sm:space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-2">Overall Experience</h3>
-                <p className="text-gray-600 mb-6">How would you rate SmartPromptIQ Pro overall?</p>
+                <h3 className="text-base sm:text-lg font-semibold mb-2">Overall Experience</h3>
+                <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 px-2">How would you rate SmartPromptIQ Pro overall?</p>
 
-                {renderStars(overallRating, (rating) => handleStarClick(rating), hoveredStar)}
+                <div className="flex justify-center">
+                  {renderStars(overallRating, (rating) => handleStarClick(rating), hoveredStar)}
+                </div>
 
                 {overallRating > 0 && (
                   <div className="mt-4">
@@ -295,11 +306,11 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
               </div>
 
               {overallRating > 0 && (
-                <div className="flex justify-center space-x-3">
-                  <Button variant="outline" onClick={onClose}>
+                <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3 sm:space-x-3">
+                  <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
                     Skip Details
                   </Button>
-                  <Button onClick={handleNextStep} className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={handleNextStep} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
                     Continue with Details
                   </Button>
                 </div>
@@ -309,44 +320,44 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
 
           {/* Detailed Category Ratings */}
           {currentStep === 'detailed' && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Help Us Improve</h3>
-                <p className="text-gray-600">Rate specific areas to help us focus our improvements</p>
+            <div className="space-y-4 sm:space-y-6">
+              <div className="text-center px-2">
+                <h3 className="text-base sm:text-lg font-semibold mb-2">Help Us Improve</h3>
+                <p className="text-sm sm:text-base text-gray-600">Rate specific areas to help us focus our improvements</p>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {categories.map((category) => (
                   <div
                     key={category.id}
-                    className={`p-4 border rounded-lg transition-colors ${
+                    className={`p-3 sm:p-4 border rounded-lg transition-colors ${
                       hoveredCategory === category.id ? 'bg-gray-50' : ''
                     }`}
                     onMouseEnter={() => setHoveredCategory(category.id)}
                     onMouseLeave={() => setHoveredCategory(null)}
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg ${category.color}`}>
+                      <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+                        <div className={`p-1.5 sm:p-2 rounded-lg ${category.color} flex-shrink-0`}>
                           {category.icon}
                         </div>
-                        <div>
-                          <h4 className="font-medium">{category.name}</h4>
-                          <p className="text-sm text-gray-600">{category.description}</p>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium text-sm sm:text-base truncate">{category.name}</h4>
+                          <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">{category.description}</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-center space-x-0.5 sm:space-x-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
                             key={star}
                             onClick={() => handleStarClick(star, category.id)}
-                            className="transition-transform hover:scale-110 focus:outline-none"
+                            className="transition-transform hover:scale-110 active:scale-95 focus:outline-none touch-manipulation"
                           >
                             <Star
-                              className={`w-6 h-6 transition-colors ${
+                              className={`w-5 h-5 sm:w-6 sm:h-6 transition-colors ${
                                 star <= category.rating
                                   ? 'text-yellow-400 fill-yellow-400'
                                   : 'text-gray-300 hover:text-yellow-300'
@@ -357,7 +368,7 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
                       </div>
 
                       {category.rating > 0 && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs flex-shrink-0 ml-2">
                           {category.rating}/5
                         </Badge>
                       )}
@@ -366,11 +377,11 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
                 ))}
               </div>
 
-              <div className="flex justify-center space-x-3">
-                <Button variant="outline" onClick={() => setCurrentStep('overall')}>
+              <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-0 sm:space-x-3">
+                <Button variant="outline" onClick={() => setCurrentStep('overall')} className="w-full sm:w-auto">
                   Back
                 </Button>
-                <Button onClick={handleNextStep} className="bg-blue-600 hover:bg-blue-700">
+                <Button onClick={handleNextStep} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
                   Continue to Feedback
                 </Button>
               </div>
@@ -379,35 +390,35 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
 
           {/* Feedback Step */}
           {currentStep === 'feedback' && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Share Your Thoughts</h3>
-                <p className="text-gray-600">Your detailed feedback helps us build better features</p>
+            <div className="space-y-4 sm:space-y-6">
+              <div className="text-center px-2">
+                <h3 className="text-base sm:text-lg font-semibold mb-2">Share Your Thoughts</h3>
+                <p className="text-sm sm:text-base text-gray-600">Your detailed feedback helps us build better features</p>
               </div>
 
               {/* Quick Sentiment */}
-              <div className="flex items-center justify-center space-x-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-0 sm:space-x-4">
                 <button
                   onClick={() => setIsPositive(true)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
+                  className={`flex items-center justify-center space-x-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg border transition-colors touch-manipulation ${
                     isPositive === true
                       ? 'bg-green-50 border-green-300 text-green-700'
                       : 'hover:bg-gray-50'
                   }`}
                 >
-                  <ThumbsUp className="w-4 h-4" />
-                  <span>Positive Experience</span>
+                  <ThumbsUp className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm sm:text-base">Positive Experience</span>
                 </button>
                 <button
                   onClick={() => setIsPositive(false)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
+                  className={`flex items-center justify-center space-x-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg border transition-colors touch-manipulation ${
                     isPositive === false
                       ? 'bg-red-50 border-red-300 text-red-700'
                       : 'hover:bg-gray-50'
                   }`}
                 >
-                  <ThumbsDown className="w-4 h-4" />
-                  <span>Needs Improvement</span>
+                  <ThumbsDown className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm sm:text-base">Needs Improvement</span>
                 </button>
               </div>
 
@@ -430,31 +441,31 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
                       : "Share your thoughts, suggestions, or any issues you encountered..."
                   }
                   rows={4}
-                  className="resize-none"
+                  className="resize-none text-sm sm:text-base"
                 />
                 <div className="text-xs text-gray-500">
                   Your feedback is invaluable for improving SmartPromptIQ Pro
                 </div>
               </div>
 
-              <div className="flex justify-center space-x-3">
-                <Button variant="outline" onClick={() => setCurrentStep('detailed')}>
+              <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-0 sm:space-x-3">
+                <Button variant="outline" onClick={() => setCurrentStep('detailed')} className="w-full sm:w-auto">
                   Back
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   disabled={submitRatingMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
                 >
                   {submitRatingMutation.isPending ? (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Submitting...</span>
+                      <span className="text-sm sm:text-base">Submitting...</span>
                     </div>
                   ) : (
-                    <div className="flex items-center space-x-2">
-                      <Send className="w-4 h-4" />
-                      <span>Submit Feedback</span>
+                    <div className="flex items-center justify-center space-x-2">
+                      <Send className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm sm:text-base">Submit Feedback</span>
                     </div>
                   )}
                 </Button>
@@ -464,26 +475,26 @@ export default function RatingPopup({ isOpen, onClose, trigger, onRatingComplete
 
           {/* Complete Step */}
           {currentStep === 'complete' && (
-            <div className="text-center space-y-6 py-8">
+            <div className="text-center space-y-4 sm:space-y-6 py-6 sm:py-8 px-2">
               <div className="flex justify-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
+                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-7 h-7 sm:w-8 sm:h-8 text-green-600" />
                 </div>
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold mb-2">Thank You!</h3>
-                <p className="text-gray-600 mb-4">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">Thank You!</h3>
+                <p className="text-sm sm:text-base text-gray-600 mb-4">
                   Your feedback has been submitted successfully. We really appreciate you taking the time to help us improve SmartPromptIQ Pro.
                 </p>
 
-                <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-0 sm:space-x-4 text-xs sm:text-sm text-gray-500">
                   <div className="flex items-center space-x-1">
-                    <TrendingUp className="w-4 h-4" />
+                    <TrendingUp className="w-4 h-4 flex-shrink-0" />
                     <span>Overall: {overallRating}/5</span>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <Heart className="w-4 h-4" />
+                    <Heart className="w-4 h-4 flex-shrink-0" />
                     <span>Detailed ratings provided</span>
                   </div>
                 </div>
