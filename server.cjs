@@ -1747,6 +1747,511 @@ app.post('/api/billing/upgrade', async (req, res) => {
   }
 });
 
+// ==============================================
+// ELEVENLABS TEXT-TO-SPEECH API ROUTES
+// ==============================================
+
+// ElevenLabs configuration
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
+
+// Available ElevenLabs voices
+const ELEVENLABS_VOICES = {
+  'rachel': '21m00Tcm4TlvDq8ikWAM',
+  'drew': '29vD33N1CtxCmqQRPOHJ',
+  'clyde': '2EiwWnXFnvU5JabPnv8n',
+  'paul': '5Q0t7uMcjvnagumLfvZi',
+  'domi': 'AZnzlk1XvdvUeBnXmlld',
+  'dave': 'CYw3kZ02Hs0563khs1Fj',
+  'fin': 'D38z5RcWu1voky8WS1ja',
+  'sarah': 'EXAVITQu4vr4xnSDxMaL',
+  'antoni': 'ErXwobaYiN019PkySvjV',
+  'thomas': 'GBv7mTt0atIp3Br8iCZE',
+  'charlie': 'IKne3meq5aSn9XLyUdCD',
+  'emily': 'LcfcDJNUP1GQjkzn1xUU',
+  'elli': 'MF3mGyEYCl7XYWbV9V6O',
+  'callum': 'N2lVS1w4EtoT3dr4eOWO',
+  'patrick': 'ODq5zmih8GrVes37Dizd',
+  'harry': 'SOYHLrjzK2X1ezoPC6cr',
+  'liam': 'TX3LPaxmHKxFdv7VOQHJ',
+  'dorothy': 'ThT5KcBeYPX3keUQqHPh',
+  'josh': 'TxGEqnHWrfWFTfGW9XjX',
+  'arnold': 'VR6AewLTigWG4xSOukaG',
+  'charlotte': 'XB0fDUnXU5powFXDhCwa',
+  'matilda': 'XrExE9yKIg1WjnnlVkGX',
+  'james': 'ZQe5CZNOzWyzPSCn5a3c',
+  'joseph': 'Zlb1dXrM653N07WRdFW3',
+  'jeremy': 'bVMeCyTHy58xNoL34h3p',
+  'michael': 'flq6f7yk4E4fJM5XTYuZ',
+  'ethan': 'g5CIjZEefAph4nQFvHAz',
+  'george': 'JBFqnCBsd6RMkjVDRZzb',
+  'daniel': 'onwK4e9ZLuTAKqWW03F9'
+};
+
+// Get voice ID from name or use default
+function getVoiceId(voiceName) {
+  if (!voiceName) return ELEVENLABS_VOICES['rachel'];
+  const lowerName = voiceName.toLowerCase();
+  return ELEVENLABS_VOICES[lowerName] || voiceName;
+}
+
+// ElevenLabs generate speech endpoint
+app.post('/api/elevenlabs/generate', async (req, res) => {
+  console.log('🎤 ElevenLabs generate request:', req.body);
+
+  const { text, voice = 'rachel', modelId = 'eleven_monolingual_v1' } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      success: false,
+      message: 'Text is required for voice generation'
+    });
+  }
+
+  // Check if ElevenLabs API key is configured
+  if (!ELEVENLABS_API_KEY) {
+    console.log('⚠️ ElevenLabs API key not configured - returning demo response');
+    return res.json({
+      success: true,
+      message: 'Voice generation demo mode (no API key configured)',
+      data: {
+        audioUrl: null,
+        text: text,
+        voice: voice,
+        isDemo: true
+      }
+    });
+  }
+
+  try {
+    const voiceId = getVoiceId(voice);
+    const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: modelId,
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ ElevenLabs API error:', errorText);
+      return res.status(response.status).json({
+        success: false,
+        message: 'Voice generation failed',
+        error: errorText
+      });
+    }
+
+    // Get audio buffer and send as base64
+    const audioBuffer = await response.arrayBuffer();
+    const base64Audio = Buffer.from(audioBuffer).toString('base64');
+
+    res.json({
+      success: true,
+      message: 'Voice generated successfully',
+      data: {
+        audioData: base64Audio,
+        contentType: 'audio/mpeg',
+        text: text,
+        voice: voice
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ ElevenLabs generate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Voice generation failed',
+      error: error.message
+    });
+  }
+});
+
+// ElevenLabs page narration endpoint
+app.post('/api/elevenlabs/page/narrate', async (req, res) => {
+  console.log('🎤 ElevenLabs page narrate request:', req.body);
+
+  const { text, voice = 'rachel', pageId } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      success: false,
+      message: 'Text is required for page narration'
+    });
+  }
+
+  // For now, return demo response
+  if (!ELEVENLABS_API_KEY) {
+    return res.json({
+      success: true,
+      message: 'Page narration demo mode',
+      data: {
+        audioUrl: null,
+        pageId: pageId,
+        text: text.substring(0, 100) + '...',
+        isDemo: true
+      }
+    });
+  }
+
+  try {
+    const voiceId = getVoiceId(voice);
+    const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`ElevenLabs API error: ${response.status}`);
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    const base64Audio = Buffer.from(audioBuffer).toString('base64');
+
+    res.json({
+      success: true,
+      data: {
+        audioData: base64Audio,
+        contentType: 'audio/mpeg',
+        pageId: pageId
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Page narrate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Page narration failed',
+      error: error.message
+    });
+  }
+});
+
+// ElevenLabs academy generate endpoint
+app.post('/api/elevenlabs/academy/generate', async (req, res) => {
+  console.log('🎤 ElevenLabs academy generate request:', req.body);
+
+  const { text, voice = 'rachel', lessonId } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      success: false,
+      message: 'Text is required for academy voice generation'
+    });
+  }
+
+  if (!ELEVENLABS_API_KEY) {
+    return res.json({
+      success: true,
+      message: 'Academy voice generation demo mode',
+      data: {
+        audioUrl: null,
+        lessonId: lessonId,
+        isDemo: true
+      }
+    });
+  }
+
+  try {
+    const voiceId = getVoiceId(voice);
+    const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`ElevenLabs API error: ${response.status}`);
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    const base64Audio = Buffer.from(audioBuffer).toString('base64');
+
+    res.json({
+      success: true,
+      data: {
+        audioData: base64Audio,
+        contentType: 'audio/mpeg',
+        lessonId: lessonId
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Academy voice error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Academy voice generation failed',
+      error: error.message
+    });
+  }
+});
+
+// ElevenLabs sound effects generation
+app.post('/api/elevenlabs/sound-effects/generate', async (req, res) => {
+  console.log('🎤 ElevenLabs sound effects request:', req.body);
+
+  const { text, duration_seconds = 5 } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      success: false,
+      message: 'Text description is required for sound effects'
+    });
+  }
+
+  if (!ELEVENLABS_API_KEY) {
+    return res.json({
+      success: true,
+      message: 'Sound effects demo mode',
+      data: {
+        audioUrl: null,
+        description: text,
+        isDemo: true
+      }
+    });
+  }
+
+  try {
+    const response = await fetch(`${ELEVENLABS_API_URL}/sound-generation`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify({
+        text: text,
+        duration_seconds: duration_seconds
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`ElevenLabs API error: ${response.status}`);
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    const base64Audio = Buffer.from(audioBuffer).toString('base64');
+
+    res.json({
+      success: true,
+      data: {
+        audioData: base64Audio,
+        contentType: 'audio/mpeg',
+        description: text
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Sound effects error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Sound effects generation failed',
+      error: error.message
+    });
+  }
+});
+
+// ==============================================
+// VOICE API ROUTES (Browser Speech Synthesis Fallback)
+// ==============================================
+
+// Voice generate endpoint (uses browser speech synthesis or ElevenLabs)
+app.post('/api/voice/generate', async (req, res) => {
+  console.log('🎤 Voice generate request:', req.body);
+
+  const { text, voice = 'default', speed = 1, pitch = 1 } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      success: false,
+      message: 'Text is required for voice generation'
+    });
+  }
+
+  // If ElevenLabs is configured, use it
+  if (ELEVENLABS_API_KEY) {
+    try {
+      const voiceId = getVoiceId(voice);
+      const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'Content-Type': 'application/json',
+          'xi-api-key': ELEVENLABS_API_KEY
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: 'eleven_monolingual_v1',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.5
+          }
+        })
+      });
+
+      if (response.ok) {
+        const audioBuffer = await response.arrayBuffer();
+        const base64Audio = Buffer.from(audioBuffer).toString('base64');
+
+        return res.json({
+          success: true,
+          data: {
+            audioData: base64Audio,
+            contentType: 'audio/mpeg',
+            text: text,
+            voice: voice,
+            provider: 'elevenlabs'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('ElevenLabs fallback failed:', error);
+    }
+  }
+
+  // Return text for client-side speech synthesis
+  res.json({
+    success: true,
+    message: 'Use browser speech synthesis',
+    data: {
+      text: text,
+      voice: voice,
+      speed: speed,
+      pitch: pitch,
+      provider: 'browser',
+      useBrowserSpeech: true
+    }
+  });
+});
+
+// Voice generate from blueprint
+app.post('/api/voice/generate-from-blueprint', async (req, res) => {
+  console.log('🎤 Voice generate from blueprint request:', req.body);
+
+  const { blueprint, voice = 'default' } = req.body;
+
+  if (!blueprint) {
+    return res.status(400).json({
+      success: false,
+      message: 'Blueprint is required for voice generation'
+    });
+  }
+
+  // Extract text from blueprint
+  const text = typeof blueprint === 'string' ? blueprint : blueprint.content || blueprint.text || '';
+
+  res.json({
+    success: true,
+    message: 'Voice generation from blueprint',
+    data: {
+      text: text,
+      voice: voice,
+      provider: 'browser',
+      useBrowserSpeech: true
+    }
+  });
+});
+
+// Voice enhance script
+app.post('/api/voice/enhance-script', async (req, res) => {
+  console.log('🎤 Voice enhance script request:', req.body);
+
+  const { script, style = 'professional' } = req.body;
+
+  if (!script) {
+    return res.status(400).json({
+      success: false,
+      message: 'Script is required for enhancement'
+    });
+  }
+
+  // Simple script enhancement (could use AI in future)
+  const enhancedScript = script
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  res.json({
+    success: true,
+    message: 'Script enhanced',
+    data: {
+      originalScript: script,
+      enhancedScript: enhancedScript,
+      style: style
+    }
+  });
+});
+
+// Voice generate lesson narration
+app.post('/api/voice/generate-lesson-narration', async (req, res) => {
+  console.log('🎤 Voice generate lesson narration request:', req.body);
+
+  const { lessonContent, voice = 'default', lessonId } = req.body;
+
+  if (!lessonContent) {
+    return res.status(400).json({
+      success: false,
+      message: 'Lesson content is required for narration'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: 'Lesson narration ready',
+    data: {
+      text: lessonContent,
+      lessonId: lessonId,
+      voice: voice,
+      provider: 'browser',
+      useBrowserSpeech: true
+    }
+  });
+});
+
+// Get available voices
+app.get('/api/voice/voices', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      elevenlabs: Object.keys(ELEVENLABS_VOICES),
+      browser: ['default', 'Google US English', 'Google UK English', 'Microsoft David', 'Microsoft Zira'],
+      hasElevenLabsKey: !!ELEVENLABS_API_KEY
+    }
+  });
+});
+
 // Catch-all for any missing API endpoints
 app.all('/api/*', (req, res) => {
   console.log(`⚠️ Missing endpoint: ${req.method} ${req.url}`);
