@@ -36,13 +36,16 @@ Royalty-free-music.zip
 *.ogg
 *.m4a
 *.webm
-!client/public/music/*.mp3
 
-# Audio temp files
-/tmp/
-/temp/
-*.audio.tmp
-# Ignore local database files
-*.db
-backend/prisma/prisma/dev.db
+
+# Large assets (NEVER store locally)
+client/public/music/
+Royalty-free-music.zip
+
+# Generated audio files (stored in Supabase, not locally)
+*.mp3
+*.wav
+*.ogg
+*.m4a
+*.webm
 
