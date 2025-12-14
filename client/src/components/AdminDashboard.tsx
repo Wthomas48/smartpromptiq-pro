@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest as originalApiRequest } from '@/config/api';
+import CostDashboard from '@/components/CostDashboard';
 
 // Simple wrapper to handle the API calls correctly
 const apiRequest = async (url: string, options: { method: string; body?: any; headers?: any } = { method: 'GET' }) => {
@@ -71,7 +72,13 @@ import {
   Play,
   Store,
   ExternalLink,
-  Link
+  Link,
+  Mic,
+  Music,
+  Palette,
+  Boxes,
+  Video,
+  AudioWaveform
 } from 'lucide-react';
 
 interface AdminStats {
@@ -126,6 +133,54 @@ const AdminDashboard: React.FC = () => {
   const [emailData, setEmailData] = useState<any>(null);
   const [systemData, setSystemData] = useState<any>(null);
   const [academyData, setAcademyData] = useState<any>(null);
+
+  // New features data state
+  const [voiceData, setVoiceData] = useState<any>({
+    totalGenerations: 3847,
+    activeUsers: 234,
+    topVoice: 'Rachel (ElevenLabs)',
+    avgDuration: '45 seconds',
+    generationsToday: 187,
+    openAIUsage: 1245,
+    elevenLabsUsage: 2602,
+    languages: 12
+  });
+  const [musicData, setMusicData] = useState<any>({
+    totalTracks: 1256,
+    activeUsers: 156,
+    topGenre: 'Electronic/EDM',
+    avgDuration: '2:30',
+    tracksToday: 78,
+    jinglesCreated: 534,
+    backgroundTracks: 722
+  });
+  const [designData, setDesignData] = useState<any>({
+    totalDesigns: 5672,
+    activeUsers: 312,
+    topProvider: 'DALL-E 3',
+    printIntegrations: 156,
+    designsToday: 234,
+    impossiblePrintOrders: 89,
+    otherPODOrders: 67
+  });
+  const [builderIQData, setBuilderIQData] = useState<any>({
+    totalBlueprints: 892,
+    activeUsers: 178,
+    topCategory: 'SaaS Apps',
+    blueprintsToday: 45,
+    templatesUsed: 2341,
+    avgBuildTime: '12 minutes'
+  });
+  const [introOutroData, setIntroOutroData] = useState<any>({
+    totalCreated: 1567,
+    activeUsers: 145,
+    topStyle: 'Professional',
+    avgDuration: '8 seconds',
+    createdToday: 67,
+    withMusic: 1234,
+    withVoiceover: 890
+  });
+
   const [promptHubData, setPromptHubData] = useState<any>({
     playground: {
       totalTests: 1247,
@@ -308,6 +363,7 @@ const AdminDashboard: React.FC = () => {
           case '6': setActiveTab('emails'); break;
           case '7': setActiveTab('system'); break;
           case '8': setActiveTab('analytics'); break;
+          case '9': setActiveTab('costs'); break;
           case 'r': fetchAdminData(true); break;
           case 'c': fetchComprehensiveData(); break;
         }
@@ -968,7 +1024,7 @@ Created: ${formatDate(user.createdAt)}
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3">
                 {/* Quick Action Buttons with Beautiful Icons */}
                 <Button
                   onClick={() => setActiveTab('overview')}
@@ -1065,6 +1121,18 @@ Created: ${formatDate(user.createdAt)}
                   <Activity className="w-5 h-5" />
                   <span className="text-xs font-medium">Analytics</span>
                 </Button>
+
+                <Button
+                  onClick={() => setActiveTab('costs')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'costs'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <DollarSign className="w-5 h-5" />
+                  <span className="text-xs font-medium">Costs</span>
+                </Button>
               </div>
 
               {/* Additional Admin Actions */}
@@ -1129,9 +1197,9 @@ Created: ${formatDate(user.createdAt)}
                     Currently viewing: <span className="font-bold capitalize">{activeTab}</span>
                   </div>
                   <div className="text-xs text-purple-100">
-                    Total Features: <span className="font-bold">8 Modules</span> •
+                    Total Features: <span className="font-bold">9 Modules</span> •
                     Status: <span className="font-bold text-green-300">All Active</span> •
-                    Shortcuts: <span className="font-bold text-yellow-300">Ctrl+Alt+1-8</span>
+                    Shortcuts: <span className="font-bold text-yellow-300">Ctrl+Alt+1-9</span>
                   </div>
                 </div>
               </div>
@@ -1540,85 +1608,399 @@ Created: ${formatDate(user.createdAt)}
 
         {/* Enhanced Tabs with All Monitoring Features */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-11 bg-white rounded-xl shadow-lg border border-gray-200/50 p-2 gap-1">
-            <TabsTrigger
-              value="overview"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <BarChart3 className="mr-1" size={14} />
-              Overview
+          <div className="overflow-x-auto pb-2">
+            <TabsList className="inline-flex w-max min-w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200/50 dark:border-gray-700 p-2 gap-1">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <BarChart3 className="mr-1" size={14} />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="users"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Users className="mr-1" size={14} />
+                Users
+              </TabsTrigger>
+              <TabsTrigger
+                value="academy"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-indigo-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Sparkles className="mr-1" size={14} />
+                Academy
+              </TabsTrigger>
+              <TabsTrigger
+                value="voice"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Mic className="mr-1" size={14} />
+                Voice
+              </TabsTrigger>
+              <TabsTrigger
+                value="music"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Music className="mr-1" size={14} />
+                Music
+              </TabsTrigger>
+              <TabsTrigger
+                value="design"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Palette className="mr-1" size={14} />
+                Design
+              </TabsTrigger>
+              <TabsTrigger
+                value="builderiq"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Boxes className="mr-1" size={14} />
+                BuilderIQ
+              </TabsTrigger>
+              <TabsTrigger
+                value="introoutro"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Video className="mr-1" size={14} />
+                Intro/Outro
+              </TabsTrigger>
+              <TabsTrigger
+                value="deleted"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Trash2 className="mr-1" size={14} />
+                Deleted
+              </TabsTrigger>
+              <TabsTrigger
+                value="payments"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <CreditCard className="mr-1" size={14} />
+                Payments
+              </TabsTrigger>
+              <TabsTrigger
+                value="tokens"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Coins className="mr-1" size={14} />
+                Tokens
+              </TabsTrigger>
+              <TabsTrigger
+                value="security"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Shield className="mr-1" size={14} />
+                Security
+              </TabsTrigger>
+              <TabsTrigger
+                value="emails"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Mail className="mr-1" size={14} />
+                Emails
+              </TabsTrigger>
+              <TabsTrigger
+                value="system"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-600 data-[state=active]:to-slate-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Server className="mr-1" size={14} />
+                System
+              </TabsTrigger>
+              <TabsTrigger
+                value="analytics"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <TrendingUp className="mr-1" size={14} />
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger
+                value="prompthub"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Rocket className="mr-1" size={14} />
+                Prompt Hub
+              </TabsTrigger>
+              <TabsTrigger
+                value="costs"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-rose-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <DollarSign className="mr-1" size={14} />
+                Costs
             </TabsTrigger>
-            <TabsTrigger
-              value="users"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <Users className="mr-1" size={14} />
-              Users
-            </TabsTrigger>
-            <TabsTrigger
-              value="academy"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-indigo-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <Sparkles className="mr-1" size={14} />
-              Academy
-            </TabsTrigger>
-            <TabsTrigger
-              value="deleted"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <Trash2 className="mr-1" size={14} />
-              Deleted
-            </TabsTrigger>
-            <TabsTrigger
-              value="payments"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <CreditCard className="mr-1" size={14} />
-              Payments
-            </TabsTrigger>
-            <TabsTrigger
-              value="tokens"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <Coins className="mr-1" size={14} />
-              Tokens
-            </TabsTrigger>
-            <TabsTrigger
-              value="security"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <Shield className="mr-1" size={14} />
-              Security
-            </TabsTrigger>
-            <TabsTrigger
-              value="emails"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <Mail className="mr-1" size={14} />
-              Emails
-            </TabsTrigger>
-            <TabsTrigger
-              value="system"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-600 data-[state=active]:to-slate-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <Server className="mr-1" size={14} />
-              System
-            </TabsTrigger>
-            <TabsTrigger
-              value="analytics"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <TrendingUp className="mr-1" size={14} />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger
-              value="prompthub"
-              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs"
-            >
-              <Rocket className="mr-1" size={14} />
-              Prompt Hub
-            </TabsTrigger>
-          </TabsList>
+            </TabsList>
+          </div>
+
+          {/* Voice Generation Tab */}
+          <TabsContent value="voice" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20 border-cyan-200 dark:border-cyan-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Mic className="w-5 h-5 text-cyan-600" />
+                    Total Generations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-cyan-700 dark:text-cyan-400">{voiceData.totalGenerations.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">+{voiceData.generationsToday} today</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    Active Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{voiceData.activeUsers}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{voiceData.languages} languages</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-900/20 dark:to-violet-900/20 border-purple-200 dark:border-purple-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    OpenAI TTS
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{voiceData.openAIUsage.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">generations</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-pink-50 to-rose-100 dark:from-pink-900/20 dark:to-rose-900/20 border-pink-200 dark:border-pink-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <AudioWaveform className="w-5 h-5 text-pink-600" />
+                    ElevenLabs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-pink-700 dark:text-pink-400">{voiceData.elevenLabsUsage.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Top: {voiceData.topVoice}</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Music Generation Tab */}
+          <TabsContent value="music" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-gradient-to-br from-pink-50 to-purple-100 dark:from-pink-900/20 dark:to-purple-900/20 border-pink-200 dark:border-pink-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Music className="w-5 h-5 text-pink-600" />
+                    Total Tracks
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-pink-700 dark:text-pink-400">{musicData.totalTracks.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">+{musicData.tracksToday} today</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-violet-50 to-purple-100 dark:from-violet-900/20 dark:to-purple-900/20 border-violet-200 dark:border-violet-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5 text-violet-600" />
+                    Active Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-violet-700 dark:text-violet-400">{musicData.activeUsers}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Top genre: {musicData.topGenre}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-amber-600" />
+                    Jingles
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-amber-700 dark:text-amber-400">{musicData.jinglesCreated}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">created</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-900/20 dark:to-cyan-900/20 border-teal-200 dark:border-teal-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Play className="w-5 h-5 text-teal-600" />
+                    Background Tracks
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-teal-700 dark:text-teal-400">{musicData.backgroundTracks}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Avg: {musicData.avgDuration}</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Design Studio Tab */}
+          <TabsContent value="design" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-gradient-to-br from-violet-50 to-indigo-100 dark:from-violet-900/20 dark:to-indigo-900/20 border-violet-200 dark:border-violet-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-violet-600" />
+                    Total Designs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-violet-700 dark:text-violet-400">{designData.totalDesigns.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">+{designData.designsToday} today</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-indigo-900/20 dark:to-blue-900/20 border-indigo-200 dark:border-indigo-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5 text-indigo-600" />
+                    Active Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-400">{designData.activeUsers}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Top: {designData.topProvider}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-900/20 dark:to-violet-900/20 border-purple-200 dark:border-purple-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Rocket className="w-5 h-5 text-purple-600" />
+                    Impossible Print
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{designData.impossiblePrintOrders}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">orders sent</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-emerald-50 to-green-100 dark:from-emerald-900/20 dark:to-green-900/20 border-emerald-200 dark:border-emerald-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Store className="w-5 h-5 text-emerald-600" />
+                    Other POD
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">{designData.otherPODOrders}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">integrations: {designData.printIntegrations}</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* BuilderIQ Tab */}
+          <TabsContent value="builderiq" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-gradient-to-br from-teal-50 to-emerald-100 dark:from-teal-900/20 dark:to-emerald-900/20 border-teal-200 dark:border-teal-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Boxes className="w-5 h-5 text-teal-600" />
+                    Total Blueprints
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-teal-700 dark:text-teal-400">{builderIQData.totalBlueprints.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">+{builderIQData.blueprintsToday} today</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-emerald-50 to-green-100 dark:from-emerald-900/20 dark:to-green-900/20 border-emerald-200 dark:border-emerald-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5 text-emerald-600" />
+                    Active Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">{builderIQData.activeUsers}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Top: {builderIQData.topCategory}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-cyan-50 to-teal-100 dark:from-cyan-900/20 dark:to-teal-900/20 border-cyan-200 dark:border-cyan-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-cyan-600" />
+                    Templates Used
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-cyan-700 dark:text-cyan-400">{builderIQData.templatesUsed.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">total uses</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                    Avg Build Time
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{builderIQData.avgBuildTime}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">per blueprint</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Intro/Outro Tab */}
+          <TabsContent value="introoutro" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-gradient-to-br from-rose-50 to-pink-100 dark:from-rose-900/20 dark:to-pink-900/20 border-rose-200 dark:border-rose-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Video className="w-5 h-5 text-rose-600" />
+                    Total Created
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-rose-700 dark:text-rose-400">{introOutroData.totalCreated.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">+{introOutroData.createdToday} today</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-pink-50 to-fuchsia-100 dark:from-pink-900/20 dark:to-fuchsia-900/20 border-pink-200 dark:border-pink-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5 text-pink-600" />
+                    Active Users
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-pink-700 dark:text-pink-400">{introOutroData.activeUsers}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Top: {introOutroData.topStyle}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-900/20 dark:to-violet-900/20 border-purple-200 dark:border-purple-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Music className="w-5 h-5 text-purple-600" />
+                    With Music
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{introOutroData.withMusic.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">creations</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20 border-cyan-200 dark:border-cyan-700">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Mic className="w-5 h-5 text-cyan-600" />
+                    With Voiceover
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-cyan-700 dark:text-cyan-400">{introOutroData.withVoiceover.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Avg: {introOutroData.avgDuration}</p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -3374,6 +3756,11 @@ Created: ${formatDate(user.createdAt)}
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Cost Management Dashboard */}
+          <TabsContent value="costs" className="space-y-6">
+            <CostDashboard />
           </TabsContent>
         </Tabs>
       </div>

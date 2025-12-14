@@ -31,6 +31,10 @@ import academyBillingRoutes from './routes/academy-billing';
 import contactRoutes from './routes/contact';
 import builderiqRoutes from './routes/builderiq';
 import referralRoutes from './routes/referral';
+import voiceRoutes from './routes/voice';
+import musicRoutes from './routes/music';
+import elevenlabsRoutes from './routes/elevenlabs';
+import costsRoutes from './routes/costs';
 
 dotenv.config();
 
@@ -311,6 +315,10 @@ app.use('/api/academy/billing', academyBillingRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/builderiq', builderiqRoutes);
 app.use('/api/referral', referralRoutes);
+app.use('/api/voice', voiceRoutes); // Voice Builder - AI Voice Generation
+app.use('/api/music', musicRoutes); // Music Maker - AI Music Generation
+app.use('/api/elevenlabs', elevenlabsRoutes); // ElevenLabs Premium Voice - Ultra-realistic AI voices + Sound Effects
+app.use('/api/costs', costsRoutes); // Cost Management - Usage tracking, limits, and admin dashboard
 app.use('/api', generateRoutes);
 app.use('/api/personal', categoryRoutes);
 app.use('/api/product', categoryRoutes);

@@ -3,11 +3,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store } from "lucide-react";
+import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store, Mic, AudioWaveform, Palette } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import BrainLogo from "@/components/BrainLogo";
 import ThemeToggle from "@/components/ThemeToggle";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { safeMap, ensureArray } from "@/utils/arrayUtils";
 
 export default function Navigation() {
@@ -49,6 +50,9 @@ export default function Navigation() {
     { href: "/categories", label: "Create Prompt", icon: null, badge: "Start Here!", special: true },
     { href: "/academy", label: "Academy", icon: GraduationCap, badge: "57 Courses", academySpecial: true },
     { href: "/builderiq", label: "BuilderIQ", icon: ShoppingBag, badge: "NEW", builderSpecial: true },
+    { href: "/voice-builder", label: "Voice", icon: Mic, badge: "AI", voiceSpecial: true },
+    { href: "/intro-outro-builder", label: "Intro/Outro", icon: AudioWaveform, badge: "Video", introSpecial: true },
+    { href: "/design-studio", label: "Design", icon: Palette, badge: "Print", designSpecial: true },
     { href: "/app-builders", label: "App Market", icon: Store, badge: "100+", marketSpecial: true },
     { href: "/teams", label: "Teams", icon: Users, badge: null },
     { href: "/documentation", label: "Docs", icon: null, badge: null },
@@ -97,6 +101,12 @@ export default function Navigation() {
                     (item as any).builderSpecial ? 'bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200/50 dark:border-teal-500/20 hover:shadow-md transition-all' : ''
                   } ${
                     (item as any).marketSpecial ? 'bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200/50 dark:border-orange-500/20 hover:shadow-md transition-all' : ''
+                  } ${
+                    (item as any).voiceSpecial ? 'bg-gradient-to-r from-cyan-50 to-purple-50 dark:from-cyan-900/20 dark:to-purple-900/20 border border-cyan-200/50 dark:border-cyan-500/20 hover:shadow-md transition-all' : ''
+                  } ${
+                    (item as any).introSpecial ? 'bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 border border-pink-200/50 dark:border-pink-500/20 hover:shadow-md transition-all' : ''
+                  } ${
+                    (item as any).designSpecial ? 'bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border border-indigo-200/50 dark:border-indigo-500/20 hover:shadow-md transition-all' : ''
                   }`}
                 >
                   {item.icon && <item.icon className="w-4 h-4" />}
@@ -111,6 +121,10 @@ export default function Navigation() {
                         ? 'text-white bg-gradient-to-r from-teal-500 to-cyan-500 shadow-sm'
                         : (item as any).marketSpecial
                         ? 'text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
+                        : (item as any).introSpecial
+                        ? 'text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-sm'
+                        : (item as any).designSpecial
+                        ? 'text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow-sm'
                         : 'text-white bg-indigo-600'
                     }`}>
                       {item.badge}
@@ -140,25 +154,35 @@ export default function Navigation() {
             </div>
           )}
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Token Balance Indicator */}
             {isAuthenticated && (
-              <div className="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2 rounded-lg border border-indigo-200">
-                <Coins className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm font-medium text-indigo-700">{user?.tokenBalance || 0} tokens</span>
+              <div className="hidden md:flex items-center space-x-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-700">
+                <Coins className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{user?.tokenBalance || 0} tokens</span>
               </div>
             )}
 
-            {/* Theme Toggle */}
-            <ThemeToggle />
+            {/* Language Switcher - Hidden on mobile */}
+            <div className="hidden sm:block">
+              <LanguageSwitcher variant="compact" />
+            </div>
+
+            {/* Theme Toggle - ALWAYS VISIBLE */}
+            <div className="flex-shrink-0">
+              <ThemeToggle />
+            </div>
 
             {/* Mobile menu button */}
             {isAuthenticated && (
               <button
                 onClick={toggleMobileMenu}
-                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all"
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="mobile-menu"
+                aria-label={isMobileMenuOpen ? "Close main menu" : "Open main menu"}
               >
-                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {isMobileMenuOpen ? <X className="w-6 h-6" aria-hidden="true" /> : <Menu className="w-6 h-6" aria-hidden="true" />}
               </button>
             )}
             
@@ -260,13 +284,18 @@ export default function Navigation() {
 
         {/* Mobile Menu */}
         {isAuthenticated && isMobileMenuOpen && (
-          <div className="lg:hidden">
+          <div className="lg:hidden" id="mobile-menu" role="menu" aria-orientation="vertical">
             <div className="px-2 pt-2 pb-3 space-y-1 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+              {/* Theme Toggle in Mobile Menu */}
+              <div className="flex items-center justify-between px-3 py-2 mb-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Theme</span>
+                <ThemeToggle />
+              </div>
               {safeMap(mainNavItems, (item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center justify-between px-3 py-2 rounded-md text-base font-medium ${
+                  className={`flex items-center justify-between px-3 py-2 rounded-md text-base font-medium transition-all ${
                     location === item.href
                       ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
@@ -276,8 +305,15 @@ export default function Navigation() {
                     (item as any).builderSpecial ? 'bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 dark:from-teal-900/20 dark:to-cyan-900/20 dark:border-teal-500/20' : ''
                   } ${
                     (item as any).marketSpecial ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 dark:from-orange-900/20 dark:to-amber-900/20 dark:border-orange-500/20' : ''
+                  } ${
+                    (item as any).voiceSpecial ? 'bg-gradient-to-r from-cyan-50 to-purple-50 border border-cyan-200 dark:from-cyan-900/20 dark:to-purple-900/20 dark:border-cyan-500/20' : ''
+                  } ${
+                    (item as any).introSpecial ? 'bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 dark:from-pink-900/20 dark:to-rose-900/20 dark:border-pink-500/20' : ''
+                  } ${
+                    (item as any).designSpecial ? 'bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 dark:from-indigo-900/20 dark:to-violet-900/20 dark:border-indigo-500/20' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
+                  role="menuitem"
                 >
                   <div className="flex items-center space-x-2">
                     {item.icon && <item.icon className="w-4 h-4" />}
@@ -293,6 +329,12 @@ export default function Navigation() {
                         ? 'text-white bg-gradient-to-r from-teal-500 to-cyan-500 shadow-sm'
                         : (item as any).marketSpecial
                         ? 'text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
+                        : (item as any).voiceSpecial
+                        ? 'text-white bg-gradient-to-r from-cyan-500 to-purple-500 shadow-sm'
+                        : (item as any).introSpecial
+                        ? 'text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-sm'
+                        : (item as any).designSpecial
+                        ? 'text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow-sm'
                         : 'text-white bg-indigo-600'
                     }`}>
                       {item.badge}

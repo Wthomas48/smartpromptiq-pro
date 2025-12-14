@@ -26,3 +26,6 @@ EMAIL-SETUP-GUIDE.md
 # Temporary files
 nul
 *.log
+
+# Large assets (royalty-free music zip - already extracted to client/public/music/)
+Royalty-free-music.zip

@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
+import { useElevenLabsVoiceSafe } from "@/contexts/ElevenLabsVoiceContext";
+import { ELEVENLABS_VOICES, VOICE_PRESETS, ELEVENLABS_VOICE_IDS } from "@/config/voices";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,23 +11,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  User, 
-  Mail, 
-  Bell, 
-  Shield, 
-  Palette, 
-  Globe, 
+import {
+  User,
+  Mail,
+  Bell,
+  Shield,
+  Palette,
+  Globe,
   Key,
   Trash2,
   Save,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Volume2,
+  Play,
+  Check,
+  Mic,
+  Pause,
+  Loader2,
+  Square
 } from "lucide-react";
 
 export default function Settings() {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const voiceContext = useElevenLabsVoiceSafe();
   const { toast } = useToast();
   
   // Form states
@@ -52,6 +63,137 @@ export default function Settings() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [testingVoice, setTestingVoice] = useState<string | null>(null);
+  const [isTestPlaying, setIsTestPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Test sample phrases for each voice
+  const getTestPhrase = (voiceName: string) => {
+    const phrases: Record<string, string> = {
+      rachel: "Hello! I'm Rachel. I have a calm and professional voice perfect for business content.",
+      drew: "Hey there! I'm Drew, bringing you energetic narration for your most exciting projects.",
+      clyde: "Greetings! I'm Clyde. My warm and friendly voice is great for storytelling.",
+      paul: "Hi! I'm Paul. My clear and articulate voice works well for educational content.",
+      domi: "Hello! I'm Domi. I bring a sophisticated European touch to your narrations.",
+      dave: "What's up! I'm Dave. My conversational style is perfect for podcasts and videos.",
+      fin: "Hey! I'm Fin. My young, energetic voice is great for modern content.",
+      sarah: "Hi there! I'm Sarah. I have a warm, friendly voice ideal for wellness content.",
+      antoni: "Hello! I'm Antoni. My deep, authoritative voice commands attention.",
+      thomas: "Greetings! I'm Thomas. My British accent adds elegance to any narration.",
+      charlie: "Hi! I'm Charlie. My natural, friendly tone is perfect for casual content.",
+      george: "Hello! I'm George. My distinguished voice brings gravitas to your projects.",
+      emily: "Hi! I'm Emily. My bright, expressive voice is great for engaging content.",
+      elli: "Hello! I'm Elli. My youthful voice is perfect for dynamic narrations.",
+      callum: "Hey! I'm Callum. My Scottish accent adds character to your content.",
+      patrick: "Hello! I'm Patrick. My warm baritone voice is ideal for storytelling.",
+      harry: "Hi there! I'm Harry. My British voice brings sophistication to narrations.",
+      liam: "Hello! I'm Liam. My professional voice works great for business content.",
+      dorothy: "Hi! I'm Dorothy. My warm, motherly voice is perfect for gentle narrations.",
+      josh: "Hey! I'm Josh. My friendly voice is great for YouTube and social content.",
+      arnold: "Greetings! I'm Arnold. My powerful voice is perfect for impactful content.",
+      charlotte: "Hello! I'm Charlotte. My elegant voice adds class to your narrations.",
+      matilda: "Hi! I'm Matilda. My gentle voice is ideal for calming content.",
+      matthew: "Hello! I'm Matthew. My clear voice is perfect for professional narrations.",
+      james: "Hi there! I'm James. My authoritative voice works well for documentaries.",
+      joseph: "Hello! I'm Joseph. My versatile voice adapts to any content style.",
+      default: "Hello! This is a test of the selected voice. How does it sound?"
+    };
+    return phrases[voiceName.toLowerCase()] || phrases.default;
+  };
+
+  // Test voice using ElevenLabs API
+  const handleTestVoice = async (voiceId: string, voiceName: string) => {
+    if (testingVoice === voiceId && isTestPlaying) {
+      // Stop current playback
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsTestPlaying(false);
+      setTestingVoice(null);
+      return;
+    }
+
+    setTestingVoice(voiceId);
+    setIsTestPlaying(false);
+
+    try {
+      const testPhrase = getTestPhrase(voiceName);
+
+      // Use the voice context if available
+      if (voiceContext?.speak) {
+        await voiceContext.speak(testPhrase, {
+          voice: voiceId,
+          onComplete: () => {
+            setIsTestPlaying(false);
+            setTestingVoice(null);
+          },
+          onError: (error) => {
+            toast({
+              title: "Voice Test Failed",
+              description: error || "Could not generate voice sample",
+              variant: "destructive"
+            });
+            setIsTestPlaying(false);
+            setTestingVoice(null);
+          }
+        });
+        setIsTestPlaying(true);
+        toast({
+          title: "Testing Voice",
+          description: `Playing sample with ${voiceName}'s voice`,
+        });
+      } else {
+        // Fallback: Use browser's Web Speech API for demo
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(testPhrase);
+          utterance.rate = 0.9;
+          utterance.pitch = 1;
+          utterance.onend = () => {
+            setIsTestPlaying(false);
+            setTestingVoice(null);
+          };
+          window.speechSynthesis.speak(utterance);
+          setIsTestPlaying(true);
+          toast({
+            title: "Demo Preview",
+            description: `Browser voice preview (real ElevenLabs requires API)`,
+          });
+        } else {
+          toast({
+            title: "Voice Preview Unavailable",
+            description: "Your browser doesn't support voice synthesis",
+            variant: "destructive"
+          });
+          setTestingVoice(null);
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Test Failed",
+        description: "Could not play voice sample",
+        variant: "destructive"
+      });
+      setIsTestPlaying(false);
+      setTestingVoice(null);
+    }
+  };
+
+  // Stop all voice playback
+  const stopAllVoice = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (voiceContext?.stop) {
+      voiceContext.stop();
+    }
+    setIsTestPlaying(false);
+    setTestingVoice(null);
+  };
 
   const handleSaveProfile = async () => {
     setIsLoading(true);
@@ -260,6 +402,238 @@ export default function Settings() {
                 <Save className="w-4 h-4 mr-2" />
                 Save Preferences
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Voice Settings - ElevenLabs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Volume2 className="w-5 h-5" />
+                <span>Voice Settings (ElevenLabs)</span>
+              </CardTitle>
+              <CardDescription>
+                Configure AI voice narration for lessons, prompts, and app previews
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Voice Enable Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="voice-enabled">Enable Voice Narration</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Turn on AI voice narration across the app
+                  </p>
+                </div>
+                <Switch
+                  id="voice-enabled"
+                  checked={voiceContext?.isVoiceEnabled ?? true}
+                  onCheckedChange={(checked) => voiceContext?.setVoiceEnabled(checked)}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Auto Narrate Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-narrate">Auto-Narrate Content</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Automatically read content when entering pages
+                  </p>
+                </div>
+                <Switch
+                  id="auto-narrate"
+                  checked={voiceContext?.autoNarrate ?? false}
+                  onCheckedChange={(checked) => voiceContext?.setAutoNarrate(checked)}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Voice Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="flex items-center space-x-2">
+                    <Mic className="w-4 h-4" />
+                    <span>Select Voice</span>
+                    <Badge variant="secondary" className="ml-2">
+                      {ELEVENLABS_VOICES.length} voices
+                    </Badge>
+                  </Label>
+                  {isTestPlaying && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={stopAllVoice}
+                      className="text-red-500 hover:text-red-600"
+                    >
+                      <Square className="w-3 h-3 mr-1" />
+                      Stop
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {ELEVENLABS_VOICES.map((voice) => {
+                    const isSelected = voiceContext?.selectedVoice === voice.id;
+                    const isTesting = testingVoice === voice.id;
+                    return (
+                      <div
+                        key={voice.id}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <button
+                            onClick={() => voiceContext?.setSelectedVoice(voice.id)}
+                            className="font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 text-left flex-1"
+                          >
+                            {voice.name}
+                          </button>
+                          <div className="flex items-center gap-1">
+                            {/* Play/Test Button */}
+                            <button
+                              onClick={() => handleTestVoice(voice.id, voice.name)}
+                              disabled={testingVoice !== null && testingVoice !== voice.id}
+                              className={`p-1.5 rounded-full transition-all ${
+                                isTesting && isTestPlaying
+                                  ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                                  : isTesting
+                                    ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-indigo-600'
+                              } ${testingVoice !== null && testingVoice !== voice.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title={isTesting && isTestPlaying ? 'Stop' : 'Test this voice'}
+                            >
+                              {isTesting && !isTestPlaying ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : isTesting && isTestPlaying ? (
+                                <Square className="w-4 h-4" />
+                              ) : (
+                                <Play className="w-4 h-4" />
+                              )}
+                            </button>
+                            {/* Selected Check */}
+                            {isSelected && (
+                              <Check className="w-5 h-5 text-indigo-500" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline" className="text-xs">
+                            {voice.gender}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {voice.style}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {voice.description}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Voice Preset Selection */}
+              <div>
+                <Label className="flex items-center space-x-2 mb-3">
+                  <Play className="w-4 h-4" />
+                  <span>Voice Style Preset</span>
+                </Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {Object.entries(VOICE_PRESETS).map(([presetName, settings]) => {
+                    const isSelected = voiceContext?.selectedPreset === presetName;
+                    const presetDescriptions: Record<string, string> = {
+                      natural: 'Balanced & versatile',
+                      clear: 'High clarity for education',
+                      expressive: 'More emotion & variation',
+                      dramatic: 'Maximum expression',
+                      calm: 'Stable & soothing',
+                    };
+                    return (
+                      <button
+                        key={presetName}
+                        onClick={() => voiceContext?.setSelectedPreset(presetName)}
+                        className={`p-3 rounded-lg border-2 text-center transition-all ${
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        <span className="font-medium text-gray-900 dark:text-white capitalize block">
+                          {presetName}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {presetDescriptions[presetName] || 'Voice preset'}
+                        </span>
+                        {isSelected && (
+                          <Check className="w-4 h-4 text-indigo-500 mx-auto mt-1" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Test Voice Section */}
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white">Test Your Voice Configuration</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Selected: <span className="font-medium text-indigo-600 dark:text-indigo-400">{voiceContext?.selectedVoice || 'rachel'}</span> with <span className="font-medium text-purple-600 dark:text-purple-400">{voiceContext?.selectedPreset || 'natural'}</span> preset
+                    </p>
+                  </div>
+                  {voiceContext?.narrationState?.isPlaying && (
+                    <Badge variant="secondary" className="animate-pulse">
+                      <Volume2 className="w-3 h-3 mr-1" />
+                      Playing...
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      const selectedVoiceName = ELEVENLABS_VOICES.find(v => v.id === voiceContext?.selectedVoice)?.name || 'Rachel';
+                      handleTestVoice(voiceContext?.selectedVoice || 'rachel', selectedVoiceName);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                    disabled={testingVoice !== null}
+                  >
+                    {testingVoice && isTestPlaying ? (
+                      <>
+                        <Square className="w-4 h-4 mr-2" />
+                        Stop Playing
+                      </>
+                    ) : testingVoice ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 mr-2" />
+                        Test Selected Voice
+                      </>
+                    )}
+                  </Button>
+                  {(isTestPlaying || voiceContext?.narrationState?.isPlaying) && (
+                    <Button
+                      onClick={stopAllVoice}
+                      variant="outline"
+                      className="text-red-500 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <Square className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useRoute } from 'wouter';
+// BuilderIQ Questionnaire - Voice-enabled app building wizard
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,8 +24,9 @@ import {
   Upload, BarChart3, Palette, Share2, Save, Mail,
   Lock, Key, CreditCard, Bot, Zap, Eye,
   Moon, Sun, Wand2, Building, Church, Rocket,
-  Volume2, VolumeX, MessageSquare, HelpCircle
+  Volume2, VolumeX, MessageSquare, HelpCircle, Music, Headphones
 } from 'lucide-react';
+import SmartAudioSelector from '@/components/SmartAudioSelector';
 
 // Questionnaire data structure
 interface QuestionOption {
@@ -307,7 +309,7 @@ const questions: Question[] = [
     type: 'single',
     title: 'What level of complexity do you need?',
     subtitle: 'Be realistic about your resources',
-    voicePrompt: "Finally, what complexity level do you need? Say: M V P for a quick launch, standard for core features, complex for advanced features, or enterprise for full scale.",
+    voicePrompt: "What complexity level do you need? Say: M V P for a quick launch, standard for core features, complex for advanced features, or enterprise for full scale.",
     voiceHelp: "MVP is the minimum viable product - just the core feature to validate your idea. Standard includes all essential features. Complex adds advanced functionality. Enterprise is full-scale with everything.",
     required: true,
     options: [
@@ -315,6 +317,38 @@ const questions: Question[] = [
       { value: 'standard', label: 'Standard App', description: 'Core features, ready for users', voiceAliases: ['standard', 'normal', 'regular', 'core'] },
       { value: 'complex', label: 'Complex App', description: 'Advanced features, multiple user types', voiceAliases: ['complex', 'advanced', 'multiple'] },
       { value: 'enterprise', label: 'Enterprise', description: 'Full-scale, all features, scalable', voiceAliases: ['enterprise', 'full', 'full scale', 'everything'] },
+    ],
+  },
+
+  // Q14: Audio Features - SmartPromptiq AI Powered
+  {
+    id: 'audio_features',
+    type: 'single',
+    title: 'Would you like audio features in your app?',
+    subtitle: 'SmartPromptiq AI will recommend the perfect music & voice',
+    voicePrompt: "Finally, would you like audio features in your app? Say 'yes' for background music and voice narration, 'music only' for just background music, 'voice only' for just voice features, or 'no' to skip audio.",
+    voiceHelp: "Audio features make your app more engaging! Background music sets the mood. Voice narration guides users. SmartPromptiq AI automatically selects the perfect audio based on your app type.",
+    required: true,
+    options: [
+      { value: 'both', label: 'Music & Voice', description: 'Background music + voice narration', icon: <Headphones className="w-5 h-5" />, voiceAliases: ['yes', 'both', 'music and voice', 'all audio', 'full audio'] },
+      { value: 'music', label: 'Music Only', description: 'Just background music', icon: <Music className="w-5 h-5" />, voiceAliases: ['music', 'music only', 'background music', 'just music'] },
+      { value: 'voice', label: 'Voice Only', description: 'Voice narration & guidance', icon: <Mic className="w-5 h-5" />, voiceAliases: ['voice', 'voice only', 'narration', 'just voice'] },
+      { value: 'none', label: 'No Audio', description: 'Skip audio features', icon: <VolumeX className="w-5 h-5" />, voiceAliases: ['no', 'none', 'no audio', 'skip', 'no sound'] },
+    ],
+  },
+
+  // Q15: Audio Configuration (conditional - only if audio selected)
+  {
+    id: 'audio_config',
+    type: 'single', // Will use custom component
+    title: 'Configure your app audio',
+    subtitle: 'SmartPromptiq AI has selected the best audio for your app',
+    voicePrompt: "Let me configure the perfect audio for your app. SmartPromptiq AI has selected the best music and voice based on your app type. Say 'sounds good' to accept, or 'change music' or 'change voice' to customize.",
+    voiceHelp: "SmartPromptiq AI analyzes your app type and target audience to recommend the perfect music genre and voice style. You can accept the recommendation or customize it.",
+    showIf: (responses) => responses.audio_features && responses.audio_features !== 'none',
+    options: [
+      { value: 'ai_recommended', label: 'Use AI Recommendation', description: 'SmartPromptiq selected the best audio', voiceAliases: ['sounds good', 'accept', 'use ai', 'recommended', 'perfect'] },
+      { value: 'customize', label: 'Customize Audio', description: 'Choose your own music & voice', voiceAliases: ['customize', 'change', 'custom', 'my own'] },
     ],
   },
 ];
@@ -335,6 +369,8 @@ const BuilderIQQuestionnaire: React.FC = () => {
   const [voiceMode, setVoiceMode] = useState(false);
   const [isAskingQuestion, setIsAskingQuestion] = useState(false);
   const [voiceModeReady, setVoiceModeReady] = useState(false); // Track when voice mode is fully ready
+  const [audioSelection, setAudioSelection] = useState<any>(null); // SmartAudioSelector state
+  const [showAudioCustomizer, setShowAudioCustomizer] = useState(false); // Show full audio customizer
 
   // Refs for voice control
   const hasAskedRef = useRef(false);
@@ -556,6 +592,58 @@ const BuilderIQQuestionnaire: React.FC = () => {
     });
   }, [voice, voiceService, voiceMode]);
 
+  // Navigation - MUST be defined before handleVoiceInput to avoid circular reference
+  const canGoNext = useCallback(() => {
+    if (!currentQuestion?.required) return true;
+    const value = responses[currentQuestion.id];
+    if (currentQuestion.type === 'multiple') {
+      return Array.isArray(value) && value.length > 0;
+    }
+    return !!value;
+  }, [currentQuestion, responses]);
+
+  const goNext = useCallback(() => {
+    if (!canGoNext()) {
+      const message = 'Please answer this question before continuing';
+      toast({
+        title: 'Required',
+        description: message,
+        variant: 'destructive',
+      });
+      if (voiceMode) {
+        speakFeedback(message, 'friendly');
+      }
+      return;
+    }
+
+    if (currentIndex < visibleQuestions.length - 1) {
+      // Stop listening before transition
+      if (voice.isListening) {
+        voice.stopListening();
+      }
+      voiceService.stop(); // Cancel any ongoing speech
+
+      hasAskedRef.current = false; // Reset so auto-ask can work
+      setCurrentIndex(currentIndex + 1);
+      // The auto-ask useEffect will handle asking the next question
+    } else {
+      handleComplete();
+    }
+  }, [currentIndex, visibleQuestions.length, voiceMode, voice, voiceService, speakFeedback, toast, canGoNext]);
+
+  const goPrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      // Stop listening before transition
+      if (voice.isListening) {
+        voice.stopListening();
+      }
+      voiceService.stop();
+
+      hasAskedRef.current = false;
+      setCurrentIndex(currentIndex - 1);
+    }
+  }, [currentIndex, voice, voiceService]);
+
   // Process voice input with smart responses
   const handleVoiceInput = useCallback((transcript: string) => {
     const lower = transcript.toLowerCase().trim();
@@ -716,7 +804,11 @@ const BuilderIQQuestionnaire: React.FC = () => {
         for (const alias of aliases) {
           if (lower.includes(alias.toLowerCase())) {
             handleSingleSelect(option.value);
-            speakFeedback(`${option.label}! Great choice. Say 'next' to continue!`, 'enthusiastic');
+            // Auto-advance after selection with brief confirmation
+            speakFeedback(`${option.label}! Perfect!`, 'enthusiastic', () => {
+              // Automatically go to next question after selection
+              setTimeout(() => goNext(), 500);
+            });
             return;
           }
         }
@@ -761,14 +853,33 @@ const BuilderIQQuestionnaire: React.FC = () => {
     } else if (currentQuestion.type === 'text' || currentQuestion.type === 'textarea') {
       // For text questions - clean up the transcript before saving
       const cleanTranscript = transcript.trim();
+
+      // Check if user wants to finalize their answer
+      if (lower.includes("that's good") || lower.includes("that's fine") || lower.includes("sounds good") ||
+          lower.includes("that's perfect") || lower.includes("looks good") || lower.includes("that's correct")) {
+        speakFeedback("Perfect! Moving to the next question!", 'enthusiastic', () => {
+          setTimeout(() => goNext(), 500);
+        });
+        return;
+      }
+
       if (cleanTranscript.length > 0) {
-        const currentValue = responses[currentQuestion.id] || '';
-        const newValue = currentValue ? `${currentValue} ${cleanTranscript}` : cleanTranscript;
-        setResponses(prev => ({ ...prev, [currentQuestion.id]: newValue }));
-        speakFeedback("Got it! Keep talking to add more, or say 'next' when done!", 'enthusiastic');
+        // Filter out command words from the transcript
+        const commandWords = ['next', 'continue', 'done', 'finish', 'that\'s it', 'that is it', 'ok', 'okay'];
+        let filteredTranscript = cleanTranscript;
+        for (const word of commandWords) {
+          filteredTranscript = filteredTranscript.replace(new RegExp(word, 'gi'), '').trim();
+        }
+
+        if (filteredTranscript.length > 3) {
+          const currentValue = responses[currentQuestion.id] || '';
+          const newValue = currentValue ? `${currentValue} ${filteredTranscript}` : filteredTranscript;
+          setResponses(prev => ({ ...prev, [currentQuestion.id]: newValue }));
+          speakFeedback("Got it! Keep talking to add more, or say 'next' when done!", 'enthusiastic');
+        }
       }
     }
-  }, [currentQuestion, responses, speakFeedback, askCurrentQuestion, readHelp, visibleQuestions.length, currentIndex, voiceService]);
+  }, [currentQuestion, responses, speakFeedback, askCurrentQuestion, readHelp, visibleQuestions.length, currentIndex, voiceService, goNext]);
 
   // Auto-ask question when question changes (NOT when voice mode toggles - that's handled in toggleVoiceMode)
   useEffect(() => {
@@ -863,76 +974,103 @@ const BuilderIQQuestionnaire: React.FC = () => {
     setResponses(prev => ({ ...prev, [currentQuestion.id]: value }));
   };
 
-  // Navigation
-  const canGoNext = useCallback(() => {
-    if (!currentQuestion?.required) return true;
-    const value = responses[currentQuestion.id];
-    if (currentQuestion.type === 'multiple') {
-      return Array.isArray(value) && value.length > 0;
-    }
-    return !!value;
-  }, [currentQuestion, responses]);
-
-  const goNext = useCallback(() => {
-    if (!canGoNext()) {
-      const message = 'Please answer this question before continuing';
-      toast({
-        title: 'Required',
-        description: message,
-        variant: 'destructive',
-      });
-      if (voiceMode) {
-        speakFeedback(message, 'friendly');
-      }
-      return;
-    }
-
-    if (currentIndex < visibleQuestions.length - 1) {
-      // Stop listening before transition
-      if (voice.isListening) {
-        voice.stopListening();
-      }
-      voiceService.stop(); // Cancel any ongoing speech
-
-      hasAskedRef.current = false; // Reset so auto-ask can work
-      setCurrentIndex(currentIndex + 1);
-      // The auto-ask useEffect will handle asking the next question
-    } else {
-      handleComplete();
-    }
-  }, [currentIndex, visibleQuestions.length, voiceMode, voice, voiceService, speakFeedback, toast, canGoNext]);
-
-  const goPrevious = useCallback(() => {
-    if (currentIndex > 0) {
-      // Stop listening before transition
-      if (voice.isListening) {
-        voice.stopListening();
-      }
-      voiceService.stop(); // Cancel any ongoing speech
-
-      hasAskedRef.current = false; // Reset so auto-ask can work
-      setCurrentIndex(currentIndex - 1);
-      // The auto-ask useEffect will handle asking the previous question
-    }
-  }, [currentIndex, voice, voiceService]);
-
   const handleComplete = async () => {
     setIsGenerating(true);
 
     if (voiceMode) {
-      voiceService.speak("Excellent! I have all the information I need! Generating your app blueprint now. This is going to be amazing!", { personality: 'enthusiastic' });
+      voiceService.speak("Excellent! I have all the information I need! Let me show you a preview of your app. You're going to love this!", { personality: 'enthusiastic' });
     }
 
     // Simulate generation delay
     await new Promise(resolve => setTimeout(resolve, 2500));
 
-    // Store responses and navigate to blueprint
+    // Store responses and audio selection, then navigate to preview playground
     localStorage.setItem('builderiq_responses', JSON.stringify(responses));
-    navigate('/builderiq/blueprint');
+    if (audioSelection) {
+      localStorage.setItem('builderiq_audio', JSON.stringify(audioSelection));
+    }
+    navigate('/builderiq/preview');
+  };
+
+  // Get app type for audio recommendations - analyze responses to determine best category
+  const getAppTypeForAudio = () => {
+    // Try to determine app type from target audience and features
+    const audience = responses.target_audience || [];
+    const features = responses.key_features || [];
+    const purpose = (responses.main_purpose || '').toLowerCase();
+
+    // Map audience/features to audio categories
+    if (audience.includes('healthcare') || purpose.includes('health')) return 'health';
+    if (audience.includes('students') || purpose.includes('learn') || purpose.includes('education')) return 'education';
+    if (purpose.includes('fitness') || purpose.includes('workout') || purpose.includes('gym')) return 'fitness';
+    if (purpose.includes('meditation') || purpose.includes('relax') || purpose.includes('calm')) return 'meditation';
+    if (features.includes('marketplace') || purpose.includes('shop') || purpose.includes('ecommerce')) return 'ecommerce';
+    if (audience.includes('startups') || purpose.includes('startup')) return 'startup';
+    if (audience.includes('enterprises') || audience.includes('small_business')) return 'business';
+    if (features.includes('social') || purpose.includes('social') || purpose.includes('community')) return 'social';
+    if (purpose.includes('game') || purpose.includes('gaming')) return 'gaming';
+    if (purpose.includes('podcast') || features.includes('audio')) return 'podcast';
+    if (purpose.includes('video') || purpose.includes('stream')) return 'video';
+    if (purpose.includes('travel') || purpose.includes('booking')) return 'travel';
+    if (purpose.includes('food') || purpose.includes('restaurant')) return 'food';
+    if (audience.includes('coaches') || purpose.includes('course') || purpose.includes('tutorial')) return 'course';
+    if (purpose.includes('saas') || purpose.includes('software')) return 'saas';
+
+    return 'default';
+  };
+
+  // Handle audio selection change
+  const handleAudioSelectionChange = (selection: any) => {
+    setAudioSelection(selection);
+    setResponses(prev => ({
+      ...prev,
+      audio_config: 'ai_recommended',
+      audio_selection: selection
+    }));
   };
 
   // Render question content based on type
   const renderQuestionContent = () => {
+    // Special handling for audio_config question - show SmartAudioSelector
+    if (currentQuestion.id === 'audio_config') {
+      const appType = getAppTypeForAudio();
+      const appName = responses.app_name || 'Your App';
+      const audioFeatures = responses.audio_features;
+
+      return (
+        <div className="space-y-6">
+          {/* SmartAudioSelector Component */}
+          <SmartAudioSelector
+            appType={appType}
+            appName={appName}
+            onSelectionChange={handleAudioSelectionChange}
+            showPreview={true}
+            compact={false}
+          />
+
+          {/* Quick action buttons */}
+          <div className="flex items-center gap-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+            <div className="flex-1">
+              <p className="text-sm text-white font-medium">
+                {audioSelection ? 'Audio configured!' : 'Configure your audio above'}
+              </p>
+              <p className="text-xs text-gray-400">
+                SmartPromptiq AI has recommended the best audio for your {appType} app
+              </p>
+            </div>
+            {audioSelection && (
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  Ready
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     switch (currentQuestion.type) {
       case 'single':
         return (

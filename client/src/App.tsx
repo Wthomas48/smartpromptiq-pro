@@ -71,6 +71,7 @@ import BuilderIQQuestionnaire from "@/pages/BuilderIQQuestionnaire";
 import BuilderIQBlueprint from "@/pages/BuilderIQBlueprint";
 import BuilderIQTemplates from "@/pages/BuilderIQTemplates";
 import BuilderIQAgents from "@/pages/BuilderIQAgents";
+import BuilderIQPreview from "@/pages/BuilderIQPreview";
 // Gamification & Marketplace
 import GamificationDashboard from "@/pages/GamificationDashboard";
 import Marketplace from "@/pages/Marketplace";
@@ -81,6 +82,15 @@ import DeploymentHub from "@/pages/DeploymentHub";
 import AppBuilderMarketplace from "@/pages/AppBuilderMarketplace";
 // BuilderIQ Story Analysis - Analyze user stories for app suggestions
 import BuilderIQStoryAnalysis from "@/pages/BuilderIQStoryAnalysis";
+// Voice Builder - AI Voice Generation
+import VoiceBuilder from "@/pages/VoiceBuilder";
+// Intro & Outro Music Builder
+import IntroOutroBuilder from "@/pages/IntroOutroBuilder";
+// AI Design Studio & Print Shop
+import DesignStudio from "@/pages/DesignStudio";
+// ElevenLabs Voice System
+import { ElevenLabsVoiceProvider } from "@/contexts/ElevenLabsVoiceContext";
+import GlobalVoiceWidget from "@/components/GlobalVoiceWidget";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -149,6 +159,7 @@ function Router() {
       {/* BuilderIQ Routes - App Creation Platform */}
       <Route path="/builderiq" component={BuilderIQ} />
       <Route path="/builderiq/questionnaire" component={BuilderIQQuestionnaire} />
+      <Route path="/builderiq/preview" component={BuilderIQPreview} />
       <Route path="/builderiq/blueprint" component={BuilderIQBlueprint} />
       <Route path="/builderiq/templates" component={BuilderIQTemplates} />
       <Route path="/builderiq/templates/:industry" component={BuilderIQTemplates} />
@@ -207,6 +218,20 @@ function Router() {
       <Route path="/app-builders" component={AppBuilderMarketplace} />
       <Route path="/builders" component={AppBuilderMarketplace} />
 
+      {/* Voice Builder - AI Voice Generation */}
+      <Route path="/voice-builder" component={VoiceBuilder} />
+      <Route path="/voice" component={VoiceBuilder} />
+
+      {/* Intro & Outro Music Builder */}
+      <Route path="/intro-outro-builder" component={IntroOutroBuilder} />
+      <Route path="/intro-builder" component={IntroOutroBuilder} />
+
+      {/* AI Design Studio & Print Shop */}
+      <Route path="/design-studio" component={DesignStudio} />
+      <Route path="/design" component={DesignStudio} />
+      <Route path="/print-shop" component={DesignStudio} />
+      <Route path="/ai-art" component={DesignStudio} />
+
       {/* Fallback route */}
       <Route component={NotFound} />
     </Switch>
@@ -223,8 +248,12 @@ function App() {
             <TooltipProvider>
               <RatingSystemProvider>
                 <GamificationProvider>
-                  <Toaster />
-                  <Router />
+                  <ElevenLabsVoiceProvider>
+                    <Toaster />
+                    <Router />
+                    {/* Global Voice Widget - Available on all pages */}
+                    <GlobalVoiceWidget position="bottom-right" />
+                  </ElevenLabsVoiceProvider>
                 </GamificationProvider>
               </RatingSystemProvider>
             </TooltipProvider>
