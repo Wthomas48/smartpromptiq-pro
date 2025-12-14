@@ -1,0 +1,206 @@
+{
+  "common": {
+    "welcome": "Bienvenido",
+    "signIn": "Iniciar Sesión",
+    "signUp": "Registrarse",
+    "signOut": "Cerrar Sesión",
+    "dashboard": "Panel",
+    "settings": "Configuración",
+    "home": "Inicio",
+    "pricing": "Precios",
+    "contact": "Contacto",
+    "about": "Acerca de",
+    "help": "Ayuda",
+    "search": "Buscar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "submit": "Enviar",
+    "loading": "Cargando...",
+    "success": "¡Éxito!",
+    "error": "Error",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "learnMore": "Saber Más",
+    "getStarted": "Comenzar",
+    "tryFree": "Prueba Gratis",
+    "premium": "Premium",
+    "free": "Gratis",
+    "pro": "Pro",
+    "enterprise": "Empresarial"
+  },
+  "nav": {
+    "home": "Inicio",
+    "features": "Características",
+    "pricing": "Precios",
+    "academy": "Academia",
+    "dashboard": "Panel",
+    "voiceBuilder": "Constructor de Voz",
+    "builderIQ": "BuilderIQ",
+    "marketplace": "Mercado",
+    "documentation": "Documentación",
+    "settings": "Configuración",
+    "billing": "Facturación",
+    "support": "Soporte"
+  },
+  "home": {
+    "hero": {
+      "title": "Plataforma de Ingeniería de Prompts con IA",
+      "subtitle": "Crea, refina y despliega prompts con el poder de la inteligencia artificial",
+      "cta": "Comenzar Gratis",
+      "secondaryCta": "Ver Demo"
+    },
+    "features": {
+      "title": "Características Poderosas",
+      "subtitle": "Todo lo que necesitas para crear prompts perfectos",
+      "ai": {
+        "title": "Generación con IA",
+        "description": "Aprovecha la IA avanzada para generar y refinar prompts automáticamente"
+      },
+      "voice": {
+        "title": "Integración de Voz",
+        "description": "Convierte texto a voz con voces premium de ElevenLabs"
+      },
+      "templates": {
+        "title": "Plantillas Inteligentes",
+        "description": "Accede a cientos de plantillas prediseñadas para cualquier caso"
+      },
+      "analytics": {
+        "title": "Analíticas e Insights",
+        "description": "Rastrea el rendimiento y optimiza tus prompts"
+      }
+    }
+  },
+  "voiceBuilder": {
+    "title": "Constructor de Voz",
+    "subtitle": "Transforma tu texto en voz natural",
+    "stats": {
+      "elevenLabsVoices": "Voces ElevenLabs",
+      "openaiVoices": "Voces OpenAI",
+      "musicTracks": "Pistas Musicales",
+      "genres": "Géneros",
+      "quality": "Calidad Ultra HD"
+    },
+    "tabs": {
+      "textToSpeech": "Texto a Voz",
+      "voiceCloning": "Clonación de Voz",
+      "musicMaker": "Creador de Música",
+      "mixer": "Mezclador de Voz"
+    },
+    "textInput": {
+      "placeholder": "Escribe el texto para convertir a voz...",
+      "characterCount": "caracteres"
+    },
+    "voices": {
+      "selectVoice": "Seleccionar Voz",
+      "preview": "Vista Previa",
+      "favorite": "Favorito",
+      "featured": "Destacado",
+      "trending": "Tendencia"
+    },
+    "generate": {
+      "button": "Generar Voz",
+      "generating": "Generando...",
+      "download": "Descargar Audio"
+    }
+  },
+  "musicMaker": {
+    "title": "Creador de Música con IA",
+    "subtitle": "Crea música libre de regalías para tus proyectos",
+    "genres": {
+      "upbeat": "Animado",
+      "calm": "Tranquilo",
+      "corporate": "Corporativo",
+      "cinematic": "Cinematográfico",
+      "electronic": "Electrónico",
+      "lofi": "Lo-Fi",
+      "hiphop": "Hip-Hop",
+      "jazz": "Jazz",
+      "tropical": "Tropical",
+      "ambient": "Ambiental"
+    },
+    "tracks": {
+      "title": "Pistas Premium",
+      "plays": "reproducciones",
+      "likes": "me gusta",
+      "duration": "Duración"
+    },
+    "generate": {
+      "button": "Generar Música",
+      "generating": "Creando tu pista..."
+    }
+  },
+  "academy": {
+    "title": "Academia SmartPromptiq",
+    "subtitle": "Domina los prompts de IA con cursos de expertos",
+    "courses": "Cursos",
+    "lessons": "Lecciones",
+    "progress": "Tu Progreso",
+    "certificate": "Certificado",
+    "enrolled": "Inscrito",
+    "completed": "Completado",
+    "startCourse": "Iniciar Curso",
+    "continueLearning": "Continuar Aprendiendo"
+  },
+  "pricing": {
+    "title": "Precios Simples y Transparentes",
+    "subtitle": "Elige el plan adecuado para ti",
+    "monthly": "Mensual",
+    "yearly": "Anual",
+    "save": "Ahorra",
+    "popular": "Más Popular",
+    "features": "Características",
+    "included": "Incluido",
+    "getStarted": "Comenzar",
+    "currentPlan": "Plan Actual",
+    "upgrade": "Mejorar"
+  },
+  "dashboard": {
+    "welcome": "Bienvenido de nuevo",
+    "overview": "Resumen",
+    "recentActivity": "Actividad Reciente",
+    "quickActions": "Acciones Rápidas",
+    "stats": {
+      "promptsCreated": "Prompts Creados",
+      "tokensUsed": "Tokens Usados",
+      "savedTemplates": "Plantillas Guardadas"
+    }
+  },
+  "settings": {
+    "title": "Configuración",
+    "profile": "Perfil",
+    "account": "Cuenta",
+    "preferences": "Preferencias",
+    "notifications": "Notificaciones",
+    "language": "Idioma",
+    "theme": "Tema",
+    "security": "Seguridad"
+  },
+  "auth": {
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "forgotPassword": "¿Olvidaste tu Contraseña?",
+    "rememberMe": "Recordarme",
+    "noAccount": "¿No tienes cuenta?",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "orContinueWith": "O continuar con"
+  },
+  "footer": {
+    "copyright": "Todos los derechos reservados",
+    "privacy": "Política de Privacidad",
+    "terms": "Términos de Servicio",
+    "contact": "Contáctanos"
+  },
+  "errors": {
+    "required": "Este campo es obligatorio",
+    "invalidEmail": "Correo electrónico inválido",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "somethingWrong": "Algo salió mal",
+    "tryAgain": "Por favor, intenta de nuevo"
+  }
+}

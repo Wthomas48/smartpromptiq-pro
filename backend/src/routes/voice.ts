@@ -1,7 +1,28 @@
+/**
+ * Voice Generation API Routes
+ *
+ * Phase 1 Implementation:
+ * - Generate speech using ElevenLabs (premium) or OpenAI TTS (standard)
+ * - Upload generated audio to Supabase Storage (voice-output bucket)
+ * - Return signed URL with 10-minute expiry
+ * - No local file storage
+ *
+ * Endpoints:
+ * - POST /api/voice/generate - Generate speech with Supabase storage
+ * - POST /api/voice/generate-cloud - Phase 1: Direct cloud upload endpoint
+ * - GET /api/voice/voices - List available voices
+ */
+
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
 import { API_COSTS, TOKEN_COSTS, getTokenCost, COST_CONTROL_FLAGS } from '../config/costs';
+import {
+  supabase,
+  uploadAudioAndGetSignedUrl,
+  VOICE_OUTPUT_BUCKET,
+  SIGNED_URL_EXPIRY_SECONDS,
+} from '../lib/supabase';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -40,20 +61,64 @@ const VOICE_TOKEN_COST_PER_100_CHARS = 10;
 const MAX_FREE_CHARS = 500;
 const MAX_CHARS_PER_REQUEST = 4096;
 
+// =============================================================================
+// ELEVENLABS CONFIGURATION
+// =============================================================================
+
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
+
+// ElevenLabs premium voice IDs
+const ELEVENLABS_VOICES: Record<string, { id: string; name: string; description: string }> = {
+  'rachel': { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', description: 'Calm, young female' },
+  'adam': { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', description: 'Deep, mature male' },
+  'antoni': { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', description: 'Well-rounded male' },
+  'bella': { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', description: 'Soft, young female' },
+  'josh': { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', description: 'Deep, mature male' },
+  'sam': { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam', description: 'Raspy, young male' },
+  'charlotte': { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', description: 'Seductive female' },
+  'brian': { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian', description: 'Deep, narrator male' },
+};
+
+// =============================================================================
+// TYPE DEFINITIONS
+// =============================================================================
+
 // Available OpenAI TTS voices
 const AVAILABLE_VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'] as const;
 type VoiceId = typeof AVAILABLE_VOICES[number];
+type TTSProvider = 'openai' | 'elevenlabs';
 
 interface VoiceGenerationRequest {
   text: string;
-  voice?: VoiceId;
+  voice?: VoiceId | string;
+  provider?: TTSProvider;
   style?: string;
   settings?: {
     rate?: number;
     pitch?: number;
     volume?: number;
+    stability?: number;
+    similarity_boost?: number;
   };
   category?: string;
+  storeInCloud?: boolean;  // Phase 1: Upload to Supabase and return signed URL
+}
+
+// Phase 1 JSON response format
+interface VoiceGenerationResponse {
+  success: boolean;
+  audioUrl: string;           // Signed URL from Supabase (or base64 fallback)
+  isSignedUrl: boolean;       // True if audioUrl is a Supabase signed URL
+  expiresIn?: number;         // Seconds until signed URL expires (600 = 10 min)
+  filePath?: string;          // Path in Supabase Storage
+  format: string;             // Audio format (mp3)
+  duration: number;           // Estimated duration in seconds
+  voice: string;              // Voice used
+  provider: TTSProvider;      // Provider used
+  tokensUsed: number;         // Token cost
+  charCount: number;          // Input character count
+  error?: string;             // Error message if any
 }
 
 interface ScriptEnhanceRequest {
@@ -61,6 +126,342 @@ interface ScriptEnhanceRequest {
   category?: string;
   style?: string;
 }
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Generate speech using ElevenLabs API
+ * Returns audio buffer or error
+ */
+async function generateWithElevenLabs(
+  text: string,
+  voiceName: string,
+  settings?: { stability?: number; similarity_boost?: number }
+): Promise<{ buffer: Buffer } | { error: string }> {
+  // Check if ElevenLabs is configured
+  if (!ELEVENLABS_API_KEY) {
+    return { error: 'ElevenLabs API key not configured. Add ELEVENLABS_API_KEY to .env' };
+  }
+
+  // Get voice ID from name, default to Rachel
+  const voice = ELEVENLABS_VOICES[voiceName.toLowerCase()] || ELEVENLABS_VOICES['rachel'];
+
+  try {
+    console.log(`🎙️ Generating ElevenLabs speech: voice=${voice.name}, chars=${text.length}`);
+
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/text-to-speech/${voice.id}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: settings?.stability ?? 0.5,
+          similarity_boost: settings?.similarity_boost ?? 0.75,
+          style: 0,
+          use_speaker_boost: true,
+        },
+      }),
+    });
+
+    // Handle API errors
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ ElevenLabs API error:', response.status, errorText);
+      return { error: `ElevenLabs API error: ${response.status} - ${errorText}` };
+    }
+
+    // Convert response to buffer
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    console.log(`✅ ElevenLabs speech generated: ${buffer.length} bytes`);
+    return { buffer };
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('❌ ElevenLabs generation failed:', errorMessage);
+    return { error: `ElevenLabs generation failed: ${errorMessage}` };
+  }
+}
+
+/**
+ * Generate speech using OpenAI TTS API
+ * Returns audio buffer or error
+ */
+async function generateWithOpenAI(
+  text: string,
+  voice: VoiceId,
+  speed: number = 1.0
+): Promise<{ buffer: Buffer } | { error: string }> {
+  try {
+    console.log(`🎙️ Generating OpenAI TTS: voice=${voice}, chars=${text.length}`);
+
+    const response = await openai.audio.speech.create({
+      model: 'tts-1-hd',  // High-definition quality
+      voice: voice,
+      input: text,
+      response_format: 'mp3',
+      speed: speed,
+    });
+
+    // Convert response to buffer
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    console.log(`✅ OpenAI TTS generated: ${buffer.length} bytes`);
+    return { buffer };
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('❌ OpenAI TTS generation failed:', errorMessage);
+    return { error: `OpenAI TTS generation failed: ${errorMessage}` };
+  }
+}
+
+// =============================================================================
+// PHASE 1 ENDPOINT: Generate Speech with Supabase Storage
+// =============================================================================
+
+/**
+ * POST /api/voice/generate-cloud
+ *
+ * Phase 1 Implementation:
+ * 1. Generate speech using ElevenLabs OR OpenAI TTS
+ * 2. Upload generated .mp3 to Supabase Storage (voice-output bucket)
+ * 3. Generate signed URL (10-minute expiry)
+ * 4. Return JSON response with signed URL
+ *
+ * Request body:
+ * - text: string (required) - Text to convert to speech
+ * - provider: 'elevenlabs' | 'openai' (default: 'openai')
+ * - voice: string - Voice name/ID
+ * - settings: object - Voice settings (stability, rate, etc.)
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "audioUrl": "https://...supabase.co/storage/v1/object/sign/voice-output/...",
+ *   "isSignedUrl": true,
+ *   "expiresIn": 600,
+ *   "filePath": "2024-12-14/1702567890123-voice.mp3",
+ *   "format": "mp3",
+ *   "duration": 15,
+ *   "voice": "nova",
+ *   "provider": "openai",
+ *   "tokensUsed": 50,
+ *   "charCount": 500
+ * }
+ */
+
+// Primary endpoint handler for Phase 1 voice generation
+const handleVoiceGeneration = async (req: Request, res: Response) => {
+  try {
+    // Extract request parameters
+    const {
+      text,
+      provider = 'openai',
+      voice = provider === 'elevenlabs' ? 'rachel' : 'nova',
+      settings = {},
+    } = req.body as VoiceGenerationRequest;
+
+    // ==========================================================================
+    // INPUT VALIDATION
+    // ==========================================================================
+
+    // Validate text is provided
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Text is required and must be a string',
+      });
+    }
+
+    // Validate text length
+    const maxChars = 5000;
+    if (text.length > maxChars) {
+      return res.status(400).json({
+        success: false,
+        error: `Text too long. Maximum ${maxChars} characters allowed. Received: ${text.length}`,
+      });
+    }
+
+    // Validate text is not empty after trimming
+    if (text.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Text cannot be empty',
+      });
+    }
+
+    // Validate provider
+    if (provider !== 'openai' && provider !== 'elevenlabs') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid provider. Use "openai" or "elevenlabs"',
+      });
+    }
+
+    // Get user ID if authenticated
+    const userId = (req as any).userId || null;
+
+    console.log(`🎙️ Phase 1 Voice Generation: provider=${provider}, voice=${voice}, chars=${text.length}`);
+
+    // ==========================================================================
+    // STEP 1: GENERATE AUDIO
+    // ==========================================================================
+
+    let audioResult: { buffer: Buffer } | { error: string };
+
+    if (provider === 'elevenlabs') {
+      // Generate with ElevenLabs (premium)
+      audioResult = await generateWithElevenLabs(text, voice, {
+        stability: settings.stability,
+        similarity_boost: settings.similarity_boost,
+      });
+    } else {
+      // Generate with OpenAI TTS (standard)
+      const openaiVoice = AVAILABLE_VOICES.includes(voice as VoiceId)
+        ? (voice as VoiceId)
+        : 'nova';
+      audioResult = await generateWithOpenAI(text, openaiVoice, settings.rate || 1.0);
+    }
+
+    // Check for generation error
+    if ('error' in audioResult) {
+      return res.status(500).json({
+        success: false,
+        error: audioResult.error,
+      });
+    }
+
+    const audioBuffer = audioResult.buffer;
+
+    // ==========================================================================
+    // STEP 2: UPLOAD TO SUPABASE STORAGE
+    // ==========================================================================
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const fileName = `voice-${timestamp}.mp3`;
+
+    // Upload to Supabase and get signed URL
+    const uploadResult = await uploadAudioAndGetSignedUrl(
+      audioBuffer,
+      fileName,
+      'audio/mpeg'
+    );
+
+    // Check for upload error
+    if (!uploadResult.success) {
+      console.error('❌ Supabase upload failed:', uploadResult.error);
+
+      // Fallback: Return base64 if Supabase upload fails
+      console.log('⚠️ Falling back to base64 response');
+      const base64Audio = audioBuffer.toString('base64');
+
+      return res.json({
+        success: true,
+        audioUrl: `data:audio/mp3;base64,${base64Audio}`,
+        isSignedUrl: false,
+        format: 'mp3',
+        duration: Math.ceil(text.trim().split(/\s+/).length / 150 * 60),
+        voice,
+        provider,
+        tokensUsed: Math.ceil(text.length / 100) * VOICE_TOKEN_COST_PER_100_CHARS,
+        charCount: text.length,
+        error: `Cloud upload failed: ${uploadResult.error}. Returned base64 instead.`,
+      } as VoiceGenerationResponse);
+    }
+
+    // ==========================================================================
+    // STEP 3: BUILD SUCCESS RESPONSE
+    // ==========================================================================
+
+    // Calculate metrics
+    const wordCount = text.trim().split(/\s+/).length;
+    const estimatedDuration = Math.ceil(wordCount / 150 * 60); // ~150 words per minute
+    const tokenCost = Math.ceil(text.length / 100) * VOICE_TOKEN_COST_PER_100_CHARS;
+
+    // Log API cost for tracking
+    const actualAPICost = provider === 'elevenlabs'
+      ? (text.length / 1000) * 0.03  // ElevenLabs: ~$0.03 per 1K chars
+      : (text.length / 1000000) * (API_COSTS.openai['tts-1-hd'] || 30);  // OpenAI
+
+    await logVoiceCost(userId, 'generate-cloud', actualAPICost, tokenCost, provider === 'elevenlabs' ? 'eleven_multilingual_v2' : 'tts-1-hd');
+
+    // Update user tokens if authenticated
+    if (userId) {
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            tokenBalance: { decrement: tokenCost },
+            tokensUsed: { increment: tokenCost },
+          },
+        });
+      } catch (err) {
+        console.warn('⚠️ Failed to update user tokens:', err);
+      }
+    }
+
+    console.log(`✅ Phase 1 complete: Signed URL generated (expires in ${SIGNED_URL_EXPIRY_SECONDS}s)`);
+
+    // Return Phase 1 JSON response
+    const response: VoiceGenerationResponse = {
+      success: true,
+      audioUrl: uploadResult.signedUrl!,
+      isSignedUrl: true,
+      expiresIn: uploadResult.expiresIn,
+      filePath: uploadResult.filePath,
+      format: 'mp3',
+      duration: estimatedDuration,
+      voice,
+      provider,
+      tokensUsed: tokenCost,
+      charCount: text.length,
+    };
+
+    res.json(response);
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('❌ Phase 1 voice generation error:', errorMessage);
+
+    res.status(500).json({
+      success: false,
+      error: `Voice generation failed: ${errorMessage}`,
+    });
+  }
+};
+
+// =============================================================================
+// ROUTE REGISTRATIONS - Phase 1
+// =============================================================================
+
+/**
+ * POST /api/voice
+ * Primary endpoint for voice generation (Phase 1)
+ * Accepts: { text: string, provider?: 'openai' | 'elevenlabs', voice?: string }
+ * Returns: { success: true, audioUrl: string, expiresIn: 600, ... }
+ */
+router.post('/', handleVoiceGeneration);
+
+/**
+ * POST /api/voice/generate-cloud
+ * Alias for /api/voice (backwards compatibility)
+ */
+router.post('/generate-cloud', handleVoiceGeneration);
+
+// =============================================================================
+// ORIGINAL ENDPOINTS (maintained for backwards compatibility)
+// =============================================================================
 
 /**
  * POST /api/voice/generate

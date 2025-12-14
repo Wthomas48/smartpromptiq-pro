@@ -17,6 +17,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.62.0",
     "@prisma/client": "^5.6.0",
+    "@supabase/supabase-js": "^2.87.1",
     "@types/node-fetch": "^2.6.13",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
@@ -37,7 +38,8 @@
     "prisma": "^5.6.0",
     "stripe": "^14.7.0",
     "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -47,6 +49,7 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/morgan": "^1.9.9",
     "@types/nodemailer": "^6.4.14",
+    "@types/uuid": "^10.0.0",
     "ts-node-dev": "^2.0.0"
   },
   "type": "commonjs",

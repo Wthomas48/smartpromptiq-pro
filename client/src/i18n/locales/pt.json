@@ -1,0 +1,151 @@
+{
+  "common": {
+    "welcome": "Bem-vindo",
+    "signIn": "Entrar",
+    "signUp": "Cadastrar",
+    "signOut": "Sair",
+    "dashboard": "Painel",
+    "settings": "Configurações",
+    "home": "Início",
+    "pricing": "Preços",
+    "contact": "Contato",
+    "about": "Sobre",
+    "help": "Ajuda",
+    "search": "Buscar",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "create": "Criar",
+    "submit": "Enviar",
+    "loading": "Carregando...",
+    "success": "Sucesso!",
+    "error": "Erro",
+    "close": "Fechar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "previous": "Anterior",
+    "learnMore": "Saiba Mais",
+    "getStarted": "Começar",
+    "tryFree": "Teste Grátis",
+    "premium": "Premium",
+    "free": "Grátis",
+    "pro": "Pro",
+    "enterprise": "Empresarial"
+  },
+  "nav": {
+    "home": "Início",
+    "features": "Recursos",
+    "pricing": "Preços",
+    "academy": "Academia",
+    "dashboard": "Painel",
+    "voiceBuilder": "Construtor de Voz",
+    "builderIQ": "BuilderIQ",
+    "marketplace": "Marketplace",
+    "documentation": "Documentação",
+    "settings": "Configurações",
+    "billing": "Faturamento",
+    "support": "Suporte"
+  },
+  "home": {
+    "hero": {
+      "title": "Plataforma de Engenharia de Prompts com IA",
+      "subtitle": "Crie, refine e implante prompts com o poder da inteligência artificial",
+      "cta": "Começar Grátis",
+      "secondaryCta": "Ver Demo"
+    },
+    "features": {
+      "title": "Recursos Poderosos",
+      "subtitle": "Tudo que você precisa para criar prompts perfeitos",
+      "ai": {
+        "title": "Geração com IA",
+        "description": "Aproveite a IA avançada para gerar e refinar prompts automaticamente"
+      },
+      "voice": {
+        "title": "Integração de Voz",
+        "description": "Converta texto em fala com vozes premium da ElevenLabs"
+      },
+      "templates": {
+        "title": "Templates Inteligentes",
+        "description": "Acesse centenas de templates pré-construídos para qualquer caso"
+      },
+      "analytics": {
+        "title": "Análises e Insights",
+        "description": "Acompanhe o desempenho e otimize seus prompts"
+      }
+    }
+  },
+  "voiceBuilder": {
+    "title": "Construtor de Voz",
+    "subtitle": "Transforme seu texto em fala natural",
+    "stats": {
+      "elevenLabsVoices": "Vozes ElevenLabs",
+      "openaiVoices": "Vozes OpenAI",
+      "musicTracks": "Faixas Musicais",
+      "genres": "Gêneros",
+      "quality": "Qualidade Ultra HD"
+    }
+  },
+  "musicMaker": {
+    "title": "Criador de Música com IA",
+    "subtitle": "Crie música livre de royalties para seus projetos",
+    "genres": {
+      "upbeat": "Animado",
+      "calm": "Calmo",
+      "corporate": "Corporativo",
+      "cinematic": "Cinematográfico",
+      "electronic": "Eletrônico",
+      "lofi": "Lo-Fi",
+      "hiphop": "Hip-Hop",
+      "jazz": "Jazz",
+      "tropical": "Tropical",
+      "ambient": "Ambiente"
+    }
+  },
+  "academy": {
+    "title": "Academia SmartPromptiq",
+    "subtitle": "Domine prompts de IA com cursos de especialistas",
+    "courses": "Cursos",
+    "lessons": "Aulas",
+    "progress": "Seu Progresso",
+    "certificate": "Certificado"
+  },
+  "pricing": {
+    "title": "Preços Simples e Transparentes",
+    "subtitle": "Escolha o plano certo para você",
+    "monthly": "Mensal",
+    "yearly": "Anual",
+    "save": "Economize",
+    "popular": "Mais Popular"
+  },
+  "settings": {
+    "title": "Configurações",
+    "profile": "Perfil",
+    "account": "Conta",
+    "preferences": "Preferências",
+    "language": "Idioma",
+    "theme": "Tema"
+  },
+  "auth": {
+    "email": "E-mail",
+    "password": "Senha",
+    "confirmPassword": "Confirmar Senha",
+    "forgotPassword": "Esqueceu a Senha?",
+    "rememberMe": "Lembrar-me",
+    "noAccount": "Não tem conta?",
+    "haveAccount": "Já tem conta?"
+  },
+  "footer": {
+    "copyright": "Todos os direitos reservados",
+    "privacy": "Política de Privacidade",
+    "terms": "Termos de Serviço",
+    "contact": "Contate-nos"
+  },
+  "errors": {
+    "required": "Este campo é obrigatório",
+    "invalidEmail": "E-mail inválido",
+    "passwordMismatch": "As senhas não coincidem",
+    "somethingWrong": "Algo deu errado",
+    "tryAgain": "Por favor, tente novamente"
+  }
+}

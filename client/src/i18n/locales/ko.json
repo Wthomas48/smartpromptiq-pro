@@ -1,0 +1,151 @@
+{
+  "common": {
+    "welcome": "환영합니다",
+    "signIn": "로그인",
+    "signUp": "회원가입",
+    "signOut": "로그아웃",
+    "dashboard": "대시보드",
+    "settings": "설정",
+    "home": "홈",
+    "pricing": "가격",
+    "contact": "문의하기",
+    "about": "소개",
+    "help": "도움말",
+    "search": "검색",
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "수정",
+    "create": "만들기",
+    "submit": "제출",
+    "loading": "로딩 중...",
+    "success": "성공!",
+    "error": "오류",
+    "close": "닫기",
+    "back": "뒤로",
+    "next": "다음",
+    "previous": "이전",
+    "learnMore": "더 알아보기",
+    "getStarted": "시작하기",
+    "tryFree": "무료 체험",
+    "premium": "프리미엄",
+    "free": "무료",
+    "pro": "프로",
+    "enterprise": "기업용"
+  },
+  "nav": {
+    "home": "홈",
+    "features": "기능",
+    "pricing": "가격",
+    "academy": "아카데미",
+    "dashboard": "대시보드",
+    "voiceBuilder": "보이스 빌더",
+    "builderIQ": "BuilderIQ",
+    "marketplace": "마켓플레이스",
+    "documentation": "문서",
+    "settings": "설정",
+    "billing": "결제",
+    "support": "지원"
+  },
+  "home": {
+    "hero": {
+      "title": "AI 기반 프롬프트 엔지니어링 플랫폼",
+      "subtitle": "인공지능의 힘으로 프롬프트를 생성, 개선 및 배포하세요",
+      "cta": "무료로 시작하기",
+      "secondaryCta": "데모 보기"
+    },
+    "features": {
+      "title": "강력한 기능",
+      "subtitle": "완벽한 프롬프트를 만들기 위해 필요한 모든 것",
+      "ai": {
+        "title": "AI 기반 생성",
+        "description": "고급 AI를 활용하여 프롬프트를 자동으로 생성하고 개선하세요"
+      },
+      "voice": {
+        "title": "음성 통합",
+        "description": "프리미엄 ElevenLabs 음성으로 텍스트를 음성으로 변환하세요"
+      },
+      "templates": {
+        "title": "스마트 템플릿",
+        "description": "모든 사용 사례에 대한 수백 개의 사전 제작 템플릿에 접근하세요"
+      },
+      "analytics": {
+        "title": "분석 및 인사이트",
+        "description": "성능을 추적하고 프롬프트를 최적화하세요"
+      }
+    }
+  },
+  "voiceBuilder": {
+    "title": "보이스 빌더",
+    "subtitle": "텍스트를 자연스러운 음성으로 변환하세요",
+    "stats": {
+      "elevenLabsVoices": "ElevenLabs 음성",
+      "openaiVoices": "OpenAI 음성",
+      "musicTracks": "음악 트랙",
+      "genres": "장르",
+      "quality": "울트라 HD 품질"
+    }
+  },
+  "musicMaker": {
+    "title": "AI 음악 메이커",
+    "subtitle": "프로젝트를 위한 로열티 프리 음악을 만드세요",
+    "genres": {
+      "upbeat": "업비트",
+      "calm": "잔잔한",
+      "corporate": "기업",
+      "cinematic": "시네마틱",
+      "electronic": "일렉트로닉",
+      "lofi": "로파이",
+      "hiphop": "힙합",
+      "jazz": "재즈",
+      "tropical": "트로피컬",
+      "ambient": "앰비언트"
+    }
+  },
+  "academy": {
+    "title": "SmartPromptiq 아카데미",
+    "subtitle": "전문가 강좌로 AI 프롬프팅을 마스터하세요",
+    "courses": "강좌",
+    "lessons": "레슨",
+    "progress": "진행 상황",
+    "certificate": "인증서"
+  },
+  "pricing": {
+    "title": "간단하고 투명한 가격",
+    "subtitle": "나에게 맞는 플랜을 선택하세요",
+    "monthly": "월간",
+    "yearly": "연간",
+    "save": "절약",
+    "popular": "가장 인기"
+  },
+  "settings": {
+    "title": "설정",
+    "profile": "프로필",
+    "account": "계정",
+    "preferences": "환경 설정",
+    "language": "언어",
+    "theme": "테마"
+  },
+  "auth": {
+    "email": "이메일",
+    "password": "비밀번호",
+    "confirmPassword": "비밀번호 확인",
+    "forgotPassword": "비밀번호를 잊으셨나요?",
+    "rememberMe": "로그인 유지",
+    "noAccount": "계정이 없으신가요?",
+    "haveAccount": "이미 계정이 있으신가요?"
+  },
+  "footer": {
+    "copyright": "모든 권리 보유",
+    "privacy": "개인정보 보호정책",
+    "terms": "이용약관",
+    "contact": "문의하기"
+  },
+  "errors": {
+    "required": "필수 항목입니다",
+    "invalidEmail": "유효하지 않은 이메일 주소",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다",
+    "somethingWrong": "문제가 발생했습니다",
+    "tryAgain": "다시 시도해 주세요"
+  }
+}

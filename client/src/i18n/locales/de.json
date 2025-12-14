@@ -1,0 +1,206 @@
+{
+  "common": {
+    "welcome": "Willkommen",
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "signOut": "Abmelden",
+    "dashboard": "Dashboard",
+    "settings": "Einstellungen",
+    "home": "Startseite",
+    "pricing": "Preise",
+    "contact": "Kontakt",
+    "about": "Über uns",
+    "help": "Hilfe",
+    "search": "Suchen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "create": "Erstellen",
+    "submit": "Absenden",
+    "loading": "Laden...",
+    "success": "Erfolg!",
+    "error": "Fehler",
+    "close": "Schließen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Zurück",
+    "learnMore": "Mehr Erfahren",
+    "getStarted": "Loslegen",
+    "tryFree": "Kostenlos Testen",
+    "premium": "Premium",
+    "free": "Kostenlos",
+    "pro": "Pro",
+    "enterprise": "Unternehmen"
+  },
+  "nav": {
+    "home": "Startseite",
+    "features": "Funktionen",
+    "pricing": "Preise",
+    "academy": "Akademie",
+    "dashboard": "Dashboard",
+    "voiceBuilder": "Stimmen-Builder",
+    "builderIQ": "BuilderIQ",
+    "marketplace": "Marktplatz",
+    "documentation": "Dokumentation",
+    "settings": "Einstellungen",
+    "billing": "Abrechnung",
+    "support": "Support"
+  },
+  "home": {
+    "hero": {
+      "title": "KI-gestützte Prompt-Engineering-Plattform",
+      "subtitle": "Erstellen, verfeinern und deployen Sie Prompts mit der Kraft der KI",
+      "cta": "Kostenlos Starten",
+      "secondaryCta": "Demo Ansehen"
+    },
+    "features": {
+      "title": "Leistungsstarke Funktionen",
+      "subtitle": "Alles, was Sie für perfekte Prompts brauchen",
+      "ai": {
+        "title": "KI-gestützte Generierung",
+        "description": "Nutzen Sie fortschrittliche KI zum automatischen Generieren und Verfeinern von Prompts"
+      },
+      "voice": {
+        "title": "Sprachintegration",
+        "description": "Wandeln Sie Text in Sprache mit Premium-ElevenLabs-Stimmen um"
+      },
+      "templates": {
+        "title": "Intelligente Vorlagen",
+        "description": "Zugriff auf Hunderte vorgefertigter Vorlagen für jeden Anwendungsfall"
+      },
+      "analytics": {
+        "title": "Analysen & Insights",
+        "description": "Verfolgen Sie die Leistung und optimieren Sie Ihre Prompts"
+      }
+    }
+  },
+  "voiceBuilder": {
+    "title": "Stimmen-Builder",
+    "subtitle": "Verwandeln Sie Ihren Text in natürlich klingende Sprache",
+    "stats": {
+      "elevenLabsVoices": "ElevenLabs-Stimmen",
+      "openaiVoices": "OpenAI-Stimmen",
+      "musicTracks": "Musik-Tracks",
+      "genres": "Genres",
+      "quality": "Ultra-HD-Qualität"
+    },
+    "tabs": {
+      "textToSpeech": "Text zu Sprache",
+      "voiceCloning": "Stimmenklonen",
+      "musicMaker": "Musik-Maker",
+      "mixer": "Stimmen-Mixer"
+    },
+    "textInput": {
+      "placeholder": "Text eingeben zum Umwandeln in Sprache...",
+      "characterCount": "Zeichen"
+    },
+    "voices": {
+      "selectVoice": "Stimme Auswählen",
+      "preview": "Vorschau",
+      "favorite": "Favorit",
+      "featured": "Empfohlen",
+      "trending": "Trend"
+    },
+    "generate": {
+      "button": "Sprache Generieren",
+      "generating": "Generiere...",
+      "download": "Audio Herunterladen"
+    }
+  },
+  "musicMaker": {
+    "title": "KI-Musik-Maker",
+    "subtitle": "Erstellen Sie lizenzfreie Musik für Ihre Projekte",
+    "genres": {
+      "upbeat": "Beschwingt",
+      "calm": "Ruhig",
+      "corporate": "Corporate",
+      "cinematic": "Cinematisch",
+      "electronic": "Elektronisch",
+      "lofi": "Lo-Fi",
+      "hiphop": "Hip-Hop",
+      "jazz": "Jazz",
+      "tropical": "Tropical",
+      "ambient": "Ambient"
+    },
+    "tracks": {
+      "title": "Premium-Tracks",
+      "plays": "Aufrufe",
+      "likes": "Likes",
+      "duration": "Dauer"
+    },
+    "generate": {
+      "button": "Musik Generieren",
+      "generating": "Erstelle deinen Track..."
+    }
+  },
+  "academy": {
+    "title": "SmartPromptiq Akademie",
+    "subtitle": "Meistern Sie KI-Prompts mit Expertenkursen",
+    "courses": "Kurse",
+    "lessons": "Lektionen",
+    "progress": "Ihr Fortschritt",
+    "certificate": "Zertifikat",
+    "enrolled": "Eingeschrieben",
+    "completed": "Abgeschlossen",
+    "startCourse": "Kurs Starten",
+    "continueLearning": "Weiter Lernen"
+  },
+  "pricing": {
+    "title": "Einfache, Transparente Preise",
+    "subtitle": "Wählen Sie den richtigen Plan für Sie",
+    "monthly": "Monatlich",
+    "yearly": "Jährlich",
+    "save": "Sparen",
+    "popular": "Am Beliebtesten",
+    "features": "Funktionen",
+    "included": "Enthalten",
+    "getStarted": "Loslegen",
+    "currentPlan": "Aktueller Plan",
+    "upgrade": "Upgrade"
+  },
+  "dashboard": {
+    "welcome": "Willkommen zurück",
+    "overview": "Übersicht",
+    "recentActivity": "Letzte Aktivität",
+    "quickActions": "Schnellaktionen",
+    "stats": {
+      "promptsCreated": "Erstellte Prompts",
+      "tokensUsed": "Verwendete Tokens",
+      "savedTemplates": "Gespeicherte Vorlagen"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "profile": "Profil",
+    "account": "Konto",
+    "preferences": "Präferenzen",
+    "notifications": "Benachrichtigungen",
+    "language": "Sprache",
+    "theme": "Design",
+    "security": "Sicherheit"
+  },
+  "auth": {
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort Bestätigen",
+    "forgotPassword": "Passwort Vergessen?",
+    "rememberMe": "Angemeldet bleiben",
+    "noAccount": "Noch kein Konto?",
+    "haveAccount": "Bereits ein Konto?",
+    "orContinueWith": "Oder fortfahren mit"
+  },
+  "footer": {
+    "copyright": "Alle Rechte vorbehalten",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "contact": "Kontaktieren Sie uns"
+  },
+  "errors": {
+    "required": "Dieses Feld ist erforderlich",
+    "invalidEmail": "Ungültige E-Mail-Adresse",
+    "passwordMismatch": "Passwörter stimmen nicht überein",
+    "somethingWrong": "Etwas ist schief gelaufen",
+    "tryAgain": "Bitte versuchen Sie es erneut"
+  }
+}

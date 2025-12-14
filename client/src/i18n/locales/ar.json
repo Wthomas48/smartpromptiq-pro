@@ -1,0 +1,151 @@
+{
+  "common": {
+    "welcome": "مرحباً",
+    "signIn": "تسجيل الدخول",
+    "signUp": "إنشاء حساب",
+    "signOut": "تسجيل الخروج",
+    "dashboard": "لوحة التحكم",
+    "settings": "الإعدادات",
+    "home": "الرئيسية",
+    "pricing": "الأسعار",
+    "contact": "اتصل بنا",
+    "about": "حول",
+    "help": "المساعدة",
+    "search": "بحث",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "submit": "إرسال",
+    "loading": "جاري التحميل...",
+    "success": "نجاح!",
+    "error": "خطأ",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق",
+    "learnMore": "اعرف المزيد",
+    "getStarted": "ابدأ الآن",
+    "tryFree": "جرب مجاناً",
+    "premium": "مميز",
+    "free": "مجاني",
+    "pro": "احترافي",
+    "enterprise": "المؤسسات"
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "features": "المميزات",
+    "pricing": "الأسعار",
+    "academy": "الأكاديمية",
+    "dashboard": "لوحة التحكم",
+    "voiceBuilder": "منشئ الصوت",
+    "builderIQ": "BuilderIQ",
+    "marketplace": "السوق",
+    "documentation": "التوثيق",
+    "settings": "الإعدادات",
+    "billing": "الفواتير",
+    "support": "الدعم"
+  },
+  "home": {
+    "hero": {
+      "title": "منصة هندسة البرومبت بالذكاء الاصطناعي",
+      "subtitle": "أنشئ وحسّن وانشر البرومبتات بقوة الذكاء الاصطناعي",
+      "cta": "ابدأ مجاناً",
+      "secondaryCta": "شاهد العرض"
+    },
+    "features": {
+      "title": "ميزات قوية",
+      "subtitle": "كل ما تحتاجه لإنشاء برومبتات مثالية",
+      "ai": {
+        "title": "توليد بالذكاء الاصطناعي",
+        "description": "استفد من الذكاء الاصطناعي المتقدم لتوليد وتحسين البرومبتات تلقائياً"
+      },
+      "voice": {
+        "title": "تكامل الصوت",
+        "description": "حوّل النص إلى كلام مع أصوات ElevenLabs المميزة"
+      },
+      "templates": {
+        "title": "قوالب ذكية",
+        "description": "الوصول إلى مئات القوالب الجاهزة لأي حالة استخدام"
+      },
+      "analytics": {
+        "title": "التحليلات والرؤى",
+        "description": "تتبع الأداء وحسّن برومبتاتك"
+      }
+    }
+  },
+  "voiceBuilder": {
+    "title": "منشئ الصوت",
+    "subtitle": "حوّل نصك إلى كلام طبيعي",
+    "stats": {
+      "elevenLabsVoices": "أصوات ElevenLabs",
+      "openaiVoices": "أصوات OpenAI",
+      "musicTracks": "مقاطع موسيقية",
+      "genres": "أنواع",
+      "quality": "جودة فائقة"
+    }
+  },
+  "musicMaker": {
+    "title": "صانع الموسيقى بالذكاء الاصطناعي",
+    "subtitle": "أنشئ موسيقى خالية من حقوق الملكية لمشاريعك",
+    "genres": {
+      "upbeat": "حيوي",
+      "calm": "هادئ",
+      "corporate": "مؤسسي",
+      "cinematic": "سينمائي",
+      "electronic": "إلكتروني",
+      "lofi": "لو-فاي",
+      "hiphop": "هيب هوب",
+      "jazz": "جاز",
+      "tropical": "استوائي",
+      "ambient": "محيطي"
+    }
+  },
+  "academy": {
+    "title": "أكاديمية SmartPromptiq",
+    "subtitle": "أتقن برومبتات الذكاء الاصطناعي مع دورات الخبراء",
+    "courses": "الدورات",
+    "lessons": "الدروس",
+    "progress": "تقدمك",
+    "certificate": "الشهادة"
+  },
+  "pricing": {
+    "title": "أسعار بسيطة وشفافة",
+    "subtitle": "اختر الخطة المناسبة لك",
+    "monthly": "شهري",
+    "yearly": "سنوي",
+    "save": "وفّر",
+    "popular": "الأكثر شعبية"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "account": "الحساب",
+    "preferences": "التفضيلات",
+    "language": "اللغة",
+    "theme": "المظهر"
+  },
+  "auth": {
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "rememberMe": "تذكرني",
+    "noAccount": "ليس لديك حساب؟",
+    "haveAccount": "لديك حساب بالفعل؟"
+  },
+  "footer": {
+    "copyright": "جميع الحقوق محفوظة",
+    "privacy": "سياسة الخصوصية",
+    "terms": "شروط الخدمة",
+    "contact": "اتصل بنا"
+  },
+  "errors": {
+    "required": "هذا الحقل مطلوب",
+    "invalidEmail": "بريد إلكتروني غير صالح",
+    "passwordMismatch": "كلمات المرور غير متطابقة",
+    "somethingWrong": "حدث خطأ ما",
+    "tryAgain": "يرجى المحاولة مرة أخرى"
+  }
+}

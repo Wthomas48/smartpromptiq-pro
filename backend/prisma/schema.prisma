@@ -269,27 +269,32 @@ model UsageLog {
   userId String
 
   // Request details
-  endpoint String // /api/prompts/generate, /api/prompts/refine, etc.
-  method   String // GET, POST, PUT, DELETE
+  endpoint String? // /api/prompts/generate, /api/prompts/refine, etc.
+  method   String? // GET, POST, PUT, DELETE
+  action   String? // voice:generate, music:generate, etc.
 
   // Usage metrics
   tokensConsumed   Int     @default(0)
+  tokensUsed       Int     @default(0) // Alias for cost tracking
   promptComplexity String? // simple, standard, complex, custom
   model            String? // AI model used
   category         String? // Prompt category
+  provider         String? // openai, elevenlabs, suno, etc.
 
   // Performance metrics
   responseTime Int? // Response time in milliseconds
   success      Boolean @default(true)
   errorCode    String? // Error code if failed
 
-  // Cost tracking (in cents)
-  costInCents   Int @default(0)
-  marginInCents Int @default(0) // Revenue - Cost
+  // Cost tracking
+  costInCents   Int     @default(0)
+  cost          Float   @default(0) // Actual API cost in dollars
+  marginInCents Int     @default(0) // Revenue - Cost
 
   // Request metadata
   userAgent String?
   ipAddress String?
+  metadata  String? // JSON string for additional data
 
   // Rate limiting
   rateLimitHit  Boolean @default(false)
@@ -302,6 +307,8 @@ model UsageLog {
   @@index([userId, createdAt])
   @@index([userId, endpoint])
   @@index([createdAt])
+  @@index([provider, createdAt])
+  @@index([action, createdAt])
   @@map("usage_logs")
 }
 
@@ -997,4 +1004,305 @@ model ReferralReward {
   @@index([type])
   @@index([status])
   @@map("referral_rewards")
+}
+
+// ============================================
+// VOICE BUILDER SYSTEM
+// ============================================
+
+model VoiceProject {
+  id     String @id @default(cuid())
+  userId String
+
+  // Project details
+  title       String
+  description String?
+  category    String? // marketing, education, business, ecommerce, healthcare, entertainment, apps, personal
+
+  // Script content
+  script String // The text to be converted to voice
+
+  // Voice configuration
+  voiceId       String  // AI voice ID (nova, onyx, echo, etc.)
+  voicePersona  String? // Celebrity-style persona name (Victoria Sterling, Marcus Vox, etc.)
+  voiceStyle    String? // professional, friendly, energetic, calm, dramatic, storytelling
+  voiceSettings String? // JSON: { rate, pitch, volume, stability, clarity }
+
+  // Generated audio
+  audioUrl      String? // URL/path to generated audio file
+  audioFormat   String  @default("mp3") // mp3, wav, ogg
+  audioDuration Int?    // Duration in seconds
+  audioFileSize Int?    // File size in bytes
+
+  // Source context (integration with other features)
+  sourceType    String? // blueprint, lesson, prompt, standalone
+  sourceId      String? // ID of the source (blueprint ID, lesson ID, etc.)
+  sourceName    String? // Name of the source for reference
+
+  // Token tracking
+  tokensUsed   Int @default(0)
+  charCount    Int @default(0)
+
+  // Status
+  status String @default("draft") // draft, generating, completed, failed, archived
+
+  // Quality & feedback
+  rating       Int? // 1-5 star rating
+  feedbackNote String?
+
+  // Sharing
+  isPublic    Boolean @default(false)
+  shareCode   String? @unique
+  playCount   Int     @default(0)
+  downloadCount Int   @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  generatedAt DateTime?
+
+  @@index([userId])
+  @@index([category])
+  @@index([status])
+  @@index([sourceType])
+  @@index([shareCode])
+  @@map("voice_projects")
+}
+
+model VoiceTemplate {
+  id String @id @default(cuid())
+
+  // Template details
+  name        String
+  description String?
+  category    String // marketing, education, business, etc.
+
+  // Script template with placeholders
+  scriptTemplate String // Template with [placeholders] for customization
+  placeholders   String? // JSON: array of placeholder definitions
+
+  // Recommended settings
+  recommendedVoice  String? // Recommended voice ID
+  recommendedStyle  String? // Recommended style
+  estimatedDuration Int?    // Estimated duration in seconds
+
+  // Use case
+  useCase     String? // app-pitch, product-demo, course-intro, etc.
+  contentType String? // video-ad, podcast-intro, meditation, etc.
+
+  // Stats
+  usageCount Int   @default(0)
+  rating     Float @default(0)
+
+  // Status
+  isActive   Boolean @default(true)
+  isFeatured Boolean @default(false)
+  order      Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@index([isFeatured])
+  @@map("voice_templates")
+}
+
+model VoiceGeneration {
+  id     String @id @default(cuid())
+  userId String
+
+  // Generation details
+  text       String // Input text
+  voiceId    String // Voice used
+  style      String? // Style applied
+  settings   String? // JSON: voice settings used
+
+  // Output
+  audioUrl     String? // Generated audio URL
+  duration     Int?    // Duration in seconds
+  format       String  @default("mp3")
+
+  // Token & cost tracking
+  charCount  Int @default(0)
+  tokensUsed Int @default(0)
+  cost       Float @default(0) // Cost in dollars for tracking
+
+  // Source tracking (integration)
+  sourceType String? // blueprint, lesson, prompt, voice-builder
+  sourceId   String?
+
+  // Status
+  status String @default("completed") // pending, generating, completed, failed
+
+  // Metadata
+  category   String?
+  projectId  String? // Link to voice project if part of one
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([sourceType])
+  @@index([createdAt])
+  @@map("voice_generations")
+}
+
+// ============================================
+// AI MUSIC STUDIO SYSTEM
+// ============================================
+
+model MusicTrack {
+  id     String @id @default(cuid())
+  userId String
+
+  // Track details
+  name        String
+  description String?
+  prompt      String? // The prompt used to generate the track
+
+  // Music properties
+  genre       String // upbeat, calm, corporate, cinematic, electronic, lofi, hiphop, jazz, rock, etc.
+  mood        String? // happy, sad, energetic, relaxed, dramatic, romantic, etc.
+  style       String? // instrumental, vocal, mixed
+  tempo       Int?    // BPM
+
+  // Audio file
+  audioUrl    String? // URL/path to audio file (could be blob URL for client-generated)
+  audioFormat String  @default("wav") // wav, mp3, ogg
+  duration    Int     @default(30) // Duration in seconds
+  fileSize    Int?    // File size in bytes
+
+  // Generation details
+  generationType String @default("procedural") // procedural (Web Audio), ai_api (Suno/etc), uploaded
+  generationParams String? // JSON: parameters used for generation
+
+  // Song mode features
+  withVocals Boolean @default(false)
+  lyrics     String? // Lyrics if vocal track
+  vocalStyle String? // female, male, rap, choir, etc.
+
+  // Token/usage tracking
+  tokensUsed Int @default(0)
+
+  // Status
+  status String @default("completed") // draft, generating, completed, failed
+
+  // User engagement
+  playCount     Int @default(0)
+  downloadCount Int @default(0)
+  isFavorite    Boolean @default(false)
+  rating        Int? // 1-5 stars
+
+  // Sharing
+  isPublic  Boolean @default(false)
+  shareCode String? @unique
+
+  // Integration with other features
+  projectId  String? // Link to a project
+  sourceType String? // voice-builder, song-mode, music-maker, mixer
+  sourceId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([genre])
+  @@index([status])
+  @@index([isFavorite])
+  @@index([shareCode])
+  @@map("music_tracks")
+}
+
+model MusicMix {
+  id     String @id @default(cuid())
+  userId String
+
+  // Mix details
+  name        String
+  description String?
+
+  // Tracks in the mix (JSON array of track IDs with settings)
+  tracks String // JSON: [{ trackId, volume, pan, startTime, effects }]
+
+  // Mix settings
+  masterVolume Float   @default(1.0)
+  ducking      Boolean @default(false) // Auto-duck music when voice plays
+  fadeIn       Int?    // Fade in duration in ms
+  fadeOut      Int?    // Fade out duration in ms
+
+  // Voice overlay
+  hasVoice     Boolean @default(false)
+  voiceTrackId String? // Reference to a voice generation
+
+  // Output
+  outputUrl    String? // Final mixed audio URL
+  outputFormat String  @default("wav")
+  duration     Int?    // Total duration in seconds
+
+  // Status
+  status String @default("draft") // draft, mixing, completed, failed
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("music_mixes")
+}
+
+model SongProject {
+  id     String @id @default(cuid())
+  userId String
+
+  // Song details
+  name        String
+  description String?
+
+  // Creation mode
+  creationMode String // lyrics, voice, description (how the song was created)
+
+  // Input content
+  lyrics       String? // Written lyrics
+  voiceInput   String? // URL to voice recording (humming/singing)
+  promptDescription String? // Natural language description
+
+  // Song properties
+  genre     String // pop, rock, hiphop, country, electronic, jazz, etc.
+  mood      String? // happy, sad, romantic, energetic, etc.
+  style     String? // ballad, dance, acoustic, orchestral, etc.
+  vocalStyle String? // female, male, duet, choir, rap, etc.
+  tempo     Int?    // BPM
+
+  // Generated output
+  audioUrl    String? // Final song audio
+  duration    Int?    // Duration in seconds
+  format      String  @default("mp3")
+
+  // Lyrics (if generated or refined)
+  generatedLyrics String?
+
+  // Token tracking
+  tokensUsed Int @default(0)
+
+  // Status
+  status String @default("draft") // draft, generating, completed, failed
+
+  // User engagement
+  playCount     Int @default(0)
+  downloadCount Int @default(0)
+  isFavorite    Boolean @default(false)
+  rating        Int?
+
+  // Sharing
+  isPublic  Boolean @default(false)
+  shareCode String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([genre])
+  @@index([status])
+  @@index([isFavorite])
+  @@map("song_projects")
 }

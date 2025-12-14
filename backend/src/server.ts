@@ -35,6 +35,7 @@ import voiceRoutes from './routes/voice';
 import musicRoutes from './routes/music';
 import elevenlabsRoutes from './routes/elevenlabs';
 import costsRoutes from './routes/costs';
+import audioRoutes from './routes/audio';
 
 dotenv.config();
 
@@ -319,6 +320,7 @@ app.use('/api/voice', voiceRoutes); // Voice Builder - AI Voice Generation
 app.use('/api/music', musicRoutes); // Music Maker - AI Music Generation
 app.use('/api/elevenlabs', elevenlabsRoutes); // ElevenLabs Premium Voice - Ultra-realistic AI voices + Sound Effects
 app.use('/api/costs', costsRoutes); // Cost Management - Usage tracking, limits, and admin dashboard
+app.use('/api/audio', audioRoutes); // Unified Audio Pipeline - Speech/Music generation with Supabase storage
 app.use('/api', generateRoutes);
 app.use('/api/personal', categoryRoutes);
 app.use('/api/product', categoryRoutes);
@@ -372,6 +374,9 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
   });
 });
 
+// Audio cleanup scheduler (optional - enable via env var)
+import { startCleanupScheduler } from './workers/cleanupAudio';
+
 // Start server
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server running on port ${PORT}`);
@@ -385,6 +390,11 @@ app.listen(PORT, '0.0.0.0', async () => {
 
   // Connect to database
   await connectDatabase();
+
+  // Start audio cleanup scheduler in production (every 24 hours)
+  if (process.env.ENABLE_CLEANUP_SCHEDULER === 'true') {
+    startCleanupScheduler(24);
+  }
 });
 
 export default app;

@@ -1,7 +1,33 @@
+/**
+ * Music Generation API Routes
+ *
+ * Phase 2 Implementation:
+ * - Generate music via Suno API or AI Music API
+ * - Upload generated audio to Supabase Storage (music-output bucket)
+ * - Return signed URL with 10-minute expiry
+ * - No local file storage
+ *
+ * Endpoints:
+ * - POST /api/music - Primary music generation with cloud storage
+ * - POST /api/music/generate - Legacy endpoint (backwards compatible)
+ * - GET /api/music/genres - List available genres
+ * - GET /api/music/status/:trackId - Check async generation status
+ */
+
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import { API_COSTS, COST_CONTROL_FLAGS } from '../config/costs';
+import {
+  generateMusicWithCloudStorage,
+  MusicGenerationParams,
+  MusicGenerationResult,
+  GENRE_PROMPTS,
+} from '../services/musicService';
+import {
+  MUSIC_OUTPUT_BUCKET,
+  SIGNED_URL_EXPIRY_SECONDS,
+} from '../lib/supabase';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -183,6 +209,7 @@ interface MusicGenerationRequest {
   customLyrics?: string;
   mood?: string;
   style?: string;
+  tempo?: 'slow' | 'medium' | 'fast';
   purpose?: 'app_background' | 'intro_jingle' | 'full_track' | 'sound_effect' | 'podcast_intro';
 }
 
@@ -197,9 +224,216 @@ interface MusicGenerationResponse {
   message?: string;
 }
 
+// =============================================================================
+// PHASE 2 ENDPOINT: POST /api/music
+// =============================================================================
+
+/**
+ * POST /api/music
+ *
+ * Primary endpoint for music generation with Supabase Storage
+ *
+ * Request body:
+ * - prompt: string (required) - Description of the music to generate
+ * - genre: string - Genre preset (upbeat, calm, corporate, cinematic, etc.)
+ * - mood: string - Additional mood description
+ * - tempo: 'slow' | 'medium' | 'fast' - Tempo preference
+ * - duration: number - Duration in seconds (default: 30)
+ * - instrumental: boolean - Generate instrumental only (default: true)
+ * - lyrics: string - Custom lyrics (if instrumental is false)
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "audioUrl": "https://...supabase.co/storage/v1/object/sign/music-output/...",
+ *   "isSignedUrl": true,
+ *   "expiresIn": 600,
+ *   "filePath": "2024-12-14/1702567890123-music.mp3",
+ *   "title": "Energetic Upbeat",
+ *   "duration": 30,
+ *   "genre": "upbeat",
+ *   "provider": "suno",
+ *   "tokensUsed": 75
+ * }
+ */
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const {
+      prompt,
+      genre = 'upbeat',
+      mood,
+      tempo = 'medium',
+      duration = 30,
+      instrumental = true,
+      lyrics,
+    } = req.body;
+
+    // ==========================================================================
+    // INPUT VALIDATION
+    // ==========================================================================
+
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt is required and must be a string',
+      });
+    }
+
+    if (prompt.trim().length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt must be at least 3 characters',
+      });
+    }
+
+    if (duration < 5 || duration > 300) {
+      return res.status(400).json({
+        success: false,
+        error: 'Duration must be between 5 and 300 seconds',
+      });
+    }
+
+    // Get user ID if authenticated
+    const userId = (req as any).user?.id || null;
+
+    // Calculate token cost
+    const tokenCost = !instrumental
+      ? MUSIC_TOKEN_COSTS.song_with_vocals
+      : duration <= 30
+      ? MUSIC_TOKEN_COSTS.jingle
+      : MUSIC_TOKEN_COSTS.instrumental;
+
+    // Check user token balance if authenticated
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { tokenBalance: true },
+      });
+
+      if (!user || user.tokenBalance < tokenCost) {
+        return res.status(403).json({
+          success: false,
+          error: `Insufficient tokens. Required: ${tokenCost}, Available: ${user?.tokenBalance || 0}`,
+        });
+      }
+    }
+
+    console.log(`🎵 Phase 2 Music Generation: genre=${genre}, duration=${duration}s, instrumental=${instrumental}`);
+
+    // ==========================================================================
+    // GENERATE MUSIC WITH CLOUD STORAGE
+    // ==========================================================================
+
+    const params: MusicGenerationParams = {
+      prompt,
+      genre,
+      mood,
+      tempo,
+      duration,
+      instrumental,
+      lyrics,
+    };
+
+    const result = await generateMusicWithCloudStorage(params);
+
+    // Check for generation error
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Music generation failed',
+      });
+    }
+
+    // ==========================================================================
+    // UPDATE USER TOKENS & LOG COST
+    // ==========================================================================
+
+    if (userId && !result.isDemo) {
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            tokenBalance: { decrement: tokenCost },
+            tokensUsed: { increment: tokenCost },
+          },
+        });
+
+        // Log usage (using usageLog model)
+        await prisma.usageLog.create({
+          data: {
+            userId,
+            action: 'music_generation',
+            tokensUsed: tokenCost,
+            provider: 'music',
+            model: 'suno',
+            cost: 0,
+            responseTime: 0,
+            metadata: JSON.stringify({
+              genre,
+              duration,
+              instrumental,
+              prompt: prompt.substring(0, 100),
+            }),
+          },
+        });
+      } catch (err) {
+        console.warn('⚠️ Failed to update user tokens:', err);
+      }
+    }
+
+    // Log API cost
+    const actualAPICost = !instrumental
+      ? API_COSTS.suno?.['song-full'] || 0.05
+      : API_COSTS.suno?.['song-instrumental'] || 0.03;
+
+    await logMusicCost(
+      userId,
+      instrumental ? 'instrumental' : 'song-full',
+      result.isDemo ? 0 : actualAPICost,
+      tokenCost,
+      result.provider || 'unknown'
+    );
+
+    console.log(`✅ Music generation complete: ${result.title}`);
+
+    // ==========================================================================
+    // RETURN RESPONSE
+    // ==========================================================================
+
+    res.json({
+      success: true,
+      audioUrl: result.audioUrl || result.signedUrl,
+      isSignedUrl: result.isSignedUrl || false,
+      expiresIn: result.expiresIn || SIGNED_URL_EXPIRY_SECONDS,
+      filePath: result.filePath,
+      trackId: result.trackId,
+      title: result.title,
+      duration: result.duration || duration,
+      genre,
+      provider: result.provider,
+      tokensUsed: result.isDemo ? 0 : tokenCost,
+      isDemo: result.isDemo || false,
+      ...(result.error && { warning: result.error }),
+    });
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('❌ Music generation error:', errorMessage);
+
+    res.status(500).json({
+      success: false,
+      error: `Music generation failed: ${errorMessage}`,
+    });
+  }
+});
+
+// =============================================================================
+// LEGACY ENDPOINT (backwards compatibility)
+// =============================================================================
+
 /**
  * POST /api/music/generate
- * Generate AI music from text prompt
+ * Generate AI music from text prompt (legacy endpoint)
  */
 router.post('/generate', async (req: Request, res: Response) => {
   try {
@@ -314,12 +548,16 @@ router.post('/generate', async (req: Request, res: Response) => {
         },
       });
 
-      // Log usage
-      await prisma.tokenUsage.create({
+      // Log usage (using usageLog model)
+      await prisma.usageLog.create({
         data: {
           userId,
-          type: 'music_generation',
+          action: 'music_generation_legacy',
           tokensUsed: tokenCost,
+          provider: 'music',
+          model: 'suno',
+          cost: 0,
+          responseTime: 0,
           metadata: JSON.stringify({
             genre,
             duration,

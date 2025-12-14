@@ -3491,4 +3491,75 @@ router.post('/users/:id/unsuspend', authenticate, requireAdmin, async (req, res)
   }
 });
 
+// =============================================================================
+// STORAGE CLEANUP ENDPOINTS
+// =============================================================================
+
+import { runCleanup, getBucketStats, DEFAULT_RETENTION_DAYS } from '../services/cleanupService';
+import { STORAGE_BUCKETS } from '../lib/supabase';
+
+/**
+ * POST /api/admin/storage/cleanup
+ * Trigger manual storage cleanup
+ */
+router.post('/storage/cleanup', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { retentionDays = DEFAULT_RETENTION_DAYS } = req.body;
+
+    console.log(`🧹 Admin triggered storage cleanup (retention: ${retentionDays} days)`);
+
+    const result = await runCleanup(retentionDays);
+
+    res.json({
+      success: result.success,
+      message: result.success ? 'Cleanup completed successfully' : 'Cleanup completed with errors',
+      summary: {
+        totalFilesDeleted: result.totalFilesDeleted,
+        totalFilesSkipped: result.totalFilesSkipped,
+        totalErrors: result.totalErrors,
+        duration: result.duration,
+        timestamp: result.timestamp,
+      },
+      details: result.results,
+    });
+
+  } catch (error) {
+    console.error('Storage cleanup error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Storage cleanup failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/storage/stats
+ * Get storage statistics for all audio buckets
+ */
+router.get('/storage/stats', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    const stats: Record<string, any> = {};
+
+    for (const [key, bucket] of Object.entries(STORAGE_BUCKETS)) {
+      const bucketStats = await getBucketStats(bucket);
+      stats[bucket] = bucketStats;
+    }
+
+    res.json({
+      success: true,
+      buckets: Object.values(STORAGE_BUCKETS),
+      stats,
+      retentionDays: DEFAULT_RETENTION_DAYS,
+    });
+
+  } catch (error) {
+    console.error('Storage stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get storage stats',
+    });
+  }
+});
+
 export default router;

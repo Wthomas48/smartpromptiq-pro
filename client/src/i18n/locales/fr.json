@@ -1,0 +1,206 @@
+{
+  "common": {
+    "welcome": "Bienvenue",
+    "signIn": "Se Connecter",
+    "signUp": "S'inscrire",
+    "signOut": "Se Déconnecter",
+    "dashboard": "Tableau de Bord",
+    "settings": "Paramètres",
+    "home": "Accueil",
+    "pricing": "Tarifs",
+    "contact": "Contact",
+    "about": "À Propos",
+    "help": "Aide",
+    "search": "Rechercher",
+    "save": "Sauvegarder",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "submit": "Envoyer",
+    "loading": "Chargement...",
+    "success": "Succès !",
+    "error": "Erreur",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "learnMore": "En Savoir Plus",
+    "getStarted": "Commencer",
+    "tryFree": "Essai Gratuit",
+    "premium": "Premium",
+    "free": "Gratuit",
+    "pro": "Pro",
+    "enterprise": "Entreprise"
+  },
+  "nav": {
+    "home": "Accueil",
+    "features": "Fonctionnalités",
+    "pricing": "Tarifs",
+    "academy": "Académie",
+    "dashboard": "Tableau de Bord",
+    "voiceBuilder": "Créateur de Voix",
+    "builderIQ": "BuilderIQ",
+    "marketplace": "Marketplace",
+    "documentation": "Documentation",
+    "settings": "Paramètres",
+    "billing": "Facturation",
+    "support": "Support"
+  },
+  "home": {
+    "hero": {
+      "title": "Plateforme d'Ingénierie de Prompts IA",
+      "subtitle": "Créez, affinez et déployez des prompts avec la puissance de l'IA",
+      "cta": "Commencer Gratuitement",
+      "secondaryCta": "Voir la Démo"
+    },
+    "features": {
+      "title": "Fonctionnalités Puissantes",
+      "subtitle": "Tout ce dont vous avez besoin pour créer des prompts parfaits",
+      "ai": {
+        "title": "Génération par IA",
+        "description": "Utilisez l'IA avancée pour générer et affiner automatiquement les prompts"
+      },
+      "voice": {
+        "title": "Intégration Vocale",
+        "description": "Convertissez le texte en parole avec les voix premium ElevenLabs"
+      },
+      "templates": {
+        "title": "Modèles Intelligents",
+        "description": "Accédez à des centaines de modèles prédéfinis pour tous les cas"
+      },
+      "analytics": {
+        "title": "Analytiques et Insights",
+        "description": "Suivez les performances et optimisez vos prompts"
+      }
+    }
+  },
+  "voiceBuilder": {
+    "title": "Créateur de Voix",
+    "subtitle": "Transformez votre texte en parole naturelle",
+    "stats": {
+      "elevenLabsVoices": "Voix ElevenLabs",
+      "openaiVoices": "Voix OpenAI",
+      "musicTracks": "Pistes Musicales",
+      "genres": "Genres",
+      "quality": "Qualité Ultra HD"
+    },
+    "tabs": {
+      "textToSpeech": "Texte vers Parole",
+      "voiceCloning": "Clonage Vocal",
+      "musicMaker": "Créateur de Musique",
+      "mixer": "Mixeur Vocal"
+    },
+    "textInput": {
+      "placeholder": "Entrez le texte à convertir en parole...",
+      "characterCount": "caractères"
+    },
+    "voices": {
+      "selectVoice": "Sélectionner une Voix",
+      "preview": "Aperçu",
+      "favorite": "Favori",
+      "featured": "En Vedette",
+      "trending": "Tendance"
+    },
+    "generate": {
+      "button": "Générer la Parole",
+      "generating": "Génération...",
+      "download": "Télécharger l'Audio"
+    }
+  },
+  "musicMaker": {
+    "title": "Créateur de Musique IA",
+    "subtitle": "Créez de la musique libre de droits pour vos projets",
+    "genres": {
+      "upbeat": "Entraînant",
+      "calm": "Calme",
+      "corporate": "Corporate",
+      "cinematic": "Cinématique",
+      "electronic": "Électronique",
+      "lofi": "Lo-Fi",
+      "hiphop": "Hip-Hop",
+      "jazz": "Jazz",
+      "tropical": "Tropical",
+      "ambient": "Ambiant"
+    },
+    "tracks": {
+      "title": "Pistes Premium",
+      "plays": "écoutes",
+      "likes": "j'aime",
+      "duration": "Durée"
+    },
+    "generate": {
+      "button": "Générer la Musique",
+      "generating": "Création de votre piste..."
+    }
+  },
+  "academy": {
+    "title": "Académie SmartPromptiq",
+    "subtitle": "Maîtrisez les prompts IA avec des cours d'experts",
+    "courses": "Cours",
+    "lessons": "Leçons",
+    "progress": "Votre Progression",
+    "certificate": "Certificat",
+    "enrolled": "Inscrit",
+    "completed": "Terminé",
+    "startCourse": "Commencer le Cours",
+    "continueLearning": "Continuer l'Apprentissage"
+  },
+  "pricing": {
+    "title": "Tarification Simple et Transparente",
+    "subtitle": "Choisissez le plan qui vous convient",
+    "monthly": "Mensuel",
+    "yearly": "Annuel",
+    "save": "Économisez",
+    "popular": "Le Plus Populaire",
+    "features": "Fonctionnalités",
+    "included": "Inclus",
+    "getStarted": "Commencer",
+    "currentPlan": "Plan Actuel",
+    "upgrade": "Améliorer"
+  },
+  "dashboard": {
+    "welcome": "Bon retour",
+    "overview": "Aperçu",
+    "recentActivity": "Activité Récente",
+    "quickActions": "Actions Rapides",
+    "stats": {
+      "promptsCreated": "Prompts Créés",
+      "tokensUsed": "Tokens Utilisés",
+      "savedTemplates": "Modèles Sauvegardés"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "profile": "Profil",
+    "account": "Compte",
+    "preferences": "Préférences",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "theme": "Thème",
+    "security": "Sécurité"
+  },
+  "auth": {
+    "email": "E-mail",
+    "password": "Mot de Passe",
+    "confirmPassword": "Confirmer le Mot de Passe",
+    "forgotPassword": "Mot de Passe Oublié ?",
+    "rememberMe": "Se souvenir de moi",
+    "noAccount": "Pas de compte ?",
+    "haveAccount": "Déjà un compte ?",
+    "orContinueWith": "Ou continuer avec"
+  },
+  "footer": {
+    "copyright": "Tous droits réservés",
+    "privacy": "Politique de Confidentialité",
+    "terms": "Conditions d'Utilisation",
+    "contact": "Contactez-nous"
+  },
+  "errors": {
+    "required": "Ce champ est obligatoire",
+    "invalidEmail": "Adresse e-mail invalide",
+    "passwordMismatch": "Les mots de passe ne correspondent pas",
+    "somethingWrong": "Une erreur s'est produite",
+    "tryAgain": "Veuillez réessayer"
+  }
+}

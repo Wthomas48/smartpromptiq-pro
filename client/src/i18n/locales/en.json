@@ -1,0 +1,206 @@
+{
+  "common": {
+    "welcome": "Welcome",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "home": "Home",
+    "pricing": "Pricing",
+    "contact": "Contact",
+    "about": "About",
+    "help": "Help",
+    "search": "Search",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "submit": "Submit",
+    "loading": "Loading...",
+    "success": "Success!",
+    "error": "Error",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "learnMore": "Learn More",
+    "getStarted": "Get Started",
+    "tryFree": "Try Free",
+    "premium": "Premium",
+    "free": "Free",
+    "pro": "Pro",
+    "enterprise": "Enterprise"
+  },
+  "nav": {
+    "home": "Home",
+    "features": "Features",
+    "pricing": "Pricing",
+    "academy": "Academy",
+    "dashboard": "Dashboard",
+    "voiceBuilder": "Voice Builder",
+    "builderIQ": "BuilderIQ",
+    "marketplace": "Marketplace",
+    "documentation": "Documentation",
+    "settings": "Settings",
+    "billing": "Billing",
+    "support": "Support"
+  },
+  "home": {
+    "hero": {
+      "title": "AI-Powered Prompt Engineering Platform",
+      "subtitle": "Create, refine, and deploy prompts with the power of artificial intelligence",
+      "cta": "Start Creating Free",
+      "secondaryCta": "Watch Demo"
+    },
+    "features": {
+      "title": "Powerful Features",
+      "subtitle": "Everything you need to create perfect prompts",
+      "ai": {
+        "title": "AI-Powered Generation",
+        "description": "Leverage advanced AI to generate and refine prompts automatically"
+      },
+      "voice": {
+        "title": "Voice Integration",
+        "description": "Convert text to speech with premium ElevenLabs voices"
+      },
+      "templates": {
+        "title": "Smart Templates",
+        "description": "Access hundreds of pre-built templates for any use case"
+      },
+      "analytics": {
+        "title": "Analytics & Insights",
+        "description": "Track performance and optimize your prompts"
+      }
+    }
+  },
+  "voiceBuilder": {
+    "title": "Voice Builder",
+    "subtitle": "Transform your text into natural-sounding speech",
+    "stats": {
+      "elevenLabsVoices": "ElevenLabs Voices",
+      "openaiVoices": "OpenAI Voices",
+      "musicTracks": "Music Tracks",
+      "genres": "Genres",
+      "quality": "Ultra HD Quality"
+    },
+    "tabs": {
+      "textToSpeech": "Text to Speech",
+      "voiceCloning": "Voice Cloning",
+      "musicMaker": "Music Maker",
+      "mixer": "Voice Mixer"
+    },
+    "textInput": {
+      "placeholder": "Enter text to convert to speech...",
+      "characterCount": "characters"
+    },
+    "voices": {
+      "selectVoice": "Select Voice",
+      "preview": "Preview",
+      "favorite": "Favorite",
+      "featured": "Featured",
+      "trending": "Trending"
+    },
+    "generate": {
+      "button": "Generate Speech",
+      "generating": "Generating...",
+      "download": "Download Audio"
+    }
+  },
+  "musicMaker": {
+    "title": "AI Music Maker",
+    "subtitle": "Create royalty-free music for your projects",
+    "genres": {
+      "upbeat": "Upbeat",
+      "calm": "Calm",
+      "corporate": "Corporate",
+      "cinematic": "Cinematic",
+      "electronic": "Electronic",
+      "lofi": "Lo-Fi",
+      "hiphop": "Hip-Hop",
+      "jazz": "Jazz",
+      "tropical": "Tropical",
+      "ambient": "Ambient"
+    },
+    "tracks": {
+      "title": "Premium Tracks",
+      "plays": "plays",
+      "likes": "likes",
+      "duration": "Duration"
+    },
+    "generate": {
+      "button": "Generate Music",
+      "generating": "Creating your track..."
+    }
+  },
+  "academy": {
+    "title": "SmartPromptiq Academy",
+    "subtitle": "Master AI prompting with expert-led courses",
+    "courses": "Courses",
+    "lessons": "Lessons",
+    "progress": "Your Progress",
+    "certificate": "Certificate",
+    "enrolled": "Enrolled",
+    "completed": "Completed",
+    "startCourse": "Start Course",
+    "continueLearning": "Continue Learning"
+  },
+  "pricing": {
+    "title": "Simple, Transparent Pricing",
+    "subtitle": "Choose the plan that's right for you",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "save": "Save",
+    "popular": "Most Popular",
+    "features": "Features",
+    "included": "Included",
+    "getStarted": "Get Started",
+    "currentPlan": "Current Plan",
+    "upgrade": "Upgrade"
+  },
+  "dashboard": {
+    "welcome": "Welcome back",
+    "overview": "Overview",
+    "recentActivity": "Recent Activity",
+    "quickActions": "Quick Actions",
+    "stats": {
+      "promptsCreated": "Prompts Created",
+      "tokensUsed": "Tokens Used",
+      "savedTemplates": "Saved Templates"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "account": "Account",
+    "preferences": "Preferences",
+    "notifications": "Notifications",
+    "language": "Language",
+    "theme": "Theme",
+    "security": "Security"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "rememberMe": "Remember me",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "orContinueWith": "Or continue with"
+  },
+  "footer": {
+    "copyright": "All rights reserved",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact Us"
+  },
+  "errors": {
+    "required": "This field is required",
+    "invalidEmail": "Invalid email address",
+    "passwordMismatch": "Passwords do not match",
+    "somethingWrong": "Something went wrong",
+    "tryAgain": "Please try again"
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "common": {
+    "welcome": "ようこそ",
+    "signIn": "ログイン",
+    "signUp": "新規登録",
+    "signOut": "ログアウト",
+    "dashboard": "ダッシュボード",
+    "settings": "設定",
+    "home": "ホーム",
+    "pricing": "料金",
+    "contact": "お問い合わせ",
+    "about": "概要",
+    "help": "ヘルプ",
+    "search": "検索",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "create": "作成",
+    "submit": "送信",
+    "loading": "読み込み中...",
+    "success": "成功！",
+    "error": "エラー",
+    "close": "閉じる",
+    "back": "戻る",
+    "next": "次へ",
+    "previous": "前へ",
+    "learnMore": "詳細を見る",
+    "getStarted": "始める",
+    "tryFree": "無料で試す",
+    "premium": "プレミアム",
+    "free": "無料",
+    "pro": "プロ",
+    "enterprise": "エンタープライズ"
+  },
+  "nav": {
+    "home": "ホーム",
+    "features": "機能",
+    "pricing": "料金",
+    "academy": "アカデミー",
+    "dashboard": "ダッシュボード",
+    "voiceBuilder": "ボイスビルダー",
+    "builderIQ": "BuilderIQ",
+    "marketplace": "マーケットプレイス",
+    "documentation": "ドキュメント",
+    "settings": "設定",
+    "billing": "請求",
+    "support": "サポート"
+  },
+  "home": {
+    "hero": {
+      "title": "AIプロンプトエンジニアリングプラットフォーム",
+      "subtitle": "AIの力でプロンプトを作成、改良、デプロイ",
+      "cta": "無料で始める",
+      "secondaryCta": "デモを見る"
+    },
+    "features": {
+      "title": "パワフルな機能",
+      "subtitle": "完璧なプロンプトを作成するために必要なすべて",
+      "ai": {
+        "title": "AI駆動の生成",
+        "description": "高度なAIを活用してプロンプトを自動生成・改良"
+      },
+      "voice": {
+        "title": "音声統合",
+        "description": "ElevenLabsのプレミアム音声でテキストを音声に変換"
+      },
+      "templates": {
+        "title": "スマートテンプレート",
+        "description": "あらゆる用途に対応した数百のテンプレートにアクセス"
+      },
+      "analytics": {
+        "title": "分析とインサイト",
+        "description": "パフォーマンスを追跡しプロンプトを最適化"
+      }
+    }
+  },
+  "voiceBuilder": {
+    "title": "ボイスビルダー",
+    "subtitle": "テキストを自然な音声に変換",
+    "stats": {
+      "elevenLabsVoices": "ElevenLabs音声",
+      "openaiVoices": "OpenAI音声",
+      "musicTracks": "音楽トラック",
+      "genres": "ジャンル",
+      "quality": "ウルトラHD品質"
+    }
+  },
+  "musicMaker": {
+    "title": "AI音楽メーカー",
+    "subtitle": "プロジェクト用のロイヤリティフリー音楽を作成",
+    "genres": {
+      "upbeat": "アップビート",
+      "calm": "カーム",
+      "corporate": "コーポレート",
+      "cinematic": "シネマティック",
+      "electronic": "エレクトロニック",
+      "lofi": "Lo-Fi",
+      "hiphop": "ヒップホップ",
+      "jazz": "ジャズ",
+      "tropical": "トロピカル",
+      "ambient": "アンビエント"
+    }
+  },
+  "academy": {
+    "title": "SmartPromptiqアカデミー",
+    "subtitle": "エキスパートコースでAIプロンプトをマスター",
+    "courses": "コース",
+    "lessons": "レッスン",
+    "progress": "進捗",
+    "certificate": "証明書"
+  },
+  "pricing": {
+    "title": "シンプルで透明な料金",
+    "subtitle": "あなたに合ったプランを選択",
+    "monthly": "月額",
+    "yearly": "年額",
+    "save": "節約",
+    "popular": "人気"
+  },
+  "settings": {
+    "title": "設定",
+    "profile": "プロフィール",
+    "account": "アカウント",
+    "preferences": "環境設定",
+    "language": "言語",
+    "theme": "テーマ"
+  },
+  "auth": {
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "confirmPassword": "パスワード確認",
+    "forgotPassword": "パスワードを忘れた？",
+    "rememberMe": "ログイン状態を保持",
+    "noAccount": "アカウントをお持ちでない？",
+    "haveAccount": "すでにアカウントをお持ち？"
+  },
+  "footer": {
+    "copyright": "全著作権所有",
+    "privacy": "プライバシーポリシー",
+    "terms": "利用規約",
+    "contact": "お問い合わせ"
+  },
+  "errors": {
+    "required": "この項目は必須です",
+    "invalidEmail": "無効なメールアドレス",
+    "passwordMismatch": "パスワードが一致しません",
+    "somethingWrong": "問題が発生しました",
+    "tryAgain": "もう一度お試しください"
+  }
+}
