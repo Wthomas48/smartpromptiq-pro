@@ -83,6 +83,319 @@ app.post('/api/feedback/rating', (req, res) => {
   });
 });
 
+// ========================================
+// ElevenLabs and Voice API Routes
+// ========================================
+
+// ElevenLabs configuration
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
+
+// Available ElevenLabs voices
+const ELEVENLABS_VOICES = {
+  'rachel': '21m00Tcm4TlvDq8ikWAM',
+  'drew': '29vD33N1CtxCmqQRPOHJ',
+  'clyde': '2EiwWnXFnvU5JabPnv8n',
+  'paul': '5Q0t7uMcjvnagumLfvZi',
+  'domi': 'AZnzlk1XvdvUeBnXmlld',
+  'dave': 'CYw3kZ02Hs0563khs1Fj',
+  'fin': 'D38z5RcWu1voky8WS1ja',
+  'sarah': 'EXAVITQu4vr4xnSDxMaL',
+  'antoni': 'ErXwobaYiN019PkySvjV',
+  'thomas': 'GBv7mTt0atIp3Br8iCZE',
+  'charlie': 'IKne3meq5aSn9XLyUdCD',
+  'emily': 'LcfcDJNUP1GQjkzn1xUU',
+  'elli': 'MF3mGyEYCl7XYWbV9V6O',
+  'callum': 'N2lVS1w4EtoT3dr4eOWO',
+  'patrick': 'ODq5zmih8GrVes37Dizd',
+  'harry': 'SOYHLrjzK2X1ezoPC6cr',
+  'liam': 'TX3LPaxmHKxFdv7VOQHJ',
+  'dorothy': 'ThT5KcBeYPX3keUQqHPh',
+  'josh': 'TxGEqnHWrfWFTfGW9XjX',
+  'arnold': 'VR6AewLTigWG4xSOukaG',
+  'charlotte': 'XB0fDUnXU5powFXDhCwa',
+  'alice': 'Xb7hH8MSUJpSbSDYk0k2',
+  'matilda': 'XrExE9yKIg1WjnnlVkGX',
+  'james': 'ZQe5CZNOzWyzPSCn5a3c',
+  'joseph': 'Zlb1dXrM653N07WRdFW3',
+  'michael': 'flq6f7yk4E4fJM5XTYuZ',
+  'ethan': 'g5CIjZEefAph4nQFvHAz',
+  'chris': 'iP95p4xoKVk53GoZ742B',
+  'gigi': 'jBpfuIE2acCO8z3wKNLl',
+  'freya': 'jsCqWAovK2LkecY7zXl4'
+};
+
+// ElevenLabs generate speech endpoint
+app.post('/api/elevenlabs/generate', async (req, res) => {
+  console.log('ElevenLabs generate request:', req.body);
+
+  const { text, voice = 'rachel', model = 'eleven_monolingual_v1' } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      success: false,
+      error: 'Text is required'
+    });
+  }
+
+  // Check if API key is configured
+  if (!ELEVENLABS_API_KEY) {
+    console.log('ElevenLabs API key not configured - returning demo mode');
+    return res.json({
+      success: true,
+      demo: true,
+      message: 'ElevenLabs API key not configured. Using browser speech synthesis.',
+      text: text,
+      voice: voice,
+      useBrowserSpeech: true
+    });
+  }
+
+  try {
+    const voiceId = ELEVENLABS_VOICES[voice.toLowerCase()] || ELEVENLABS_VOICES['rachel'];
+
+    const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': ELEVENLABS_API_KEY
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: model,
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`ElevenLabs API error: ${response.status}`);
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    const base64Audio = Buffer.from(audioBuffer).toString('base64');
+
+    res.json({
+      success: true,
+      audio: base64Audio,
+      contentType: 'audio/mpeg',
+      voice: voice,
+      text: text
+    });
+  } catch (error) {
+    console.error('ElevenLabs error:', error);
+    res.json({
+      success: true,
+      demo: true,
+      message: 'ElevenLabs API error. Using browser speech synthesis.',
+      text: text,
+      voice: voice,
+      useBrowserSpeech: true,
+      error: error.message
+    });
+  }
+});
+
+// ElevenLabs page narration endpoint
+app.post('/api/elevenlabs/page/narrate', async (req, res) => {
+  console.log('Page narration request:', req.body);
+
+  const { content, voice = 'rachel', pageType = 'general' } = req.body;
+
+  if (!content) {
+    return res.status(400).json({
+      success: false,
+      error: 'Content is required'
+    });
+  }
+
+  // Always return demo mode - use browser speech synthesis
+  res.json({
+    success: true,
+    demo: true,
+    message: 'Page narration uses browser speech synthesis',
+    content: content,
+    voice: voice,
+    pageType: pageType,
+    useBrowserSpeech: true
+  });
+});
+
+// ElevenLabs academy narration endpoint
+app.post('/api/elevenlabs/academy/generate', async (req, res) => {
+  console.log('Academy narration request:', req.body);
+
+  const { text, voice = 'rachel', lessonId } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      success: false,
+      error: 'Text is required'
+    });
+  }
+
+  res.json({
+    success: true,
+    demo: true,
+    message: 'Academy narration uses browser speech synthesis',
+    text: text,
+    voice: voice,
+    lessonId: lessonId,
+    useBrowserSpeech: true
+  });
+});
+
+// ElevenLabs sound effects endpoint
+app.post('/api/elevenlabs/sound-effects/generate', async (req, res) => {
+  console.log('Sound effects request:', req.body);
+
+  const { description, duration = 5 } = req.body;
+
+  if (!description) {
+    return res.status(400).json({
+      success: false,
+      error: 'Description is required'
+    });
+  }
+
+  res.json({
+    success: true,
+    demo: true,
+    message: 'Sound effects generation not available in demo mode',
+    description: description,
+    duration: duration
+  });
+});
+
+// Voice generate endpoint
+app.post('/api/voice/generate', async (req, res) => {
+  console.log('Voice generate request:', req.body);
+
+  const { text, voice = 'default', speed = 1.0, pitch = 1.0 } = req.body;
+
+  if (!text) {
+    return res.status(400).json({
+      success: false,
+      error: 'Text is required'
+    });
+  }
+
+  // Return browser speech synthesis instructions
+  res.json({
+    success: true,
+    demo: true,
+    message: 'Use browser speech synthesis for voice generation',
+    text: text,
+    voice: voice,
+    speed: speed,
+    pitch: pitch,
+    useBrowserSpeech: true,
+    browserConfig: {
+      rate: speed,
+      pitch: pitch,
+      voice: voice
+    }
+  });
+});
+
+// Voice generate from blueprint endpoint
+app.post('/api/voice/generate-from-blueprint', async (req, res) => {
+  console.log('Voice blueprint request:', req.body);
+
+  const { blueprint, voice = 'default' } = req.body;
+
+  if (!blueprint) {
+    return res.status(400).json({
+      success: false,
+      error: 'Blueprint is required'
+    });
+  }
+
+  res.json({
+    success: true,
+    demo: true,
+    message: 'Blueprint voice generation uses browser speech synthesis',
+    blueprint: blueprint,
+    voice: voice,
+    useBrowserSpeech: true
+  });
+});
+
+// Voice enhance script endpoint
+app.post('/api/voice/enhance-script', async (req, res) => {
+  console.log('Enhance script request:', req.body);
+
+  const { script, style = 'professional' } = req.body;
+
+  if (!script) {
+    return res.status(400).json({
+      success: false,
+      error: 'Script is required'
+    });
+  }
+
+  // Return enhanced script (simple demo enhancement)
+  const enhancedScript = script
+    .replace(/\bum\b/gi, '')
+    .replace(/\buh\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  res.json({
+    success: true,
+    originalScript: script,
+    enhancedScript: enhancedScript,
+    style: style,
+    improvements: [
+      'Removed filler words',
+      'Cleaned up spacing',
+      'Optimized for voice synthesis'
+    ]
+  });
+});
+
+// Voice lesson narration endpoint
+app.post('/api/voice/generate-lesson-narration', async (req, res) => {
+  console.log('Lesson narration request:', req.body);
+
+  const { lessonContent, voice = 'default', lessonId } = req.body;
+
+  if (!lessonContent) {
+    return res.status(400).json({
+      success: false,
+      error: 'Lesson content is required'
+    });
+  }
+
+  res.json({
+    success: true,
+    demo: true,
+    message: 'Lesson narration uses browser speech synthesis',
+    lessonContent: lessonContent,
+    voice: voice,
+    lessonId: lessonId,
+    useBrowserSpeech: true
+  });
+});
+
+// Get available voices endpoint
+app.get('/api/voice/voices', (req, res) => {
+  res.json({
+    success: true,
+    voices: Object.keys(ELEVENLABS_VOICES).map(name => ({
+      id: name,
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      voiceId: ELEVENLABS_VOICES[name],
+      available: !!ELEVENLABS_API_KEY
+    })),
+    browserVoices: true,
+    hasElevenLabsKey: !!ELEVENLABS_API_KEY
+  });
+});
+
 // Root route - Clean version without health page reference
 app.get('/', (req, res) => {
   res.send(`
