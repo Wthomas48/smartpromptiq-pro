@@ -137,6 +137,67 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const speechSynthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isBrowserSpeakingRef = useRef<boolean>(false);
+
+  // Browser Speech Synthesis Helper - FREE accessibility fallback
+  const speakWithBrowser = useCallback((text: string, onEnd?: () => void): boolean => {
+    if (!('speechSynthesis' in window)) {
+      console.warn('Browser speech synthesis not supported');
+      return false;
+    }
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    isBrowserSpeakingRef.current = true;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    // Try to find a good voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v =>
+      v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Samantha'))
+    ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => {
+      setNarrationState(prev => ({ ...prev, isPlaying: true, isPaused: false, isLoading: false }));
+    };
+
+    utterance.onend = () => {
+      isBrowserSpeakingRef.current = false;
+      setNarrationState(prev => ({
+        ...prev,
+        isPlaying: false,
+        isPaused: false,
+        progress: 100,
+      }));
+      onEnd?.();
+    };
+
+    utterance.onerror = (e) => {
+      console.error('Browser speech error:', e);
+      isBrowserSpeakingRef.current = false;
+      setNarrationState(prev => ({
+        ...prev,
+        isPlaying: false,
+        isLoading: false,
+        error: 'Browser speech synthesis error',
+      }));
+    };
+
+    speechSynthRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+
+    console.log('Using browser speech synthesis for accessibility');
+    return true;
+  }, []);
 
   // Persist settings
   useEffect(() => {
@@ -299,6 +360,14 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
 
       const data = await response.json();
 
+      // Check if server wants us to use browser speech synthesis (accessibility fallback)
+      if (data.useBrowserSpeech || data.demo) {
+        console.log('Voice generation: Using browser speech synthesis for accessibility');
+        const textToSpeak = data.text || text;
+        speakWithBrowser(textToSpeak, options.onComplete);
+        return;
+      }
+
       setNarrationState(prev => ({
         ...prev,
         isLoading: false,
@@ -319,15 +388,11 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
     } catch (error: any) {
       if (error.name === 'AbortError') return;
 
-      const errorMessage = error.message || 'Failed to generate voice';
-      setNarrationState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: errorMessage,
-      }));
-      options.onError?.(errorMessage);
+      // On error, fallback to browser speech synthesis
+      console.log('Voice generation failed, falling back to browser speech');
+      speakWithBrowser(text, options.onComplete);
     }
-  }, [isVoiceEnabled, selectedVoice, selectedPreset]);
+  }, [isVoiceEnabled, selectedVoice, selectedPreset, speakWithBrowser]);
 
   // Speak page content
   const speakPage = useCallback(async (pageTitle: string, content: string) => {
@@ -361,6 +426,14 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
 
       const data = await response.json();
 
+      // Check if server wants us to use browser speech synthesis (accessibility fallback)
+      if (data.useBrowserSpeech || data.demo) {
+        console.log('Page narration: Using browser speech synthesis for accessibility');
+        const textToSpeak = data.content || content;
+        speakWithBrowser(textToSpeak);
+        return;
+      }
+
       setNarrationState(prev => ({
         ...prev,
         isLoading: false,
@@ -373,13 +446,11 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
       }
 
     } catch (error: any) {
-      setNarrationState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error.message || 'Page narration failed',
-      }));
+      // On error, fallback to browser speech synthesis
+      console.log('Page narration failed, falling back to browser speech');
+      speakWithBrowser(content);
     }
-  }, [isVoiceEnabled, selectedVoice]);
+  }, [isVoiceEnabled, selectedVoice, speakWithBrowser]);
 
   // Speak lesson content (optimized for Academy)
   const speakLesson = useCallback(async (lessonTitle: string, content: string) => {
@@ -413,6 +484,14 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
 
       const data = await response.json();
 
+      // Check if server wants us to use browser speech synthesis (accessibility fallback)
+      if (data.useBrowserSpeech || data.demo) {
+        console.log('Lesson narration: Using browser speech synthesis for accessibility');
+        const textToSpeak = data.text || data.lessonContent || content;
+        speakWithBrowser(textToSpeak);
+        return;
+      }
+
       setNarrationState(prev => ({
         ...prev,
         isLoading: false,
@@ -426,31 +505,47 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
       }
 
     } catch (error: any) {
-      setNarrationState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error.message || 'Lesson narration failed',
-      }));
+      // On error, fallback to browser speech synthesis
+      console.log('Lesson narration failed, falling back to browser speech');
+      speakWithBrowser(content);
     }
-  }, [isVoiceEnabled, selectedVoice]);
+  }, [isVoiceEnabled, selectedVoice, speakWithBrowser]);
 
-  // Playback controls
+  // Playback controls - support both Audio element and Browser Speech Synthesis
   const pause = useCallback(() => {
+    // Pause audio element
     if (audioRef.current) {
       audioRef.current.pause();
+    }
+    // Pause browser speech synthesis
+    if (isBrowserSpeakingRef.current && 'speechSynthesis' in window) {
+      window.speechSynthesis.pause();
+      setNarrationState(prev => ({ ...prev, isPlaying: false, isPaused: true }));
     }
   }, []);
 
   const resume = useCallback(() => {
-    if (audioRef.current) {
+    // Resume audio element
+    if (audioRef.current && audioRef.current.paused && audioRef.current.src) {
       audioRef.current.play();
+    }
+    // Resume browser speech synthesis
+    if (isBrowserSpeakingRef.current && 'speechSynthesis' in window) {
+      window.speechSynthesis.resume();
+      setNarrationState(prev => ({ ...prev, isPlaying: true, isPaused: false }));
     }
   }, []);
 
   const stop = useCallback(() => {
+    // Stop audio element
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+    }
+    // Stop browser speech synthesis
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      isBrowserSpeakingRef.current = false;
     }
     setNarrationState(prev => ({
       ...prev,
