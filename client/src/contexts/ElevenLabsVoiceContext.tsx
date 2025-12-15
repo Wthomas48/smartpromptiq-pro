@@ -157,10 +157,10 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
     utterance.volume = 1.0;
 
     // Try to find a good voice
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v =>
+    const availableVoices = window.speechSynthesis.getVoices();
+    const preferredVoice = availableVoices.find(v =>
       v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Microsoft') || v.name.includes('Samantha'))
-    ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    ) || availableVoices.find(v => v.lang.startsWith('en')) || availableVoices[0];
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
