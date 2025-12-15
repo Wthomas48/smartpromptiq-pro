@@ -904,10 +904,68 @@ const BuilderIQQuestionnaire: React.FC = () => {
     voiceModeJustActivated.current = false; // Reset after first question change
   }, [currentIndex]);
 
-  // Toggle voice mode
+  // State for microphone permission
+  const [micPermissionStatus, setMicPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
+  const [showMicPermissionDialog, setShowMicPermissionDialog] = useState(false);
+
+  // Request microphone permission with awesome UX
+  const requestMicrophonePermission = async (): Promise<boolean> => {
+    try {
+      console.log('🎤 Requesting microphone permission...');
+
+      // Try to get microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Permission granted! Stop the stream since we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+
+      setMicPermissionStatus('granted');
+      console.log('🎤 Microphone permission granted!');
+      return true;
+    } catch (error: any) {
+      console.error('🎤 Microphone permission error:', error);
+
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setMicPermissionStatus('denied');
+        toast({
+          title: "Microphone Access Needed",
+          description: "Please click the camera/microphone icon in your browser's address bar and select 'Allow' for microphone, then try again.",
+          variant: "destructive",
+          duration: 8000,
+        });
+
+        // Speak guidance for visually impaired users
+        voiceService.speak(
+          "I need microphone access to hear you. Please look for the microphone or lock icon in your browser's address bar, click it, and select Allow for microphone. Then try enabling voice mode again.",
+          { personality: 'friendly' }
+        );
+      } else if (error.name === 'NotFoundError') {
+        toast({
+          title: "No Microphone Found",
+          description: "Please connect a microphone and try again.",
+          variant: "destructive",
+        });
+        voiceService.speak("I couldn't find a microphone. Please connect one and try again.", { personality: 'friendly' });
+      }
+
+      return false;
+    }
+  };
+
+  // Toggle voice mode with permission check
   const toggleVoiceMode = async () => {
     if (!voiceMode) {
       console.log('🎤 Activating voice mode...');
+
+      // FIRST: Request microphone permission
+      const hasPermission = await requestMicrophonePermission();
+
+      if (!hasPermission) {
+        console.log('🎤 Microphone permission denied, cannot activate voice mode');
+        return; // Don't activate voice mode without permission
+      }
+
+      // Permission granted! Now activate voice mode
       setVoiceMode(true);
       setVoiceModeReady(false);
       voiceModeJustActivated.current = true;
@@ -916,26 +974,39 @@ const BuilderIQQuestionnaire: React.FC = () => {
       // Force initialize voice service (unlocks audio on user gesture)
       voiceService.forceInit();
 
-      // Speak activation message (this also serves as user gesture for audio)
-      voiceService.speak("Yes! Voice mode activated! I'm so excited to guide you through each question. Let's build something amazing!", {
-        personality: 'enthusiastic',
-        onEnd: () => {
-          console.log('🎤 Activation speech complete, now asking question...');
-          setVoiceModeReady(true);
-          // Now ask the first question and start listening
-          setTimeout(() => {
-            askCurrentQuestion();
-          }, 200);
-        },
-        onError: () => {
-          console.log('🎤 Activation speech error, trying to continue...');
-          setVoiceModeReady(true);
-          // Still try to ask question
-          setTimeout(() => {
-            askCurrentQuestion();
-          }, 200);
+      // Speak awesome activation message
+      voiceService.speak(
+        "Perfect! Voice mode is now active! I'm BuilderIQ, your AI app building assistant. " +
+        "I'll read each question aloud and listen to your answers. " +
+        "Just speak naturally - say things like 'web app' or 'mobile app'. " +
+        "You can also say 'help' anytime for guidance, or 'next' to move forward. " +
+        "Let's create something amazing together!",
+        {
+          personality: 'enthusiastic',
+          onEnd: () => {
+            console.log('🎤 Activation speech complete, now asking question...');
+            setVoiceModeReady(true);
+            // Now ask the first question and start listening
+            setTimeout(() => {
+              askCurrentQuestion();
+            }, 300);
+          },
+          onError: () => {
+            console.log('🎤 Activation speech error, trying to continue...');
+            setVoiceModeReady(true);
+            setTimeout(() => {
+              askCurrentQuestion();
+            }, 300);
+          }
         }
+      );
+
+      // Show toast for visual confirmation
+      toast({
+        title: "Voice Mode Activated!",
+        description: "I'll read questions aloud and listen to your answers. Say 'help' anytime for guidance.",
       });
+
     } else {
       console.log('🎤 Deactivating voice mode...');
       setVoiceMode(false);
@@ -949,8 +1020,17 @@ const BuilderIQQuestionnaire: React.FC = () => {
       // Cancel any ongoing speech
       voiceService.stop();
 
-      // Say goodbye
-      voiceService.speak("Voice mode deactivated. You can continue typing your answers. Talk to you later!", { personality: 'friendly' });
+      // Say friendly goodbye
+      voiceService.speak(
+        "Voice mode deactivated. You can continue by typing your answers. " +
+        "Enable voice mode anytime to have me read questions and listen to you. Talk to you soon!",
+        { personality: 'friendly' }
+      );
+
+      toast({
+        title: "Voice Mode Off",
+        description: "You can type your answers or re-enable voice anytime.",
+      });
     }
   };
 
@@ -1209,6 +1289,51 @@ const BuilderIQQuestionnaire: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8">
+      {/* Accessibility Banner - Shows when microphone is blocked */}
+      {micPermissionStatus === 'denied' && (
+        <div className="bg-amber-500/90 text-black py-3 px-4 text-center mb-4" role="alert" aria-live="assertive">
+          <div className="max-w-3xl mx-auto flex items-center justify-center gap-3 flex-wrap">
+            <MicOff className="w-5 h-5" />
+            <span className="font-medium">Microphone access is blocked.</span>
+            <span>Click the lock/mic icon in your browser's address bar, select "Allow" for microphone, then refresh.</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-white/20 border-black/30 hover:bg-white/40"
+              onClick={() => {
+                voiceService.speak(
+                  "To enable voice mode, look for the lock or microphone icon in your browser's address bar at the top of the screen. " +
+                  "Click on it, find the microphone setting, and change it from Block to Allow. Then refresh this page.",
+                  { personality: 'friendly' }
+                );
+              }}
+            >
+              <Volume2 className="w-4 h-4 mr-1" /> Hear Instructions
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Voice Accessibility Welcome Banner - Shows for first-time users */}
+      {!voiceMode && micPermissionStatus !== 'denied' && (
+        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border-b border-purple-500/30 py-3 px-4 text-center mb-4">
+          <div className="max-w-3xl mx-auto flex items-center justify-center gap-3 flex-wrap text-sm">
+            <Headphones className="w-5 h-5 text-purple-400" />
+            <span className="text-purple-200">
+              <strong>Accessibility:</strong> Enable Voice Mode to have questions read aloud and speak your answers.
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-purple-500/20 border-purple-500/50 hover:bg-purple-500/30 text-purple-200"
+              onClick={toggleVoiceMode}
+            >
+              <Mic className="w-4 h-4 mr-1" /> Enable Voice
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-3xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
