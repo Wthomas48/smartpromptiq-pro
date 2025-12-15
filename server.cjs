@@ -1881,31 +1881,40 @@ app.post('/api/elevenlabs/generate', async (req, res) => {
 app.post('/api/elevenlabs/page/narrate', async (req, res) => {
   console.log('🎤 ElevenLabs page narrate request:', req.body);
 
-  const { text, voice = 'rachel', pageId } = req.body;
+  // Accept both 'content' (from frontend) and 'text' for flexibility
+  const { content, text, voice = 'rachel', voiceName, pageId, pageType, pageTitle } = req.body;
+  const narrationText = content || text;
+  const selectedVoice = voiceName || voice;
 
-  if (!text) {
+  if (!narrationText) {
     return res.status(400).json({
       success: false,
-      message: 'Text is required for page narration'
+      message: 'Content or text is required for page narration'
     });
   }
 
-  // For now, return demo response
+  // Return demo response with browser speech synthesis fallback
   if (!ELEVENLABS_API_KEY) {
     return res.json({
       success: true,
-      message: 'Page narration demo mode',
+      demo: true,
+      message: 'Page narration uses browser speech synthesis',
+      content: narrationText,
+      text: narrationText.substring(0, 100) + '...',
+      voice: selectedVoice,
+      pageType: pageType,
+      pageTitle: pageTitle,
+      useBrowserSpeech: true,
       data: {
         audioUrl: null,
         pageId: pageId,
-        text: text.substring(0, 100) + '...',
         isDemo: true
       }
     });
   }
 
   try {
-    const voiceId = getVoiceId(voice);
+    const voiceId = getVoiceId(selectedVoice);
     const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
@@ -1914,7 +1923,7 @@ app.post('/api/elevenlabs/page/narrate', async (req, res) => {
         'xi-api-key': ELEVENLABS_API_KEY
       },
       body: JSON.stringify({
-        text: text,
+        text: narrationText,
         model_id: 'eleven_monolingual_v1',
         voice_settings: {
           stability: 0.5,
@@ -1941,9 +1950,14 @@ app.post('/api/elevenlabs/page/narrate', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Page narrate error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Page narration failed',
+    // Fallback to browser speech on error
+    res.json({
+      success: true,
+      demo: true,
+      message: 'ElevenLabs API error. Using browser speech synthesis.',
+      content: narrationText,
+      voice: selectedVoice,
+      useBrowserSpeech: true,
       error: error.message
     });
   }
