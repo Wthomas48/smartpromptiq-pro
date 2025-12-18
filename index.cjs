@@ -540,17 +540,27 @@ app.post('/api/feedback/rating', (req, res) => {
 // ========================================
 // Note: Stripe is initialized at the top of the file (before express.json middleware)
 
-// Pricing configuration - match backend/src/config/pricing.ts
+// Pricing configuration - match Railway env var names
 const STRIPE_PRICE_IDS = {
-  ACADEMY_MONTHLY: process.env.STRIPE_PRICE_ACADEMY_MONTHLY || 'price_academy_monthly',
-  ACADEMY_YEARLY: process.env.STRIPE_PRICE_ACADEMY_YEARLY || 'price_academy_yearly',
-  PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_pro_monthly',
-  PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY || 'price_pro_yearly',
-  TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY || 'price_team_monthly',
-  TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_YEARLY || 'price_team_yearly',
-  ENTERPRISE_MONTHLY: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_enterprise_monthly',
-  ENTERPRISE_YEARLY: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_enterprise_yearly',
+  ACADEMY_MONTHLY: process.env.STRIPE_ACADEMY_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_ACADEMY_MONTHLY || '',
+  ACADEMY_YEARLY: process.env.STRIPE_ACADEMY_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_ACADEMY_YEARLY || '',
+  PRO_MONTHLY: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_PRO_MONTHLY || '',
+  PRO_YEARLY: process.env.STRIPE_PRO_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_PRO_YEARLY || '',
+  STARTER_MONTHLY: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_STARTER_MONTHLY || '',
+  STARTER_YEARLY: process.env.STRIPE_STARTER_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_STARTER_YEARLY || '',
+  TEAM_PRO_MONTHLY: process.env.STRIPE_TEAM_PRO_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_TEAM_MONTHLY || '',
+  TEAM_PRO_YEARLY: process.env.STRIPE_TEAM_PRO_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_TEAM_YEARLY || '',
+  ENTERPRISE_MONTHLY: process.env.STRIPE_ENTERPRISE_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || '',
+  ENTERPRISE_YEARLY: process.env.STRIPE_ENTERPRISE_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || '',
 };
+
+// Log Stripe configuration on startup
+console.log('💳 Stripe Price IDs configured:', {
+  PRO_MONTHLY: STRIPE_PRICE_IDS.PRO_MONTHLY ? '✅' : '❌',
+  PRO_YEARLY: STRIPE_PRICE_IDS.PRO_YEARLY ? '✅' : '❌',
+  STARTER_MONTHLY: STRIPE_PRICE_IDS.STARTER_MONTHLY ? '✅' : '❌',
+  ENTERPRISE_MONTHLY: STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY ? '✅' : '❌',
+});
 
 // Helper to decode JWT payload (without verification - Supabase handles that)
 const decodeJwtPayload = (token) => {
@@ -712,9 +722,10 @@ app.post('/api/billing/create-checkout-session', billingAuth, async (req, res) =
       const tierPriceMap = {
         // Academy
         'academy': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.ACADEMY_YEARLY : STRIPE_PRICE_IDS.ACADEMY_MONTHLY,
-        // Pro / Starter (starter maps to pro)
+        // Starter (own price IDs)
+        'starter': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.STARTER_YEARLY : STRIPE_PRICE_IDS.STARTER_MONTHLY,
+        // Pro (own price IDs)
         'pro': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.PRO_YEARLY : STRIPE_PRICE_IDS.PRO_MONTHLY,
-        'starter': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.PRO_YEARLY : STRIPE_PRICE_IDS.PRO_MONTHLY,
         // Team
         'team': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.TEAM_PRO_YEARLY : STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
         'team_pro': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.TEAM_PRO_YEARLY : STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
