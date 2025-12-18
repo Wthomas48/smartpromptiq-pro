@@ -52,8 +52,21 @@ app.use(cors({
 }));
 
 // ---- Stripe Setup (before body parser for webhook) ----
-const Stripe = require('stripe');
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
+let stripe = null;
+let stripeAvailable = false;
+
+try {
+  const Stripe = require('stripe');
+  if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_placeholder') {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    stripeAvailable = true;
+    console.log('✅ Stripe initialized successfully');
+  } else {
+    console.warn('⚠️ Stripe secret key not configured - running in demo mode');
+  }
+} catch (err) {
+  console.warn('⚠️ Stripe module not available:', err.message);
+}
 
 // Stripe webhook endpoint - MUST be before express.json() middleware
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -536,7 +549,7 @@ app.post('/api/billing/create-checkout-session', billingAuth, async (req, res) =
     }
 
     // Check if Stripe is configured
-    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_test_placeholder') {
+    if (!stripeAvailable || !stripe) {
       console.warn('⚠️ Stripe not configured - returning demo mode');
       return res.json({
         success: true,
