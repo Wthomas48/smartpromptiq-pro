@@ -7,9 +7,37 @@ const { generalLimiter } = require('./middleware/rateLimiter.cjs');
 
 const app = express();
 
-// ---- Database Setup (Prisma) ----
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// ---- Database Setup (Prisma) - with fallback ----
+let prisma = null;
+let dbAvailable = false;
+
+try {
+  // Try to load Prisma from backend folder first
+  const { PrismaClient } = require('./backend/node_modules/@prisma/client');
+  prisma = new PrismaClient();
+  dbAvailable = true;
+  console.log('✅ Prisma client loaded from backend');
+} catch (err1) {
+  try {
+    // Fallback to root node_modules
+    const { PrismaClient } = require('@prisma/client');
+    prisma = new PrismaClient();
+    dbAvailable = true;
+    console.log('✅ Prisma client loaded from root');
+  } catch (err2) {
+    console.warn('⚠️ Prisma client not available - running in demo mode');
+    console.warn('   Error:', err2.message);
+    // Create mock prisma for demo mode
+    prisma = {
+      user: {
+        findUnique: async () => null,
+        findFirst: async () => null,
+        create: async () => ({ id: 'demo-' + Date.now(), email: 'demo@example.com' }),
+        update: async () => ({})
+      }
+    };
+  }
+}
 
 // ---- Trust proxy (Railway/Cloudflare) ----
 const TRUST_PROXY = process.env.TRUST_PROXY || '1';

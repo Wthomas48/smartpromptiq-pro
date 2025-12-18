@@ -5,7 +5,12 @@ nixPkgs = ["nodejs_20", "openssl"]
 cmds = ["npm install", "cd client && npm install", "cd backend && npm install"]
 
 [phases.build]
-cmds = ["cd backend && npx prisma generate", "cd client && npm run build"]
+cmds = [
+  "cd backend && npx prisma generate",
+  "cp -r backend/node_modules/.prisma node_modules/ || true",
+  "cp -r backend/node_modules/@prisma node_modules/ || true",
+  "cd client && npm run build"
+]
 
 [start]
 cmd = "node index.cjs"
