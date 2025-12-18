@@ -702,38 +702,45 @@ app.post('/api/billing/create-checkout-session', billingAuth, async (req, res) =
 
     // Map tier to Stripe price ID
     if (!priceId && tierId) {
-      const tierKey = tierId.toUpperCase().replace(/-/g, '_').replace(/ /g, '_');
-      const cycleKey = billingCycle.toUpperCase();
-      const lookupKey = `${tierKey}_${cycleKey}`;
+      // Normalize tier name - handle all variations
+      const normalizedTier = tierId.toLowerCase().replace(/-/g, '_').replace(/ /g, '_');
+      const normalizedCycle = (billingCycle || 'monthly').toLowerCase();
 
-      const tierMapping = {
-        'ACADEMY_MONTHLY': STRIPE_PRICE_IDS.ACADEMY_MONTHLY,
-        'ACADEMY_YEARLY': STRIPE_PRICE_IDS.ACADEMY_YEARLY,
-        'PRO_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
-        'PRO_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
-        'STARTER_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
-        'STARTER_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
-        'TEAM_PRO_MONTHLY': STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
-        'TEAM_PRO_YEARLY': STRIPE_PRICE_IDS.TEAM_PRO_YEARLY,
-        'TEAM_MONTHLY': STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
-        'TEAM_YEARLY': STRIPE_PRICE_IDS.TEAM_PRO_YEARLY,
-        'ENTERPRISE_MONTHLY': STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
-        'ENTERPRISE_YEARLY': STRIPE_PRICE_IDS.ENTERPRISE_YEARLY,
+      console.log('💳 Looking up price for:', { normalizedTier, normalizedCycle });
+
+      // Direct tier to price ID mapping (case-insensitive)
+      const tierPriceMap = {
+        // Academy
+        'academy': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.ACADEMY_YEARLY : STRIPE_PRICE_IDS.ACADEMY_MONTHLY,
+        // Pro / Starter (starter maps to pro)
+        'pro': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.PRO_YEARLY : STRIPE_PRICE_IDS.PRO_MONTHLY,
+        'starter': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.PRO_YEARLY : STRIPE_PRICE_IDS.PRO_MONTHLY,
+        // Team
+        'team': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.TEAM_PRO_YEARLY : STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
+        'team_pro': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.TEAM_PRO_YEARLY : STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
+        // Enterprise
+        'enterprise': normalizedCycle === 'yearly' ? STRIPE_PRICE_IDS.ENTERPRISE_YEARLY : STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
       };
 
-      priceId = tierMapping[lookupKey];
-      console.log('💳 Mapped tier:', { lookupKey, priceId });
+      priceId = tierPriceMap[normalizedTier];
+      console.log('💳 Mapped tier:', { normalizedTier, normalizedCycle, priceId, availablePrices: STRIPE_PRICE_IDS });
     }
 
-    // If no price ID found, return demo mode
-    if (!priceId) {
-      console.warn('⚠️ No price ID for tier:', tierId);
+    // Check if price ID is a valid Stripe price (starts with price_)
+    const isValidStripePrice = priceId && priceId.startsWith('price_') && priceId.length > 20;
+
+    // If no valid price ID, return demo mode
+    if (!priceId || !isValidStripePrice) {
+      console.warn('⚠️ Invalid or missing Stripe price ID:', { tierId, priceId, isValidStripePrice });
+      console.warn('⚠️ Available STRIPE_PRICE_IDS:', STRIPE_PRICE_IDS);
       return res.json({
         success: true,
         demo: true,
         sessionId: `demo_session_${Date.now()}`,
         url: successUrl || `${baseUrl}/billing?success=true&demo=true`,
-        message: `Pricing for ${tierId} coming soon!`
+        message: priceId && !isValidStripePrice
+          ? 'Stripe Price IDs not configured. Please add STRIPE_PRICE_PRO_MONTHLY etc. to environment variables.'
+          : `Pricing for ${tierId} coming soon!`
       });
     }
 
