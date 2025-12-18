@@ -728,6 +728,14 @@ export default function IntroOutroBuilder() {
     }
   };
 
+  // Video render state
+  const [renderStatus, setRenderStatus] = useState<{
+    id: string;
+    status: 'queued' | 'fetching' | 'rendering' | 'saving' | 'done' | 'failed';
+    url?: string;
+    error?: string;
+  } | null>(null);
+
   const exportVideo = async () => {
     if (!selectedTrack) {
       toast({
@@ -738,45 +746,176 @@ export default function IntroOutroBuilder() {
       return;
     }
 
+    // Check if user has access
+    if (!downloadGate.canAccess) {
+      downloadGate.showUpgrade();
+      return;
+    }
+
     setIsExportingVideo(true);
+    setRenderStatus({ id: '', status: 'queued' });
 
     try {
-      // Create canvas for video frames
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+      // Determine video type based on selected template
+      const videoType = selectedTemplate?.category === 'outro' ? 'outro' : 'intro';
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      // Build request payload
+      const payload = {
+        type: videoType,
+        title: overlayText || selectedTemplate?.name || 'My Video',
+        subtitle: selectedTemplate?.name,
+        backgroundColor: backgroundColor,
+        textColor: textColor,
+        textStyle: 'future',
+        backgroundImage: backgroundImage || undefined,
+        musicUrl: selectedTrack.audioUrl,
+        musicVolume: musicVolume,
+        voiceUrl: recordedVoiceUrl || undefined,
+        voiceVolume: voiceVolume,
+        duration: customDuration,
+        fadeIn: fadeInDuration,
+        fadeOut: fadeOutDuration,
+        aspectRatio: '16:9',
+        format: 'mp4',
+        resolution: '1080',
+        effect: 'zoomIn',
+        transition: 'fade',
+      };
 
-      // Set canvas size (16:9 aspect ratio - 1080p)
-      canvas.width = 1920;
-      canvas.height = 1080;
+      console.log('🎬 Submitting video render:', payload);
 
-      // For actual video export, we'd use MediaRecorder with canvas
-      // This is a simplified demo that creates an animated preview
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      toast({
-        title: 'Video Preview Ready!',
-        description: 'Your intro/outro video has been generated',
+      // Submit to Shotstack via our backend
+      const response = await fetch('/api/shotstack/intro-outro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
-      // In a real implementation, we would:
-      // 1. Use MediaRecorder to capture canvas stream
-      // 2. Sync audio (music + voice) with video frames
-      // 3. Export as WebM or MP4 using FFmpeg.wasm or similar
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to start video render');
+      }
 
-    } catch (error) {
+      const result = await response.json();
+      console.log('🎬 Render started:', result);
+
+      setRenderStatus({
+        id: result.renderId,
+        status: 'rendering',
+      });
+
+      toast({
+        title: 'Video Rendering Started!',
+        description: `Your ${videoType} is being created. This may take 30-60 seconds.`,
+      });
+
+      // Poll for render completion
+      await pollRenderStatus(result.renderId);
+
+    } catch (error: any) {
       console.error('Error exporting video:', error);
+      setRenderStatus({
+        id: '',
+        status: 'failed',
+        error: error.message,
+      });
       toast({
         title: 'Export Failed',
-        description: 'There was an error creating your video',
+        description: error.message || 'There was an error creating your video',
         variant: 'destructive',
       });
     } finally {
       setIsExportingVideo(false);
     }
+  };
+
+  // Poll Shotstack for render status
+  const pollRenderStatus = async (renderId: string) => {
+    const maxAttempts = 60; // 2 minutes max
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/shotstack/render/${renderId}`);
+        const data = await response.json();
+
+        console.log('🎬 Render status:', data.status);
+
+        setRenderStatus({
+          id: renderId,
+          status: data.status,
+          url: data.url,
+          error: data.error,
+        });
+
+        if (data.status === 'done' && data.url) {
+          toast({
+            title: 'Video Ready!',
+            description: 'Your intro/outro video is ready to download.',
+          });
+          return;
+        }
+
+        if (data.status === 'failed') {
+          toast({
+            title: 'Render Failed',
+            description: data.error || 'Video rendering failed. Please try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Continue polling if still rendering
+        if (['queued', 'fetching', 'rendering', 'saving'].includes(data.status)) {
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 2000); // Poll every 2 seconds
+          } else {
+            toast({
+              title: 'Render Timeout',
+              description: 'Video is taking longer than expected. Check back later.',
+              variant: 'destructive',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error polling render status:', error);
+      }
+    };
+
+    await poll();
+  };
+
+  // Download rendered video
+  const downloadVideo = () => {
+    if (renderStatus?.url) {
+      const link = document.createElement('a');
+      link.href = renderStatus.url;
+      link.download = `smartpromptiq-${selectedTemplate?.id || 'video'}-${Date.now()}.mp4`;
+      link.target = '_blank';
+      link.click();
+
+      toast({
+        title: 'Download Started',
+        description: 'Your video is downloading...',
+      });
+    }
+  };
+
+  // Helper to get proxied URL for external audio (to avoid CORS issues)
+  const getProxiedAudioUrl = (url: string): string => {
+    // Check if URL is from an external source that needs proxying
+    const needsProxy = url.includes('soundhelix.com') ||
+                       url.includes('freemusicarchive.org') ||
+                       url.includes('incompetech.com');
+
+    if (needsProxy) {
+      // Use our backend proxy to fetch the audio
+      return `/api/audio/proxy?url=${encodeURIComponent(url)}`;
+    }
+
+    // Local or already proxied URLs don't need modification
+    return url;
   };
 
   // Mix voice and music together
@@ -796,8 +935,9 @@ export default function IntroOutroBuilder() {
       // Create AudioContext for mixing
       const audioContext = new AudioContext();
 
-      // Load music track
-      const musicResponse = await fetch(selectedTrack.audioUrl);
+      // Load music track through proxy to avoid CORS issues
+      const proxiedUrl = getProxiedAudioUrl(selectedTrack.audioUrl);
+      const musicResponse = await fetch(proxiedUrl);
       const musicBuffer = await audioContext.decodeAudioData(await musicResponse.arrayBuffer());
 
       // Load voice recording
@@ -950,17 +1090,69 @@ export default function IntroOutroBuilder() {
 
       {/* Header */}
       <div className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
-              <AudioWaveform className="w-8 h-8 text-white" />
-            </div>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center gap-6">
+            <motion.div
+              className="p-4 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 shadow-lg shadow-purple-500/25"
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <AudioWaveform className="w-10 h-10 text-white" />
+            </motion.div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Intro & Outro Builder
+              <h1 className="text-4xl font-bold mb-2">
+                <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400 bg-clip-text text-transparent">
+                  Intro & Outro Builder
+                </span>
               </h1>
-              <p className="text-gray-400">Create professional intros and outros with awesome music</p>
+              <p className="text-lg text-gray-400">
+                Create professional intros and outros with
+              </p>
             </div>
+          </div>
+
+          {/* Feature Pills - These highlight on hover */}
+          <div className="flex flex-wrap gap-3 mt-6">
+            <motion.div
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 cursor-pointer group"
+              whileHover={{ scale: 1.08, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
+              <Music className="w-5 h-5 text-yellow-400 group-hover:text-yellow-300 transition-colors" />
+              <span className="text-sm font-semibold text-yellow-400 group-hover:text-yellow-300 transition-colors">Awesome Music</span>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+            </motion.div>
+            <motion.div
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 cursor-pointer group"
+              whileHover={{ scale: 1.08, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
+              <Mic className="w-5 h-5 text-green-400 group-hover:text-green-300 transition-colors" />
+              <span className="text-sm font-semibold text-green-400 group-hover:text-green-300 transition-colors">Voice Recording</span>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+            </motion.div>
+            <motion.div
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-pink-500/10 to-rose-500/10 border border-pink-500/30 cursor-pointer group"
+              whileHover={{ scale: 1.08, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
+              <Video className="w-5 h-5 text-pink-400 group-hover:text-pink-300 transition-colors" />
+              <span className="text-sm font-semibold text-pink-400 group-hover:text-pink-300 transition-colors">HD Video Export</span>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500/20 to-rose-500/20 opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+            </motion.div>
+            <motion.div
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/30 cursor-pointer group"
+              whileHover={{ scale: 1.08, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
+              <Sparkles className="w-5 h-5 text-purple-400 group-hover:text-purple-300 transition-colors" />
+              <span className="text-sm font-semibold text-purple-400 group-hover:text-purple-300 transition-colors">AI-Powered</span>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+            </motion.div>
           </div>
         </div>
       </div>
@@ -970,24 +1162,39 @@ export default function IntroOutroBuilder() {
           {/* Left Panel - Templates & Library */}
           <div className="lg:col-span-2 space-y-6">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-              <TabsList className="bg-white/5 border border-white/10 flex-wrap">
-                <TabsTrigger value="templates" className="data-[state=active]:bg-purple-500">
+              <TabsList className="bg-white/5 border border-white/10 flex-wrap p-1 gap-1">
+                <TabsTrigger
+                  value="templates"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-indigo-500 data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/25 hover:bg-white/10 transition-all duration-300"
+                >
                   <Layers className="w-4 h-4 mr-2" />
                   Templates
                 </TabsTrigger>
-                <TabsTrigger value="library" className="data-[state=active]:bg-purple-500">
+                <TabsTrigger
+                  value="library"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-500 data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/25 hover:bg-white/10 transition-all duration-300"
+                >
                   <Music className="w-4 h-4 mr-2" />
                   Music
                 </TabsTrigger>
-                <TabsTrigger value="voice" className="data-[state=active]:bg-green-500">
+                <TabsTrigger
+                  value="voice"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:shadow-lg data-[state=active]:shadow-green-500/25 hover:bg-white/10 transition-all duration-300"
+                >
                   <Mic className="w-4 h-4 mr-2" />
                   Voice
                 </TabsTrigger>
-                <TabsTrigger value="video" className="data-[state=active]:bg-pink-500">
+                <TabsTrigger
+                  value="video"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-rose-500 data-[state=active]:shadow-lg data-[state=active]:shadow-pink-500/25 hover:bg-white/10 transition-all duration-300"
+                >
                   <Video className="w-4 h-4 mr-2" />
                   Video
                 </TabsTrigger>
-                <TabsTrigger value="custom" className="data-[state=active]:bg-purple-500">
+                <TabsTrigger
+                  value="custom"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/25 hover:bg-white/10 transition-all duration-300"
+                >
                   <Settings2 className="w-4 h-4 mr-2" />
                   Custom
                 </TabsTrigger>
@@ -1005,25 +1212,33 @@ export default function IntroOutroBuilder() {
                     {introTemplates.map((template) => (
                       <motion.div
                         key={template.id}
-                        whileHover={{ scale: 1.02 }}
+                        whileHover={{ scale: 1.03, y: -4 }}
                         whileTap={{ scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                       >
                         <Card
-                          className={`cursor-pointer transition-all border-2 ${
+                          className={`cursor-pointer transition-all duration-300 border-2 overflow-hidden group ${
                             selectedTemplate?.id === template.id
-                              ? 'border-purple-500 bg-purple-500/10'
-                              : 'border-white/10 bg-white/5 hover:border-white/20'
+                              ? 'border-purple-500 bg-purple-500/20 shadow-lg shadow-purple-500/20'
+                              : 'border-white/10 bg-white/5 hover:border-purple-400/50 hover:bg-white/10 hover:shadow-lg hover:shadow-purple-500/10'
                           }`}
                           onClick={() => handleSelectTemplate(template)}
                         >
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className={`p-2 rounded-lg bg-gradient-to-br ${template.color}`}>
+                          <CardContent className="p-4 relative">
+                            {/* Glow effect on hover */}
+                            <div className={`absolute inset-0 bg-gradient-to-br ${template.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
+
+                            <div className="flex items-start gap-3 relative z-10">
+                              <motion.div
+                                className={`p-2.5 rounded-xl bg-gradient-to-br ${template.color} shadow-lg`}
+                                whileHover={{ rotate: 10, scale: 1.1 }}
+                                transition={{ type: "spring", stiffness: 400 }}
+                              >
                                 {template.icon}
-                              </div>
+                              </motion.div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold text-white">{template.name}</h4>
+                                  <h4 className="font-semibold text-white group-hover:text-purple-300 transition-colors">{template.name}</h4>
                                   {template.popular && (
                                     <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 text-xs">
                                       Popular
@@ -1060,33 +1275,41 @@ export default function IntroOutroBuilder() {
                     {outroTemplates.map((template) => (
                       <motion.div
                         key={template.id}
-                        whileHover={{ scale: 1.02 }}
+                        whileHover={{ scale: 1.03, y: -4 }}
                         whileTap={{ scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                       >
                         <Card
-                          className={`cursor-pointer transition-all border-2 ${
+                          className={`cursor-pointer transition-all duration-300 border-2 overflow-hidden group ${
                             selectedTemplate?.id === template.id
-                              ? 'border-purple-500 bg-purple-500/10'
-                              : 'border-white/10 bg-white/5 hover:border-white/20'
+                              ? 'border-pink-500 bg-pink-500/20 shadow-lg shadow-pink-500/20'
+                              : 'border-white/10 bg-white/5 hover:border-pink-400/50 hover:bg-white/10 hover:shadow-lg hover:shadow-pink-500/10'
                           }`}
                           onClick={() => handleSelectTemplate(template)}
                         >
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className={`p-2 rounded-lg bg-gradient-to-br ${template.color}`}>
+                          <CardContent className="p-4 relative">
+                            {/* Glow effect on hover */}
+                            <div className={`absolute inset-0 bg-gradient-to-br ${template.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
+
+                            <div className="flex items-start gap-3 relative z-10">
+                              <motion.div
+                                className={`p-2.5 rounded-xl bg-gradient-to-br ${template.color} shadow-lg`}
+                                whileHover={{ rotate: -10, scale: 1.1 }}
+                                transition={{ type: "spring", stiffness: 400 }}
+                              >
                                 {template.icon}
-                              </div>
+                              </motion.div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold text-white">{template.name}</h4>
+                                  <h4 className="font-semibold text-white group-hover:text-pink-300 transition-colors">{template.name}</h4>
                                   {template.popular && (
                                     <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 text-xs">
                                       Popular
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-400 mt-1">{template.description}</p>
-                                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                <p className="text-sm text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">{template.description}</p>
+                                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
                                   <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     {template.duration}s
@@ -1095,7 +1318,13 @@ export default function IntroOutroBuilder() {
                                 </div>
                               </div>
                               {selectedTemplate?.id === template.id && (
-                                <Check className="w-5 h-5 text-purple-400" />
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  transition={{ type: "spring", stiffness: 500 }}
+                                >
+                                  <Check className="w-5 h-5 text-pink-400" />
+                                </motion.div>
                               )}
                             </div>
                           </CardContent>
@@ -1108,48 +1337,71 @@ export default function IntroOutroBuilder() {
                 {/* Complete Packs */}
                 <div>
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Star className="w-5 h-5 text-yellow-400" />
+                    <motion.div
+                      animate={{ rotate: [0, 15, -15, 0] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <Star className="w-5 h-5 text-yellow-400" />
+                    </motion.div>
                     Complete Packs (Intro + Outro)
+                    <Badge className="bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs ml-2">
+                      Best Value
+                    </Badge>
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {packTemplates.map((template) => (
                       <motion.div
                         key={template.id}
-                        whileHover={{ scale: 1.02 }}
+                        whileHover={{ scale: 1.03, y: -4 }}
                         whileTap={{ scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
                       >
                         <Card
-                          className={`cursor-pointer transition-all border-2 ${
+                          className={`cursor-pointer transition-all duration-300 border-2 overflow-hidden group ${
                             selectedTemplate?.id === template.id
-                              ? 'border-yellow-500 bg-yellow-500/10'
-                              : 'border-white/10 bg-white/5 hover:border-white/20'
+                              ? 'border-yellow-500 bg-yellow-500/20 shadow-lg shadow-yellow-500/20'
+                              : 'border-white/10 bg-white/5 hover:border-yellow-400/50 hover:bg-white/10 hover:shadow-lg hover:shadow-yellow-500/10'
                           }`}
                           onClick={() => handleSelectTemplate(template)}
                         >
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className={`p-2 rounded-lg bg-gradient-to-br ${template.color}`}>
+                          <CardContent className="p-4 relative">
+                            {/* Premium glow effect */}
+                            <div className={`absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-amber-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+
+                            <div className="flex items-start gap-3 relative z-10">
+                              <motion.div
+                                className={`p-2.5 rounded-xl bg-gradient-to-br ${template.color} shadow-lg ring-2 ring-yellow-400/30`}
+                                whileHover={{ rotate: 360, scale: 1.1 }}
+                                transition={{ type: "spring", stiffness: 200 }}
+                              >
                                 {template.icon}
-                              </div>
+                              </motion.div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                  <h4 className="font-semibold text-white">{template.name}</h4>
+                                  <h4 className="font-semibold text-white group-hover:text-yellow-300 transition-colors">{template.name}</h4>
                                   {template.popular && (
-                                    <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 text-xs">
-                                      Popular
+                                    <Badge variant="secondary" className="bg-gradient-to-r from-yellow-500/30 to-amber-500/30 text-yellow-400 text-xs border border-yellow-500/30">
+                                      ⭐ Popular
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-400 mt-1">{template.description}</p>
-                                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
+                                <p className="text-sm text-gray-400 mt-1 group-hover:text-gray-300 transition-colors">{template.description}</p>
+                                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                                  <span className="flex items-center gap-1 bg-yellow-500/10 px-2 py-0.5 rounded-full">
+                                    <Clock className="w-3 h-3 text-yellow-400" />
                                     {template.duration}s total
                                   </span>
+                                  <span className="text-yellow-400/70">Intro + Outro</span>
                                 </div>
                               </div>
                               {selectedTemplate?.id === template.id && (
-                                <Check className="w-5 h-5 text-yellow-400" />
+                                <motion.div
+                                  initial={{ scale: 0, rotate: -180 }}
+                                  animate={{ scale: 1, rotate: 0 }}
+                                  transition={{ type: "spring", stiffness: 500 }}
+                                >
+                                  <Check className="w-5 h-5 text-yellow-400" />
+                                </motion.div>
                               )}
                             </div>
                           </CardContent>
@@ -1655,12 +1907,57 @@ export default function IntroOutroBuilder() {
                       </div>
                     </div>
 
+                    {/* Render Status */}
+                    {renderStatus && (
+                      <div className={`p-4 rounded-lg border ${
+                        renderStatus.status === 'done' ? 'bg-green-500/10 border-green-500/30' :
+                        renderStatus.status === 'failed' ? 'bg-red-500/10 border-red-500/30' :
+                        'bg-blue-500/10 border-blue-500/30'
+                      }`}>
+                        <div className="flex items-center gap-3">
+                          {renderStatus.status === 'done' ? (
+                            <Check className="w-6 h-6 text-green-400" />
+                          ) : renderStatus.status === 'failed' ? (
+                            <Circle className="w-6 h-6 text-red-400" />
+                          ) : (
+                            <RefreshCw className="w-6 h-6 text-blue-400 animate-spin" />
+                          )}
+                          <div className="flex-1">
+                            <p className="font-medium text-white">
+                              {renderStatus.status === 'done' ? 'Video Ready!' :
+                               renderStatus.status === 'failed' ? 'Render Failed' :
+                               renderStatus.status === 'queued' ? 'Queued...' :
+                               renderStatus.status === 'fetching' ? 'Fetching Assets...' :
+                               renderStatus.status === 'rendering' ? 'Rendering Video...' :
+                               renderStatus.status === 'saving' ? 'Saving...' : 'Processing...'}
+                            </p>
+                            <p className="text-sm text-gray-400">
+                              {renderStatus.status === 'done' ? 'Click download to get your video' :
+                               renderStatus.status === 'failed' ? (renderStatus.error || 'Please try again') :
+                               'This may take 30-60 seconds'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Download button when ready */}
+                        {renderStatus.status === 'done' && renderStatus.url && (
+                          <Button
+                            className="w-full mt-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                            onClick={downloadVideo}
+                          >
+                            <Download className="w-5 h-5 mr-2" />
+                            Download Video (MP4)
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
                     {/* Export Button */}
                     <Button
                       className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
                       size="lg"
                       onClick={exportVideo}
-                      disabled={isExportingVideo || !selectedTrack}
+                      disabled={isExportingVideo || !selectedTrack || (renderStatus?.status && !['done', 'failed'].includes(renderStatus.status))}
                     >
                       {isExportingVideo ? (
                         <>
@@ -1670,20 +1967,22 @@ export default function IntroOutroBuilder() {
                       ) : (
                         <>
                           <Video className="w-5 h-5 mr-2" />
-                          Export Video (WebM)
+                          Create Video with Shotstack
                         </>
                       )}
                     </Button>
 
                     {/* Export Info */}
                     <div className="p-4 rounded-lg bg-pink-500/10 border border-pink-500/20">
-                      <h5 className="font-medium text-pink-400 mb-2">Video Export Features:</h5>
+                      <h5 className="font-medium text-pink-400 mb-2">Video Export Features (Powered by Shotstack):</h5>
                       <ul className="text-sm text-gray-400 space-y-1">
-                        <li>• 1080p resolution (1920x1080)</li>
-                        <li>• Voice + Music audio mix</li>
+                        <li>• 1080p HD resolution (1920x1080)</li>
+                        <li>• MP4 format - works everywhere</li>
+                        <li>• Voice + Music audio sync</li>
                         <li>• Custom background image or color</li>
-                        <li>• Animated waveform visualization</li>
-                        <li>• Text overlay support</li>
+                        <li>• Animated text with transitions</li>
+                        <li>• Professional fade effects</li>
+                        <li>• Est. cost: ${(customDuration * 0.05).toFixed(2)} per render</li>
                       </ul>
                     </div>
                   </CardContent>

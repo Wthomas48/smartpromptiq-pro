@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,17 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Check, 
-  CreditCard, 
-  Download, 
-  Users, 
-  Zap, 
+import {
+  Check,
+  CreditCard,
+  Download,
+  Users,
+  Zap,
   Crown,
   Star,
   Calendar,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  ExternalLink,
+  CheckCircle
 } from "lucide-react";
 
 interface SubscriptionPlan {
@@ -55,7 +57,43 @@ interface BillingInfo {
 export default function Billing() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  // Handle checkout success/cancel URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const sessionId = urlParams.get('session_id');
+    const canceled = urlParams.get('canceled');
+    const isTokenPurchase = urlParams.get('tokens');
+
+    if (success === 'true' && sessionId) {
+      setShowSuccessMessage(true);
+      // Refresh billing data
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/info'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/usage/current'] });
+
+      toast({
+        title: isTokenPurchase ? 'Tokens Purchased!' : 'Subscription Active!',
+        description: isTokenPurchase
+          ? 'Your tokens have been added to your account.'
+          : 'Your subscription has been activated successfully.',
+      });
+
+      // Clean up URL
+      window.history.replaceState({}, '', '/billing');
+    } else if (canceled === 'true') {
+      toast({
+        title: 'Payment Canceled',
+        description: 'Your payment was canceled. No charges were made.',
+        variant: 'destructive',
+      });
+      // Clean up URL
+      window.history.replaceState({}, '', '/billing');
+    }
+  }, [toast, queryClient]);
 
   // Fetch billing information
   const { data: billingInfo, isLoading, error } = useQuery<BillingInfo>({
@@ -166,29 +204,61 @@ export default function Billing() {
     }
   ];
 
-  // Upgrade subscription mutation
+  // Upgrade subscription mutation - uses Stripe Checkout Session
   const upgradeMutation = useMutation({
     mutationFn: async ({ planId, billing }: { planId: string; billing: string }) => {
-      const response = await apiRequest("POST", "/api/billing/upgrade", {
-        planId,
-        billingCycle: billing
+      const response = await apiRequest("POST", "/api/billing/create-checkout-session", {
+        tierId: planId,
+        billingCycle: billing,
+        successUrl: `${window.location.origin}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/billing?canceled=true`
       });
-      return await response.json();
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create checkout session');
+      }
+      return result;
     },
     onSuccess: (data) => {
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+      if (data.url) {
+        window.location.href = data.url;
       } else {
         toast({
-          title: "Plan Updated",
-          description: "Your subscription has been updated successfully",
+          title: "Redirecting to payment...",
+          description: "Please wait while we redirect you to Stripe.",
         });
       }
     },
     onError: (error: any) => {
       toast({
         title: "Upgrade Failed",
-        description: error.message || "Failed to upgrade subscription",
+        description: error.message || "Failed to create checkout session",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Customer Portal mutation - for managing existing subscriptions
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/billing/create-portal-session", {
+        returnUrl: `${window.location.origin}/billing`
+      });
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create portal session');
+      }
+      return result;
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Portal Access Failed",
+        description: error.message || "Failed to open customer portal",
         variant: "destructive",
       });
     },
@@ -199,6 +269,10 @@ export default function Billing() {
       planId: plan.id,
       billing: plan.billing
     });
+  };
+
+  const handleOpenPortal = () => {
+    portalMutation.mutate();
   };
 
   const getUsagePercentage = (used: number, limit: number) => {
@@ -252,6 +326,23 @@ export default function Billing() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Success Banner */}
+          {showSuccessMessage && (
+            <Card className="mb-8 border-green-500 bg-green-50 dark:bg-green-900/20">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <div>
+                    <h3 className="font-semibold text-green-800 dark:text-green-200">Payment Successful!</h3>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Your payment has been processed. Your account has been updated.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
@@ -427,11 +518,16 @@ export default function Billing() {
                 </div>
                 
                 <Separator className="my-4" />
-                
+
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button variant="outline" className="flex-1">
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Update Payment Method
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleOpenPortal}
+                    disabled={portalMutation.isPending}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    {portalMutation.isPending ? 'Opening...' : 'Manage Subscription'}
                   </Button>
                   <Button variant="outline" className="flex-1">
                     <Download className="w-4 h-4 mr-2" />

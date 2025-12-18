@@ -55,28 +55,20 @@ export default function TokenPurchase({ packages, currentBalance, onPurchaseComp
     setSelectedPackage(packageKey);
 
     try {
-      // In a real implementation, you would integrate with Stripe Elements
-      // For now, we'll simulate the purchase process
-      
-      const response = await apiRequest('POST', '/api/billing/purchase-tokens', {
+      // Create Stripe Checkout Session for token purchase
+      const response = await apiRequest('POST', '/api/billing/create-token-checkout', {
         packageKey,
-        // In real implementation, this would come from Stripe Elements
-        paymentMethodId: 'pm_card_visa' // Placeholder
+        successUrl: `${window.location.origin}/billing?success=true&tokens=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/pricing?tab=tokens&canceled=true`
       });
 
       const result = await response.json();
 
-      if (result.success) {
-        toast({
-          title: 'Tokens Purchased Successfully!',
-          description: `${packages.find(p => p.key === packageKey)?.tokens} tokens have been added to your account.`,
-        });
-
-        if (onPurchaseComplete) {
-          onPurchaseComplete(result.data.tokensAdded);
-        }
+      if (result.success && result.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = result.url;
       } else {
-        throw new Error(result.error || 'Purchase failed');
+        throw new Error(result.error || 'Failed to create checkout session');
       }
 
     } catch (error) {
@@ -86,7 +78,6 @@ export default function TokenPurchase({ packages, currentBalance, onPurchaseComp
         description: error instanceof Error ? error.message : 'Failed to purchase tokens',
         variant: 'destructive',
       });
-    } finally {
       setIsProcessing(false);
       setSelectedPackage(null);
     }

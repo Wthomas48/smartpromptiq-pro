@@ -283,6 +283,387 @@ router.get('/token-packages', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE CHECKOUT SESSION - Redirect to Stripe-hosted payment page
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/billing/create-checkout-session
+ * Creates a Stripe Checkout Session for subscription or one-time payment
+ * Accepts either priceId directly OR tierId + billingCycle to look up the price
+ */
+router.post('/create-checkout-session', authenticate, async (req, res) => {
+  try {
+    let { priceId, tierId, billingCycle = 'monthly', mode = 'subscription', successUrl, cancelUrl } = req.body;
+
+    // If tierId is provided instead of priceId, look up the correct Stripe price ID
+    if (!priceId && tierId) {
+      const stripePriceIds = getStripePriceIds();
+      const tierKey = tierId.toUpperCase().replace('-', '_').replace(' ', '_');
+      const cycleKey = billingCycle.toUpperCase();
+      const lookupKey = `${tierKey}_${cycleKey}`;
+
+      console.log(`💳 Looking up price for tier: ${tierId}, cycle: ${billingCycle}, key: ${lookupKey}`);
+
+      // Map tier IDs to Stripe price ID keys
+      const tierMapping: Record<string, string> = {
+        'FREE_MONTHLY': '', // Free tier - no payment needed
+        'FREE_YEARLY': '',
+        'ACADEMY_MONTHLY': stripePriceIds.ACADEMY_MONTHLY,
+        'ACADEMY_YEARLY': stripePriceIds.ACADEMY_YEARLY,
+        'PRO_MONTHLY': stripePriceIds.PRO_MONTHLY,
+        'PRO_YEARLY': stripePriceIds.PRO_YEARLY,
+        'STARTER_MONTHLY': stripePriceIds.PRO_MONTHLY, // Alias for pro
+        'STARTER_YEARLY': stripePriceIds.PRO_YEARLY,
+        'TEAM_PRO_MONTHLY': stripePriceIds.TEAM_PRO_MONTHLY,
+        'TEAM_PRO_YEARLY': stripePriceIds.TEAM_PRO_YEARLY,
+        'TEAM_MONTHLY': stripePriceIds.TEAM_PRO_MONTHLY, // Alias
+        'TEAM_YEARLY': stripePriceIds.TEAM_PRO_YEARLY,
+        'ENTERPRISE_MONTHLY': stripePriceIds.ENTERPRISE_MONTHLY,
+        'ENTERPRISE_YEARLY': stripePriceIds.ENTERPRISE_YEARLY,
+      };
+
+      priceId = tierMapping[lookupKey];
+
+      if (!priceId && tierId.toLowerCase() !== 'free') {
+        console.error(`❌ No price ID found for: ${lookupKey}`);
+        return res.status(400).json({
+          success: false,
+          message: `No Stripe price configured for tier: ${tierId} (${billingCycle}). Please check your Stripe configuration.`,
+          availableTiers: Object.keys(tierMapping).filter(k => tierMapping[k])
+        });
+      }
+    }
+
+    // Handle free tier - no checkout needed
+    if (!priceId || tierId?.toLowerCase() === 'free') {
+      return res.status(400).json({
+        success: false,
+        message: 'Free tier does not require payment. Your account is already set up!'
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    let customerId = user.stripeCustomerId;
+
+    // Create Stripe customer if doesn't exist
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.name || undefined,
+        metadata: {
+          userId: user.id
+        }
+      });
+      customerId = customer.id;
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { stripeCustomerId: customerId }
+      });
+    }
+
+    // Determine base URLs
+    const baseUrl = process.env.FRONTEND_URL ||
+                    process.env.RENDER_EXTERNAL_URL ||
+                    'http://localhost:5173';
+
+    // Create Checkout Session
+    const sessionConfig: any = {
+      customer: customerId,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: mode, // 'subscription' or 'payment'
+      success_url: successUrl || `${baseUrl}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${baseUrl}/pricing?canceled=true`,
+      metadata: {
+        userId: user.id,
+        priceId: priceId
+      },
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
+    };
+
+    // Add subscription-specific options
+    if (mode === 'subscription') {
+      sessionConfig.subscription_data = {
+        metadata: {
+          userId: user.id
+        }
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    console.log(`💳 Checkout session created: ${session.id} for user ${user.id}`);
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url
+    });
+
+  } catch (error: any) {
+    console.error('Checkout session error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create checkout session'
+    });
+  }
+});
+
+/**
+ * POST /api/billing/create-token-checkout
+ * Creates a Checkout Session specifically for token purchases (one-time payment)
+ */
+router.post('/create-token-checkout', authenticate, async (req, res) => {
+  try {
+    const { packageKey } = req.body;
+
+    // Get token packages
+    const tokenPackagesArray = getTokenPackages();
+    const tokenPackage = tokenPackagesArray.find(p => p.key === packageKey);
+
+    if (!tokenPackage) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid token package'
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    let customerId = user.stripeCustomerId;
+
+    // Create Stripe customer if doesn't exist
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.name || undefined,
+        metadata: { userId: user.id }
+      });
+      customerId = customer.id;
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { stripeCustomerId: customerId }
+      });
+    }
+
+    const baseUrl = process.env.FRONTEND_URL ||
+                    process.env.RENDER_EXTERNAL_URL ||
+                    'http://localhost:5173';
+
+    // Create one-time payment session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${tokenPackage.tokens} AI Tokens`,
+              description: `Add ${tokenPackage.tokens} tokens to your SmartPromptIQ account. Valid for 90 days.`,
+            },
+            unit_amount: tokenPackage.priceInCents,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${baseUrl}/billing?success=true&tokens=${tokenPackage.tokens}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/pricing?tab=tokens&canceled=true`,
+      metadata: {
+        userId: user.id,
+        type: 'token_purchase',
+        packageKey: packageKey,
+        tokenCount: tokenPackage.tokens.toString()
+      },
+    });
+
+    console.log(`💰 Token checkout session created: ${session.id} for ${tokenPackage.tokens} tokens`);
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url,
+      tokens: tokenPackage.tokens,
+      price: tokenPackage.priceInCents
+    });
+
+  } catch (error: any) {
+    console.error('Token checkout error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create token checkout'
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE CUSTOMER PORTAL - Manage subscriptions
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/billing/create-portal-session
+ * Creates a Stripe Customer Portal session for managing subscriptions
+ */
+router.post('/create-portal-session', authenticate, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id }
+    });
+
+    if (!user || !user.stripeCustomerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'No billing account found. Please subscribe first.'
+      });
+    }
+
+    const baseUrl = process.env.FRONTEND_URL ||
+                    process.env.RENDER_EXTERNAL_URL ||
+                    'http://localhost:5173';
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${baseUrl}/billing`,
+    });
+
+    console.log(`🔧 Portal session created for user ${user.id}`);
+
+    res.json({
+      success: true,
+      url: session.url
+    });
+
+  } catch (error: any) {
+    console.error('Portal session error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create portal session'
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE PRICE VERIFICATION - Verify price IDs exist
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/billing/verify-prices
+ * Verifies that all configured Stripe Price IDs exist and are valid
+ */
+router.get('/verify-prices', async (req, res) => {
+  try {
+    const priceIds = getStripePriceIds();
+    const results: Record<string, { valid: boolean; name?: string; amount?: number; interval?: string; error?: string }> = {};
+
+    // Check each price ID
+    for (const [key, priceId] of Object.entries(priceIds)) {
+      if (!priceId || priceId === '') {
+        results[key] = { valid: false, error: 'Not configured' };
+        continue;
+      }
+
+      try {
+        const price = await stripe.prices.retrieve(priceId);
+        results[key] = {
+          valid: true,
+          name: typeof price.product === 'string' ? price.product : (price.product as any)?.name,
+          amount: price.unit_amount || 0,
+          interval: price.recurring?.interval || 'one_time'
+        };
+      } catch (err: any) {
+        results[key] = {
+          valid: false,
+          error: err.message || 'Price not found'
+        };
+      }
+    }
+
+    // Summary
+    const validCount = Object.values(results).filter(r => r.valid).length;
+    const totalCount = Object.keys(results).length;
+
+    res.json({
+      success: true,
+      summary: {
+        valid: validCount,
+        total: totalCount,
+        allValid: validCount === totalCount
+      },
+      prices: results
+    });
+
+  } catch (error: any) {
+    console.error('Price verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to verify prices'
+    });
+  }
+});
+
+/**
+ * GET /api/billing/checkout-session/:sessionId
+ * Retrieves checkout session details (for success page)
+ */
+router.get('/checkout-session/:sessionId', authenticate, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription', 'payment_intent']
+    });
+
+    res.json({
+      success: true,
+      session: {
+        id: session.id,
+        status: session.status,
+        paymentStatus: session.payment_status,
+        customerEmail: session.customer_email,
+        amountTotal: session.amount_total,
+        currency: session.currency,
+        metadata: session.metadata
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Checkout session retrieval error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to retrieve session'
+    });
+  }
+});
+
 // Stripe webhook
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature']!;

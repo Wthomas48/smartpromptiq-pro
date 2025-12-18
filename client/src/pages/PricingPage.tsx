@@ -165,23 +165,36 @@ export default function PricingPage() {
 
   const subscriptionLoading = false;
 
-  // Create subscription mutation (mock for demo)
+  // Create subscription via Stripe Checkout Session
   const createSubscription = useMutation({
     mutationFn: async ({ tierId, billingCycle }: { tierId: string; billingCycle: string }) => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return { success: true, tierId, billingCycle };
+      const response = await apiRequest('POST', '/api/billing/create-checkout-session', {
+        tierId,
+        billingCycle,
+        successUrl: `${window.location.origin}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/pricing?canceled=true`
+      });
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create checkout session');
+      }
+      return result;
     },
     onSuccess: (data) => {
-      toast({
-        title: 'Demo Mode',
-        description: `This is a demo. In production, you would be redirected to payment for ${data.tierId} (${data.billingCycle}).`,
-      });
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: 'Checkout Session Created',
+          description: 'Redirecting to payment...',
+        });
+      }
     },
     onError: (error: any) => {
       toast({
         title: 'Subscription Failed',
-        description: error.message || 'Failed to create subscription',
+        description: error.message || 'Failed to create checkout session',
         variant: 'destructive',
       });
     },

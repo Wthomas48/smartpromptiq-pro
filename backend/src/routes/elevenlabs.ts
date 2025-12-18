@@ -30,7 +30,7 @@ async function logElevenLabsCost(userId: string | null, action: string, cost: nu
 }
 
 // ElevenLabs API Configuration
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || 'sk_db14a827a064fddfbcb8b02a0cfef4a3615923abcc533c69';
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || 'sk_cdca5619fb6e46dc10eb80f2d1047d631e93d0f531764844';
 const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
 
 // Token cost per character (ElevenLabs pricing)
@@ -1145,6 +1145,571 @@ router.get('/status', async (_req: Request, res: Response) => {
       configured: true,
       connected: false,
       error: error.message,
+    });
+  }
+});
+
+// ==============================================================
+// MODELS API - Access Available TTS Models
+// ==============================================================
+
+/**
+ * GET /api/elevenlabs/models
+ * Get all available ElevenLabs TTS models
+ * Requires: Models (Read) permission
+ */
+router.get('/models', async (_req: Request, res: Response) => {
+  try {
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/models`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch models: ${response.status}`);
+    }
+
+    const models = await response.json();
+
+    // Format models for easy consumption
+    const formattedModels = models.map((model: any) => ({
+      id: model.model_id,
+      name: model.name,
+      description: model.description,
+      canDoTextToSpeech: model.can_do_text_to_speech,
+      canDoVoiceConversion: model.can_do_voice_conversion,
+      canBeFinetuned: model.can_be_finetuned,
+      canUseSpeakerBoost: model.can_use_speaker_boost,
+      canUseStyle: model.can_use_style,
+      servesProVoices: model.serves_pro_voices,
+      tokenCostFactor: model.token_cost_factor,
+      languages: model.languages?.map((lang: any) => ({
+        id: lang.language_id,
+        name: lang.name,
+      })) || [],
+      maxCharactersRequestFreeUser: model.max_characters_request_free_user,
+      maxCharactersRequestSubscribedUser: model.max_characters_request_subscribed_user,
+    }));
+
+    // Recommend models for different use cases
+    const recommendations = {
+      highQuality: 'eleven_multilingual_v2',
+      fastSpeed: 'eleven_turbo_v2',
+      englishOnly: 'eleven_monolingual_v1',
+      multilingual: 'eleven_multilingual_v2',
+    };
+
+    res.json({
+      success: true,
+      models: formattedModels,
+      recommendations,
+      total: formattedModels.length,
+    });
+
+  } catch (error: any) {
+    console.error('Failed to fetch ElevenLabs models:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch models',
+    });
+  }
+});
+
+/**
+ * GET /api/elevenlabs/models/:modelId
+ * Get details for a specific model
+ */
+router.get('/models/:modelId', async (req: Request, res: Response) => {
+  try {
+    const { modelId } = req.params;
+
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/models`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch models: ${response.status}`);
+    }
+
+    const models = await response.json();
+    const model = models.find((m: any) => m.model_id === modelId);
+
+    if (!model) {
+      return res.status(404).json({
+        success: false,
+        error: `Model ${modelId} not found`,
+      });
+    }
+
+    res.json({
+      success: true,
+      model: {
+        id: model.model_id,
+        name: model.name,
+        description: model.description,
+        features: {
+          textToSpeech: model.can_do_text_to_speech,
+          voiceConversion: model.can_do_voice_conversion,
+          finetuning: model.can_be_finetuned,
+          speakerBoost: model.can_use_speaker_boost,
+          styleControl: model.can_use_style,
+        },
+        languages: model.languages || [],
+        limits: {
+          freeUserChars: model.max_characters_request_free_user,
+          subscribedUserChars: model.max_characters_request_subscribed_user,
+        },
+      },
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// ==============================================================
+// HISTORY API - Monitor Usage & Generation History
+// ==============================================================
+
+/**
+ * GET /api/elevenlabs/history
+ * Get voice generation history
+ * Requires: History (Read) permission
+ */
+router.get('/history', async (req: Request, res: Response) => {
+  try {
+    const pageSize = Math.min(parseInt(req.query.page_size as string) || 20, 100);
+    const startAfterHistoryItemId = req.query.start_after as string;
+
+    let url = `${ELEVENLABS_BASE_URL}/history?page_size=${pageSize}`;
+    if (startAfterHistoryItemId) {
+      url += `&start_after_history_item_id=${startAfterHistoryItemId}`;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch history: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Format history items
+    const history = data.history.map((item: any) => ({
+      id: item.history_item_id,
+      requestId: item.request_id,
+      voiceId: item.voice_id,
+      voiceName: item.voice_name,
+      modelId: item.model_id,
+      text: item.text,
+      dateCreated: item.date_unix ? new Date(item.date_unix * 1000).toISOString() : null,
+      characterCount: item.character_count_change_from,
+      characterCountAfter: item.character_count_change_to,
+      contentType: item.content_type,
+      state: item.state,
+      settings: item.settings,
+      feedback: item.feedback,
+    }));
+
+    // Calculate usage stats
+    const totalCharacters = history.reduce((sum: number, item: any) => {
+      const chars = item.characterCount || 0;
+      return sum + chars;
+    }, 0);
+
+    res.json({
+      success: true,
+      history,
+      pagination: {
+        hasMore: data.has_more,
+        lastHistoryItemId: data.last_history_item_id,
+        pageSize,
+      },
+      stats: {
+        itemsInPage: history.length,
+        totalCharactersInPage: totalCharacters,
+      },
+    });
+
+  } catch (error: any) {
+    console.error('Failed to fetch ElevenLabs history:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch history',
+    });
+  }
+});
+
+/**
+ * GET /api/elevenlabs/history/:historyItemId
+ * Get a specific history item
+ */
+router.get('/history/:historyItemId', async (req: Request, res: Response) => {
+  try {
+    const { historyItemId } = req.params;
+
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/history/${historyItemId}`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch history item: ${response.status}`);
+    }
+
+    const item = await response.json();
+
+    res.json({
+      success: true,
+      item: {
+        id: item.history_item_id,
+        voiceId: item.voice_id,
+        voiceName: item.voice_name,
+        modelId: item.model_id,
+        text: item.text,
+        dateCreated: item.date_unix ? new Date(item.date_unix * 1000).toISOString() : null,
+        characterCount: item.character_count_change_from,
+        settings: item.settings,
+        state: item.state,
+      },
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/elevenlabs/history/:historyItemId/audio
+ * Download audio from history
+ */
+router.get('/history/:historyItemId/audio', async (req: Request, res: Response) => {
+  try {
+    const { historyItemId } = req.params;
+
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/history/${historyItemId}/audio`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${response.status}`);
+    }
+
+    const audioBuffer = Buffer.from(await response.arrayBuffer());
+    const base64Audio = audioBuffer.toString('base64');
+
+    res.json({
+      success: true,
+      audioUrl: `data:audio/mpeg;base64,${base64Audio}`,
+      historyItemId,
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * DELETE /api/elevenlabs/history/:historyItemId
+ * Delete a history item
+ * Requires: History (Write) permission
+ */
+router.delete('/history/:historyItemId', async (req: Request, res: Response) => {
+  try {
+    const { historyItemId } = req.params;
+
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/history/${historyItemId}`, {
+      method: 'DELETE',
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete history item: ${response.status}`);
+    }
+
+    res.json({
+      success: true,
+      message: 'History item deleted',
+      historyItemId,
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// ==============================================================
+// USER API - Subscription & Account Info
+// ==============================================================
+
+/**
+ * GET /api/elevenlabs/user
+ * Get current user info and subscription details
+ * Requires: User (Read) permission
+ */
+router.get('/user', async (_req: Request, res: Response) => {
+  try {
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/user`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user: ${response.status}`);
+    }
+
+    const user = await response.json();
+
+    res.json({
+      success: true,
+      user: {
+        id: user.user_id,
+        subscriptionTier: user.subscription?.tier || 'free',
+        characterCount: user.subscription?.character_count || 0,
+        characterLimit: user.subscription?.character_limit || 0,
+        remainingCharacters: (user.subscription?.character_limit || 0) - (user.subscription?.character_count || 0),
+        usagePercent: user.subscription?.character_limit
+          ? Math.round((user.subscription.character_count / user.subscription.character_limit) * 100)
+          : 0,
+        nextResetDate: user.subscription?.next_character_count_reset_unix
+          ? new Date(user.subscription.next_character_count_reset_unix * 1000).toISOString()
+          : null,
+        features: {
+          voiceCloning: user.subscription?.can_use_instant_voice_cloning || false,
+          professionalVoiceCloning: user.subscription?.can_use_professional_voice_cloning || false,
+          delayedProfessionalVoice: user.subscription?.can_use_delayed_professional_voice_cloning || false,
+          speakerBoost: user.subscription?.can_use_speaker_boost || true,
+          voiceLibrary: user.subscription?.available_models?.length > 0,
+        },
+        maxVoiceAddEdits: user.subscription?.max_voice_add_edits || 0,
+        voiceLimit: user.subscription?.voice_limit || 3,
+        professionalVoiceLimit: user.subscription?.professional_voice_limit || 0,
+        allowedToExtendCharacterLimit: user.subscription?.allowed_to_extend_character_limit || false,
+        invoicing: user.subscription?.can_extend_character_limit || false,
+      },
+    });
+
+  } catch (error: any) {
+    console.error('Failed to fetch ElevenLabs user:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch user info',
+    });
+  }
+});
+
+/**
+ * GET /api/elevenlabs/user/subscription
+ * Get detailed subscription information
+ */
+router.get('/user/subscription', async (_req: Request, res: Response) => {
+  try {
+    const response = await fetch(`${ELEVENLABS_BASE_URL}/user/subscription`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch subscription: ${response.status}`);
+    }
+
+    const sub = await response.json();
+
+    res.json({
+      success: true,
+      subscription: {
+        tier: sub.tier,
+        status: sub.status,
+        billing: {
+          currency: sub.currency,
+          nextInvoiceAmount: sub.next_invoice?.amount_due_cents
+            ? (sub.next_invoice.amount_due_cents / 100).toFixed(2)
+            : null,
+          nextInvoiceDate: sub.next_invoice?.next_payment_attempt_unix
+            ? new Date(sub.next_invoice.next_payment_attempt_unix * 1000).toISOString()
+            : null,
+        },
+        usage: {
+          charactersUsed: sub.character_count,
+          charactersLimit: sub.character_limit,
+          remainingCharacters: sub.character_limit - sub.character_count,
+          usagePercent: Math.round((sub.character_count / sub.character_limit) * 100),
+          resetDate: sub.next_character_count_reset_unix
+            ? new Date(sub.next_character_count_reset_unix * 1000).toISOString()
+            : null,
+        },
+        limits: {
+          maxVoiceAddEdits: sub.max_voice_add_edits,
+          voiceLimit: sub.voice_limit,
+          professionalVoiceLimit: sub.professional_voice_limit,
+        },
+        features: {
+          instantVoiceCloning: sub.can_use_instant_voice_cloning,
+          professionalVoiceCloning: sub.can_use_professional_voice_cloning,
+          speakerBoost: sub.can_use_speaker_boost,
+          extendCharacterLimit: sub.allowed_to_extend_character_limit,
+        },
+        availableModels: sub.available_models || [],
+      },
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// ==============================================================
+// ADMIN DASHBOARD STATS - Combined Usage Overview
+// ==============================================================
+
+/**
+ * GET /api/elevenlabs/admin/stats
+ * Get comprehensive stats for admin dashboard
+ * Combines user, subscription, and history data
+ */
+router.get('/admin/stats', async (_req: Request, res: Response) => {
+  try {
+    // Fetch user/subscription data
+    const userResponse = await fetch(`${ELEVENLABS_BASE_URL}/user/subscription`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    // Fetch recent history
+    const historyResponse = await fetch(`${ELEVENLABS_BASE_URL}/history?page_size=50`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    // Fetch models
+    const modelsResponse = await fetch(`${ELEVENLABS_BASE_URL}/models`, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY,
+      },
+    });
+
+    if (!userResponse.ok) {
+      throw new Error('Failed to fetch subscription data');
+    }
+
+    const sub = await userResponse.json();
+    const history = historyResponse.ok ? await historyResponse.json() : { history: [] };
+    const models = modelsResponse.ok ? await modelsResponse.json() : [];
+
+    // Calculate history stats
+    const recentGenerations = history.history || [];
+    const totalCharsToday = recentGenerations
+      .filter((item: any) => {
+        const itemDate = new Date(item.date_unix * 1000);
+        const today = new Date();
+        return itemDate.toDateString() === today.toDateString();
+      })
+      .reduce((sum: number, item: any) => sum + (item.character_count_change_from || 0), 0);
+
+    // Group by voice
+    const voiceUsage: Record<string, number> = {};
+    recentGenerations.forEach((item: any) => {
+      const voice = item.voice_name || 'Unknown';
+      voiceUsage[voice] = (voiceUsage[voice] || 0) + (item.character_count_change_from || 0);
+    });
+
+    // Group by model
+    const modelUsage: Record<string, number> = {};
+    recentGenerations.forEach((item: any) => {
+      const model = item.model_id || 'Unknown';
+      modelUsage[model] = (modelUsage[model] || 0) + 1;
+    });
+
+    // Calculate estimated cost
+    const estimatedCostPerChar = 0.00003; // ~$0.03 per 1000 chars
+    const estimatedMonthlyCost = sub.character_count * estimatedCostPerChar;
+
+    res.json({
+      success: true,
+      stats: {
+        subscription: {
+          tier: sub.tier,
+          status: sub.status || 'active',
+        },
+        usage: {
+          charactersUsed: sub.character_count,
+          charactersLimit: sub.character_limit,
+          remainingCharacters: sub.character_limit - sub.character_count,
+          usagePercent: Math.round((sub.character_count / sub.character_limit) * 100),
+          resetDate: sub.next_character_count_reset_unix
+            ? new Date(sub.next_character_count_reset_unix * 1000).toISOString()
+            : null,
+          daysUntilReset: sub.next_character_count_reset_unix
+            ? Math.ceil((sub.next_character_count_reset_unix * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
+            : null,
+        },
+        today: {
+          charactersUsed: totalCharsToday,
+          generationCount: recentGenerations.filter((item: any) => {
+            const itemDate = new Date(item.date_unix * 1000);
+            const today = new Date();
+            return itemDate.toDateString() === today.toDateString();
+          }).length,
+        },
+        costs: {
+          estimatedMonthlyCost: `$${estimatedMonthlyCost.toFixed(2)}`,
+          costPerChar: estimatedCostPerChar,
+          budgetRemaining: `$${((sub.character_limit - sub.character_count) * estimatedCostPerChar).toFixed(2)}`,
+        },
+        breakdown: {
+          byVoice: Object.entries(voiceUsage)
+            .sort((a, b) => (b[1] as number) - (a[1] as number))
+            .slice(0, 10)
+            .map(([voice, chars]) => ({ voice, characters: chars })),
+          byModel: Object.entries(modelUsage)
+            .map(([model, count]) => ({ model, generations: count })),
+        },
+        features: {
+          instantVoiceCloning: sub.can_use_instant_voice_cloning,
+          professionalVoiceCloning: sub.can_use_professional_voice_cloning,
+          speakerBoost: sub.can_use_speaker_boost,
+        },
+        availableModels: models.length,
+        recentGenerations: recentGenerations.length,
+      },
+    });
+
+  } catch (error: any) {
+    console.error('Failed to fetch ElevenLabs admin stats:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch admin stats',
     });
   }
 });

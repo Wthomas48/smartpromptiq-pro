@@ -102,6 +102,18 @@ export const API_COSTS = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // SHOTSTACK (VIDEO GENERATION)
+  // ─────────────────────────────────────────────────────────────────────────────
+  shotstack: {
+    'per-second': 0.05,       // ~$0.05 per second of video
+    'per-minute': 3.00,       // ~$3.00 per minute
+    'render-sd': 0.03,        // SD quality
+    'render-hd': 0.05,        // HD quality
+    'render-1080': 0.07,      // 1080p quality
+    'render-4k': 0.15,        // 4K quality
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // REPLICATE (MULTI-MODEL)
   // ─────────────────────────────────────────────────────────────────────────────
   replicate: {
@@ -150,6 +162,21 @@ export const TOKEN_COSTS = {
     'stem-separation': 6,     // Separate stems
     'extension': 4,           // Extend existing track
     'sound-effect': 2,        // Sound effect
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // VIDEO GENERATION (Shotstack)
+  // ─────────────────────────────────────────────────────────────────────────────
+  video: {
+    'quick-video': 10,        // Quick video (up to 30s)
+    'template-video': 15,     // Template-based video
+    'scenes-video': 20,       // Multi-scene video
+    'intro-5s': 5,            // 5-second intro
+    'intro-10s': 8,           // 10-second intro
+    'short-15s': 12,          // 15-second short (TikTok, Reels)
+    'short-30s': 20,          // 30-second short
+    'short-60s': 35,          // 60-second short (YouTube Shorts)
+    'tutorial-120s': 60,      // 2-minute tutorial
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -278,6 +305,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: 3,
       musicGenerations: 1,
       imageGenerations: 5,
+      videoGenerations: 1,
       builderiqSessions: 1,
     },
     monthly: {
@@ -285,6 +313,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: 20,
       musicGenerations: 5,
       imageGenerations: 30,
+      videoGenerations: 3,
       builderiqSessions: 3,
       apiCalls: 500,
     },
@@ -295,6 +324,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: 20,
       musicGenerations: 5,
       imageGenerations: 20,
+      videoGenerations: 5,
       builderiqSessions: 5,
     },
     monthly: {
@@ -302,6 +332,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: 200,
       musicGenerations: 50,
       imageGenerations: 200,
+      videoGenerations: 30,
       builderiqSessions: 30,
       apiCalls: 5000,
     },
@@ -312,6 +343,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: 100,
       musicGenerations: 20,
       imageGenerations: 100,
+      videoGenerations: 20,
       builderiqSessions: 20,
     },
     monthly: {
@@ -319,6 +351,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: 1000,
       musicGenerations: 200,
       imageGenerations: 1000,
+      videoGenerations: 150,
       builderiqSessions: 100,
       apiCalls: 20000,
     },
@@ -329,6 +362,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: 500,
       musicGenerations: 100,
       imageGenerations: 500,
+      videoGenerations: 100,
       builderiqSessions: 100,
     },
     monthly: {
@@ -336,6 +370,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: 5000,
       musicGenerations: 1000,
       imageGenerations: 5000,
+      videoGenerations: 500,
       builderiqSessions: 500,
       apiCalls: 100000,
     },
@@ -346,6 +381,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: -1,
       musicGenerations: -1,
       imageGenerations: -1,
+      videoGenerations: -1,
       builderiqSessions: -1,
     },
     monthly: {
@@ -353,6 +389,7 @@ export const USAGE_LIMITS = {
       voiceGenerations: -1,
       musicGenerations: -1,
       imageGenerations: -1,
+      videoGenerations: -1,
       builderiqSessions: -1,
       apiCalls: -1,
     },

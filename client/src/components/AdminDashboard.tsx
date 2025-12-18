@@ -134,16 +134,26 @@ const AdminDashboard: React.FC = () => {
   const [systemData, setSystemData] = useState<any>(null);
   const [academyData, setAcademyData] = useState<any>(null);
 
+  // ElevenLabs API stats - will be fetched from real API
+  const [elevenLabsStats, setElevenLabsStats] = useState<any>(null);
+
   // New features data state
   const [voiceData, setVoiceData] = useState<any>({
-    totalGenerations: 3847,
-    activeUsers: 234,
-    topVoice: 'Rachel (ElevenLabs)',
-    avgDuration: '45 seconds',
-    generationsToday: 187,
-    openAIUsage: 1245,
-    elevenLabsUsage: 2602,
-    languages: 12
+    totalGenerations: 0,
+    activeUsers: 0,
+    topVoice: 'Loading...',
+    avgDuration: '0 seconds',
+    generationsToday: 0,
+    openAIUsage: 0,
+    elevenLabsUsage: 0,
+    languages: 0,
+    // ElevenLabs specific
+    charactersUsed: 0,
+    charactersLimit: 0,
+    usagePercent: 0,
+    tier: 'free',
+    resetDate: null,
+    modelsAvailable: 0
   });
   const [musicData, setMusicData] = useState<any>({
     totalTracks: 1256,
@@ -432,6 +442,46 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Fetch ElevenLabs admin stats from new API endpoint
+  const fetchElevenLabsStats = async () => {
+    try {
+      console.log('🎙️ Fetching ElevenLabs admin stats...');
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('⚠️ No authentication token - skipping ElevenLabs stats fetch');
+        return;
+      }
+
+      const response = await apiRequest('/api/elevenlabs/admin/stats', { method: 'GET' });
+
+      if (response.success) {
+        const stats = response.stats;
+        setElevenLabsStats(stats);
+
+        // Update voiceData with real ElevenLabs stats
+        setVoiceData((prev: any) => ({
+          ...prev,
+          elevenLabsUsage: stats.usage?.charactersUsed || 0,
+          charactersUsed: stats.usage?.charactersUsed || 0,
+          charactersLimit: stats.usage?.charactersLimit || 0,
+          usagePercent: stats.usage?.usagePercent || 0,
+          generationsToday: stats.today?.generationCount || 0,
+          tier: stats.subscription?.tier || 'free',
+          resetDate: stats.usage?.resetDate || null,
+          modelsAvailable: stats.availableModels || 0,
+          topVoice: stats.breakdown?.byVoice?.[0]?.voice || 'Rachel',
+          totalGenerations: stats.recentGenerations || 0,
+        }));
+
+        console.log('✅ ElevenLabs stats loaded:', stats);
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching ElevenLabs stats:', error);
+      // Don't block the UI - just show default data
+    }
+  };
+
   // Auto-refresh for real-time monitoring
   useEffect(() => {
     const interval = setInterval(() => {
@@ -448,9 +498,19 @@ const AdminDashboard: React.FC = () => {
       if (activeTab === 'tokens' || activeTab === 'security' || activeTab === 'emails' || activeTab === 'system') {
         fetchComprehensiveData();
       }
+      if (activeTab === 'voice') {
+        fetchElevenLabsStats();
+      }
     }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(interval);
+  }, [activeTab]);
+
+  // Fetch ElevenLabs stats when voice tab is activated
+  useEffect(() => {
+    if (activeTab === 'voice') {
+      fetchElevenLabsStats();
+    }
   }, [activeTab]);
 
   // Fetch real-time monitoring data
@@ -707,28 +767,58 @@ const AdminDashboard: React.FC = () => {
 
   // Delete user handlers
   const handleDeleteUser = async (userId: string, user: any, permanent: boolean = false) => {
-    const action = permanent ? 'permanently delete' : 'delete';
+    const action = permanent ? 'permanently delete' : 'soft delete';
     const confirmMessage = permanent
       ? `Are you sure you want to PERMANENTLY delete user ${user.email}?\n\nThis action CANNOT be undone and will remove all user data permanently.`
-      : `Are you sure you want to delete user ${user.email}?\n\nThis will soft delete the user (can be restored later).`;
+      : `Are you sure you want to soft delete user ${user.email}?\n\nThis can be restored later from the Deleted Users tab.`;
 
-    if (!confirm(confirmMessage)) return;
+    if (!window.confirm(confirmMessage)) return;
+
+    const reason = prompt('Please provide a reason for deletion:', 'Admin cleanup');
+    if (!reason) {
+      alert('Deletion reason is required');
+      return;
+    }
 
     try {
       setRefreshing(true);
-      console.log(`${action} user:`, { userId, email: user.email, permanent });
+      console.log(`${action} user:`, { userId, email: user.email, permanent, reason });
 
-      const queryParam = permanent ? '?permanently=true' : '';
-      const response = await apiRequest(`/api/admin/users/${userId}${queryParam}`, {
-        method: 'DELETE'
-      });
+      if (permanent) {
+        // Use permanent delete endpoint
+        const response = await apiRequest(`/api/admin/users/${userId}/permanent`, {
+          method: 'DELETE',
+          body: {
+            confirm: 'PERMANENT_DELETE',
+            reason
+          }
+        });
 
-      if (response.success) {
-        console.log(`User ${action} completed:`, response);
-        await fetchAdminData(true);
-        alert(`User ${user.email} ${action}d successfully`);
+        if (response.success) {
+          console.log(`User permanently deleted:`, response);
+          await fetchAdminData(true);
+          alert(`User ${user.email} permanently deleted`);
+        } else {
+          throw new Error(response.message || 'Permanent delete failed');
+        }
       } else {
-        throw new Error(response.message || `${action} failed`);
+        // Use bulk delete for soft delete (single user)
+        const response = await apiRequest('/api/admin/users/bulk-delete', {
+          method: 'POST',
+          body: {
+            userIds: [userId],
+            reason,
+            permanent: false
+          }
+        });
+
+        if (response.success) {
+          console.log(`User soft deleted:`, response);
+          await fetchAdminData(true);
+          alert(`User ${user.email} soft deleted (can be restored)`);
+        } else {
+          throw new Error(response.message || 'Soft delete failed');
+        }
       }
     } catch (error: any) {
       console.error(`❌ Error ${action}ing user:`, error);
@@ -817,27 +907,120 @@ const AdminDashboard: React.FC = () => {
 
   // Cleanup functions
   const handleCleanupInactiveUsers = async (days: number = 90) => {
-    const confirmMessage = `Are you sure you want to cleanup users inactive for ${days} days?\n\nThis will permanently delete inactive user accounts.`;
-    if (!confirm(confirmMessage)) return;
+    const permanentChoice = window.confirm(
+      `Cleanup users inactive for ${days}+ days.\n\n` +
+      `Click OK for PERMANENT delete (cannot be undone)\n` +
+      `Click Cancel for soft delete (can be restored)`
+    );
+
+    const finalConfirm = window.confirm(
+      `Are you sure you want to ${permanentChoice ? 'PERMANENTLY ' : ''}delete inactive users?\n\n` +
+      `This will find all FREE tier users inactive for ${days}+ days.`
+    );
+    if (!finalConfirm) return;
 
     try {
       setRefreshing(true);
-      console.log('Cleanup inactive users:', { days });
+      console.log('Cleanup inactive users:', { days, permanent: permanentChoice });
 
       const response = await apiRequest('/api/admin/cleanup/inactive-users', {
         method: 'POST',
-        body: { days }
+        body: {
+          daysInactive: days,
+          confirm: 'DELETE_INACTIVE_USERS',
+          permanent: permanentChoice
+        }
       });
 
       if (response.success) {
         console.log('Cleanup completed:', response);
         await fetchAdminData(true);
-        alert(response.message);
+        const deletedCount = response.data?.deletedCount || 0;
+        alert(`${response.message}\n\nDeleted ${deletedCount} inactive users.`);
       } else {
         throw new Error(response.message || 'Cleanup failed');
       }
     } catch (error: any) {
       console.error('❌ Error in cleanup:', error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Cleanup demo/test users
+  const handleCleanupDemoUsers = async () => {
+    const permanentChoice = window.confirm(
+      `Cleanup demo/test users.\n\n` +
+      `This will delete users with emails containing 'demo', 'test', or 'example'.\n\n` +
+      `Click OK for PERMANENT delete (cannot be undone)\n` +
+      `Click Cancel for soft delete (can be restored)`
+    );
+
+    const finalConfirm = window.confirm(
+      `Are you sure you want to ${permanentChoice ? 'PERMANENTLY ' : ''}delete all demo users?`
+    );
+    if (!finalConfirm) return;
+
+    try {
+      setRefreshing(true);
+      console.log('Cleanup demo users:', { permanent: permanentChoice });
+
+      const response = await apiRequest('/api/admin/cleanup/demo-users', {
+        method: 'POST',
+        body: {
+          confirm: 'DELETE_DEMO_USERS',
+          permanent: permanentChoice
+        }
+      });
+
+      if (response.success) {
+        console.log('Demo cleanup completed:', response);
+        await fetchAdminData(true);
+        const deletedCount = response.data?.deletedCount || 0;
+        const deletedUsers = response.data?.deletedUsers || [];
+        alert(`${response.message}\n\nDeleted ${deletedCount} demo users:\n${deletedUsers.map((u: any) => u.email).join('\n')}`);
+      } else {
+        throw new Error(response.message || 'Cleanup failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error in demo cleanup:', error);
+      alert(`Error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Purge soft-deleted users permanently
+  const handlePurgeDeletedUsers = async (daysOld: number = 30) => {
+    const finalConfirm = window.confirm(
+      `PERMANENTLY purge all soft-deleted users older than ${daysOld} days?\n\n` +
+      `⚠️ This action CANNOT be undone!`
+    );
+    if (!finalConfirm) return;
+
+    try {
+      setRefreshing(true);
+      console.log('Purge deleted users:', { daysOld });
+
+      const response = await apiRequest('/api/admin/cleanup/purge-deleted', {
+        method: 'POST',
+        body: {
+          daysOld,
+          confirm: 'PURGE_DELETED_USERS'
+        }
+      });
+
+      if (response.success) {
+        console.log('Purge completed:', response);
+        await fetchAdminData(true);
+        const purgedCount = response.data?.purgedCount || 0;
+        alert(`${response.message}\n\nPermanently removed ${purgedCount} deleted users.`);
+      } else {
+        throw new Error(response.message || 'Purge failed');
+      }
+    } catch (error: any) {
+      console.error('❌ Error in purge:', error);
       alert(`Error: ${error.message || 'Unknown error'}`);
     } finally {
       setRefreshing(false);
@@ -857,7 +1040,7 @@ const AdminDashboard: React.FC = () => {
 
       if (response.success) {
         console.log('Temp data cleanup completed:', response);
-        alert(`${response.message}\n\nCleaned: ${response.cleanup.tempFiles} files, ${response.cleanup.sessions} sessions, ${response.cleanup.logs} logs, ${response.cleanup.cache} cache entries`);
+        alert(`${response.message}\n\nCleaned: ${response.cleanup?.tempFiles || 0} files, ${response.cleanup?.sessions || 0} sessions, ${response.cleanup?.logs || 0} logs, ${response.cleanup?.cache || 0} cache entries`);
       } else {
         throw new Error(response.message || 'Cleanup failed');
       }
@@ -892,6 +1075,72 @@ Created: ${formatDate(user.createdAt)}
       alert(`Role changed to ${newRole} for ${user.email}\n(In a real app, this would update the database)`);
     } else if (newRole) {
       alert('Invalid role. Please enter USER or ADMIN');
+    }
+  };
+
+  // Impersonate user - allows admin to see the app as a specific user would
+  const handleImpersonateUser = async (userId: string, user: any) => {
+    const confirm = window.confirm(
+      `Are you sure you want to impersonate ${user.email}?\n\n` +
+      `This will generate a temporary read-only token that lets you see the app as this user would.\n\n` +
+      `Note: The impersonation token expires in 30 minutes.`
+    );
+
+    if (!confirm) return;
+
+    try {
+      const result = await apiRequest(`/api/admin/impersonate/${userId}`, { method: 'POST' });
+
+      if (result.success) {
+        // Store original admin token so we can switch back
+        const originalToken = localStorage.getItem('token');
+        localStorage.setItem('adminToken', originalToken || '');
+
+        // Set the impersonation token
+        localStorage.setItem('token', result.data.impersonationToken);
+        localStorage.setItem('isImpersonating', 'true');
+
+        // Calculate expiry (30 minutes from now)
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+        localStorage.setItem('impersonatedUser', JSON.stringify({
+          id: result.data.targetUser.id,
+          email: result.data.targetUser.email,
+          name: result.data.targetUser.name,
+          tier: result.data.targetUser.tier,
+          expiresAt: expiresAt
+        }));
+
+        alert(
+          `Now impersonating: ${result.data.targetUser.email}\n\n` +
+          `Tier: ${result.data.targetUser.tier}\n` +
+          `Expires in: ${result.data.expiresIn}\n\n` +
+          `Restrictions:\n` +
+          `${result.data.restrictions.map((r: string) => '• ' + r).join('\n')}\n\n` +
+          `You can now browse the app as this user would see it.\n` +
+          `To end impersonation, click "Exit Impersonation" in the header or go to /admin.`
+        );
+
+        // Redirect to dashboard to see the user's view
+        window.location.href = '/dashboard';
+      } else {
+        throw new Error(result.message || 'Failed to impersonate user');
+      }
+    } catch (error: any) {
+      alert(`Failed to impersonate user: ${error.message}`);
+    }
+  };
+
+  // End impersonation and restore admin session
+  const handleEndImpersonation = () => {
+    const adminToken = localStorage.getItem('adminToken');
+    if (adminToken) {
+      localStorage.setItem('token', adminToken);
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('isImpersonating');
+      localStorage.removeItem('impersonatedUser');
+      alert('Impersonation ended. You are now logged in as admin.');
+      window.location.href = '/admin';
     }
   };
 
@@ -951,9 +1200,43 @@ Created: ${formatDate(user.createdAt)}
     );
   }
 
+  // Check if we're currently impersonating someone
+  const isImpersonating = localStorage.getItem('isImpersonating') === 'true';
+  const impersonatedUserStr = localStorage.getItem('impersonatedUser');
+  const impersonatedUser = impersonatedUserStr ? JSON.parse(impersonatedUserStr) : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
-      <div className="max-w-7xl mx-auto">
+      {/* Impersonation Banner - Shows when admin is viewing as another user */}
+      {isImpersonating && impersonatedUser && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <UserCheck className="h-5 w-5" />
+              <span className="font-medium">
+                Impersonating: <strong>{impersonatedUser.name || impersonatedUser.email}</strong>
+                {impersonatedUser.tier && (
+                  <Badge className="ml-2 bg-white/20 text-white">{impersonatedUser.tier}</Badge>
+                )}
+              </span>
+              <span className="text-sm text-purple-200">
+                (Expires: {new Date(impersonatedUser.expiresAt).toLocaleTimeString()})
+              </span>
+            </div>
+            <Button
+              onClick={handleEndImpersonation}
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Exit Impersonation
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className={`max-w-7xl mx-auto ${isImpersonating ? 'mt-14' : ''}`}>
         {/* Enhanced Header with Beautiful Styling */}
         <div className="mb-8">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200/50 p-8 bg-gradient-to-r from-white to-blue-50/30">
@@ -1734,12 +2017,73 @@ Created: ${formatDate(user.createdAt)}
 
           {/* Voice Generation Tab */}
           <TabsContent value="voice" className="space-y-6">
+            {/* ElevenLabs Subscription Overview */}
+            {elevenLabsStats && (
+              <Card className="bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border-pink-200 dark:border-pink-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AudioWaveform className="w-6 h-6 text-pink-500" />
+                    ElevenLabs API Status
+                    <Badge className={`ml-2 ${elevenLabsStats.subscription?.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`}>
+                      {elevenLabsStats.subscription?.tier || 'Free'}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>Real-time API usage from your ElevenLabs account</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Usage Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Characters Used</span>
+                        <span className="font-medium">
+                          {(voiceData.charactersUsed || 0).toLocaleString()} / {(voiceData.charactersLimit || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                        <div
+                          className={`h-3 rounded-full transition-all ${
+                            voiceData.usagePercent > 90 ? 'bg-red-500' :
+                            voiceData.usagePercent > 70 ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${Math.min(voiceData.usagePercent || 0, 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>{voiceData.usagePercent || 0}% used</span>
+                        <span>Resets: {voiceData.resetDate ? new Date(voiceData.resetDate).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                    </div>
+
+                    {/* Cost Estimation */}
+                    {elevenLabsStats.costs && (
+                      <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-green-600">{elevenLabsStats.costs.estimatedMonthlyCost}</p>
+                          <p className="text-xs text-gray-500">Est. Monthly Cost</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-blue-600">{elevenLabsStats.costs.budgetRemaining}</p>
+                          <p className="text-xs text-gray-500">Budget Remaining</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-purple-600">{elevenLabsStats.usage?.daysUntilReset || 0}</p>
+                          <p className="text-xs text-gray-500">Days Until Reset</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Main Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20 border-cyan-200 dark:border-cyan-700">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Mic className="w-5 h-5 text-cyan-600" />
-                    Total Generations
+                    Recent Generations
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1750,39 +2094,130 @@ Created: ${formatDate(user.createdAt)}
               <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    Active Users
+                    <Database className="w-5 h-5 text-blue-600" />
+                    Models Available
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{voiceData.activeUsers}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{voiceData.languages} languages</p>
+                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{voiceData.modelsAvailable || 0}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">TTS models</p>
                 </CardContent>
               </Card>
               <Card className="bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-900/20 dark:to-violet-900/20 border-purple-200 dark:border-purple-700">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-purple-600" />
-                    OpenAI TTS
+                    Characters Used
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{voiceData.openAIUsage.toLocaleString()}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">generations</p>
+                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{(voiceData.charactersUsed || 0).toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">of {(voiceData.charactersLimit || 0).toLocaleString()}</p>
                 </CardContent>
               </Card>
               <Card className="bg-gradient-to-br from-pink-50 to-rose-100 dark:from-pink-900/20 dark:to-rose-900/20 border-pink-200 dark:border-pink-700">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <AudioWaveform className="w-5 h-5 text-pink-600" />
-                    ElevenLabs
+                    Top Voice
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold text-pink-700 dark:text-pink-400">{voiceData.elevenLabsUsage.toLocaleString()}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Top: {voiceData.topVoice}</p>
+                  <p className="text-2xl font-bold text-pink-700 dark:text-pink-400">{voiceData.topVoice}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Most used voice</p>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Voice Usage Breakdown */}
+            {elevenLabsStats?.breakdown?.byVoice && elevenLabsStats.breakdown.byVoice.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Voice Usage Breakdown
+                  </CardTitle>
+                  <CardDescription>Character usage by voice (recent generations)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {elevenLabsStats.breakdown.byVoice.map((voice: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        <span className="w-24 text-sm font-medium truncate">{voice.voice}</span>
+                        <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div
+                            className="h-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500"
+                            style={{
+                              width: `${Math.min((voice.characters / (voiceData.charactersUsed || 1)) * 100, 100)}%`
+                            }}
+                          />
+                        </div>
+                        <span className="w-20 text-sm text-right">{voice.characters.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Model Usage */}
+            {elevenLabsStats?.breakdown?.byModel && elevenLabsStats.breakdown.byModel.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Cpu className="w-5 h-5" />
+                    Model Usage
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {elevenLabsStats.breakdown.byModel.map((model: any, idx: number) => (
+                      <Badge key={idx} variant="outline" className="px-3 py-1">
+                        {model.model}: {model.generations} generations
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Features Available */}
+            {elevenLabsStats?.features && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Available Features
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    <Badge className={elevenLabsStats.features.instantVoiceCloning ? 'bg-green-500' : 'bg-gray-400'}>
+                      {elevenLabsStats.features.instantVoiceCloning ? '✓' : '✗'} Voice Cloning
+                    </Badge>
+                    <Badge className={elevenLabsStats.features.professionalVoiceCloning ? 'bg-green-500' : 'bg-gray-400'}>
+                      {elevenLabsStats.features.professionalVoiceCloning ? '✓' : '✗'} Pro Voice Cloning
+                    </Badge>
+                    <Badge className={elevenLabsStats.features.speakerBoost ? 'bg-green-500' : 'bg-gray-400'}>
+                      {elevenLabsStats.features.speakerBoost ? '✓' : '✗'} Speaker Boost
+                    </Badge>
+                    <Badge className="bg-blue-500">
+                      Text to Speech ✓
+                    </Badge>
+                    <Badge className="bg-blue-500">
+                      Sound Effects ✓
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Refresh Button */}
+            <div className="flex justify-end">
+              <Button onClick={fetchElevenLabsStats} variant="outline" size="sm">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh ElevenLabs Stats
+              </Button>
             </div>
           </TabsContent>
 
@@ -2310,13 +2745,35 @@ Created: ${formatDate(user.createdAt)}
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => handleCleanupDemoUsers()}
+                      disabled={refreshing}
+                      className="text-pink-600 hover:text-pink-800 border-pink-300"
+                      title="Delete all demo/test users (emails with demo, test, example)"
+                    >
+                      <Trash2 size={14} className="mr-1" />
+                      Cleanup Demo Users
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleCleanupInactiveUsers(90)}
                       disabled={refreshing}
                       className="text-orange-600 hover:text-orange-800"
                       title="Cleanup users inactive for 90+ days"
                     >
                       <Database size={14} className="mr-1" />
-                      Cleanup (90d)
+                      Cleanup Inactive (90d)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePurgeDeletedUsers(30)}
+                      disabled={refreshing}
+                      className="text-red-700 hover:text-red-900 border-red-300"
+                      title="Permanently purge soft-deleted users older than 30 days"
+                    >
+                      <XCircle size={14} className="mr-1" />
+                      Purge Deleted (30d)
                     </Button>
                     <Button
                       variant="outline"
@@ -2329,34 +2786,6 @@ Created: ${formatDate(user.createdAt)}
                       <Zap size={14} className="mr-1" />
                       Clear Cache
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const userIds = ['1', '2', '3']; // Demo with first 3 users
-                        handleBulkUserAction(userIds, 'delete');
-                      }}
-                      disabled={refreshing}
-                      className="text-red-600 hover:text-red-800"
-                      title="Bulk delete first 3 users (Demo)"
-                    >
-                      <Trash2 size={14} className="mr-1" />
-                      Demo Bulk Delete
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const userIds = ['4', '5', '6']; // Demo with next 3 users
-                        handleBulkUserAction(userIds, 'suspend');
-                      }}
-                      disabled={refreshing}
-                      className="text-yellow-600 hover:text-yellow-800"
-                      title="Bulk suspend users 4-6 (Demo)"
-                    >
-                      <UserX size={14} className="mr-1" />
-                      Demo Bulk Suspend
-                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -2365,6 +2794,7 @@ Created: ${formatDate(user.createdAt)}
                   <p className="text-sm text-blue-800 font-medium">💡 User Action Guide:</p>
                   <p className="text-xs text-blue-700 mt-1">
                     <span className="inline-block w-3 h-3 bg-blue-500 rounded-full mr-1"></span>View •
+                    <span className="inline-block w-3 h-3 bg-purple-500 rounded-full mr-1 ml-2"></span>Impersonate •
                     <span className="inline-block w-3 h-3 bg-gray-500 rounded-full mr-1 ml-2"></span>Settings •
                     <span className="inline-block w-3 h-3 bg-yellow-500 rounded-full mr-1 ml-2"></span>Suspend •
                     <span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-1 ml-2"></span>Soft Delete •
@@ -2411,6 +2841,16 @@ Created: ${formatDate(user.createdAt)}
                             title="View User Details"
                           >
                             <Eye size={12} />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleImpersonateUser(user.id, user)}
+                            disabled={refreshing}
+                            className="text-purple-600 hover:text-purple-800 border-purple-300"
+                            title="Impersonate User - View app as this user"
+                          >
+                            <UserCheck size={12} />
                           </Button>
                           <Button
                             variant="outline"

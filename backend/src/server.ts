@@ -36,6 +36,7 @@ import musicRoutes from './routes/music';
 import elevenlabsRoutes from './routes/elevenlabs';
 import costsRoutes from './routes/costs';
 import audioRoutes from './routes/audio';
+import shotstackRoutes from './routes/shotstack';
 
 dotenv.config();
 
@@ -321,6 +322,7 @@ app.use('/api/music', musicRoutes); // Music Maker - AI Music Generation
 app.use('/api/elevenlabs', elevenlabsRoutes); // ElevenLabs Premium Voice - Ultra-realistic AI voices + Sound Effects
 app.use('/api/costs', costsRoutes); // Cost Management - Usage tracking, limits, and admin dashboard
 app.use('/api/audio', audioRoutes); // Unified Audio Pipeline - Speech/Music generation with Supabase storage
+app.use('/api/shotstack', shotstackRoutes); // Shotstack Video API - Short video creation with voice + music
 app.use('/api', generateRoutes);
 app.use('/api/personal', categoryRoutes);
 app.use('/api/product', categoryRoutes);

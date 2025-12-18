@@ -545,4 +545,109 @@ router.get('/voices', async (req: Request, res: Response) => {
   });
 });
 
+/**
+ * GET /api/audio/proxy
+ *
+ * Proxy external audio files to avoid CORS issues
+ * Used for mixing audio in the browser when external sources don't support CORS
+ *
+ * Query params:
+ * - url: string (required) - The external audio URL to fetch
+ */
+router.get('/proxy', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.query;
+
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'URL parameter is required',
+      });
+    }
+
+    // Validate URL - only allow specific trusted domains for security
+    const allowedDomains = [
+      'www.soundhelix.com',
+      'soundhelix.com',
+      'files.freemusicarchive.org',
+      'freemusicarchive.org',
+      'incompetech.com',
+      'www.incompetech.com',
+    ];
+
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid URL format',
+      });
+    }
+
+    if (!allowedDomains.includes(urlObj.hostname)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Domain not allowed for audio proxy',
+      });
+    }
+
+    console.log(`🎵 Audio proxy: fetching ${url}`);
+
+    // Fetch the audio from external source
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'SmartPromptIQ/1.0',
+        'Accept': 'audio/*',
+      },
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        success: false,
+        error: `Failed to fetch audio: ${response.status} ${response.statusText}`,
+      });
+    }
+
+    // Get content type
+    const contentType = response.headers.get('content-type') || 'audio/mpeg';
+    const contentLength = response.headers.get('content-length');
+
+    // Set response headers
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+
+    if (contentLength) {
+      res.setHeader('Content-Length', contentLength);
+    }
+
+    // Stream the audio data
+    const arrayBuffer = await response.arrayBuffer();
+    res.send(Buffer.from(arrayBuffer));
+
+  } catch (error: any) {
+    console.error('Audio proxy error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to proxy audio',
+    });
+  }
+});
+
+/**
+ * OPTIONS /api/audio/proxy
+ *
+ * Handle CORS preflight for audio proxy
+ */
+router.options('/proxy', (req: Request, res: Response) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range');
+  res.status(204).send();
+});
+
 export default router;

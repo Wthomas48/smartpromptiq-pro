@@ -3562,4 +3562,1260 @@ router.get('/storage/stats', authenticate, requireAdmin, async (_req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER FEATURE ACCESS MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Feature limits by tier (mirrors frontend featureAccess.ts)
+const TIER_LIMITS: Record<string, any> = {
+  free: {
+    promptsPerMonth: 10,
+    tokensPerMonth: 50,
+    advancedModels: false,
+    voiceGenerationsPerMonth: 5,
+    openAIVoices: true,
+    elevenLabsVoices: false,
+    premiumElevenLabsVoices: false,
+    voiceDownloads: false,
+    voiceCommercialUse: false,
+    musicTracksPerMonth: 3,
+    introOutroAccess: false,
+    introOutroDownloads: false,
+    premiumMusicLibrary: false,
+    voiceMusicMixing: false,
+    imageGenerationsPerMonth: 5,
+    stableDiffusion: true,
+    dalleAccess: false,
+    dalle3Access: false,
+    printIntegration: false,
+    blueprintsPerMonth: 1,
+    storyModeVoice: false,
+    appTemplates: false,
+    deploymentHub: false,
+    codeExport: false,
+    freeCourses: true,
+    allCourses: false,
+    certificates: false,
+    earlyAccess: false,
+    playgroundTests: 5,
+    pdfExport: false,
+    jsonExport: false,
+    audioDownloads: false,
+    videoExport: false,
+    removeBranding: false,
+    apiAccess: false,
+    apiCallsPerMonth: 0,
+    webhooks: false,
+    teamMembers: 1,
+    teamWorkspace: false,
+    adminDashboard: false,
+    supportLevel: 'community',
+    responseTime: '48-72 hours',
+  },
+  starter: {
+    promptsPerMonth: 100,
+    tokensPerMonth: 500,
+    advancedModels: false,
+    voiceGenerationsPerMonth: 50,
+    openAIVoices: true,
+    elevenLabsVoices: false,
+    premiumElevenLabsVoices: false,
+    voiceDownloads: true,
+    voiceCommercialUse: false,
+    musicTracksPerMonth: 10,
+    introOutroAccess: true,
+    introOutroDownloads: true,
+    premiumMusicLibrary: false,
+    voiceMusicMixing: false,
+    imageGenerationsPerMonth: 30,
+    stableDiffusion: true,
+    dalleAccess: false,
+    dalle3Access: false,
+    printIntegration: false,
+    blueprintsPerMonth: 3,
+    storyModeVoice: false,
+    appTemplates: true,
+    deploymentHub: false,
+    codeExport: false,
+    freeCourses: true,
+    allCourses: false,
+    certificates: false,
+    earlyAccess: false,
+    playgroundTests: 25,
+    pdfExport: true,
+    jsonExport: false,
+    audioDownloads: true,
+    videoExport: false,
+    removeBranding: false,
+    apiAccess: false,
+    apiCallsPerMonth: 0,
+    webhooks: false,
+    teamMembers: 1,
+    teamWorkspace: false,
+    adminDashboard: false,
+    supportLevel: 'email',
+    responseTime: '24-48 hours',
+  },
+  pro: {
+    promptsPerMonth: 500,
+    tokensPerMonth: 2000,
+    advancedModels: true,
+    voiceGenerationsPerMonth: 200,
+    openAIVoices: true,
+    elevenLabsVoices: true,
+    premiumElevenLabsVoices: false,
+    voiceDownloads: true,
+    voiceCommercialUse: true,
+    musicTracksPerMonth: 50,
+    introOutroAccess: true,
+    introOutroDownloads: true,
+    premiumMusicLibrary: true,
+    voiceMusicMixing: true,
+    imageGenerationsPerMonth: 100,
+    stableDiffusion: true,
+    dalleAccess: true,
+    dalle3Access: true,
+    printIntegration: true,
+    blueprintsPerMonth: 10,
+    storyModeVoice: true,
+    appTemplates: true,
+    deploymentHub: true,
+    codeExport: true,
+    freeCourses: true,
+    allCourses: true,
+    certificates: true,
+    earlyAccess: false,
+    playgroundTests: 100,
+    pdfExport: true,
+    jsonExport: true,
+    audioDownloads: true,
+    videoExport: true,
+    removeBranding: false,
+    apiAccess: false,
+    apiCallsPerMonth: 0,
+    webhooks: false,
+    teamMembers: 1,
+    teamWorkspace: false,
+    adminDashboard: false,
+    supportLevel: 'priority',
+    responseTime: '12-24 hours',
+  },
+  business: {
+    promptsPerMonth: 2000,
+    tokensPerMonth: 5000,
+    advancedModels: true,
+    voiceGenerationsPerMonth: 500,
+    openAIVoices: true,
+    elevenLabsVoices: true,
+    premiumElevenLabsVoices: true,
+    voiceDownloads: true,
+    voiceCommercialUse: true,
+    musicTracksPerMonth: 150,
+    introOutroAccess: true,
+    introOutroDownloads: true,
+    premiumMusicLibrary: true,
+    voiceMusicMixing: true,
+    imageGenerationsPerMonth: 300,
+    stableDiffusion: true,
+    dalleAccess: true,
+    dalle3Access: true,
+    printIntegration: true,
+    blueprintsPerMonth: -1,
+    storyModeVoice: true,
+    appTemplates: true,
+    deploymentHub: true,
+    codeExport: true,
+    freeCourses: true,
+    allCourses: true,
+    certificates: true,
+    earlyAccess: true,
+    playgroundTests: 500,
+    pdfExport: true,
+    jsonExport: true,
+    audioDownloads: true,
+    videoExport: true,
+    removeBranding: true,
+    apiAccess: true,
+    apiCallsPerMonth: 1000,
+    webhooks: true,
+    teamMembers: 5,
+    teamWorkspace: true,
+    adminDashboard: true,
+    supportLevel: 'priority',
+    responseTime: '4-12 hours',
+  },
+  enterprise: {
+    promptsPerMonth: -1,
+    tokensPerMonth: 20000,
+    advancedModels: true,
+    voiceGenerationsPerMonth: -1,
+    openAIVoices: true,
+    elevenLabsVoices: true,
+    premiumElevenLabsVoices: true,
+    voiceDownloads: true,
+    voiceCommercialUse: true,
+    musicTracksPerMonth: -1,
+    introOutroAccess: true,
+    introOutroDownloads: true,
+    premiumMusicLibrary: true,
+    voiceMusicMixing: true,
+    imageGenerationsPerMonth: -1,
+    stableDiffusion: true,
+    dalleAccess: true,
+    dalle3Access: true,
+    printIntegration: true,
+    blueprintsPerMonth: -1,
+    storyModeVoice: true,
+    appTemplates: true,
+    deploymentHub: true,
+    codeExport: true,
+    freeCourses: true,
+    allCourses: true,
+    certificates: true,
+    earlyAccess: true,
+    playgroundTests: -1,
+    pdfExport: true,
+    jsonExport: true,
+    audioDownloads: true,
+    videoExport: true,
+    removeBranding: true,
+    apiAccess: true,
+    apiCallsPerMonth: -1,
+    webhooks: true,
+    teamMembers: -1,
+    teamWorkspace: true,
+    adminDashboard: true,
+    supportLevel: 'dedicated',
+    responseTime: '1-4 hours',
+  },
+};
+
+/**
+ * GET /api/admin/users/:id/features
+ * Get detailed feature access for a specific user
+ */
+router.get('/users/:id/features', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        subscriptionTier: true,
+        tokensUsed: true,
+        generationsUsed: true,
+        createdAt: true,
+        lastLogin: true,
+        emailVerified: true,
+        subscriptions: {
+          where: { status: 'active' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+        prompts: {
+          select: { id: true },
+        },
+        usageLogs: {
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            },
+          },
+          select: {
+            tokensConsumed: true,
+            costInCents: true,
+            provider: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Get tier limits
+    const tier = user.subscriptionTier?.toLowerCase() || 'free';
+    const tierLimits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+
+    // Calculate current usage
+    const totalTokensUsed = user.usageLogs.reduce((sum, log) => sum + log.tokensConsumed, 0);
+    const totalCost = user.usageLogs.reduce((sum, log) => sum + log.costInCents, 0) / 100;
+    const promptsCreated = user.prompts.length;
+
+    // Build feature access list with usage data
+    const featureAccess = {
+      prompts: {
+        name: 'Prompt Generation',
+        hasAccess: true,
+        limit: tierLimits.promptsPerMonth,
+        used: promptsCreated,
+        remaining: tierLimits.promptsPerMonth === -1 ? 'Unlimited' : Math.max(0, tierLimits.promptsPerMonth - promptsCreated),
+      },
+      tokens: {
+        name: 'AI Tokens',
+        hasAccess: true,
+        limit: tierLimits.tokensPerMonth,
+        used: totalTokensUsed,
+        remaining: tierLimits.tokensPerMonth === -1 ? 'Unlimited' : Math.max(0, tierLimits.tokensPerMonth - totalTokensUsed),
+      },
+      advancedModels: {
+        name: 'Advanced AI Models (GPT-4, Claude)',
+        hasAccess: tierLimits.advancedModels,
+        description: tierLimits.advancedModels ? 'Full access to GPT-4 and Claude' : 'Limited to GPT-3.5',
+      },
+      voiceGeneration: {
+        name: 'Voice Generation',
+        hasAccess: tierLimits.voiceGenerationsPerMonth > 0,
+        limit: tierLimits.voiceGenerationsPerMonth,
+        features: {
+          openAIVoices: tierLimits.openAIVoices,
+          elevenLabsVoices: tierLimits.elevenLabsVoices,
+          premiumElevenLabsVoices: tierLimits.premiumElevenLabsVoices,
+          voiceDownloads: tierLimits.voiceDownloads,
+          voiceCommercialUse: tierLimits.voiceCommercialUse,
+        },
+      },
+      music: {
+        name: 'Music & Audio',
+        hasAccess: tierLimits.musicTracksPerMonth > 0,
+        limit: tierLimits.musicTracksPerMonth,
+        features: {
+          introOutroAccess: tierLimits.introOutroAccess,
+          introOutroDownloads: tierLimits.introOutroDownloads,
+          premiumMusicLibrary: tierLimits.premiumMusicLibrary,
+          voiceMusicMixing: tierLimits.voiceMusicMixing,
+        },
+      },
+      designStudio: {
+        name: 'Design Studio',
+        hasAccess: tierLimits.imageGenerationsPerMonth > 0,
+        limit: tierLimits.imageGenerationsPerMonth,
+        features: {
+          stableDiffusion: tierLimits.stableDiffusion,
+          dalleAccess: tierLimits.dalleAccess,
+          dalle3Access: tierLimits.dalle3Access,
+          printIntegration: tierLimits.printIntegration,
+        },
+      },
+      builderIQ: {
+        name: 'BuilderIQ',
+        hasAccess: tierLimits.blueprintsPerMonth !== 0,
+        limit: tierLimits.blueprintsPerMonth,
+        features: {
+          storyModeVoice: tierLimits.storyModeVoice,
+          appTemplates: tierLimits.appTemplates,
+          deploymentHub: tierLimits.deploymentHub,
+          codeExport: tierLimits.codeExport,
+        },
+      },
+      academy: {
+        name: 'Academy',
+        hasAccess: tierLimits.freeCourses,
+        features: {
+          freeCourses: tierLimits.freeCourses,
+          allCourses: tierLimits.allCourses,
+          certificates: tierLimits.certificates,
+          earlyAccess: tierLimits.earlyAccess,
+          playgroundTests: tierLimits.playgroundTests,
+        },
+      },
+      downloads: {
+        name: 'Downloads & Exports',
+        hasAccess: tierLimits.pdfExport || tierLimits.audioDownloads,
+        features: {
+          pdfExport: tierLimits.pdfExport,
+          jsonExport: tierLimits.jsonExport,
+          audioDownloads: tierLimits.audioDownloads,
+          videoExport: tierLimits.videoExport,
+          removeBranding: tierLimits.removeBranding,
+        },
+      },
+      api: {
+        name: 'API Access',
+        hasAccess: tierLimits.apiAccess,
+        limit: tierLimits.apiCallsPerMonth,
+        features: {
+          webhooks: tierLimits.webhooks,
+        },
+      },
+      team: {
+        name: 'Team Features',
+        hasAccess: tierLimits.teamWorkspace,
+        limit: tierLimits.teamMembers,
+        features: {
+          teamWorkspace: tierLimits.teamWorkspace,
+          adminDashboard: tierLimits.adminDashboard,
+        },
+      },
+      support: {
+        name: 'Support',
+        level: tierLimits.supportLevel,
+        responseTime: tierLimits.responseTime,
+      },
+    };
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.firstName && user.lastName
+            ? `${user.firstName} ${user.lastName}`
+            : user.firstName || user.email.split('@')[0],
+          role: user.role,
+          tier: user.subscriptionTier,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin,
+          emailVerified: user.emailVerified,
+        },
+        subscription: user.subscriptions[0] || null,
+        usage: {
+          totalTokensUsed,
+          totalCost: `$${totalCost.toFixed(2)}`,
+          promptsCreated,
+          period: 'Last 30 days',
+        },
+        featureAccess,
+        tierLimits,
+      },
+    });
+  } catch (error) {
+    console.error('Get user features error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/impersonate/:id
+ * Generate a temporary impersonation token for viewing app as a specific user
+ * (Read-only access, no modifications allowed)
+ */
+router.post('/impersonate/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user!.id;
+
+    // Find the target user
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        subscriptionTier: true,
+      },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Cannot impersonate another admin
+    if (targetUser.role === 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot impersonate admin users',
+      });
+    }
+
+    // Log impersonation attempt for audit
+    console.log(`🔐 Admin ${adminId} is impersonating user ${targetUser.email} (${id})`);
+
+    // Import JWT for token generation
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'smartpromptiq-jwt-secret-key';
+
+    // Create impersonation token (short-lived, 30 minutes)
+    const impersonationToken = jwt.sign(
+      {
+        userId: targetUser.id,
+        email: targetUser.email,
+        role: targetUser.role,
+        subscriptionTier: targetUser.subscriptionTier,
+        isImpersonation: true,
+        impersonatedBy: adminId,
+        originalAdmin: req.user!.email,
+      },
+      JWT_SECRET,
+      { expiresIn: '30m' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Impersonation session created',
+      data: {
+        impersonationToken,
+        targetUser: {
+          id: targetUser.id,
+          email: targetUser.email,
+          name: targetUser.firstName && targetUser.lastName
+            ? `${targetUser.firstName} ${targetUser.lastName}`
+            : targetUser.firstName || targetUser.email.split('@')[0],
+          tier: targetUser.subscriptionTier,
+          role: targetUser.role,
+        },
+        expiresIn: '30 minutes',
+        restrictions: [
+          'Read-only access',
+          'Cannot make purchases',
+          'Cannot modify user data',
+          'Cannot delete content',
+        ],
+      },
+    });
+  } catch (error) {
+    console.error('Impersonate user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/feature-overview
+ * Get overview of all features across all tiers for admin reference
+ */
+router.get('/feature-overview', authenticate, requireAdmin, async (_req, res) => {
+  try {
+    // Get user counts by tier
+    const tierCounts = await prisma.user.groupBy({
+      by: ['subscriptionTier'],
+      _count: {
+        subscriptionTier: true,
+      },
+    });
+
+    const tierStats: Record<string, number> = {};
+    tierCounts.forEach(tier => {
+      tierStats[tier.subscriptionTier?.toLowerCase() || 'free'] = tier._count.subscriptionTier;
+    });
+
+    // Build comprehensive feature overview
+    const featureOverview = {
+      tiers: ['free', 'starter', 'pro', 'business', 'enterprise'],
+      tierDisplayNames: {
+        free: 'Free',
+        starter: 'Starter ($19/mo)',
+        pro: 'Pro ($49/mo)',
+        business: 'Business ($99/mo)',
+        enterprise: 'Enterprise ($299/mo)',
+      },
+      tierUserCounts: tierStats,
+      features: {
+        promptGeneration: {
+          name: 'Prompt Generation',
+          limits: {
+            free: '10/month',
+            starter: '100/month',
+            pro: '500/month',
+            business: '2000/month',
+            enterprise: 'Unlimited',
+          },
+        },
+        voiceGeneration: {
+          name: 'Voice Generation',
+          limits: {
+            free: '5/month (OpenAI only)',
+            starter: '50/month (OpenAI only)',
+            pro: '200/month (OpenAI + ElevenLabs)',
+            business: '500/month (All voices)',
+            enterprise: 'Unlimited (All voices)',
+          },
+        },
+        musicAudio: {
+          name: 'Music & Audio',
+          limits: {
+            free: '3 tracks/month',
+            starter: '10 tracks/month + Intro/Outro',
+            pro: '50 tracks/month + Premium Library',
+            business: '150 tracks/month + All features',
+            enterprise: 'Unlimited + All features',
+          },
+        },
+        designStudio: {
+          name: 'Design Studio',
+          limits: {
+            free: '5 images/month (SD only)',
+            starter: '30 images/month (SD only)',
+            pro: '100 images/month (SD + DALL-E 3)',
+            business: '300 images/month + POD Integration',
+            enterprise: 'Unlimited + POD Priority',
+          },
+        },
+        builderIQ: {
+          name: 'BuilderIQ',
+          limits: {
+            free: '1 blueprint/month',
+            starter: '3 blueprints/month + Templates',
+            pro: '10 blueprints/month + Story Mode + Deployment',
+            business: 'Unlimited + All features',
+            enterprise: 'Unlimited + All features',
+          },
+        },
+        academy: {
+          name: 'Academy',
+          limits: {
+            free: 'Free courses only',
+            starter: 'Free courses only',
+            pro: 'All 57 courses + Certificates',
+            business: 'All courses + Early Access',
+            enterprise: 'All courses + Early Access',
+          },
+        },
+        api: {
+          name: 'API Access',
+          limits: {
+            free: 'No access',
+            starter: 'No access',
+            pro: 'No access',
+            business: '1000 calls/month + Webhooks',
+            enterprise: 'Unlimited + Webhooks',
+          },
+        },
+        team: {
+          name: 'Team Features',
+          limits: {
+            free: '1 member',
+            starter: '1 member',
+            pro: '1 member',
+            business: '5 members + Workspace + Admin',
+            enterprise: 'Unlimited members + All features',
+          },
+        },
+        support: {
+          name: 'Support',
+          limits: {
+            free: 'Community (48-72h)',
+            starter: 'Email (24-48h)',
+            pro: 'Priority (12-24h)',
+            business: 'Priority (4-12h)',
+            enterprise: 'Dedicated (1-4h)',
+          },
+        },
+      },
+      tierLimits: TIER_LIMITS,
+    };
+
+    res.json({
+      success: true,
+      data: featureOverview,
+    });
+  } catch (error) {
+    console.error('Feature overview error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * PUT /api/admin/users/:id/tier
+ * Update a user's subscription tier (admin override)
+ */
+router.put('/users/:id/tier', authenticate, requireAdmin, [
+  body('tier').isIn(['free', 'starter', 'pro', 'business', 'enterprise']).withMessage('Invalid tier'),
+  body('reason').notEmpty().trim().withMessage('Reason is required for tier changes'),
+], async (req: express.Request, res: express.Response) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array(),
+      });
+    }
+
+    const { id } = req.params;
+    const { tier, reason } = req.body;
+    const adminId = req.user!.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        subscriptionTier: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    const previousTier = user.subscriptionTier;
+
+    // Update user tier
+    await prisma.user.update({
+      where: { id },
+      data: {
+        subscriptionTier: tier.toUpperCase(),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Log the admin action
+    console.log(`🔐 Admin ${adminId} changed user ${user.email} tier: ${previousTier} -> ${tier.toUpperCase()}. Reason: ${reason}`);
+
+    res.json({
+      success: true,
+      message: 'User tier updated successfully',
+      data: {
+        userId: id,
+        email: user.email,
+        previousTier,
+        newTier: tier.toUpperCase(),
+        updatedBy: adminId,
+        reason,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Update user tier error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER DELETION AND CLEANUP ENDPOINTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/admin/users/bulk-delete
+ * Delete multiple users at once
+ */
+router.post('/users/bulk-delete', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { userIds, reason, permanent = false } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'User IDs array is required',
+      });
+    }
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Deletion reason is required',
+      });
+    }
+
+    const adminId = req.user!.id;
+    const results: { userId: string; success: boolean; error?: string }[] = [];
+
+    for (const userId of userIds) {
+      try {
+        // Check if user exists
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        if (!user) {
+          results.push({ userId, success: false, error: 'User not found' });
+          continue;
+        }
+
+        // Don't allow deleting admins
+        if (user.role === 'ADMIN') {
+          results.push({ userId, success: false, error: 'Cannot delete admin users' });
+          continue;
+        }
+
+        if (permanent) {
+          // Permanent delete - remove from database
+          await prisma.user.delete({
+            where: { id: userId },
+          });
+        } else {
+          // Soft delete - mark as deleted
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              status: 'deleted',
+              deletedAt: new Date(),
+              email: `deleted_${Date.now()}_${user.email}`, // Anonymize email
+            },
+          });
+        }
+
+        results.push({ userId, success: true });
+        console.log(`🗑️ Admin ${adminId} ${permanent ? 'permanently' : 'soft'} deleted user ${user.email}. Reason: ${reason}`);
+      } catch (err: any) {
+        results.push({ userId, success: false, error: err.message });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    res.json({
+      success: true,
+      message: `Deleted ${successCount} users, ${failCount} failed`,
+      data: {
+        results,
+        deletedBy: adminId,
+        permanent,
+        reason,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Bulk delete users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/cleanup/demo-users
+ * Delete all demo/test users (emails containing 'demo', 'test', 'example')
+ */
+router.post('/cleanup/demo-users', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { confirm, permanent = false } = req.body;
+
+    if (confirm !== 'DELETE_DEMO_USERS') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please confirm by setting confirm: "DELETE_DEMO_USERS"',
+      });
+    }
+
+    const adminId = req.user!.id;
+
+    // Find demo users
+    const demoUsers = await prisma.user.findMany({
+      where: {
+        AND: [
+          { role: { not: 'ADMIN' } }, // Never delete admins
+          {
+            OR: [
+              { email: { contains: 'demo' } },
+              { email: { contains: 'test' } },
+              { email: { contains: 'example' } },
+              { email: { endsWith: '@test.com' } },
+              { email: { endsWith: '@demo.com' } },
+              { email: { endsWith: '@example.com' } },
+              { firstName: { contains: 'Demo' } },
+              { firstName: { contains: 'Test' } },
+            ],
+          },
+        ],
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        createdAt: true,
+      },
+    });
+
+    if (demoUsers.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No demo users found',
+        data: { deletedCount: 0 },
+      });
+    }
+
+    const userIds = demoUsers.map(u => u.id);
+
+    if (permanent) {
+      // Permanent delete
+      await prisma.user.deleteMany({
+        where: { id: { in: userIds } },
+      });
+    } else {
+      // Soft delete
+      await prisma.user.updateMany({
+        where: { id: { in: userIds } },
+        data: {
+          status: 'deleted',
+          deletedAt: new Date(),
+        },
+      });
+    }
+
+    console.log(`🧹 Admin ${adminId} cleaned up ${demoUsers.length} demo users (permanent: ${permanent})`);
+
+    res.json({
+      success: true,
+      message: `${permanent ? 'Permanently deleted' : 'Soft deleted'} ${demoUsers.length} demo users`,
+      data: {
+        deletedCount: demoUsers.length,
+        deletedUsers: demoUsers,
+        permanent,
+        deletedBy: adminId,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Cleanup demo users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/cleanup/inactive-users
+ * Delete users inactive for X days
+ */
+router.post('/cleanup/inactive-users', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { daysInactive = 90, confirm, permanent = false } = req.body;
+
+    if (confirm !== 'DELETE_INACTIVE_USERS') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please confirm by setting confirm: "DELETE_INACTIVE_USERS"',
+      });
+    }
+
+    if (daysInactive < 30) {
+      return res.status(400).json({
+        success: false,
+        message: 'Minimum inactive days is 30',
+      });
+    }
+
+    const adminId = req.user!.id;
+    const cutoffDate = new Date(Date.now() - daysInactive * 24 * 60 * 60 * 1000);
+
+    // Find inactive users
+    const inactiveUsers = await prisma.user.findMany({
+      where: {
+        AND: [
+          { role: { not: 'ADMIN' } }, // Never delete admins
+          { subscriptionTier: 'free' }, // Only free tier users
+          {
+            OR: [
+              { lastLogin: { lt: cutoffDate } },
+              { lastLogin: null, createdAt: { lt: cutoffDate } },
+            ],
+          },
+        ],
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        lastLogin: true,
+        createdAt: true,
+      },
+    });
+
+    if (inactiveUsers.length === 0) {
+      return res.json({
+        success: true,
+        message: `No users inactive for ${daysInactive}+ days found`,
+        data: { deletedCount: 0 },
+      });
+    }
+
+    const userIds = inactiveUsers.map(u => u.id);
+
+    if (permanent) {
+      await prisma.user.deleteMany({
+        where: { id: { in: userIds } },
+      });
+    } else {
+      await prisma.user.updateMany({
+        where: { id: { in: userIds } },
+        data: {
+          status: 'deleted',
+          deletedAt: new Date(),
+        },
+      });
+    }
+
+    console.log(`🧹 Admin ${adminId} cleaned up ${inactiveUsers.length} inactive users (${daysInactive}+ days, permanent: ${permanent})`);
+
+    res.json({
+      success: true,
+      message: `${permanent ? 'Permanently deleted' : 'Soft deleted'} ${inactiveUsers.length} inactive users`,
+      data: {
+        deletedCount: inactiveUsers.length,
+        deletedUsers: inactiveUsers,
+        daysInactive,
+        permanent,
+        deletedBy: adminId,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Cleanup inactive users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * GET /api/admin/deleted-users
+ * Get list of soft-deleted users
+ */
+router.get('/deleted-users', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const deletedUsers = await prisma.user.findMany({
+      where: {
+        status: 'deleted',
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        deletedAt: true,
+        createdAt: true,
+        subscriptionTier: true,
+      },
+      orderBy: { deletedAt: 'desc' },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        users: deletedUsers,
+        count: deletedUsers.length,
+      },
+    });
+  } catch (error) {
+    console.error('Get deleted users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/restore
+ * Restore a soft-deleted user
+ */
+router.post('/users/:id/restore', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user!.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (user.status !== 'deleted') {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not deleted',
+      });
+    }
+
+    // Restore the user
+    const restoredUser = await prisma.user.update({
+      where: { id },
+      data: {
+        status: 'active',
+        deletedAt: null,
+        // If email was anonymized, we can't restore it - user may need to update
+      },
+    });
+
+    console.log(`♻️ Admin ${adminId} restored user ${id}`);
+
+    res.json({
+      success: true,
+      message: 'User restored successfully',
+      data: {
+        userId: id,
+        email: restoredUser.email,
+        restoredBy: adminId,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Restore user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * DELETE /api/admin/users/:id/permanent
+ * Permanently delete a user (no recovery)
+ */
+router.delete('/users/:id/permanent', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirm, reason } = req.body;
+    const adminId = req.user!.id;
+
+    if (confirm !== 'PERMANENT_DELETE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please confirm by setting confirm: "PERMANENT_DELETE"',
+      });
+    }
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Deletion reason is required',
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (user.role === 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot permanently delete admin users',
+      });
+    }
+
+    // Permanently delete user and all related data
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    console.log(`⚠️ Admin ${adminId} PERMANENTLY deleted user ${user.email}. Reason: ${reason}`);
+
+    res.json({
+      success: true,
+      message: 'User permanently deleted',
+      data: {
+        deletedUserId: id,
+        deletedEmail: user.email,
+        reason,
+        deletedBy: adminId,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Permanent delete user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
+/**
+ * POST /api/admin/cleanup/purge-deleted
+ * Permanently remove all soft-deleted users older than X days
+ */
+router.post('/cleanup/purge-deleted', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { daysOld = 30, confirm } = req.body;
+
+    if (confirm !== 'PURGE_DELETED_USERS') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please confirm by setting confirm: "PURGE_DELETED_USERS"',
+      });
+    }
+
+    const adminId = req.user!.id;
+    const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+
+    // Find soft-deleted users older than cutoff
+    const usersToDelete = await prisma.user.findMany({
+      where: {
+        status: 'deleted',
+        deletedAt: { lt: cutoffDate },
+      },
+      select: {
+        id: true,
+        email: true,
+        deletedAt: true,
+      },
+    });
+
+    if (usersToDelete.length === 0) {
+      return res.json({
+        success: true,
+        message: `No deleted users older than ${daysOld} days`,
+        data: { purgedCount: 0 },
+      });
+    }
+
+    const userIds = usersToDelete.map(u => u.id);
+
+    // Permanently delete
+    await prisma.user.deleteMany({
+      where: { id: { in: userIds } },
+    });
+
+    console.log(`🗑️ Admin ${adminId} purged ${usersToDelete.length} deleted users (${daysOld}+ days old)`);
+
+    res.json({
+      success: true,
+      message: `Permanently purged ${usersToDelete.length} deleted users`,
+      data: {
+        purgedCount: usersToDelete.length,
+        purgedUsers: usersToDelete,
+        daysOld,
+        purgedBy: adminId,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Purge deleted users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
+  }
+});
+
 export default router;

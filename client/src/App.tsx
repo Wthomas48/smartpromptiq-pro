@@ -86,6 +86,8 @@ import BuilderIQStoryAnalysis from "@/pages/BuilderIQStoryAnalysis";
 import VoiceBuilder from "@/pages/VoiceBuilder";
 // Intro & Outro Music Builder
 import IntroOutroBuilder from "@/pages/IntroOutroBuilder";
+// Video Builder - Short Video Creation
+import VideoBuilder from "@/pages/VideoBuilder";
 // AI Design Studio & Print Shop
 import DesignStudio from "@/pages/DesignStudio";
 // ElevenLabs Voice System
@@ -225,6 +227,10 @@ function Router() {
       {/* Intro & Outro Music Builder */}
       <Route path="/intro-outro-builder" component={IntroOutroBuilder} />
       <Route path="/intro-builder" component={IntroOutroBuilder} />
+
+      {/* Video Builder - Short Video Creation */}
+      <Route path="/video-builder" component={VideoBuilder} />
+      <Route path="/video" component={VideoBuilder} />
 
       {/* AI Design Studio & Print Shop */}
       <Route path="/design-studio" component={DesignStudio} />
