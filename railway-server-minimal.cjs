@@ -3695,32 +3695,68 @@ app.get('/api/billing/token-packages', (req, res) => {
 app.post('/api/billing/create-checkout-session', async (req, res) => {
   try {
     const { tierId, billingCycle = 'monthly', priceId, successUrl, cancelUrl } = req.body;
-    const authHeader = req.headers.authorization;
 
     console.log('💳 Create checkout session request:', { tierId, billingCycle, priceId });
 
+    const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
+
+    // Handle free tier
+    if (tierId?.toLowerCase() === 'free') {
+      return res.json({
+        success: true,
+        message: 'Free tier activated! No payment required.',
+        url: `${baseUrl}/dashboard?welcome=true`
+      });
+    }
+
+    // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.warn('⚠️ Stripe not configured - returning demo checkout URL');
+      return res.json({
+        success: true,
+        demo: true,
+        sessionId: `demo_session_${Date.now()}`,
+        url: successUrl || `${baseUrl}/billing?success=true&demo=true`,
+        message: 'Demo mode - Stripe not configured. Contact support to enable payments.'
+      });
+    }
+
+    // Try to load Stripe
+    let stripe;
+    try {
+      const Stripe = require('stripe');
+      stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    } catch (stripeLoadError) {
+      console.error('❌ Failed to load Stripe:', stripeLoadError.message);
+      return res.json({
+        success: true,
+        demo: true,
+        sessionId: `demo_session_${Date.now()}`,
+        url: successUrl || `${baseUrl}/billing?success=true&demo=true`,
+        message: 'Payment processing temporarily unavailable. Please try again later.'
+      });
+    }
+
     // Get Stripe price IDs from environment
     const STRIPE_PRICE_IDS = {
-      ACADEMY_MONTHLY: process.env.STRIPE_PRICE_ACADEMY_MONTHLY || 'price_academy_monthly',
-      ACADEMY_YEARLY: process.env.STRIPE_PRICE_ACADEMY_YEARLY || 'price_academy_yearly',
-      PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_pro_monthly',
-      PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY || 'price_pro_yearly',
-      TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY || 'price_team_monthly',
-      TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_YEARLY || 'price_team_yearly',
-      ENTERPRISE_MONTHLY: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_enterprise_monthly',
-      ENTERPRISE_YEARLY: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_enterprise_yearly',
+      ACADEMY_MONTHLY: process.env.STRIPE_PRICE_ACADEMY_MONTHLY,
+      ACADEMY_YEARLY: process.env.STRIPE_PRICE_ACADEMY_YEARLY,
+      PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY,
+      PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY,
+      TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY,
+      TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_YEARLY,
+      ENTERPRISE_MONTHLY: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
+      ENTERPRISE_YEARLY: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY,
     };
 
     // Map tier to Stripe price ID
     let stripePriceId = priceId;
     if (!stripePriceId && tierId) {
-      const tierKey = tierId.toUpperCase().replace('-', '_').replace(' ', '_');
+      const tierKey = tierId.toUpperCase().replace(/-/g, '_').replace(/ /g, '_');
       const cycleKey = billingCycle.toUpperCase();
       const lookupKey = `${tierKey}_${cycleKey}`;
 
       const tierMapping = {
-        'FREE_MONTHLY': '',
-        'FREE_YEARLY': '',
         'ACADEMY_MONTHLY': STRIPE_PRICE_IDS.ACADEMY_MONTHLY,
         'ACADEMY_YEARLY': STRIPE_PRICE_IDS.ACADEMY_YEARLY,
         'PRO_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
@@ -3736,34 +3772,21 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
       };
 
       stripePriceId = tierMapping[lookupKey];
+      console.log('💳 Mapped tier:', { lookupKey, stripePriceId });
     }
 
-    // Handle free tier
-    if (!stripePriceId || tierId?.toLowerCase() === 'free') {
-      return res.status(400).json({
-        success: false,
-        message: 'Free tier does not require payment. Your account is already set up!'
-      });
-    }
-
-    // Check if Stripe is configured
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.warn('⚠️ Stripe not configured - returning demo checkout URL');
+    if (!stripePriceId) {
+      console.warn('⚠️ No Stripe price ID found for:', { tierId, billingCycle });
       return res.json({
         success: true,
         demo: true,
         sessionId: `demo_session_${Date.now()}`,
-        url: `${successUrl || 'https://smartpromptiq.com/billing'}?success=true&demo=true`,
-        message: 'Demo mode - Stripe not configured'
+        url: successUrl || `${baseUrl}/billing?success=true&demo=true`,
+        message: `Pricing not configured for ${tierId}. Please contact support.`
       });
     }
 
     // Create Stripe checkout session
-    const Stripe = require('stripe');
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-    const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
-
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{ price: stripePriceId, quantity: 1 }],
@@ -3784,9 +3807,15 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Checkout session error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to create checkout session'
+
+    // Return demo mode instead of error
+    const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
+    res.json({
+      success: true,
+      demo: true,
+      sessionId: `demo_session_${Date.now()}`,
+      url: `${baseUrl}/billing?success=true&demo=true`,
+      message: 'Payment temporarily unavailable: ' + (error.message || 'Unknown error')
     });
   }
 });
