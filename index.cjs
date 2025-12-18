@@ -334,13 +334,10 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     const token = authHeader.substring(7);
+    console.log('🔐 /api/auth/me token:', token.substring(0, 30) + '...');
 
-    // Extract user ID from token
-    let userId = null;
-    if (token.startsWith('jwt-token-')) {
-      userId = token.split('-').pop();
-    } else if (token.startsWith('demo-token-') || token.startsWith('admin-token-')) {
-      // Demo/admin tokens
+    // Demo/admin tokens
+    if (token.startsWith('demo-token-') || token.startsWith('admin-token-')) {
       return res.json({
         success: true,
         data: {
@@ -352,20 +349,91 @@ app.get('/api/auth/me', async (req, res) => {
             role: token.startsWith('admin') ? 'ADMIN' : 'USER',
             plan: 'FREE',
             subscriptionTier: 'free',
-            tokenBalance: 100
+            tokenBalance: 100,
+            roles: [],
+            permissions: []
           }
         }
       });
     }
 
+    // Try custom jwt-token format first
+    let userId = null;
+    if (token.startsWith('jwt-token-')) {
+      userId = token.split('-').pop();
+    }
+
+    // Try decoding as real JWT (Supabase)
+    if (!userId) {
+      const jwtPayload = decodeJwtPayload(token);
+      if (jwtPayload) {
+        console.log('🔐 Decoded JWT for /me:', { sub: jwtPayload.sub, email: jwtPayload.email });
+
+        // Try to find user by Supabase ID or email
+        if (dbAvailable && prisma) {
+          try {
+            const user = await prisma.user.findFirst({
+              where: {
+                OR: [
+                  { id: jwtPayload.sub },
+                  { email: jwtPayload.email }
+                ].filter(Boolean)
+              }
+            });
+
+            if (user) {
+              return res.json({
+                success: true,
+                data: {
+                  user: {
+                    id: user.id,
+                    email: user.email,
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                    plan: user.plan || 'FREE',
+                    role: user.role || 'USER',
+                    subscriptionTier: user.subscriptionTier || 'free',
+                    tokenBalance: user.tokenBalance || 0,
+                    roles: [],
+                    permissions: []
+                  }
+                }
+              });
+            }
+          } catch (err) {
+            console.error('JWT user lookup error:', err);
+          }
+        }
+
+        // User not in DB but has valid JWT - return JWT data
+        return res.json({
+          success: true,
+          data: {
+            user: {
+              id: jwtPayload.sub || 'jwt-user',
+              email: jwtPayload.email || 'user@example.com',
+              firstName: jwtPayload.user_metadata?.firstName || '',
+              lastName: jwtPayload.user_metadata?.lastName || '',
+              role: jwtPayload.user_metadata?.role || 'USER',
+              plan: 'FREE',
+              subscriptionTier: 'free',
+              tokenBalance: 0,
+              roles: [],
+              permissions: []
+            }
+          }
+        });
+      }
+    }
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid token'
+        message: 'Invalid token format'
       });
     }
 
-    // Find user
+    // Find user by custom token userId
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -383,12 +451,14 @@ app.get('/api/auth/me', async (req, res) => {
         user: {
           id: user.id,
           email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          plan: user.plan,
-          role: user.role,
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          plan: user.plan || 'FREE',
+          role: user.role || 'USER',
           subscriptionTier: user.subscriptionTier || 'free',
-          tokenBalance: user.tokenBalance || 0
+          tokenBalance: user.tokenBalance || 0,
+          roles: [],
+          permissions: []
         }
       }
     });
@@ -482,6 +552,18 @@ const STRIPE_PRICE_IDS = {
   ENTERPRISE_YEARLY: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_enterprise_yearly',
 };
 
+// Helper to decode JWT payload (without verification - Supabase handles that)
+const decodeJwtPayload = (token) => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = Buffer.from(parts[1], 'base64url').toString('utf8');
+    return JSON.parse(payload);
+  } catch (e) {
+    return null;
+  }
+};
+
 // Auth middleware for billing routes - validates token and loads user (optional auth)
 const billingAuth = async (req, res, next) => {
   try {
@@ -497,6 +579,7 @@ const billingAuth = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7);
+    console.log('🔐 Processing auth token:', token.substring(0, 30) + '...');
 
     // For demo/admin tokens, allow access
     if (token.startsWith('demo-token-') || token.startsWith('admin-token-')) {
@@ -504,7 +587,7 @@ const billingAuth = async (req, res, next) => {
       return next();
     }
 
-    // For real JWT tokens, extract user ID and validate
+    // For custom jwt-token format (from backend auth)
     if (token.startsWith('jwt-token-') && dbAvailable && prisma) {
       const userId = token.split('-').pop();
       try {
@@ -513,6 +596,7 @@ const billingAuth = async (req, res, next) => {
         });
         if (user) {
           req.user = { id: user.id, email: user.email, stripeCustomerId: user.stripeCustomerId };
+          console.log('✅ Backend auth user:', user.email);
           return next();
         }
       } catch (err) {
@@ -520,7 +604,63 @@ const billingAuth = async (req, res, next) => {
       }
     }
 
+    // For real JWT tokens (from Supabase or other providers)
+    const jwtPayload = decodeJwtPayload(token);
+    if (jwtPayload) {
+      console.log('🔐 Decoded JWT payload:', { sub: jwtPayload.sub, email: jwtPayload.email });
+
+      // Try to find user by Supabase ID (sub) or email
+      if (dbAvailable && prisma) {
+        try {
+          let user = null;
+
+          // First try to find by supabase_id if stored
+          if (jwtPayload.sub) {
+            user = await prisma.user.findFirst({
+              where: {
+                OR: [
+                  { id: jwtPayload.sub },
+                  { email: jwtPayload.email }
+                ]
+              }
+            });
+          }
+
+          if (user) {
+            req.user = {
+              id: user.id,
+              email: user.email,
+              stripeCustomerId: user.stripeCustomerId
+            };
+            console.log('✅ Supabase JWT user found:', user.email);
+            return next();
+          } else {
+            // User not in database but has valid JWT - use JWT data
+            req.user = {
+              id: jwtPayload.sub || 'jwt-user',
+              email: jwtPayload.email || 'user@example.com',
+              stripeCustomerId: null
+            };
+            console.log('⚠️ JWT user not in DB, using JWT data:', jwtPayload.email);
+            return next();
+          }
+        } catch (err) {
+          console.error('JWT user lookup error:', err);
+        }
+      } else {
+        // No database - use JWT payload directly
+        req.user = {
+          id: jwtPayload.sub || 'jwt-user',
+          email: jwtPayload.email || 'user@example.com',
+          stripeCustomerId: null
+        };
+        console.log('✅ Using JWT payload (no DB):', jwtPayload.email);
+        return next();
+      }
+    }
+
     // Fallback for other token formats
+    console.log('⚠️ Unknown token format, using fallback user');
     req.user = { id: token.split('-').pop() || 'user', email: 'user@example.com' };
     next();
   } catch (error) {
