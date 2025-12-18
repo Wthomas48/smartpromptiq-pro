@@ -268,7 +268,11 @@
       "Bash(start \"\" \"http://localhost:5173/design-studio\")",
       "Bash(unzip:*)",
       "Bash(ls:*)",
-      "Bash(git lfs:*)"
+      "Bash(git lfs:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres.ycpvdoktcoejmywqfwwy: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@aws-0-us-east-2.pooler.supabase.com:6543/postgres\" npx prisma db push:*)",
+      "Bash(start \"\" \"http://localhost:5173/video-builder\")",
+      "Bash(del \"C:\\SmartPromptiq-pro\\backend\\src\\routes\\billing.js\")",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

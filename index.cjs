@@ -1,10 +1,15 @@
 // index.cjs - Modern Express server setup
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
 const health = require('./routes/health.cjs');
 const { generalLimiter } = require('./middleware/rateLimiter.cjs');
 
 const app = express();
+
+// ---- Database Setup (Prisma) ----
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 // ---- Trust proxy (Railway/Cloudflare) ----
 const TRUST_PROXY = process.env.TRUST_PROXY || '1';
@@ -12,11 +17,95 @@ app.set('trust proxy', TRUST_PROXY === 'true' ? true : Number.isNaN(Number(TRUST
 
 // ---- CORS ----
 app.use(cors({
-  origin: ['https://smartpromptiq.com', 'http://localhost:5173'],
+  origin: ['https://smartpromptiq.com', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5000'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Device-Fingerprint', 'X-Client-Type'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Device-Fingerprint', 'X-Client-Type', 'X-Requested-With', 'Accept'],
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS']
 }));
+
+// ---- Stripe Setup (before body parser for webhook) ----
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
+
+// Stripe webhook endpoint - MUST be before express.json() middleware
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    if (webhookSecret && sig) {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } else {
+      // For testing without webhook signature verification
+      event = JSON.parse(req.body.toString());
+    }
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  console.log('🔔 Stripe webhook received:', event.type);
+
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object;
+      const userId = session.metadata?.userId;
+
+      if (userId && userId !== 'demo-user') {
+        try {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              stripeCustomerId: session.customer,
+              subscriptionTier: 'pro',
+              plan: 'PRO',
+              tokenBalance: 1000
+            }
+          });
+          console.log('✅ User subscription updated:', userId);
+        } catch (err) {
+          console.error('Failed to update user subscription:', err);
+        }
+      }
+      break;
+    }
+
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted': {
+      const subscription = event.data.object;
+      const customerId = subscription.customer;
+
+      try {
+        const user = await prisma.user.findFirst({
+          where: { stripeCustomerId: customerId }
+        });
+
+        if (user) {
+          const isActive = event.type === 'customer.subscription.updated' && subscription.status === 'active';
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              subscriptionTier: isActive ? 'pro' : 'free',
+              plan: isActive ? 'PRO' : 'FREE'
+            }
+          });
+          console.log('✅ Subscription updated for user:', user.id);
+        }
+      } catch (err) {
+        console.error('Failed to process subscription update:', err);
+      }
+      break;
+    }
+
+    default:
+      console.log(`Unhandled event type: ${event.type}`);
+  }
+
+  res.json({ received: true });
+});
 
 // ---- Core middleware ----
 app.use(express.json());
@@ -26,6 +115,258 @@ app.use(generalLimiter);
 
 // ---- Routes ----
 app.use('/api', health);
+
+// ========================================
+// Authentication Routes (Login/Register)
+// ========================================
+
+// Generate simple JWT-like token
+const generateToken = (userId) => {
+  return `jwt-token-${Date.now()}-${userId}`;
+};
+
+// Register endpoint
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName } = req.body;
+
+    console.log('🔐 Register attempt:', { email, firstName, lastName });
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user in database
+    const user = await prisma.user.create({
+      data: {
+        email: email.toLowerCase().trim(),
+        password: hashedPassword,
+        firstName: firstName || 'User',
+        lastName: lastName || '',
+        plan: 'FREE',
+        role: 'USER',
+        tokenBalance: 100,
+        subscriptionTier: 'free'
+      }
+    });
+
+    const token = generateToken(user.id);
+
+    console.log('✅ User registered:', user.id);
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          plan: user.plan,
+          role: user.role,
+          subscriptionTier: user.subscriptionTier || 'free',
+          tokenBalance: user.tokenBalance || 100
+        },
+        token
+      }
+    });
+  } catch (error) {
+    console.error('❌ Register error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create account'
+    });
+  }
+});
+
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password, isAdminLogin } = req.body;
+
+    console.log('🔐 Login attempt:', { email, isAdminLogin });
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
+    // Find user in database
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() }
+    });
+
+    if (!user) {
+      console.log('❌ User not found:', email);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password for:', email);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Check admin login
+    if (isAdminLogin && user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() }
+    });
+
+    const token = generateToken(user.id);
+
+    console.log('✅ User logged in:', user.id);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          plan: user.plan,
+          role: user.role,
+          subscriptionTier: user.subscriptionTier || 'free',
+          tokenBalance: user.tokenBalance || 0
+        },
+        token
+      }
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Login failed'
+    });
+  }
+});
+
+// Get current user endpoint
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access token required'
+      });
+    }
+
+    const token = authHeader.substring(7);
+
+    // Extract user ID from token
+    let userId = null;
+    if (token.startsWith('jwt-token-')) {
+      userId = token.split('-').pop();
+    } else if (token.startsWith('demo-token-') || token.startsWith('admin-token-')) {
+      // Demo/admin tokens
+      return res.json({
+        success: true,
+        data: {
+          user: {
+            id: 'demo-user',
+            email: 'demo@example.com',
+            firstName: 'Demo',
+            lastName: 'User',
+            role: token.startsWith('admin') ? 'ADMIN' : 'USER',
+            plan: 'FREE',
+            subscriptionTier: 'free',
+            tokenBalance: 100
+          }
+        }
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          plan: user.plan,
+          role: user.role,
+          subscriptionTier: user.subscriptionTier || 'free',
+          tokenBalance: user.tokenBalance || 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Get user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user info'
+    });
+  }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Logged out successfully'
+  });
+});
 
 // Add demo generate endpoint
 app.post('/api/demo/generate', (req, res) => {
@@ -79,6 +420,338 @@ app.post('/api/feedback/rating', (req, res) => {
     data: {
       rating: req.body.rating,
       submittedAt: new Date().toISOString()
+    }
+  });
+});
+
+// ========================================
+// Stripe Billing API Routes
+// ========================================
+// Note: Stripe is initialized at the top of the file (before express.json middleware)
+
+// Pricing configuration - match backend/src/config/pricing.ts
+const STRIPE_PRICE_IDS = {
+  ACADEMY_MONTHLY: process.env.STRIPE_PRICE_ACADEMY_MONTHLY || 'price_academy_monthly',
+  ACADEMY_YEARLY: process.env.STRIPE_PRICE_ACADEMY_YEARLY || 'price_academy_yearly',
+  PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_pro_monthly',
+  PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY || 'price_pro_yearly',
+  TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY || 'price_team_monthly',
+  TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_YEARLY || 'price_team_yearly',
+  ENTERPRISE_MONTHLY: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_enterprise_monthly',
+  ENTERPRISE_YEARLY: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_enterprise_yearly',
+};
+
+// Auth middleware for billing routes - validates token and loads user
+const billingAuth = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: 'Access token required' });
+  }
+
+  const token = authHeader.substring(7);
+
+  // For demo/admin tokens, allow access
+  if (token.startsWith('demo-token-') || token.startsWith('admin-token-')) {
+    req.user = { id: 'demo-user', email: 'demo@example.com' };
+    return next();
+  }
+
+  // For real JWT tokens, extract user ID and validate
+  if (token.startsWith('jwt-token-')) {
+    const userId = token.split('-').pop();
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+      if (user) {
+        req.user = { id: user.id, email: user.email, stripeCustomerId: user.stripeCustomerId };
+        return next();
+      }
+    } catch (err) {
+      console.error('Auth lookup error:', err);
+    }
+  }
+
+  // Fallback for other token formats
+  req.user = { id: token.split('-').pop() || 'user', email: 'user@example.com' };
+  next();
+};
+
+// Create Checkout Session endpoint
+app.post('/api/billing/create-checkout-session', billingAuth, async (req, res) => {
+  try {
+    let { priceId, tierId, billingCycle = 'monthly', mode = 'subscription', successUrl, cancelUrl } = req.body;
+
+    console.log('💳 Create checkout session request:', { tierId, billingCycle, priceId, userId: req.user?.id });
+
+    // If tierId is provided instead of priceId, look up the correct Stripe price ID
+    if (!priceId && tierId) {
+      const tierKey = tierId.toUpperCase().replace('-', '_').replace(' ', '_');
+      const cycleKey = billingCycle.toUpperCase();
+      const lookupKey = `${tierKey}_${cycleKey}`;
+
+      const tierMapping = {
+        'FREE_MONTHLY': '',
+        'FREE_YEARLY': '',
+        'ACADEMY_MONTHLY': STRIPE_PRICE_IDS.ACADEMY_MONTHLY,
+        'ACADEMY_YEARLY': STRIPE_PRICE_IDS.ACADEMY_YEARLY,
+        'PRO_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
+        'PRO_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
+        'STARTER_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
+        'STARTER_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
+        'TEAM_PRO_MONTHLY': STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
+        'TEAM_PRO_YEARLY': STRIPE_PRICE_IDS.TEAM_PRO_YEARLY,
+        'TEAM_MONTHLY': STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
+        'TEAM_YEARLY': STRIPE_PRICE_IDS.TEAM_PRO_YEARLY,
+        'ENTERPRISE_MONTHLY': STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
+        'ENTERPRISE_YEARLY': STRIPE_PRICE_IDS.ENTERPRISE_YEARLY,
+      };
+
+      priceId = tierMapping[lookupKey];
+
+      if (!priceId && tierId.toLowerCase() !== 'free') {
+        return res.status(400).json({
+          success: false,
+          message: `No Stripe price configured for tier: ${tierId} (${billingCycle})`,
+          availableTiers: Object.keys(tierMapping).filter(k => tierMapping[k])
+        });
+      }
+    }
+
+    // Handle free tier
+    if (!priceId || tierId?.toLowerCase() === 'free') {
+      return res.status(400).json({
+        success: false,
+        message: 'Free tier does not require payment. Your account is already set up!'
+      });
+    }
+
+    // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: 'Stripe is not configured. Please contact support.'
+      });
+    }
+
+    const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
+
+    // Get or create Stripe customer
+    let customerId = req.user.stripeCustomerId;
+
+    if (!customerId && req.user.id !== 'demo-user') {
+      try {
+        // Create Stripe customer
+        const customer = await stripe.customers.create({
+          email: req.user.email,
+          metadata: { userId: req.user.id }
+        });
+        customerId = customer.id;
+
+        // Save customer ID to database
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: { stripeCustomerId: customerId }
+        });
+
+        console.log('💳 Created Stripe customer:', customerId);
+      } catch (customerError) {
+        console.error('Failed to create Stripe customer:', customerError);
+        // Continue without customer - Stripe will create one during checkout
+      }
+    }
+
+    // Create Checkout Session
+    const sessionConfig = {
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: mode,
+      success_url: successUrl || `${baseUrl}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${baseUrl}/pricing?canceled=true`,
+      metadata: {
+        userId: req.user.id,
+        priceId: priceId
+      },
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
+    };
+
+    // Add customer if we have one
+    if (customerId) {
+      sessionConfig.customer = customerId;
+    } else {
+      sessionConfig.customer_email = req.user.email;
+    }
+
+    // Add subscription data for subscription mode
+    if (mode === 'subscription') {
+      sessionConfig.subscription_data = {
+        metadata: { userId: req.user.id }
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    console.log('💳 Checkout session created:', session.id);
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url
+    });
+  } catch (error) {
+    console.error('Checkout session error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create checkout session'
+    });
+  }
+});
+
+// Customer Portal Session endpoint
+app.post('/api/billing/create-portal-session', billingAuth, async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: 'Stripe is not configured'
+      });
+    }
+
+    const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
+
+    // Get user's Stripe customer ID
+    if (!req.user.stripeCustomerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'No billing account found. Please subscribe first.',
+        returnUrl: `${baseUrl}/pricing`
+      });
+    }
+
+    // Create portal session
+    const session = await stripe.billingPortal.sessions.create({
+      customer: req.user.stripeCustomerId,
+      return_url: `${baseUrl}/billing`,
+    });
+
+    console.log('🔧 Portal session created for user:', req.user.id);
+
+    res.json({
+      success: true,
+      url: session.url
+    });
+  } catch (error) {
+    console.error('Portal session error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create portal session'
+    });
+  }
+});
+
+// Get billing info endpoint
+app.get('/api/billing/info', billingAuth, async (req, res) => {
+  try {
+    // Get user from database
+    let user = null;
+    if (req.user.id !== 'demo-user') {
+      user = await prisma.user.findUnique({
+        where: { id: req.user.id }
+      });
+    }
+
+    const tier = user?.subscriptionTier || user?.plan?.toLowerCase() || 'free';
+    const tokenBalance = user?.tokenBalance || 100;
+
+    // Fetch subscription from Stripe if customer exists
+    let subscription = null;
+    let paymentMethod = null;
+
+    if (user?.stripeCustomerId && process.env.STRIPE_SECRET_KEY) {
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: user.stripeCustomerId,
+          status: 'active',
+          limit: 1
+        });
+
+        if (subscriptions.data.length > 0) {
+          const stripeSub = subscriptions.data[0];
+          subscription = {
+            tier: tier,
+            status: stripeSub.status,
+            billingCycle: stripeSub.items.data[0]?.price?.recurring?.interval || 'monthly',
+            nextBilling: new Date(stripeSub.current_period_end * 1000).toISOString(),
+            amount: (stripeSub.items.data[0]?.price?.unit_amount || 0) / 100
+          };
+        }
+
+        // Get payment method
+        const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+        if (customer.invoice_settings?.default_payment_method) {
+          const pm = await stripe.paymentMethods.retrieve(
+            customer.invoice_settings.default_payment_method
+          );
+          if (pm.card) {
+            paymentMethod = {
+              type: 'card',
+              brand: pm.card.brand,
+              last4: pm.card.last4,
+              expMonth: pm.card.exp_month,
+              expYear: pm.card.exp_year
+            };
+          }
+        }
+      } catch (stripeError) {
+        console.error('Stripe fetch error:', stripeError);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        subscription: subscription || {
+          tier: tier,
+          status: 'active',
+          billingCycle: 'monthly',
+          nextBilling: null,
+          amount: 0
+        },
+        usage: {
+          promptsGenerated: 0,
+          promptsLimit: tier === 'free' ? 50 : tier === 'pro' ? 500 : 1000,
+          tokensUsed: 0,
+          tokensLimit: tokenBalance
+        },
+        paymentMethod: paymentMethod
+      }
+    });
+  } catch (error) {
+    console.error('Get billing info error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get billing info'
+    });
+  }
+});
+
+// Note: Webhook endpoint is defined at the top of the file (before express.json middleware)
+
+// Get pricing tiers endpoint
+app.get('/api/billing/pricing', (req, res) => {
+  const billingCycle = req.query.billingCycle || 'monthly';
+
+  res.json({
+    success: true,
+    data: {
+      tiers: [
+        { id: 'free', name: 'Free', price: 0, features: ['5 prompts/day', 'Basic templates'] },
+        { id: 'pro', name: 'Pro', price: billingCycle === 'yearly' ? 190 : 19, features: ['Unlimited prompts', 'Advanced templates', 'Priority support'] },
+        { id: 'team', name: 'Team', price: billingCycle === 'yearly' ? 490 : 49, features: ['Everything in Pro', 'Team collaboration', 'Admin dashboard'] },
+        { id: 'enterprise', name: 'Enterprise', price: billingCycle === 'yearly' ? 990 : 99, features: ['Everything in Team', 'Custom integrations', 'Dedicated support'] }
+      ],
+      billingCycle
     }
   });
 });
@@ -396,55 +1069,84 @@ app.get('/api/voice/voices', (req, res) => {
   });
 });
 
-// Root route - Clean version without health page reference
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>SmartPromptiq Pro</title>
-      <style>
-        body { font-family: Arial, sans-serif; margin: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .container { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; max-width: 600px; margin: 0 auto; }
-        h1 { text-align: center; margin-bottom: 30px; }
-        .status { background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin: 20px 0; }
-        .feature { background: rgba(255,255,255,0.15); padding: 15px; margin: 10px 0; border-radius: 8px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>🚀 SmartPromptiq Pro</h1>
-        <div class="status">
-          <strong>Status:</strong> ✅ Live and Running<br>
-          <strong>Version:</strong> 2.0.0<br>
-          <strong>Updated:</strong> ${new Date().toLocaleString()}
+// ========================================
+// Static File Serving & SPA Fallback
+// ========================================
+const path = require('path');
+const fs = require('fs');
+
+// Serve static files from client build
+const clientDistPath = path.join(__dirname, 'client/dist');
+console.log('🔍 Looking for client build at:', clientDistPath);
+
+if (fs.existsSync(clientDistPath)) {
+  console.log('✅ Client dist found, serving static files');
+  app.use(express.static(clientDistPath));
+} else {
+  console.log('⚠️ Client dist not found at:', clientDistPath);
+}
+
+// API 404 handler - for unmatched API routes
+app.all('/api/*', (req, res) => {
+  console.error(`❌ API route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: `API route ${req.originalUrl} not found`,
+    method: req.method,
+    availableRoutes: [
+      '/api/health',
+      '/api/auth/login',
+      '/api/auth/register',
+      '/api/auth/me',
+      '/api/billing/create-checkout-session',
+      '/api/billing/info',
+      '/api/billing/pricing'
+    ]
+  });
+});
+
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  const indexPath = path.join(clientDistPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    console.log(`📄 Serving SPA for: ${req.originalUrl}`);
+    res.sendFile(indexPath);
+  } else {
+    // Fallback landing page if no client build
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>SmartPromptiq Pro</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+          .container { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; max-width: 600px; margin: 0 auto; }
+          h1 { text-align: center; margin-bottom: 30px; }
+          .status { background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>🚀 SmartPromptiq Pro API</h1>
+          <div class="status">
+            <strong>Status:</strong> ✅ Live and Running<br>
+            <strong>Version:</strong> 2.0.0<br>
+            <strong>Updated:</strong> ${new Date().toLocaleString()}
+          </div>
+          <p style="text-align: center;">API is ready. Frontend build pending.</p>
         </div>
-        
-        <h3>🎯 AI-Powered Prompt Optimization</h3>
-        <div class="feature">
-          <strong>✨ Smart Prompts</strong><br>
-          Generate optimized prompts for better AI responses
-        </div>
-        <div class="feature">
-          <strong>🔧 Prompt Refinement</strong><br>
-          Automatically enhance your prompts for maximum effectiveness  
-        </div>
-        <div class="feature">
-          <strong>📊 Performance Analytics</strong><br>
-          Track and measure your prompt performance
-        </div>
-        
-        <div style="text-align: center; margin-top: 30px;">
-          <p>🎉 Your SmartPromptiq Pro platform is ready!</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `);
+      </body>
+      </html>
+    `);
+  }
 });
 
 // ---- Listen on $PORT ----
-const port = Number(process.env.PORT || 3000); // 3000 only for local
-app.listen(port, () => console.log(`API listening on port ${port}`));
+const port = Number(process.env.PORT || 3000);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`🚀 API listening on port ${port}`);
+  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Health check: http://localhost:${port}/api/health`);
+});
 
 module.exports = app;

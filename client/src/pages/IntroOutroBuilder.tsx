@@ -937,11 +937,50 @@ export default function IntroOutroBuilder() {
 
       // Load music track through proxy to avoid CORS issues
       const proxiedUrl = getProxiedAudioUrl(selectedTrack.audioUrl);
+      console.log('🎵 Fetching music from:', proxiedUrl);
+
       const musicResponse = await fetch(proxiedUrl);
-      const musicBuffer = await audioContext.decodeAudioData(await musicResponse.arrayBuffer());
+      if (!musicResponse.ok) {
+        throw new Error(`Failed to fetch music: ${musicResponse.status} ${musicResponse.statusText}`);
+      }
+
+      const musicArrayBuffer = await musicResponse.arrayBuffer();
+      if (musicArrayBuffer.byteLength === 0) {
+        throw new Error('Music file is empty');
+      }
+
+      console.log('🎵 Music buffer size:', musicArrayBuffer.byteLength);
+
+      let musicBuffer: AudioBuffer;
+      try {
+        musicBuffer = await audioContext.decodeAudioData(musicArrayBuffer.slice(0));
+      } catch (decodeError) {
+        console.error('❌ Failed to decode music:', decodeError);
+        // Try alternative: use the track directly without mixing
+        toast({
+          title: 'Audio Format Issue',
+          description: 'Could not decode the music file. Try a different track or download separately.',
+          variant: 'destructive',
+        });
+        setIsGenerating(false);
+        return;
+      }
 
       // Load voice recording
-      const voiceBuffer = await audioContext.decodeAudioData(await recordedVoice.arrayBuffer());
+      const voiceArrayBuffer = await recordedVoice.arrayBuffer();
+      let voiceBuffer: AudioBuffer;
+      try {
+        voiceBuffer = await audioContext.decodeAudioData(voiceArrayBuffer.slice(0));
+      } catch (decodeError) {
+        console.error('❌ Failed to decode voice:', decodeError);
+        toast({
+          title: 'Voice Recording Issue',
+          description: 'Could not decode the voice recording. Please try recording again.',
+          variant: 'destructive',
+        });
+        setIsGenerating(false);
+        return;
+      }
 
       // Create offline context for rendering
       const duration = Math.max(musicBuffer.duration, voiceBuffer.duration);
