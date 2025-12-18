@@ -3691,6 +3691,151 @@ app.get('/api/billing/token-packages', (req, res) => {
   }
 });
 
+// Create Stripe Checkout Session - the main payment endpoint
+app.post('/api/billing/create-checkout-session', async (req, res) => {
+  try {
+    const { tierId, billingCycle = 'monthly', priceId, successUrl, cancelUrl } = req.body;
+    const authHeader = req.headers.authorization;
+
+    console.log('💳 Create checkout session request:', { tierId, billingCycle, priceId });
+
+    // Get Stripe price IDs from environment
+    const STRIPE_PRICE_IDS = {
+      ACADEMY_MONTHLY: process.env.STRIPE_PRICE_ACADEMY_MONTHLY || 'price_academy_monthly',
+      ACADEMY_YEARLY: process.env.STRIPE_PRICE_ACADEMY_YEARLY || 'price_academy_yearly',
+      PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_pro_monthly',
+      PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY || 'price_pro_yearly',
+      TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY || 'price_team_monthly',
+      TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_YEARLY || 'price_team_yearly',
+      ENTERPRISE_MONTHLY: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_enterprise_monthly',
+      ENTERPRISE_YEARLY: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_enterprise_yearly',
+    };
+
+    // Map tier to Stripe price ID
+    let stripePriceId = priceId;
+    if (!stripePriceId && tierId) {
+      const tierKey = tierId.toUpperCase().replace('-', '_').replace(' ', '_');
+      const cycleKey = billingCycle.toUpperCase();
+      const lookupKey = `${tierKey}_${cycleKey}`;
+
+      const tierMapping = {
+        'FREE_MONTHLY': '',
+        'FREE_YEARLY': '',
+        'ACADEMY_MONTHLY': STRIPE_PRICE_IDS.ACADEMY_MONTHLY,
+        'ACADEMY_YEARLY': STRIPE_PRICE_IDS.ACADEMY_YEARLY,
+        'PRO_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
+        'PRO_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
+        'STARTER_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
+        'STARTER_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
+        'TEAM_PRO_MONTHLY': STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
+        'TEAM_PRO_YEARLY': STRIPE_PRICE_IDS.TEAM_PRO_YEARLY,
+        'TEAM_MONTHLY': STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
+        'TEAM_YEARLY': STRIPE_PRICE_IDS.TEAM_PRO_YEARLY,
+        'ENTERPRISE_MONTHLY': STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
+        'ENTERPRISE_YEARLY': STRIPE_PRICE_IDS.ENTERPRISE_YEARLY,
+      };
+
+      stripePriceId = tierMapping[lookupKey];
+    }
+
+    // Handle free tier
+    if (!stripePriceId || tierId?.toLowerCase() === 'free') {
+      return res.status(400).json({
+        success: false,
+        message: 'Free tier does not require payment. Your account is already set up!'
+      });
+    }
+
+    // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.warn('⚠️ Stripe not configured - returning demo checkout URL');
+      return res.json({
+        success: true,
+        demo: true,
+        sessionId: `demo_session_${Date.now()}`,
+        url: `${successUrl || 'https://smartpromptiq.com/billing'}?success=true&demo=true`,
+        message: 'Demo mode - Stripe not configured'
+      });
+    }
+
+    // Create Stripe checkout session
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{ price: stripePriceId, quantity: 1 }],
+      mode: 'subscription',
+      success_url: successUrl || `${baseUrl}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${baseUrl}/pricing?canceled=true`,
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
+    });
+
+    console.log('💳 Checkout session created:', session.id);
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url
+    });
+
+  } catch (error) {
+    console.error('❌ Checkout session error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create checkout session'
+    });
+  }
+});
+
+// Get pricing tiers endpoint
+app.get('/api/billing/pricing', (req, res) => {
+  const billingCycle = req.query.billingCycle || 'monthly';
+
+  res.json({
+    success: true,
+    data: {
+      tiers: [
+        { id: 'free', name: 'Free', price: 0, features: ['5 prompts/day', 'Basic templates'] },
+        { id: 'pro', name: 'Pro', price: billingCycle === 'yearly' ? 190 : 19, features: ['Unlimited prompts', 'Advanced templates', 'Priority support'] },
+        { id: 'team', name: 'Team', price: billingCycle === 'yearly' ? 490 : 49, features: ['Everything in Pro', 'Team collaboration', 'Admin dashboard'] },
+        { id: 'enterprise', name: 'Enterprise', price: billingCycle === 'yearly' ? 990 : 99, features: ['Everything in Team', 'Custom integrations', 'Dedicated support'] }
+      ],
+      billingCycle
+    }
+  });
+});
+
+// Create Stripe Portal Session
+app.post('/api/billing/create-portal-session', async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(400).json({
+        success: false,
+        message: 'Stripe not configured'
+      });
+    }
+
+    const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
+
+    res.json({
+      success: false,
+      message: 'Please subscribe first to access the billing portal.',
+      returnUrl: `${baseUrl}/pricing`
+    });
+
+  } catch (error) {
+    console.error('Portal session error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create portal session'
+    });
+  }
+});
+
 // Create subscription
 app.post('/api/billing/create-subscription', (req, res) => {
   try {
