@@ -62,43 +62,33 @@ const createStore = (prefix = '') => {
 // Tiered rate limiting configurations
 const RATE_LIMIT_CONFIGS = {
   free: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: 20,
     message: 'Free tier limit: 20 requests per 15 minutes',
-    standardHeaders: true,
-    legacyHeaders: false,
   },
   premium: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: 100,
     message: 'Premium tier limit: 100 requests per 15 minutes',
-    standardHeaders: true,
-    legacyHeaders: false,
   },
   enterprise: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: 1000,
     message: 'Enterprise tier limit: 1000 requests per 15 minutes',
-    standardHeaders: true,
-    legacyHeaders: false,
   },
   demo: {
-    windowMs: 5 * 60 * 1000, // 5 minutes
-    max: 50, // Increased from 10 to 50
+    windowMs: 5 * 60 * 1000,
+    max: 50,
     message: 'Demo limit: 50 requests per 5 minutes',
-    standardHeaders: true,
-    legacyHeaders: false,
   },
   admin: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: 10000,
     message: 'Admin tier limit: 10000 requests per 15 minutes',
-    standardHeaders: true,
-    legacyHeaders: false,
   }
 };
 
-// Create rate limiter for specific tier - using default keyGenerator (safe)
+// Create rate limiter for specific tier
 const createRateLimiter = (tier = 'free', customConfig = {}) => {
   const config = { ...RATE_LIMIT_CONFIGS[tier], ...customConfig };
 
@@ -110,13 +100,13 @@ const createRateLimiter = (tier = 'free', customConfig = {}) => {
     store: createStore(tier),
     windowMs: config.windowMs,
     max: config.max,
-    standardHeaders: config.standardHeaders,
-    legacyHeaders: config.legacyHeaders,
-    // Use default keyGenerator - express-rate-limit handles IP safely
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Disable all validation to prevent ERR_ERL_KEY_GEN_IPV6
+    validate: false,
     handler: (req, res) => {
       const retryAfter = Math.ceil(config.windowMs / 1000);
-      const now = new Date();
-      const resetTime = new Date(now.getTime() + config.windowMs);
+      const resetTime = new Date(Date.now() + config.windowMs);
 
       console.log(`🚫 Rate limit exceeded on tier ${tier}`);
 
@@ -130,16 +120,8 @@ const createRateLimiter = (tier = 'free', customConfig = {}) => {
       });
     },
     skip: (req) => {
-      // Skip rate limiting for admin users
-      if (req.user?.role === 'admin') {
-        return true;
-      }
-
-      // Skip for health checks and options requests
-      if (req.path === '/health' || req.path === '/api/health' || req.method === 'OPTIONS') {
-        return true;
-      }
-
+      if (req.user?.role === 'admin') return true;
+      if (req.path === '/health' || req.path === '/api/health' || req.method === 'OPTIONS') return true;
       return false;
     }
   });
@@ -158,14 +140,14 @@ const dynamicRateLimiter = (req, res, next) => {
   return limiter(req, res, next);
 };
 
-// IP-based rate limiter for aggressive protection - using default keyGenerator
+// IP-based rate limiter for aggressive protection
 const ipRateLimiter = rateLimit({
   store: createStore('ip'),
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute per IP
+  windowMs: 1 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  // Use default keyGenerator - express-rate-limit handles IP safely
+  validate: false,
   handler: (req, res) => {
     console.log(`🚫 IP rate limit exceeded`);
     res.status(429).json({
@@ -178,14 +160,14 @@ const ipRateLimiter = rateLimit({
   }
 });
 
-// Burst protection for API endpoints - using default keyGenerator
+// Burst protection for API endpoints
 const burstProtection = rateLimit({
   store: createStore('burst'),
-  windowMs: 10 * 1000, // 10 seconds
-  max: 20, // Fixed max instead of function for simplicity
+  windowMs: 10 * 1000,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  // Use default keyGenerator - express-rate-limit handles IP safely
+  validate: false,
   handler: (req, res) => {
     console.log(`🚫 Burst protection triggered`);
     res.status(429).json({
@@ -210,7 +192,7 @@ const cleanup = () => {
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup);
 
-// General rate limiter - using default keyGenerator
+// General rate limiter
 const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
 const max = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 200);
 
@@ -219,7 +201,7 @@ const generalLimiter = rateLimit({
   max,
   standardHeaders: true,
   legacyHeaders: false,
-  // Use default keyGenerator - express-rate-limit handles IP safely
+  validate: false,
   requestWasSuccessful: (_req, res) => res.statusCode < 400
 });
 

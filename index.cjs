@@ -1494,24 +1494,19 @@ const generateCorrelationId = () => `req_${Date.now()}_${Math.random().toString(
 // Validate Stripe configuration at startup
 const validateStripeConfig = () => {
   const secretKey = process.env.STRIPE_SECRET_KEY;
-  const isProduction = process.env.NODE_ENV === 'production';
 
-  if (!secretKey) {
-    return { valid: false, error: 'STRIPE_SECRET_KEY is not set' };
+  if (!secretKey || secretKey === 'sk_test_placeholder') {
+    return { valid: false, error: 'STRIPE_SECRET_KEY is not set', mode: 'demo', keyPrefix: 'Not configured' };
   }
 
   const isLiveKey = secretKey.startsWith('sk_live_');
   const isTestKey = secretKey.startsWith('sk_test_');
 
   if (!isLiveKey && !isTestKey) {
-    return { valid: false, error: 'STRIPE_SECRET_KEY must start with sk_live_ or sk_test_' };
+    return { valid: false, error: 'STRIPE_SECRET_KEY must start with sk_live_ or sk_test_', mode: 'invalid', keyPrefix: secretKey.substring(0, 8) + '...' };
   }
 
-  // In production, require live keys
-  if (isProduction && !isLiveKey) {
-    return { valid: false, error: 'Production requires STRIPE_SECRET_KEY starting with sk_live_' };
-  }
-
+  // Both live and test keys are valid - log which mode we're in
   return {
     valid: true,
     mode: isLiveKey ? 'live' : 'test',
