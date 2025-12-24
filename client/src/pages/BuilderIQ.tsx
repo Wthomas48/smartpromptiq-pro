@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceActivation } from '@/hooks/useVoiceActivation';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Mic, MicOff, Sparkles, Zap, BookOpen, Layout,
   MessageSquare, Palette, Code, Rocket, ArrowRight,
@@ -16,8 +17,23 @@ import {
   Heart, Scale, Home, Gamepad2, Car, Plane,
   Dumbbell, UtensilsCrossed, Users, TrendingUp,
   ChevronRight, Play, Search, Star, Clock, Bot,
-  Brain, Volume2, Check, Download, DollarSign, Crown, Lock, Gift, Percent, Rocket as RocketIcon
+  Brain, Volume2, Check, Download, DollarSign, Crown, Lock, Gift, Percent, Rocket as RocketIcon,
+  ExternalLink, Trash2, Eye, Calendar, Loader2
 } from 'lucide-react';
+
+// Type for saved apps
+interface SavedApp {
+  id: string;
+  name: string;
+  description: string;
+  industry: string;
+  category: string;
+  designStyle?: string;
+  colorScheme?: string;
+  createdAt: string;
+  updatedAt: string;
+  exportCount: number;
+}
 
 // Industry data with icons and descriptions
 const industries = [
@@ -189,6 +205,8 @@ const BuilderIQ: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [storyInput, setStoryInput] = useState('');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [myApps, setMyApps] = useState<SavedApp[]>([]);
+  const [isLoadingApps, setIsLoadingApps] = useState(false);
 
   // Voice activation hook with SmartPromptIQ branding
   const {
@@ -371,6 +389,47 @@ const BuilderIQ: React.FC = () => {
 
     // Navigate to story analysis
     navigate(`/builderiq/story?input=${encodeURIComponent(storyInput)}`);
+  };
+
+  // Fetch user's saved apps when My Apps tab is active
+  useEffect(() => {
+    const fetchMyApps = async () => {
+      if (activeTab !== 'my-apps' || !user) return;
+
+      setIsLoadingApps(true);
+      try {
+        const response = await apiRequest('GET', '/api/builderiq/apps');
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setMyApps(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch apps:', error);
+      } finally {
+        setIsLoadingApps(false);
+      }
+    };
+
+    fetchMyApps();
+  }, [activeTab, user]);
+
+  // Handle opening a saved app
+  const handleOpenApp = (app: SavedApp) => {
+    // Store the app ID and navigate to preview
+    localStorage.setItem('builderiq_app_id', app.id);
+    navigate('/builderiq/preview');
+  };
+
+  // Handle deleting an app (would need a delete endpoint)
+  const handleDeleteApp = async (appId: string) => {
+    // For now just remove from local state
+    // TODO: Add delete endpoint to backend
+    setMyApps(prev => prev.filter(app => app.id !== appId));
+    toast({
+      title: 'App removed',
+      description: 'The app has been removed from your list',
+    });
   };
 
   return (
@@ -982,20 +1041,136 @@ const BuilderIQ: React.FC = () => {
 
           {/* MY APPS TAB */}
           <TabsContent value="my-apps" className="space-y-8">
-            <div className="text-center py-12">
-              <div className="w-20 h-20 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
-                <Rocket className="w-10 h-10 text-gray-500" />
+            {!user ? (
+              // Not logged in
+              <div className="text-center py-12">
+                <div className="w-20 h-20 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+                  <Lock className="w-10 h-10 text-gray-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">Sign in to see your apps</h3>
+                <p className="text-gray-400 mb-6">Create an account to save and manage your app blueprints</p>
+                <Button
+                  onClick={() => navigate('/signin')}
+                  className="bg-purple-500 hover:bg-purple-600"
+                >
+                  Sign In
+                </Button>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">No apps created yet</h3>
-              <p className="text-gray-400 mb-6">Start building your first app using the questionnaire or templates</p>
-              <Button
-                onClick={() => setActiveTab('create')}
-                className="bg-purple-500 hover:bg-purple-600"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                Create Your First App
-              </Button>
-            </div>
+            ) : isLoadingApps ? (
+              // Loading state
+              <div className="text-center py-12">
+                <Loader2 className="w-10 h-10 text-purple-400 mx-auto mb-4 animate-spin" />
+                <p className="text-gray-400">Loading your apps...</p>
+              </div>
+            ) : myApps.length === 0 ? (
+              // No apps yet
+              <div className="text-center py-12">
+                <div className="w-20 h-20 rounded-2xl bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+                  <Rocket className="w-10 h-10 text-gray-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">No apps created yet</h3>
+                <p className="text-gray-400 mb-6">Start building your first app using the questionnaire or templates</p>
+                <Button
+                  onClick={() => setActiveTab('create')}
+                  className="bg-purple-500 hover:bg-purple-600"
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  Create Your First App
+                </Button>
+              </div>
+            ) : (
+              // Show apps grid
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">My App Blueprints</h2>
+                    <p className="text-gray-400">You have {myApps.length} saved app{myApps.length !== 1 ? 's' : ''}</p>
+                  </div>
+                  <Button
+                    onClick={() => navigate('/builderiq/questionnaire')}
+                    className="bg-purple-500 hover:bg-purple-600"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Create New App
+                  </Button>
+                </div>
+
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {myApps.map((app) => (
+                    <Card key={app.id} className="bg-slate-800/50 border-slate-700 hover:border-purple-500/50 transition-all group">
+                      <CardContent className="p-6">
+                        {/* App header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                              <Rocket className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-white group-hover:text-purple-300 transition-colors">
+                                {app.name}
+                              </h3>
+                              <Badge variant="outline" className="text-xs border-slate-600 text-gray-400">
+                                {app.category || app.industry || 'App'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                          {app.description || 'No description'}
+                        </p>
+
+                        {/* Metadata */}
+                        <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(app.createdAt).toLocaleDateString()}
+                          </span>
+                          {app.exportCount > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Download className="w-3 h-3" />
+                              {app.exportCount} exports
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenApp(app)}
+                            className="flex-1 bg-purple-500 hover:bg-purple-600"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              localStorage.setItem('builderiq_app_id', app.id);
+                              navigate('/deployment-hub');
+                            }}
+                            className="border-slate-600 text-gray-300 hover:bg-slate-700"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteApp(app.id)}
+                            className="border-slate-600 text-red-400 hover:bg-red-500/20 hover:border-red-500/50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
           </TabsContent>
         </Tabs>
       </div>

@@ -1306,3 +1306,50 @@ model SongProject {
   @@index([isFavorite])
   @@map("song_projects")
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUNO AI MUSIC BUILDER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model SunoSong {
+  id     String @id @default(cuid())
+  userId String
+
+  // Song details
+  title       String
+  prompt      String  // The Suno-optimized prompt
+  lyrics      String? // AI-generated or custom lyrics
+
+  // Music configuration
+  genre       String   // pop, rock, hip-hop, etc.
+  mood        String   // happy, sad, energetic, etc.
+  tempo       String   // slow, medium, fast, etc.
+  vocals      String   // male, female, instrumental, etc.
+  contentType String?  // youtube-intro, podcast-intro, full-song, etc.
+
+  // Audio file
+  audioUrl    String?  // URL to uploaded Suno audio
+  audioFileId String?  // File storage ID if using cloud storage
+  duration    Float?   // Duration in seconds
+
+  // Status tracking
+  status      String @default("prompt_ready") // prompt_ready, uploaded, mixed, exported
+
+  // Usage stats
+  playCount     Int @default(0)
+  downloadCount Int @default(0)
+  isFavorite    Boolean @default(false)
+
+  // Mixing settings (when combined with intro/outro)
+  introTrackId  String?
+  outroTrackId  String?
+  mixedAudioUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([genre])
+  @@index([status])
+  @@map("suno_songs")
+}

@@ -30,8 +30,11 @@ import {
   Mic,
   Pause,
   Loader2,
-  Square
+  Square,
+  Accessibility,
+  ArrowRight
 } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -364,6 +367,26 @@ export default function Settings() {
                   onCheckedChange={() => toggleTheme()}
                 />
               </div>
+
+              <Separator />
+
+              {/* Accessibility Settings Link */}
+              <Link href="/accessibility">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 rounded-xl border border-purple-200 dark:border-purple-800 cursor-pointer hover:shadow-md transition-all group">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                      <Accessibility className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white">Accessibility Settings</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Configure screen reader, voice narration, reduced motion & more
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-purple-600 dark:text-purple-400 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
 
               <Separator />
 

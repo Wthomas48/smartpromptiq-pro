@@ -86,13 +86,21 @@ import BuilderIQStoryAnalysis from "@/pages/BuilderIQStoryAnalysis";
 import VoiceBuilder from "@/pages/VoiceBuilder";
 // Intro & Outro Music Builder
 import IntroOutroBuilder from "@/pages/IntroOutroBuilder";
+// Suno AI Music Builder - Prompt-to-Suno Workflow
+import SunoMusicBuilder from "@/pages/SunoMusicBuilder";
 // Video Builder - Short Video Creation
 import VideoBuilder from "@/pages/VideoBuilder";
 // AI Design Studio & Print Shop
 import DesignStudio from "@/pages/DesignStudio";
+// Chrome Extension Landing Page
+import ChromeExtension from "@/pages/ChromeExtension";
+// Accessibility Settings
+import AccessibilitySettings from "@/pages/AccessibilitySettings";
 // ElevenLabs Voice System
 import { ElevenLabsVoiceProvider } from "@/contexts/ElevenLabsVoiceContext";
 import GlobalVoiceWidget from "@/components/GlobalVoiceWidget";
+// Audio Store - Cross-builder audio transfer
+import { AudioStoreProvider } from "@/contexts/AudioStoreContext";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -133,11 +141,21 @@ function Router() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Show appropriate navigation based on route */}
-      {!isAdminRoute && !isAcademyRoute && !isBuilderIQRoute && <Navigation />}
-      {isAcademyRoute && <AcademyNavigation />}
-      <Switch>
+    <>
+      {/* Skip Link for Keyboard/Screen Reader Users */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+
+      <div className="min-h-screen bg-gray-50">
+        {/* Show appropriate navigation based on route */}
+        <header role="banner">
+          {!isAdminRoute && !isAcademyRoute && !isBuilderIQRoute && <Navigation />}
+          {isAcademyRoute && <AcademyNavigation />}
+        </header>
+
+        <main id="main-content" role="main" tabIndex={-1}>
+          <Switch>
         {/* Public routes - always accessible */}
         <Route path="/onboarding" component={Onboarding} />
         <Route path="/demo" component={Demo} />
@@ -154,6 +172,10 @@ function Router() {
         <Route path="/logout" component={LogoutPage} />
         <Route path="/templates" component={Templates} />
         <Route path="/pricing" component={PricingPage} />
+        <Route path="/chrome-extension" component={ChromeExtension} />
+        <Route path="/extension" component={ChromeExtension} />
+        <Route path="/accessibility" component={AccessibilitySettings} />
+        <Route path="/accessibility-settings" component={AccessibilitySettings} />
         <Route path="/verify-email/:token" component={VerifyEmail} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password/:token" component={ResetPassword} />
@@ -228,6 +250,11 @@ function Router() {
       <Route path="/intro-outro-builder" component={IntroOutroBuilder} />
       <Route path="/intro-builder" component={IntroOutroBuilder} />
 
+      {/* Suno AI Music Builder - Prompt-to-Suno Workflow */}
+      <Route path="/suno-music-builder" component={SunoMusicBuilder} />
+      <Route path="/suno" component={SunoMusicBuilder} />
+      <Route path="/music-builder" component={SunoMusicBuilder} />
+
       {/* Video Builder - Short Video Creation */}
       <Route path="/video-builder" component={VideoBuilder} />
       <Route path="/video" component={VideoBuilder} />
@@ -238,10 +265,17 @@ function Router() {
       <Route path="/print-shop" component={DesignStudio} />
       <Route path="/ai-art" component={DesignStudio} />
 
-      {/* Fallback route */}
-      <Route component={NotFound} />
-    </Switch>
-    </div>
+            {/* Fallback route */}
+            <Route component={NotFound} />
+          </Switch>
+        </main>
+
+        {/* Footer for accessibility */}
+        <footer role="contentinfo" className="sr-only">
+          <p>SmartPromptIQ - AI-Powered Prompt Engineering Platform</p>
+        </footer>
+      </div>
+    </>
   );
 }
 
@@ -254,12 +288,14 @@ function App() {
             <TooltipProvider>
               <RatingSystemProvider>
                 <GamificationProvider>
-                  <ElevenLabsVoiceProvider>
-                    <Toaster />
-                    <Router />
-                    {/* Global Voice Widget - Available on all pages */}
-                    <GlobalVoiceWidget position="bottom-right" />
-                  </ElevenLabsVoiceProvider>
+                  <AudioStoreProvider>
+                    <ElevenLabsVoiceProvider>
+                      <Toaster />
+                      <Router />
+                      {/* Global Voice Widget - Available on all pages */}
+                      <GlobalVoiceWidget position="bottom-right" />
+                    </ElevenLabsVoiceProvider>
+                  </AudioStoreProvider>
                 </GamificationProvider>
               </RatingSystemProvider>
             </TooltipProvider>

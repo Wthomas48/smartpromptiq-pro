@@ -272,7 +272,10 @@
       "Bash(DATABASE_URL=\"postgresql://postgres.ycpvdoktcoejmywqfwwy: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@aws-0-us-east-2.pooler.supabase.com:6543/postgres\" npx prisma db push:*)",
       "Bash(start \"\" \"http://localhost:5173/video-builder\")",
       "Bash(del \"C:\\SmartPromptiq-pro\\backend\\src\\routes\\billing.js\")",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(start \"\" \"http://localhost:5173/suno-music-builder\")",
+      "Bash(start \"\" \"http://localhost:5173/chrome-extension\")",
+      "Bash(start \"\" \"http://localhost:5173/accessibility\")"
     ],
     "deny": [],
     "ask": []

@@ -244,29 +244,29 @@ const AcademyDocumentation: React.FC = () => {
                 </h2>
                 <div className="space-y-6">
                   <p className="text-lg text-gray-700 leading-relaxed">
-                    SmartPromptIQ Academy offers flexible pricing options to suit your learning needs. Access is tied to your main SmartPromptIQ subscription tier.
+                    SmartPromptIQ offers 6 flexible pricing tiers to suit your needs. Academy access is included based on your subscription tier.
                   </p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {/* Free Tier */}
-                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 border-2 border-gray-300 hover:scale-105 transition-all">
-                      <div className="text-center mb-4">
-                        <i className="fas fa-gift text-4xl text-gray-600 mb-3"></i>
-                        <h3 className="text-2xl font-bold text-gray-900">Free</h3>
-                        <p className="text-3xl font-extrabold text-gray-600 mt-2">$0<span className="text-lg font-normal">/mo</span></p>
+                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-5 border-2 border-gray-300 hover:scale-105 transition-all">
+                      <div className="text-center mb-3">
+                        <i className="fas fa-gift text-3xl text-gray-600 mb-2"></i>
+                        <h3 className="text-xl font-bold text-gray-900">Free</h3>
+                        <p className="text-2xl font-extrabold text-gray-600 mt-1">$0<span className="text-sm font-normal">/mo</span></p>
                       </div>
-                      <ul className="space-y-3 text-sm text-gray-700 mb-6">
+                      <ul className="space-y-2 text-sm text-gray-700 mb-4">
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Access to free courses</span>
+                          <span>3 free Academy courses</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Limited lesson library</span>
+                          <span>5 AI prompts/month</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Basic quizzes</span>
+                          <span>5 voice generations</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-times text-red-500 mr-2 mt-1"></i>
@@ -274,48 +274,105 @@ const AcademyDocumentation: React.FC = () => {
                         </li>
                       </ul>
                       <Link href="/signup">
-                        <button className="w-full py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition">
+                        <button className="w-full py-2 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition text-sm">
                           Start Free
                         </button>
                       </Link>
                     </div>
 
-                    {/* Pro Tier */}
-                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 border-4 border-purple-500 hover:scale-105 transition-all relative">
-                      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                        <span className="bg-purple-600 text-white px-4 py-1 rounded-full text-sm font-bold">
-                          POPULAR
+                    {/* Starter Tier */}
+                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-5 border-2 border-blue-300 hover:scale-105 transition-all">
+                      <div className="text-center mb-3">
+                        <i className="fas fa-rocket text-3xl text-blue-600 mb-2"></i>
+                        <h3 className="text-xl font-bold text-gray-900">Starter</h3>
+                        <p className="text-2xl font-extrabold text-blue-600 mt-1">$19<span className="text-sm font-normal">/mo</span></p>
+                      </div>
+                      <ul className="space-y-2 text-sm text-gray-700 mb-4">
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>50 AI prompts/month</span>
+                        </li>
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>50 voice generations</span>
+                        </li>
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>10 music tracks</span>
+                        </li>
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>HD video export</span>
+                        </li>
+                      </ul>
+                      <Link href="/pricing">
+                        <button className="w-full py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition text-sm">
+                          Get Starter
+                        </button>
+                      </Link>
+                    </div>
+
+                    {/* Academy+ Tier */}
+                    <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl p-5 border-2 border-teal-400 hover:scale-105 transition-all relative">
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <span className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+                          FOR LEARNERS
                         </span>
                       </div>
-                      <div className="text-center mb-4">
-                        <i className="fas fa-star text-4xl text-purple-600 mb-3"></i>
-                        <h3 className="text-2xl font-bold text-gray-900">Pro</h3>
-                        <p className="text-3xl font-extrabold text-purple-600 mt-2">$19<span className="text-lg font-normal">/mo</span></p>
+                      <div className="text-center mb-3">
+                        <i className="fas fa-graduation-cap text-3xl text-teal-600 mb-2"></i>
+                        <h3 className="text-xl font-bold text-gray-900">Academy+</h3>
+                        <p className="text-2xl font-extrabold text-teal-600 mt-1">$29<span className="text-sm font-normal">/mo</span></p>
                       </div>
-                      <ul className="space-y-3 text-sm text-gray-700 mb-6">
+                      <ul className="space-y-2 text-sm text-gray-700 mb-4">
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
                           <span><strong>All 57 courses</strong> (555+ lessons)</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Unlimited course access</span>
+                          <span>100 AI prompts/month</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Audio learning features</span>
+                          <span>Certificates</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Live prompt playground</span>
+                          <span>Audio learning</span>
+                        </li>
+                      </ul>
+                      <Link href="/pricing">
+                        <button className="w-full py-2 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition text-sm">
+                          Get Academy+
+                        </button>
+                      </Link>
+                    </div>
+
+                    {/* Pro Tier */}
+                    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-4 border-indigo-500 hover:scale-105 transition-all relative">
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold">
+                          MOST POPULAR
+                        </span>
+                      </div>
+                      <div className="text-center mb-3">
+                        <i className="fas fa-star text-3xl text-indigo-600 mb-2"></i>
+                        <h3 className="text-xl font-bold text-gray-900">Pro</h3>
+                        <p className="text-2xl font-extrabold text-indigo-600 mt-1">$49<span className="text-sm font-normal">/mo</span></p>
+                      </div>
+                      <ul className="space-y-2 text-sm text-gray-700 mb-4">
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>200 AI prompts/month</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Quizzes & exercises</span>
+                          <span>200 voice generations</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Course certificates</span>
+                          <span>Commercial license</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
@@ -323,43 +380,71 @@ const AcademyDocumentation: React.FC = () => {
                         </li>
                       </ul>
                       <Link href="/pricing">
-                        <button className="w-full py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition">
+                        <button className="w-full py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition text-sm">
                           Upgrade to Pro
                         </button>
                       </Link>
                     </div>
 
-                    {/* Enterprise Tier */}
-                    <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-6 border-2 border-yellow-400 hover:scale-105 transition-all">
-                      <div className="text-center mb-4">
-                        <i className="fas fa-crown text-4xl text-yellow-600 mb-3"></i>
-                        <h3 className="text-2xl font-bold text-gray-900">Enterprise</h3>
-                        <p className="text-3xl font-extrabold text-yellow-600 mt-2">$99<span className="text-lg font-normal">/mo</span></p>
+                    {/* Team Pro Tier */}
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border-2 border-purple-400 hover:scale-105 transition-all">
+                      <div className="text-center mb-3">
+                        <i className="fas fa-users text-3xl text-purple-600 mb-2"></i>
+                        <h3 className="text-xl font-bold text-gray-900">Team Pro</h3>
+                        <p className="text-2xl font-extrabold text-purple-600 mt-1">$99<span className="text-sm font-normal">/mo</span></p>
                       </div>
-                      <ul className="space-y-3 text-sm text-gray-700 mb-6">
+                      <ul className="space-y-2 text-sm text-gray-700 mb-4">
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span><strong>Everything in Pro</strong></span>
+                          <span>1,000 AI prompts/month</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Team management (up to 10 users)</span>
+                          <span>2-5 team members</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Advanced analytics</span>
+                          <span>4K video export</span>
                         </li>
                         <li className="flex items-start">
                           <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Custom branding</span>
-                        </li>
-                        <li className="flex items-start">
-                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
-                          <span>Dedicated account manager</span>
+                          <span>API access</span>
                         </li>
                       </ul>
                       <Link href="/pricing">
-                        <button className="w-full py-3 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition">
+                        <button className="w-full py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition text-sm">
+                          Get Team Pro
+                        </button>
+                      </Link>
+                    </div>
+
+                    {/* Enterprise Tier */}
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 border-2 border-amber-400 hover:scale-105 transition-all">
+                      <div className="text-center mb-3">
+                        <i className="fas fa-crown text-3xl text-amber-600 mb-2"></i>
+                        <h3 className="text-xl font-bold text-gray-900">Enterprise</h3>
+                        <p className="text-2xl font-extrabold text-amber-600 mt-1">$299<span className="text-sm font-normal">/mo</span></p>
+                      </div>
+                      <ul className="space-y-2 text-sm text-gray-700 mb-4">
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>5,000+ prompts/month</span>
+                        </li>
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>Unlimited team members</span>
+                        </li>
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>White-label options</span>
+                        </li>
+                        <li className="flex items-start">
+                          <i className="fas fa-check text-green-500 mr-2 mt-1"></i>
+                          <span>Dedicated manager</span>
+                        </li>
+                      </ul>
+                      <Link href="/pricing">
+                        <button className="w-full py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition text-sm">
                           Contact Sales
                         </button>
                       </Link>
@@ -373,8 +458,8 @@ const AcademyDocumentation: React.FC = () => {
                     </h3>
                     <p className="text-gray-700 leading-relaxed">
                       Your Academy access is determined by your <strong>SmartPromptIQ main subscription tier</strong>.
-                      To upgrade your Academy access, visit the <Link href="/pricing"><span className="text-purple-600 font-semibold hover:underline cursor-pointer">main pricing page</span></Link> and upgrade your subscription.
-                      Your Academy permissions will update automatically.
+                      Full Academy access (all 57 courses with certificates) is available on <strong>Academy+ ($29/mo)</strong> and above.
+                      Visit the <Link href="/pricing"><span className="text-purple-600 font-semibold hover:underline cursor-pointer">main pricing page</span></Link> to upgrade.
                     </p>
                   </div>
                 </div>

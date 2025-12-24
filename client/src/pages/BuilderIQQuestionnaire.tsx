@@ -14,6 +14,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiRequest } from '@/lib/queryClient';
 import useVoiceActivation from '@/hooks/useVoiceActivation';
 import { useVoiceService } from '@/services/voiceService';
 import BackButton from '@/components/BackButton';
@@ -356,6 +357,7 @@ const questions: Question[] = [
 const BuilderIQQuestionnaire: React.FC = () => {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Get URL parameters
   const searchParams = new URLSearchParams(window.location.search);
@@ -371,6 +373,7 @@ const BuilderIQQuestionnaire: React.FC = () => {
   const [voiceModeReady, setVoiceModeReady] = useState(false); // Track when voice mode is fully ready
   const [audioSelection, setAudioSelection] = useState<any>(null); // SmartAudioSelector state
   const [showAudioCustomizer, setShowAudioCustomizer] = useState(false); // Show full audio customizer
+  const [sessionId, setSessionId] = useState<string | null>(null); // Track session for API saving
 
   // Refs for voice control
   const hasAskedRef = useRef(false);
@@ -402,6 +405,31 @@ const BuilderIQQuestionnaire: React.FC = () => {
       }
     };
   }, []);
+
+  // Create a session when questionnaire starts (if user is logged in)
+  useEffect(() => {
+    const createSession = async () => {
+      if (!user || sessionId) return; // Only create if logged in and no session yet
+
+      try {
+        const response = await apiRequest('POST', '/api/builderiq/sessions', {
+          sessionType: 'questionnaire',
+          industry: initialIndustry,
+          voiceEnabled: false,
+        });
+        const data = await response.json();
+        if (data.success && data.data?.id) {
+          setSessionId(data.data.id);
+          console.log('📋 BuilderIQ session created:', data.data.id);
+        }
+      } catch (error) {
+        console.error('Failed to create BuilderIQ session:', error);
+        // Continue without session - will save locally only
+      }
+    };
+
+    createSession();
+  }, [user, initialIndustry]);
 
   // Filter questions based on conditional logic
   const visibleQuestions = questions.filter(q =>
@@ -438,6 +466,52 @@ const BuilderIQQuestionnaire: React.FC = () => {
     },
   });
 
+  // Fallback speech synthesis - defined first since askCurrentQuestion uses it
+  const tryFallbackSpeech = useCallback((text: string, onComplete: () => void) => {
+    console.log('🔊 Using fallback speech synthesis');
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.1;
+      utterance.volume = 1.0;
+      utterance.lang = 'en-US';
+
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v =>
+        v.name.includes('Google') && v.lang.startsWith('en')
+      ) || voices.find(v =>
+        v.name.includes('Microsoft') && v.lang.startsWith('en')
+      ) || voices.find(v =>
+        v.lang.startsWith('en')
+      ) || voices[0];
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+        console.log('🔊 Using voice:', preferredVoice.name);
+      }
+
+      utterance.onend = () => {
+        console.log('🔊 Fallback speech ended');
+        onComplete();
+      };
+      utterance.onerror = (e) => {
+        console.error('🔊 Fallback speech error:', e);
+        onComplete();
+      };
+
+      // Small delay helps on Windows
+      setTimeout(() => {
+        window.speechSynthesis.speak(utterance);
+      }, 100);
+    } else {
+      console.error('Speech synthesis not supported');
+      onComplete();
+    }
+  }, []);
+
   // Ask the current question via unified voice service
   const askCurrentQuestion = useCallback(() => {
     if (!currentQuestion) {
@@ -450,8 +524,16 @@ const BuilderIQQuestionnaire: React.FC = () => {
       return;
     }
 
-    const prompt = currentQuestion.voicePrompt || currentQuestion.title;
-    console.log('🎤 Asking question:', prompt);
+    // Build the question prompt with options for better UX
+    let prompt = currentQuestion.voicePrompt || currentQuestion.title;
+
+    // Add a brief pause and option hint for single/multiple select questions
+    if (currentQuestion.type === 'single' && currentQuestion.options && currentQuestion.options.length <= 4) {
+      const optionNames = currentQuestion.options.map(o => o.label).join(', or ');
+      prompt += `. You can say: ${optionNames}`;
+    }
+
+    console.log('🔊 Asking question:', prompt.substring(0, 80) + '...');
 
     // Stop listening while speaking to prevent hearing ourselves
     if (voice.isListening) {
@@ -461,8 +543,22 @@ const BuilderIQQuestionnaire: React.FC = () => {
 
     setIsAskingQuestion(true);
 
+    // Function to start listening after speech
+    const startListeningAfterSpeech = () => {
+      setIsAskingQuestion(false);
+      if (voiceMode) {
+        setTimeout(() => {
+          console.log('🎤 Starting listening after question...');
+          if (!voice.isListening) {
+            voice.startListening();
+          }
+        }, 400);
+      }
+    };
+
     // Use voice service if ready, otherwise use fallback
     if (voiceService.isReady) {
+      console.log('🔊 Using voiceService to speak');
       voiceService.speak(prompt, {
         personality: 'enthusiastic',
         onStart: () => {
@@ -470,72 +566,20 @@ const BuilderIQQuestionnaire: React.FC = () => {
         },
         onEnd: () => {
           console.log('🔊 Speech ended, resuming listening...');
-          setIsAskingQuestion(false);
-          // Resume listening after speaking finishes
-          if (voiceMode) {
-            setTimeout(() => {
-              console.log('🎤 Starting listening after question...');
-              voice.startListening();
-            }, 300);
-          }
+          startListeningAfterSpeech();
         },
         onError: (e) => {
           console.error('Speech error:', e);
-          setIsAskingQuestion(false);
-          // Try to resume listening even after error
-          if (voiceMode) {
-            setTimeout(() => voice.startListening(), 300);
-          }
+          // Try fallback on error
+          tryFallbackSpeech(prompt, startListeningAfterSpeech);
         },
       });
     } else {
       // Fallback to direct speech synthesis if service not ready
-      console.log('🔊 Using fallback speech synthesis');
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(prompt);
-        utterance.rate = 1.1;
-        utterance.pitch = 1.15;
-        utterance.volume = 1.0;
-        utterance.lang = 'en-US';
-
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v =>
-          v.name.includes('Google') && v.lang.startsWith('en')
-        ) || voices.find(v =>
-          v.name.includes('Microsoft') && v.lang.startsWith('en')
-        ) || voices[0];
-
-        if (preferredVoice) utterance.voice = preferredVoice;
-
-        utterance.onend = () => {
-          console.log('🔊 Fallback speech ended');
-          setIsAskingQuestion(false);
-          // Resume listening after speaking
-          if (voiceMode) {
-            setTimeout(() => voice.startListening(), 300);
-          }
-        };
-        utterance.onerror = () => {
-          console.error('🔊 Fallback speech error');
-          setIsAskingQuestion(false);
-          if (voiceMode) {
-            setTimeout(() => voice.startListening(), 300);
-          }
-        };
-
-        window.speechSynthesis.speak(utterance);
-      } else {
-        console.error('Speech synthesis not supported');
-        setIsAskingQuestion(false);
-        // Still try to start listening
-        if (voiceMode) {
-          voice.startListening();
-        }
-      }
+      console.log('🔊 voiceService not ready, using fallback');
+      tryFallbackSpeech(prompt, startListeningAfterSpeech);
     }
-  }, [currentQuestion, isAskingQuestion, voiceMode, voice, voiceService]);
+  }, [currentQuestion, isAskingQuestion, voiceMode, voice, voiceService, tryFallbackSpeech]);
 
   // Read help text using unified voice service
   const readHelp = useCallback(() => {
@@ -888,15 +932,18 @@ const BuilderIQQuestionnaire: React.FC = () => {
     // 2. We haven't just activated voice mode (that's handled in toggleVoiceMode)
     // 3. We haven't already asked this question
     if (voiceMode && voiceModeReady && currentQuestion && !hasAskedRef.current && !voiceModeJustActivated.current) {
-      console.log('🎤 Auto-asking question on question change');
+      console.log('🎤 Auto-asking question on question change, index:', currentIndex);
       hasAskedRef.current = true;
       // Small delay to let the page render
       const timer = setTimeout(() => {
-        askCurrentQuestion();
-      }, 300);
+        // Make sure we're still in voice mode
+        if (voiceMode && voiceModeReady) {
+          askCurrentQuestion();
+        }
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, voiceModeReady]);
+  }, [currentIndex, voiceModeReady, voiceMode, currentQuestion, askCurrentQuestion]);
 
   // Reset the asked flag when question changes
   useEffect(() => {
@@ -974,32 +1021,44 @@ const BuilderIQQuestionnaire: React.FC = () => {
       // Force initialize voice service (unlocks audio on user gesture)
       voiceService.forceInit();
 
-      // Speak awesome activation message
-      voiceService.speak(
-        "Perfect! Voice mode is now active! I'm BuilderIQ, your AI app building assistant. " +
-        "I'll read each question aloud and listen to your answers. " +
-        "Just speak naturally - say things like 'web app' or 'mobile app'. " +
-        "You can also say 'help' anytime for guidance, or 'next' to move forward. " +
-        "Let's create something amazing together!",
-        {
-          personality: 'enthusiastic',
-          onEnd: () => {
-            console.log('🎤 Activation speech complete, now asking question...');
-            setVoiceModeReady(true);
-            // Now ask the first question and start listening
-            setTimeout(() => {
-              askCurrentQuestion();
-            }, 300);
-          },
-          onError: () => {
-            console.log('🎤 Activation speech error, trying to continue...');
-            setVoiceModeReady(true);
-            setTimeout(() => {
-              askCurrentQuestion();
-            }, 300);
-          }
+      // Start listening for voice immediately (so user can interrupt if needed)
+      setTimeout(() => {
+        console.log('🎤 Starting voice recognition...');
+        voice.startListening();
+      }, 200);
+
+      // Speak awesome activation message - shorter so we get to questions faster
+      const activationMessage = "Voice mode active! I'll read questions and listen to your answers. Let's go!";
+
+      console.log('🔊 Speaking activation message...');
+      voiceService.speak(activationMessage, {
+        personality: 'enthusiastic',
+        onStart: () => {
+          console.log('🔊 Activation speech started');
+        },
+        onEnd: () => {
+          console.log('🎤 Activation speech complete, now asking question...');
+          setVoiceModeReady(true);
+          voiceModeJustActivated.current = false; // Reset so auto-ask works
+
+          // Now ask the first question
+          setTimeout(() => {
+            hasAskedRef.current = false; // Ensure we ask the question
+            askCurrentQuestion();
+          }, 400);
+        },
+        onError: (e) => {
+          console.log('🎤 Activation speech error:', e, '- trying to continue...');
+          setVoiceModeReady(true);
+          voiceModeJustActivated.current = false;
+
+          // Try with fallback speech
+          setTimeout(() => {
+            hasAskedRef.current = false;
+            askCurrentQuestion();
+          }, 400);
         }
-      );
+      });
 
       // Show toast for visual confirmation
       toast({
@@ -1061,15 +1120,125 @@ const BuilderIQQuestionnaire: React.FC = () => {
       voiceService.speak("Excellent! I have all the information I need! Let me show you a preview of your app. You're going to love this!", { personality: 'enthusiastic' });
     }
 
-    // Simulate generation delay
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    try {
+      // Generate app name if not provided
+      const appName = responses.app_name || `Smart${responses.target_audience?.[0] ? responses.target_audience[0].charAt(0).toUpperCase() + responses.target_audience[0].slice(1).replace(/_/g, '') : 'App'}`;
 
-    // Store responses and audio selection, then navigate to preview playground
-    localStorage.setItem('builderiq_responses', JSON.stringify(responses));
-    if (audioSelection) {
-      localStorage.setItem('builderiq_audio', JSON.stringify(audioSelection));
+      // Build features list
+      const features = [
+        ...(responses.key_features || []),
+        ...(responses.user_actions || []),
+      ];
+
+      // Build blueprint object
+      const blueprint = {
+        appType: responses.app_type,
+        targetAudience: responses.target_audience,
+        mainPurpose: responses.main_purpose,
+        keyFeatures: responses.key_features,
+        userActions: responses.user_actions,
+        authentication: responses.authentication,
+        aiContent: responses.ai_content,
+        aiFeatures: responses.ai_features,
+        payments: responses.payments,
+        designStyle: responses.design_style,
+        colorScheme: responses.color_scheme,
+        customColors: responses.custom_colors,
+        marketingMaterials: responses.marketing_materials,
+        complexity: responses.complexity,
+        audioFeatures: responses.audio_features,
+        audioConfig: responses.audio_config,
+        audioSelection: audioSelection,
+      };
+
+      // Generate a master prompt for the app
+      const masterPrompt = `Build a ${responses.app_type || 'web'} application called "${appName}" for ${(responses.target_audience || []).join(', ')}.
+Main purpose: ${responses.main_purpose || 'General purpose application'}.
+Key features: ${(responses.key_features || []).join(', ')}.
+Authentication: ${responses.authentication || 'basic'}.
+${responses.ai_content === 'yes' ? `AI Features: ${(responses.ai_features || []).join(', ')}.` : ''}
+Payments: ${responses.payments || 'none'}.
+Design style: ${responses.design_style || 'professional'} with ${responses.color_scheme || 'default'} color scheme.
+Complexity level: ${responses.complexity || 'standard'}.`;
+
+      // Save to database if user is logged in
+      let savedAppId = null;
+      if (user) {
+        try {
+          // First update the session with responses
+          if (sessionId) {
+            await apiRequest('PUT', `/api/builderiq/sessions/${sessionId}`, {
+              responses: responses,
+              status: 'completed',
+              appName: appName,
+              appDescription: responses.main_purpose,
+            });
+            console.log('📋 Session updated with responses');
+          }
+
+          // Then save the generated app
+          const appResponse = await apiRequest('POST', '/api/builderiq/apps', {
+            name: appName,
+            description: responses.main_purpose || 'Your amazing new application',
+            industry: responses.target_audience?.[0] || 'general',
+            category: responses.app_type || 'web',
+            masterPrompt: masterPrompt,
+            blueprint: blueprint,
+            features: features,
+            techStack: {
+              frontend: responses.app_type === 'mobile' ? 'React Native' : 'React',
+              backend: 'Node.js',
+              database: 'PostgreSQL',
+              auth: responses.authentication,
+              payments: responses.payments !== 'none' ? 'Stripe' : null,
+            },
+            designStyle: responses.design_style,
+            colorScheme: responses.color_scheme,
+            sessionId: sessionId,
+          });
+
+          const appData = await appResponse.json();
+          if (appData.success && appData.data?.id) {
+            savedAppId = appData.data.id;
+            console.log('🚀 App saved to database:', savedAppId);
+            toast({
+              title: 'App Blueprint Saved!',
+              description: 'Your app has been saved to your account.',
+            });
+          }
+        } catch (apiError) {
+          console.error('Failed to save app to database:', apiError);
+          // Continue even if API fails - we'll still save to localStorage
+          toast({
+            title: 'Saved Locally',
+            description: 'App saved locally. Sign in to save to cloud.',
+            variant: 'default',
+          });
+        }
+      }
+
+      // Always store responses in localStorage as backup/for preview
+      localStorage.setItem('builderiq_responses', JSON.stringify(responses));
+      if (audioSelection) {
+        localStorage.setItem('builderiq_audio', JSON.stringify(audioSelection));
+      }
+      if (savedAppId) {
+        localStorage.setItem('builderiq_app_id', savedAppId);
+      }
+      localStorage.setItem('builderiq_app_name', appName);
+      localStorage.setItem('builderiq_master_prompt', masterPrompt);
+
+      // Navigate to preview
+      navigate('/builderiq/preview');
+    } catch (error) {
+      console.error('Error completing questionnaire:', error);
+      setIsGenerating(false);
+      toast({
+        title: 'Error',
+        description: 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     }
-    navigate('/builderiq/preview');
   };
 
   // Get app type for audio recommendations - analyze responses to determine best category

@@ -121,32 +121,48 @@ export default function Documentation() {
       name: 'Free',
       price: '$0',
       period: '/month',
-      features: ['5 AI prompts per month', 'Basic categories', 'Standard templates', 'Community support'],
+      features: ['5 AI prompts/month', '5 voice generations', '3 music tracks', 'Community support'],
       color: 'border-gray-200',
       popular: false
     },
     {
       name: 'Starter',
-      price: '$14.99',
+      price: '$19',
       period: '/month',
-      features: ['200 AI prompts per month', 'All categories', 'Email support', 'Templates', 'Basic analytics'],
+      features: ['50 AI prompts/month', '50 voice generations', '10 music tracks', 'HD video export', 'Email support'],
       color: 'border-blue-500',
-      popular: true
+      popular: false
+    },
+    {
+      name: 'Academy+',
+      price: '$29',
+      period: '/month',
+      features: ['All 57 courses', '100 prompts/month', '75 voice generations', 'Certificates', 'Email support'],
+      color: 'border-teal-500',
+      popular: false
     },
     {
       name: 'Pro',
-      price: '$49.99',
+      price: '$49',
       period: '/month',
-      features: ['1000 AI prompts per month', 'Advanced customization', 'Priority support', 'Analytics dashboard', 'Export functionality'],
+      features: ['200 prompts/month', '200 voice generations', '50 music tracks', 'Commercial license', 'Priority support'],
+      color: 'border-indigo-500',
+      popular: true
+    },
+    {
+      name: 'Team Pro',
+      price: '$99',
+      period: '/month',
+      features: ['1,000 prompts/month', '500 voice generations', '4K video export', '2-5 team members', 'API access'],
       color: 'border-purple-500',
       popular: false
     },
     {
       name: 'Enterprise',
-      price: '$149.99',
+      price: '$299',
       period: '/month',
-      features: ['Unlimited AI prompts', 'Custom categories', 'Team collaboration', 'API access', 'White-label options', 'Dedicated support', 'Custom integrations'],
-      color: 'border-gold-500',
+      features: ['5,000+ prompts', 'Unlimited generations', 'Unlimited team members', 'White-label', 'Dedicated manager', 'SSO & security'],
+      color: 'border-amber-500',
       popular: false
     }
   ];
@@ -490,32 +506,32 @@ export default function Documentation() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                   {pricingTiers.map((tier, index) => (
-                    <Card key={index} className={`relative ${tier.color} ${tier.popular ? 'ring-2 ring-blue-500' : ''}`}>
+                    <Card key={index} className={`relative ${tier.color} ${tier.popular ? 'ring-2 ring-indigo-500 scale-105' : ''}`}>
                       {tier.popular && (
                         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                          <Badge className="bg-blue-500 text-white px-3 py-1">Most Popular</Badge>
+                          <Badge className="bg-indigo-600 text-white px-3 py-1">Most Popular</Badge>
                         </div>
                       )}
-                      <CardHeader className="text-center">
-                        <CardTitle className="text-xl">{tier.name}</CardTitle>
+                      <CardHeader className="text-center pb-2">
+                        <CardTitle className="text-lg">{tier.name}</CardTitle>
                         <div className="flex items-baseline justify-center">
-                          <span className="text-3xl font-bold">{tier.price}</span>
-                          <span className="text-slate-500 ml-1">{tier.period}</span>
+                          <span className="text-2xl font-bold">{tier.price}</span>
+                          <span className="text-slate-500 text-sm ml-1">{tier.period}</span>
                         </div>
                       </CardHeader>
-                      <CardContent>
-                        <ul className="space-y-3">
+                      <CardContent className="pt-0">
+                        <ul className="space-y-2">
                           {tier.features.map((feature, featureIndex) => (
-                            <li key={featureIndex} className="flex items-center gap-2">
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                              <span className="text-sm">{feature}</span>
+                            <li key={featureIndex} className="flex items-start gap-2">
+                              <CheckCircle className="w-3 h-3 text-green-500 mt-1 flex-shrink-0" />
+                              <span className="text-xs">{feature}</span>
                             </li>
                           ))}
                         </ul>
-                        <Button className="w-full mt-6" variant={tier.popular ? "default" : "outline"}>
-                          {tier.name === 'Free' ? 'Get Started' : 'Choose Plan'}
+                        <Button className="w-full mt-4" size="sm" variant={tier.popular ? "default" : "outline"}>
+                          {tier.name === 'Free' ? 'Get Started' : tier.name === 'Enterprise' ? 'Contact Sales' : 'Choose Plan'}
                         </Button>
                       </CardContent>
                     </Card>

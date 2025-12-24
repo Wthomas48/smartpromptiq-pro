@@ -20,6 +20,7 @@ import MusicMakerPro from '@/components/MusicMakerPro';
 import VoiceMusicMixer from '@/components/VoiceMusicMixer';
 import VoiceToSong from '@/components/VoiceToSong';
 import PremiumMusicLibrary from '@/components/PremiumMusicLibrary';
+import { useAudioStoreSafe } from '@/contexts/AudioStoreContext';
 import {
   Mic, MicOff, Volume2, VolumeX, Play, Pause, Square,
   Download, Share2, Save, Sparkles, Wand2, Copy, Check,
@@ -282,6 +283,9 @@ const VoiceBuilder: React.FC = () => {
   // ElevenLabs context
   const voiceContext = useElevenLabsVoiceSafe();
 
+  // Audio Store for cross-builder transfer
+  const audioStore = useAudioStoreSafe();
+
   // State
   const [activeTab, setActiveTab] = useState('create');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -366,6 +370,61 @@ const VoiceBuilder: React.FC = () => {
     setIsPreviewing(false);
   }, []);
 
+  // Browser Web Speech API fallback for voice generation
+  const generateBrowserVoice = useCallback(async (text: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (!('speechSynthesis' in window)) {
+        resolve(null);
+        return;
+      }
+
+      // Create MediaRecorder to capture audio
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const destination = audioContext.createMediaStreamDestination();
+      const mediaRecorder = new MediaRecorder(destination.stream);
+      const chunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        resolve(url);
+      };
+
+      // For browsers that don't support audio capture, just use speechSynthesis for playback
+      // and create a data URL from a simple audio oscillator as placeholder
+      const utterance = new SpeechSynthesisUtterance(text.slice(0, 5000));
+      utterance.rate = voiceSettings.rate;
+      utterance.pitch = voiceSettings.pitch;
+      utterance.volume = voiceSettings.volume;
+
+      // Find a good voice
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
+                           voices.find(v => v.lang.startsWith('en') && !v.localService) ||
+                           voices.find(v => v.lang.startsWith('en'));
+      if (englishVoice) utterance.voice = englishVoice;
+
+      // Store reference to stop later
+      const synth = window.speechSynthesis;
+
+      utterance.onend = () => {
+        // Create a simple audio blob for playback tracking
+        // (actual audio plays through speechSynthesis)
+        const sampleRate = 44100;
+        const duration = text.length / 15; // rough estimate
+        const buffer = audioContext.createBuffer(1, sampleRate * duration, sampleRate);
+        resolve('browser-tts-active');
+      };
+
+      utterance.onerror = () => {
+        resolve(null);
+      };
+
+      synth.speak(utterance);
+    });
+  }, [voiceSettings]);
+
   // Generate AI voice (ElevenLabs or OpenAI)
   const handleGenerate = useCallback(async () => {
     if (!script.trim()) {
@@ -417,6 +476,21 @@ const VoiceBuilder: React.FC = () => {
       const data = await response.json();
       setGeneratedAudioUrl(data.audioUrl);
 
+      // Save to AudioStore for cross-builder transfer
+      if (audioStore && data.audioUrl) {
+        audioStore.importFromVoiceBuilder(
+          data.audioUrl,
+          `Voice - ${selectedVoice} - ${new Date().toLocaleTimeString()}`,
+          {
+            voiceName: selectedVoice,
+            script: script.slice(0, 200),
+            category: selectedCategory || undefined,
+            style: selectedStyle,
+            duration: estimatedDuration,
+          }
+        );
+      }
+
       toast({
         title: useElevenLabs ? 'ElevenLabs Voice Ready!' : 'Voice Generated!',
         description: `${data.tokensUsed || estimatedTokens} tokens used. Duration: ~${estimatedDuration}s`,
@@ -427,22 +501,114 @@ const VoiceBuilder: React.FC = () => {
       // Auto-fallback to OpenAI if ElevenLabs fails
       if (useElevenLabs) {
         toast({
-          title: 'Trying backup...',
-          description: 'ElevenLabs unavailable, using OpenAI backup.',
+          title: 'Trying OpenAI backup...',
+          description: 'ElevenLabs unavailable, trying OpenAI.',
         });
-        setUseElevenLabs(false);
-        setSelectedVoice('nova');
-      } else {
+
+        // Try OpenAI as first fallback
+        try {
+          const response = await fetch('/api/voice/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
+            body: JSON.stringify({
+              text: script,
+              voice: 'nova',
+              style: selectedStyle,
+              settings: voiceSettings,
+              category: selectedCategory,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setGeneratedAudioUrl(data.audioUrl);
+            setUseElevenLabs(false);
+            setSelectedVoice('nova');
+            toast({
+              title: 'Voice Generated (OpenAI)!',
+              description: 'Using OpenAI backup voice.',
+            });
+            return;
+          }
+        } catch {
+          // OpenAI also failed, try browser fallback
+        }
+
+        // Final fallback: Browser Web Speech API
         toast({
-          title: 'Generation Failed',
-          description: error.message || 'Failed to generate voice. Please try again.',
-          variant: 'destructive',
+          title: 'Using Browser Voice',
+          description: 'API unavailable. Using browser text-to-speech (free preview).',
         });
+
+        // Use browser TTS directly
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(script.slice(0, 5000));
+          utterance.rate = voiceSettings.rate;
+          utterance.pitch = voiceSettings.pitch;
+          utterance.volume = voiceSettings.volume;
+
+          const voices = window.speechSynthesis.getVoices();
+          const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
+                               voices.find(v => v.lang.startsWith('en') && !v.localService) ||
+                               voices.find(v => v.lang.startsWith('en'));
+          if (englishVoice) utterance.voice = englishVoice;
+
+          window.speechSynthesis.speak(utterance);
+          setGeneratedAudioUrl('browser-tts://active');
+          setIsPlaying(true);
+
+          utterance.onend = () => setIsPlaying(false);
+          utterance.onerror = () => setIsPlaying(false);
+
+          toast({
+            title: 'Playing Browser Voice',
+            description: 'Note: Browser TTS cannot be downloaded. Upgrade for premium voices.',
+          });
+        } else {
+          toast({
+            title: 'Voice Unavailable',
+            description: 'Your browser does not support text-to-speech.',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        // OpenAI was already being used and failed
+        toast({
+          title: 'Using Browser Voice',
+          description: 'API unavailable. Using browser text-to-speech.',
+        });
+
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(script.slice(0, 5000));
+          utterance.rate = voiceSettings.rate;
+          utterance.pitch = voiceSettings.pitch;
+          utterance.volume = voiceSettings.volume;
+
+          const voices = window.speechSynthesis.getVoices();
+          const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
+                               voices.find(v => v.lang.startsWith('en'));
+          if (englishVoice) utterance.voice = englishVoice;
+
+          window.speechSynthesis.speak(utterance);
+          setGeneratedAudioUrl('browser-tts://active');
+          setIsPlaying(true);
+
+          utterance.onend = () => setIsPlaying(false);
+        } else {
+          toast({
+            title: 'Generation Failed',
+            description: error.message || 'Failed to generate voice. Please try again.',
+            variant: 'destructive',
+          });
+        }
       }
     } finally {
       setIsGenerating(false);
     }
-  }, [script, selectedVoice, selectedStyle, voiceSettings, selectedCategory, isAuthenticated, navigate, toast, estimatedTokens, estimatedDuration, useElevenLabs]);
+  }, [script, selectedVoice, selectedStyle, voiceSettings, selectedCategory, isAuthenticated, navigate, toast, estimatedTokens, estimatedDuration, useElevenLabs, generateBrowserVoice]);
 
   // Apply template
   const applyTemplate = useCallback((template: typeof scriptTemplates[0]) => {
@@ -1132,7 +1298,25 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                             <Button
                               size="sm"
                               onClick={() => {
-                                if (audioRef.current) {
+                                if (generatedAudioUrl.startsWith('browser-tts://')) {
+                                  // Stop browser TTS
+                                  if (isPlaying) {
+                                    window.speechSynthesis?.cancel();
+                                    setIsPlaying(false);
+                                  } else {
+                                    // Re-play browser TTS
+                                    const utterance = new SpeechSynthesisUtterance(script.slice(0, 5000));
+                                    utterance.rate = voiceSettings.rate;
+                                    utterance.pitch = voiceSettings.pitch;
+                                    utterance.volume = voiceSettings.volume;
+                                    const voices = window.speechSynthesis.getVoices();
+                                    const englishVoice = voices.find(v => v.lang.startsWith('en'));
+                                    if (englishVoice) utterance.voice = englishVoice;
+                                    utterance.onend = () => setIsPlaying(false);
+                                    window.speechSynthesis.speak(utterance);
+                                    setIsPlaying(true);
+                                  }
+                                } else if (audioRef.current) {
                                   if (isPlaying) {
                                     audioRef.current.pause();
                                   } else {
@@ -1146,41 +1330,78 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                             </Button>
                             <div>
-                              <div className="text-white font-medium">Generated Audio</div>
-                              <div className="text-xs text-gray-400">~{estimatedDuration} seconds</div>
+                              <div className="text-white font-medium">
+                                {generatedAudioUrl.startsWith('browser-tts://') ? 'Browser Voice (Preview)' : 'Generated Audio'}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {generatedAudioUrl.startsWith('browser-tts://')
+                                  ? 'Using free browser TTS - upgrade for premium AI voices'
+                                  : `~${estimatedDuration} seconds`}
+                              </div>
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleDownload}
-                              className={`${
-                                isPaidUser
-                                  ? 'border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/20'
-                                  : 'border-amber-500/50 text-amber-300 hover:bg-amber-500/20'
-                              }`}
-                            >
-                              {isPaidUser ? (
-                                <>
-                                  <Download className="w-4 h-4 mr-1" />
-                                  Download
-                                </>
-                              ) : (
-                                <>
-                                  <Lock className="w-4 h-4 mr-1" />
-                                  Download
-                                  <Crown className="w-3 h-3 ml-1 text-amber-400" />
-                                </>
-                              )}
-                            </Button>
-                            <Button variant="outline" size="sm" className="border-purple-500/50 text-purple-300 hover:bg-purple-500/20">
-                              <Share2 className="w-4 h-4 mr-1" />
-                              Share
-                            </Button>
+                            {generatedAudioUrl.startsWith('browser-tts://') ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate('/pricing')}
+                                className="border-amber-500/50 text-amber-300 hover:bg-amber-500/20"
+                              >
+                                <Crown className="w-4 h-4 mr-1" />
+                                Upgrade for HD Voices
+                              </Button>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleDownload}
+                                  className={`${
+                                    isPaidUser
+                                      ? 'border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/20'
+                                      : 'border-amber-500/50 text-amber-300 hover:bg-amber-500/20'
+                                  }`}
+                                >
+                                  {isPaidUser ? (
+                                    <>
+                                      <Download className="w-4 h-4 mr-1" />
+                                      Download
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lock className="w-4 h-4 mr-1" />
+                                      Download
+                                      <Crown className="w-3 h-3 ml-1 text-amber-400" />
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-pink-500/50 text-pink-300 hover:bg-pink-500/20"
+                                  onClick={() => {
+                                    toast({
+                                      title: 'Voice Saved to Video Builder!',
+                                      description: 'Go to Video Builder to use this voice in your video.',
+                                    });
+                                    navigate('/video-builder');
+                                  }}
+                                >
+                                  <Video className="w-4 h-4 mr-1" />
+                                  Use in Video
+                                </Button>
+                                <Button variant="outline" size="sm" className="border-purple-500/50 text-purple-300 hover:bg-purple-500/20">
+                                  <Share2 className="w-4 h-4 mr-1" />
+                                  Share
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
-                        <audio ref={audioRef} src={generatedAudioUrl} className="hidden" />
+                        {!generatedAudioUrl.startsWith('browser-tts://') && (
+                          <audio ref={audioRef} src={generatedAudioUrl} className="hidden" />
+                        )}
                       </div>
                     )}
                   </CardContent>

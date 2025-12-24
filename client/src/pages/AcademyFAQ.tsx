@@ -59,7 +59,7 @@ const AcademyFAQ: React.FC = () => {
       {
         id: 7,
         question: 'What subscription tiers are available?',
-        answer: 'We offer three tiers: Free (access to select courses), Pro ($19/mo for all 57 courses and certificates), and Enterprise ($99/mo for teams with advanced features). Your Academy access is tied to your main SmartPromptIQ subscription.'
+        answer: 'We offer six tiers: Free ($0 - 3 courses), Starter ($19/mo - basic creative tools), Academy+ ($29/mo - all 57 courses with certificates), Pro ($49/mo - full platform), Team Pro ($99/mo - teams of 2-5), and Enterprise ($299/mo - unlimited). Full Academy access starts at Academy+.'
       },
       {
         id: 8,
@@ -160,7 +160,7 @@ const AcademyFAQ: React.FC = () => {
       {
         id: 26,
         question: 'Are certificates available for free users?',
-        answer: 'No, certificates are only available for Pro and Enterprise subscribers. This ensures certificate integrity and value. Upgrade to Pro ($19/mo) to unlock certificates for all completed courses.'
+        answer: 'No, certificates are only available for Academy+ ($29/mo) and higher subscribers. This ensures certificate integrity and value. Upgrade to Academy+ to unlock certificates for all 57 completed courses.'
       },
       {
         id: 27,

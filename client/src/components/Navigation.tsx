@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store, Mic, AudioWaveform, Palette } from "lucide-react";
+import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store, Mic, AudioWaveform, Palette, Music2, Puzzle } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import BrainLogo from "@/components/BrainLogo";
@@ -52,6 +52,7 @@ export default function Navigation() {
     { href: "/builderiq", label: "BuilderIQ", icon: ShoppingBag, badge: "NEW", builderSpecial: true },
     { href: "/voice-builder", label: "Voice", icon: Mic, badge: "AI", voiceSpecial: true },
     { href: "/intro-outro-builder", label: "Intro/Outro", icon: AudioWaveform, badge: "Video", introSpecial: true },
+    { href: "/suno-music-builder", label: "Suno Music", icon: Music2, badge: "AI", sunoSpecial: true },
     { href: "/design-studio", label: "Design", icon: Palette, badge: "Print", designSpecial: true },
     { href: "/app-builders", label: "App Market", icon: Store, badge: "100+", marketSpecial: true },
     { href: "/teams", label: "Teams", icon: Users, badge: null },
@@ -106,6 +107,8 @@ export default function Navigation() {
                   } ${
                     (item as any).introSpecial ? 'bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 border border-pink-200/50 dark:border-pink-500/20 hover:shadow-md transition-all' : ''
                   } ${
+                    (item as any).sunoSpecial ? 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200/50 dark:border-purple-500/20 hover:shadow-md transition-all' : ''
+                  } ${
                     (item as any).designSpecial ? 'bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border border-indigo-200/50 dark:border-indigo-500/20 hover:shadow-md transition-all' : ''
                   }`}
                 >
@@ -123,6 +126,8 @@ export default function Navigation() {
                         ? 'text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
                         : (item as any).introSpecial
                         ? 'text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-sm'
+                        : (item as any).sunoSpecial
+                        ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm'
                         : (item as any).designSpecial
                         ? 'text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow-sm'
                         : 'text-white bg-indigo-600'
@@ -244,6 +249,15 @@ export default function Navigation() {
                     Rate App Performance
                   </DropdownMenuItem>
 
+                  <DropdownMenuItem asChild>
+                    <Link href="/chrome-extension" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <Puzzle className="w-4 h-4 mr-2 text-purple-500" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">Chrome Extension</span>
+                        <span className="text-xs text-gray-500">Coming Soon</span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
 
                   <DropdownMenuItem
                     onClick={handleGiveFeedback}
@@ -310,6 +324,8 @@ export default function Navigation() {
                   } ${
                     (item as any).introSpecial ? 'bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 dark:from-pink-900/20 dark:to-rose-900/20 dark:border-pink-500/20' : ''
                   } ${
+                    (item as any).sunoSpecial ? 'bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 dark:from-purple-900/20 dark:to-pink-900/20 dark:border-purple-500/20' : ''
+                  } ${
                     (item as any).designSpecial ? 'bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 dark:from-indigo-900/20 dark:to-violet-900/20 dark:border-indigo-500/20' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -333,6 +349,8 @@ export default function Navigation() {
                         ? 'text-white bg-gradient-to-r from-cyan-500 to-purple-500 shadow-sm'
                         : (item as any).introSpecial
                         ? 'text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-sm'
+                        : (item as any).sunoSpecial
+                        ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm'
                         : (item as any).designSpecial
                         ? 'text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow-sm'
                         : 'text-white bg-indigo-600'

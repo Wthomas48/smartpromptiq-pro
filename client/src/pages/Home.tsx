@@ -936,6 +936,29 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="footer">
+        {/* Chrome Extension Coming Soon */}
+        <div className="mb-8 p-6 bg-gradient-to-r from-indigo-900/50 to-purple-900/50 rounded-2xl border border-indigo-500/30 max-w-2xl mx-auto">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <span className="text-3xl">🧩</span>
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                Chrome Extension
+                <span className="px-2 py-0.5 text-xs font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full animate-pulse">
+                  COMING SOON
+                </span>
+              </h3>
+              <p className="text-sm text-indigo-200">
+                Generate AI prompts anywhere on the web with one click
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 text-xs text-indigo-300">
+            <span className="px-2 py-1 bg-indigo-800/50 rounded-full">Right-click prompt generation</span>
+            <span className="px-2 py-1 bg-indigo-800/50 rounded-full">Save to your library</span>
+            <span className="px-2 py-1 bg-indigo-800/50 rounded-full">Works on any website</span>
+          </div>
+        </div>
+
         <div className="footer-badges">
           <div className="footer-badge">Enterprise Security</div>
           <div className="footer-badge">GDPR Compliant</div>
@@ -945,7 +968,7 @@ export default function Home() {
         </div>
         <p>Trusted by industry leaders and innovative companies worldwide</p>
         <div className="text-xs opacity-60 mt-4" style={{ textAlign: 'center' }}>
-          build: signup-canary-2025-09-19-2 | FINAL DEPLOYMENT TEST!
+          © 2025 SmartPromptIQ™ — The Intelligent Prompt Engineering Platform
         </div>
       </footer>
     </div>

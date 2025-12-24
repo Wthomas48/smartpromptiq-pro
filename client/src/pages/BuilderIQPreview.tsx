@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiRequest } from '@/lib/queryClient';
 import BackButton from '@/components/BackButton';
 import {
   Play, Pause, Volume2, VolumeX, Smartphone, Monitor, Tablet,
@@ -44,7 +46,9 @@ interface PreviewData {
 const BuilderIQPreview: React.FC = () => {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [savedAppId, setSavedAppId] = useState<string | null>(null);
   const [deviceView, setDeviceView] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [activeScreen, setActiveScreen] = useState('home');
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -121,30 +125,73 @@ const BuilderIQPreview: React.FC = () => {
     },
   ];
 
-  // Load preview data from localStorage
+  // Load preview data from database (if available) or localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('builderiq_responses');
-    const audioStored = localStorage.getItem('builderiq_audio');
+    const loadPreviewData = async () => {
+      // First check if we have a saved app ID
+      const appId = localStorage.getItem('builderiq_app_id');
 
-    if (stored) {
-      const responses = JSON.parse(stored);
-      // Get audio from separate storage or from responses
-      const audioData = audioStored ? JSON.parse(audioStored) : responses.audio_selection;
+      // Try to load from database if user is logged in and we have an app ID
+      if (user && appId) {
+        try {
+          const response = await apiRequest('GET', `/api/builderiq/apps/${appId}`);
+          const data = await response.json();
 
-      setPreviewData({
-        appName: responses.app_name || 'SmartApp',
-        appDescription: responses.main_purpose || 'Your amazing new application',
-        appType: responses.app_type || 'web',
-        designStyle: responses.design_style || 'professional',
-        colorScheme: responses.color_scheme || 'purple_black_blue',
-        features: responses.key_features || [],
-        authentication: responses.authentication || 'basic',
-        payments: responses.payments || 'none',
-        aiFeatures: responses.ai_features || [],
-        audioSelection: audioData,
-      });
-    }
-  }, []);
+          if (data.success && data.data) {
+            const app = data.data;
+            const blueprint = typeof app.blueprint === 'string' ? JSON.parse(app.blueprint) : app.blueprint;
+            const features = typeof app.features === 'string' ? JSON.parse(app.features) : app.features;
+
+            setSavedAppId(app.id);
+            setPreviewData({
+              appName: app.name || 'SmartApp',
+              appDescription: app.description || 'Your amazing new application',
+              appType: blueprint?.appType || 'web',
+              designStyle: app.designStyle || blueprint?.designStyle || 'professional',
+              colorScheme: app.colorScheme || blueprint?.colorScheme || 'purple_black_blue',
+              features: features || blueprint?.keyFeatures || [],
+              authentication: blueprint?.authentication || 'basic',
+              payments: blueprint?.payments || 'none',
+              aiFeatures: blueprint?.aiFeatures || [],
+              audioSelection: blueprint?.audioSelection,
+            });
+            console.log('📱 Loaded app from database:', app.name);
+            return; // Successfully loaded from database
+          }
+        } catch (error) {
+          console.error('Failed to load app from database:', error);
+          // Fall through to localStorage
+        }
+      }
+
+      // Fallback to localStorage
+      const stored = localStorage.getItem('builderiq_responses');
+      const audioStored = localStorage.getItem('builderiq_audio');
+      const storedAppName = localStorage.getItem('builderiq_app_name');
+
+      if (stored) {
+        const responses = JSON.parse(stored);
+        // Get audio from separate storage or from responses
+        const audioData = audioStored ? JSON.parse(audioStored) : responses.audio_selection;
+
+        setPreviewData({
+          appName: storedAppName || responses.app_name || 'SmartApp',
+          appDescription: responses.main_purpose || 'Your amazing new application',
+          appType: responses.app_type || 'web',
+          designStyle: responses.design_style || 'professional',
+          colorScheme: responses.color_scheme || 'purple_black_blue',
+          features: responses.key_features || [],
+          authentication: responses.authentication || 'basic',
+          payments: responses.payments || 'none',
+          aiFeatures: responses.ai_features || [],
+          audioSelection: audioData,
+        });
+        console.log('📱 Loaded app from localStorage');
+      }
+    };
+
+    loadPreviewData();
+  }, [user]);
 
   // Handle audio playback
   useEffect(() => {

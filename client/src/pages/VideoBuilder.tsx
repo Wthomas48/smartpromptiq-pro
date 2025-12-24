@@ -72,6 +72,7 @@ import {
   type PremiumTrack,
   type MusicGenreType,
 } from '@/config/premiumMusic';
+import { useAudioStoreSafe } from '@/contexts/AudioStoreContext';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
@@ -269,6 +270,9 @@ export default function VideoBuilder() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
 
+  // Audio Store for cross-builder import
+  const audioStore = useAudioStoreSafe();
+
   // Tab state
   const [activeTab, setActiveTab] = useState<'templates' | 'scenes' | 'voice' | 'music' | 'style' | 'export'>('templates');
 
@@ -312,6 +316,24 @@ export default function VideoBuilder() {
 
   // Get tracks for selected genre
   const genreTracks = selectedGenre ? getTracksByGenre(selectedGenre) : [];
+
+  // Check for voice from AudioStore (cross-builder import)
+  const latestVoice = audioStore?.getLatestVoice();
+  const hasImportedVoice = latestVoice && !voiceUrl;
+
+  // Import voice from Voice Builder
+  const importVoiceFromStore = () => {
+    if (latestVoice) {
+      setVoiceUrl(latestVoice.url);
+      if (latestVoice.metadata?.script) {
+        setScript(latestVoice.metadata.script);
+      }
+      toast({
+        title: 'Voice Imported!',
+        description: `Imported "${latestVoice.name}" from Voice Builder`,
+      });
+    }
+  };
 
   // Select template
   const handleSelectTemplate = (template: VideoTemplate) => {
@@ -860,6 +882,34 @@ export default function VideoBuilder() {
 
               {/* Voice Tab */}
               <TabsContent value="voice" className="space-y-6 mt-6">
+                {/* Import from Voice Builder Banner */}
+                {hasImportedVoice && (
+                  <Card className="border-green-500/30 bg-green-500/10">
+                    <CardContent className="py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-green-500/20">
+                            <Mic className="w-5 h-5 text-green-400" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-white">Voice from Voice Builder</h4>
+                            <p className="text-sm text-green-300">
+                              "{latestVoice.name}" is ready to import
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={importVoiceFromStore}
+                          className="bg-green-500 hover:bg-green-600"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Import Voice
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Card className="border-white/10 bg-white/5">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">

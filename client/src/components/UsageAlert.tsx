@@ -42,8 +42,8 @@ export default function UsageAlert({
           severity: usagePercent >= 90 ? 'urgent' : 'warning',
           title: `You've completed ${currentUsage} of ${limit} free courses`,
           description: 'Unlock all 57 courses, earn certificates, and get 50 playground tests per month',
-          cta: 'Upgrade to Academy ($29/mo)',
-          tier: 'academy',
+          cta: 'Upgrade to Academy+ ($29/mo)',
+          tier: 'academy_plus',
           savings: 'Perfect for learners who want full education',
           features: ['All 57 courses', 'Earn certificates', '50 playground tests/mo']
         };
@@ -55,10 +55,10 @@ export default function UsageAlert({
           severity: usagePercent >= 90 ? 'urgent' : 'warning',
           title: `You've used ${currentUsage} of ${limit} playground tests`,
           description: 'Upgrade to practice more and test your prompts without limits',
-          cta: 'Upgrade to Academy ($29/mo)',
-          tier: 'academy',
-          savings: '50 tests/month + all courses',
-          features: ['50 playground tests/mo', 'All 57 courses', 'Certificates']
+          cta: 'Upgrade to Starter ($19/mo)',
+          tier: 'starter',
+          savings: '25 tests/month + creative tools',
+          features: ['25 playground tests/mo', '50 prompts/mo', 'HD video export']
         };
       }
 
@@ -67,17 +67,46 @@ export default function UsageAlert({
           icon: '⚡',
           severity: usagePercent >= 90 ? 'urgent' : 'warning',
           title: `You've used ${currentUsage} of ${limit} free prompts`,
-          description: 'Upgrade to Pro for 200 AI prompts per month + full Academy access',
-          cta: 'Upgrade to Pro ($49/mo)',
-          tier: 'pro',
-          savings: 'Academy + Pro Tools in one platform',
-          features: ['200 AI prompts/mo', 'All 57 courses', '50+ templates']
+          description: 'Upgrade to Starter for 50 AI prompts per month + creative tools',
+          cta: 'Upgrade to Starter ($19/mo)',
+          tier: 'starter',
+          savings: 'Entry-level creative tools',
+          features: ['50 AI prompts/mo', '50 voice generations', '10 music tracks']
         };
       }
     }
 
-    // ACADEMY ONLY → PRO UPGRADES
-    if (currentTier === 'academy') {
+    // STARTER → ACADEMY+ or PRO UPGRADES
+    if (currentTier === 'starter') {
+      if (resourceType === 'courses' && usagePercent >= 75) {
+        return {
+          icon: '📚',
+          severity: usagePercent >= 90 ? 'urgent' : 'warning',
+          title: 'Want full Academy access?',
+          description: 'Upgrade to Academy+ for all 57 courses with certificates',
+          cta: 'Upgrade to Academy+ ($29/mo)',
+          tier: 'academy_plus',
+          savings: 'Only $10 more per month',
+          features: ['All 57 courses', 'Certificates', '100 prompts/mo']
+        };
+      }
+
+      if (resourceType === 'prompts' && usagePercent >= 75) {
+        return {
+          icon: '🚀',
+          severity: usagePercent >= 90 ? 'urgent' : 'warning',
+          title: `You've used ${currentUsage} of ${limit} prompts this month`,
+          description: 'Upgrade to Pro for 200 AI prompts + commercial license',
+          cta: 'Upgrade to Pro ($49/mo)',
+          tier: 'pro',
+          savings: '4x more prompts + commercial license',
+          features: ['200 AI prompts/mo', 'Commercial license', 'Priority support']
+        };
+      }
+    }
+
+    // ACADEMY+ → PRO UPGRADES
+    if (currentTier === 'academy' || currentTier === 'academy_plus') {
       if (resourceType === 'playground' && usagePercent >= 75) {
         return {
           icon: '🚀',
@@ -87,7 +116,7 @@ export default function UsageAlert({
           cta: 'Upgrade to Pro ($49/mo)',
           tier: 'pro',
           savings: 'Only $20 more per month',
-          features: ['200 playground tests', '200 AI prompts/mo', '50+ templates']
+          features: ['200 playground tests', '200 AI prompts/mo', 'Commercial license']
         };
       }
 
@@ -99,12 +128,12 @@ export default function UsageAlert({
         cta: 'Upgrade to Pro ($49/mo)',
         tier: 'pro',
         savings: '+$20/mo for full execution tools',
-        features: ['Keep all Academy features', '200 AI prompts/mo', '50+ templates']
+        features: ['Keep all Academy features', '200 AI prompts/mo', 'Commercial license']
       };
     }
 
     // PRO → TEAM PRO UPGRADES
-    if (currentTier === 'pro' || currentTier === 'starter') {
+    if (currentTier === 'pro') {
       if (resourceType === 'prompts' && usagePercent >= 75) {
         return {
           icon: '👥',
@@ -112,9 +141,9 @@ export default function UsageAlert({
           title: `You've used ${currentUsage} of ${limit} prompts this month`,
           description: 'Heavy user? Team Pro gives you 5x more prompts + team collaboration',
           cta: 'Upgrade to Team Pro ($99/mo)',
-          tier: 'team',
+          tier: 'team_pro',
           savings: 'Perfect for teams of 2-5',
-          features: ['1,000 prompts/mo', '2-5 team seats', 'Team collaboration']
+          features: ['1,000 prompts/mo', '2-5 team seats', '4K video export']
         };
       }
 
@@ -122,28 +151,28 @@ export default function UsageAlert({
         return {
           icon: '🔌',
           severity: usagePercent >= 90 ? 'urgent' : 'warning',
-          title: 'API access available in Team Pro',
-          description: 'Need API access? Team Pro includes 100 API calls per month',
+          title: 'Need more API access?',
+          description: 'Team Pro includes 1,000 API calls per month + team features',
           cta: 'Upgrade to Team Pro ($99/mo)',
-          tier: 'team',
+          tier: 'team_pro',
           savings: 'API + collaboration + 5x prompts',
-          features: ['100 API calls/mo', '1,000 prompts/mo', 'Team features']
+          features: ['1,000 API calls/mo', '1,000 prompts/mo', 'Team workspace']
         };
       }
     }
 
     // TEAM PRO → ENTERPRISE
-    if (currentTier === 'team') {
+    if (currentTier === 'team' || currentTier === 'team_pro') {
       if (usagePercent >= 80) {
         return {
           icon: '🏢',
           severity: 'info',
           title: 'Growing fast? Consider Enterprise',
           description: 'Unlimited team members, 5,000+ prompts, custom branding, dedicated support',
-          cta: 'Contact Sales',
+          cta: 'Contact Sales ($299/mo)',
           tier: 'enterprise',
-          savings: 'Custom pricing for your needs',
-          features: ['Unlimited users', '5,000+ prompts', 'Custom branding']
+          savings: 'Unlimited everything',
+          features: ['Unlimited users', '5,000+ prompts', 'Dedicated manager']
         };
       }
     }

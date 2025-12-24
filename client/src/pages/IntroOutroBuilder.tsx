@@ -353,6 +353,10 @@ export default function IntroOutroBuilder() {
   const [isExportingVideo, setIsExportingVideo] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Suno Audio Integration state
+  const [sunoAudioUrl, setSunoAudioUrl] = useState<string | null>(null);
+  const [sunoSongTitle, setSunoSongTitle] = useState<string>('');
+
   // Filter templates
   const introTemplates = TEMPLATES.filter(t => t.category === 'intro');
   const outroTemplates = TEMPLATES.filter(t => t.category === 'outro');
@@ -360,6 +364,30 @@ export default function IntroOutroBuilder() {
 
   // Get tracks for selected genre
   const genreTracks = selectedGenre ? getTracksByGenre(selectedGenre) : [];
+
+  // Check for Suno audio from sessionStorage
+  useEffect(() => {
+    const storedSunoAudio = sessionStorage.getItem('sunoAudioUrl');
+    const storedSunoTitle = sessionStorage.getItem('sunoSongTitle');
+
+    if (storedSunoAudio) {
+      setSunoAudioUrl(storedSunoAudio);
+      setSunoSongTitle(storedSunoTitle || 'Suno Song');
+
+      // Clear from storage after reading
+      sessionStorage.removeItem('sunoAudioUrl');
+      sessionStorage.removeItem('sunoSongTitle');
+
+      // Show notification
+      toast({
+        title: "Suno Song Loaded!",
+        description: `"${storedSunoTitle || 'Suno Song'}" is ready for mixing with intro/outro.`,
+      });
+
+      // Switch to voice tab to show the imported audio
+      setActiveTab('voice');
+    }
+  }, [toast]);
 
   // Audio event handlers
   useEffect(() => {
@@ -1533,6 +1561,44 @@ export default function IntroOutroBuilder() {
 
               {/* Voice Recording Tab */}
               <TabsContent value="voice" className="space-y-6 mt-6">
+                {/* Suno Audio Import Banner */}
+                {sunoAudioUrl && (
+                  <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Music className="w-5 h-5 text-purple-400" />
+                        Suno Song Imported
+                        <Badge className="ml-auto bg-purple-500/20 text-purple-300 border-purple-500/30">
+                          Ready to Mix
+                        </Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        "{sunoSongTitle}" from Suno AI is ready to mix with intro/outro music
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4">
+                        <audio controls src={sunoAudioUrl} className="flex-1 h-10" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSunoAudioUrl(null);
+                            setSunoSongTitle('');
+                          }}
+                          className="border-white/20 hover:bg-white/10"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-400 mt-3">
+                        Select an intro/outro template above, then use the mixer controls to blend your Suno song with background music.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Card className="border-white/10 bg-white/5">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">

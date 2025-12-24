@@ -6,11 +6,12 @@
  * Defines which features are available for each subscription tier.
  * This is the single source of truth for feature gating across the app.
  *
- * TIERS:
+ * UPDATED TIERS:
  * - free: Basic access, limited features
- * - starter: Entry paid tier ($19/mo) - Good for individuals
+ * - starter: Entry paid tier ($19/mo) - Basic creative tools
+ * - academy_plus: Academy + creative tier ($29/mo) - Education focused
  * - pro: Professional tier ($49/mo) - Most popular, content creators
- * - business: Business tier ($99/mo) - Teams and agencies
+ * - team_pro: Team tier ($99/mo) - Teams and agencies
  * - enterprise: Enterprise tier ($299/mo) - Large organizations
  *
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -20,23 +21,25 @@
 // TIER DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type SubscriptionTier = 'free' | 'starter' | 'pro' | 'business' | 'enterprise';
+export type SubscriptionTier = 'free' | 'starter' | 'academy_plus' | 'pro' | 'team_pro' | 'enterprise';
 
-export const TIER_HIERARCHY: SubscriptionTier[] = ['free', 'starter', 'pro', 'business', 'enterprise'];
+export const TIER_HIERARCHY: SubscriptionTier[] = ['free', 'starter', 'academy_plus', 'pro', 'team_pro', 'enterprise'];
 
 export const TIER_DISPLAY_NAMES: Record<SubscriptionTier, string> = {
   free: 'Free',
   starter: 'Starter',
+  academy_plus: 'Academy+',
   pro: 'Pro',
-  business: 'Business',
+  team_pro: 'Team Pro',
   enterprise: 'Enterprise',
 };
 
 export const TIER_COLORS: Record<SubscriptionTier, string> = {
   free: 'from-gray-400 to-gray-500',
   starter: 'from-blue-400 to-cyan-500',
+  academy_plus: 'from-teal-400 to-emerald-500',
   pro: 'from-purple-500 to-pink-500',
-  business: 'from-amber-500 to-orange-500',
+  team_pro: 'from-amber-500 to-orange-500',
   enterprise: 'from-indigo-600 to-purple-600',
 };
 
@@ -49,13 +52,15 @@ export type FeatureCategory =
   | 'voice'
   | 'music'
   | 'design'
+  | 'video'
   | 'builderiq'
   | 'academy'
   | 'intro_outro'
   | 'downloads'
   | 'api'
   | 'team'
-  | 'support';
+  | 'support'
+  | 'quality';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FEATURE LIMITS BY TIER
@@ -74,13 +79,25 @@ export interface TierLimits {
   premiumElevenLabsVoices: boolean;
   voiceDownloads: boolean;
   voiceCommercialUse: boolean;
+  voiceClonesAllowed: number; // NEW: Number of custom voice clones
 
-  // Music & Intro/Outro
+  // Music & Suno
   musicTracksPerMonth: number;
-  introOutroAccess: boolean;
-  introOutroDownloads: boolean;
+  sunoMusicAccess: boolean; // NEW: Suno AI music generation
   premiumMusicLibrary: boolean;
   voiceMusicMixing: boolean;
+  musicCommercialUse: boolean; // NEW
+
+  // Video Builder
+  videoExportsPerMonth: number; // NEW
+  hdVideoExport: boolean; // NEW: 1080p
+  fourKVideoExport: boolean; // NEW: 4K
+  videoCommercialUse: boolean; // NEW
+
+  // Intro/Outro Builder
+  introOutroAccess: boolean;
+  introOutroPerMonth: number; // NEW: Specific limit
+  introOutroDownloads: boolean;
 
   // Design Studio
   imageGenerationsPerMonth: number;
@@ -101,6 +118,7 @@ export interface TierLimits {
   freeCourses: boolean;
   allCourses: boolean;
   certificates: boolean;
+  customCertificates: boolean; // NEW: Enterprise custom branding
   earlyAccess: boolean;
   playgroundTests: number;
 
@@ -109,7 +127,13 @@ export interface TierLimits {
   jsonExport: boolean;
   audioDownloads: boolean;
   videoExport: boolean;
-  removeBranding: boolean;
+  removeBranding: boolean; // Watermark removal
+  priorityQueue: boolean; // NEW: Skip generation queue
+
+  // Quality Options
+  draftQuality: boolean; // NEW
+  standardQuality: boolean; // NEW
+  premiumQuality: boolean; // NEW
 
   // API & Integration
   apiAccess: boolean;
@@ -122,8 +146,11 @@ export interface TierLimits {
   adminDashboard: boolean;
 
   // Support
-  supportLevel: 'community' | 'email' | 'priority' | 'dedicated';
+  supportLevel: 'community' | 'email' | 'priority' | 'priority_chat' | 'dedicated';
   responseTime: string;
+
+  // Storage & History
+  historyRetentionDays: number; // NEW: How long to keep generation history
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -136,7 +163,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
   // ─────────────────────────────────────────────────────────────────────────────
   free: {
     // Prompts
-    promptsPerMonth: 10,
+    promptsPerMonth: 5,
     tokensPerMonth: 50,
     advancedModels: false,
 
@@ -147,13 +174,25 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     premiumElevenLabsVoices: false,
     voiceDownloads: false, // Preview only
     voiceCommercialUse: false,
+    voiceClonesAllowed: 0,
 
     // Music
     musicTracksPerMonth: 3,
-    introOutroAccess: false,
-    introOutroDownloads: false,
+    sunoMusicAccess: true, // Basic access
     premiumMusicLibrary: false,
     voiceMusicMixing: false,
+    musicCommercialUse: false,
+
+    // Video
+    videoExportsPerMonth: 0,
+    hdVideoExport: false,
+    fourKVideoExport: false,
+    videoCommercialUse: false,
+
+    // Intro/Outro
+    introOutroAccess: false,
+    introOutroPerMonth: 0,
+    introOutroDownloads: false,
 
     // Design
     imageGenerationsPerMonth: 5,
@@ -174,6 +213,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     freeCourses: true,
     allCourses: false,
     certificates: false,
+    customCertificates: false,
     earlyAccess: false,
     playgroundTests: 5,
 
@@ -183,6 +223,12 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     audioDownloads: false,
     videoExport: false,
     removeBranding: false,
+    priorityQueue: false,
+
+    // Quality
+    draftQuality: true,
+    standardQuality: false,
+    premiumQuality: false,
 
     // API
     apiAccess: false,
@@ -197,15 +243,18 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     // Support
     supportLevel: 'community',
     responseTime: '48-72 hours',
+
+    // History
+    historyRetentionDays: 7,
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // STARTER TIER - $19/month - Individual creators
+  // STARTER TIER - $19/month - Entry-level creators
   // ─────────────────────────────────────────────────────────────────────────────
   starter: {
     // Prompts
-    promptsPerMonth: 100,
-    tokensPerMonth: 500,
+    promptsPerMonth: 50,
+    tokensPerMonth: 250,
     advancedModels: false, // GPT-3.5 only
 
     // Voice
@@ -215,13 +264,25 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     premiumElevenLabsVoices: false,
     voiceDownloads: true,
     voiceCommercialUse: false,
+    voiceClonesAllowed: 0,
 
     // Music
     musicTracksPerMonth: 10,
-    introOutroAccess: true, // Basic
-    introOutroDownloads: true,
+    sunoMusicAccess: true,
     premiumMusicLibrary: false,
     voiceMusicMixing: false,
+    musicCommercialUse: false,
+
+    // Video
+    videoExportsPerMonth: 5,
+    hdVideoExport: true,
+    fourKVideoExport: false,
+    videoCommercialUse: false,
+
+    // Intro/Outro
+    introOutroAccess: true,
+    introOutroPerMonth: 5,
+    introOutroDownloads: true,
 
     // Design
     imageGenerationsPerMonth: 30,
@@ -242,6 +303,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     freeCourses: true,
     allCourses: false,
     certificates: false,
+    customCertificates: false,
     earlyAccess: false,
     playgroundTests: 25,
 
@@ -249,8 +311,14 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     pdfExport: true,
     jsonExport: false,
     audioDownloads: true,
-    videoExport: false,
+    videoExport: true,
     removeBranding: false,
+    priorityQueue: false,
+
+    // Quality
+    draftQuality: true,
+    standardQuality: true,
+    premiumQuality: false,
 
     // API
     apiAccess: false,
@@ -265,6 +333,99 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     // Support
     supportLevel: 'email',
     responseTime: '24-48 hours',
+
+    // History
+    historyRetentionDays: 14,
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ACADEMY+ TIER - $29/month - Education + Basic Creative
+  // ─────────────────────────────────────────────────────────────────────────────
+  academy_plus: {
+    // Prompts
+    promptsPerMonth: 100,
+    tokensPerMonth: 500,
+    advancedModels: false, // GPT-3.5 only
+
+    // Voice
+    voiceGenerationsPerMonth: 75,
+    openAIVoices: true,
+    elevenLabsVoices: true, // 10 basic voices
+    premiumElevenLabsVoices: false,
+    voiceDownloads: true,
+    voiceCommercialUse: false,
+    voiceClonesAllowed: 0,
+
+    // Music
+    musicTracksPerMonth: 20,
+    sunoMusicAccess: true,
+    premiumMusicLibrary: false,
+    voiceMusicMixing: false,
+    musicCommercialUse: false,
+
+    // Video
+    videoExportsPerMonth: 10,
+    hdVideoExport: true,
+    fourKVideoExport: false,
+    videoCommercialUse: false,
+
+    // Intro/Outro
+    introOutroAccess: true,
+    introOutroPerMonth: 10,
+    introOutroDownloads: true,
+
+    // Design
+    imageGenerationsPerMonth: 50,
+    stableDiffusion: true,
+    dalleAccess: true,
+    dalle3Access: false,
+    printIntegration: false,
+    impossiblePrintPriority: false,
+
+    // BuilderIQ
+    blueprintsPerMonth: 5,
+    storyModeVoice: false,
+    appTemplates: true,
+    deploymentHub: false,
+    codeExport: false,
+
+    // Academy - FULL ACCESS
+    freeCourses: true,
+    allCourses: true, // All 57 courses
+    certificates: true,
+    customCertificates: false,
+    earlyAccess: false,
+    playgroundTests: 50,
+
+    // Downloads
+    pdfExport: true,
+    jsonExport: false,
+    audioDownloads: true,
+    videoExport: true,
+    removeBranding: false,
+    priorityQueue: false,
+
+    // Quality
+    draftQuality: true,
+    standardQuality: true,
+    premiumQuality: false,
+
+    // API
+    apiAccess: false,
+    apiCallsPerMonth: 0,
+    webhooks: false,
+
+    // Team
+    teamMembers: 1,
+    teamWorkspace: false,
+    adminDashboard: false,
+
+    // Support
+    supportLevel: 'email',
+    responseTime: '24-48 hours',
+
+    // History
+    historyRetentionDays: 30,
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -272,7 +433,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
   // ─────────────────────────────────────────────────────────────────────────────
   pro: {
     // Prompts
-    promptsPerMonth: 500,
+    promptsPerMonth: 200,
     tokensPerMonth: 2000,
     advancedModels: true, // GPT-4, Claude
 
@@ -283,13 +444,25 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     premiumElevenLabsVoices: false,
     voiceDownloads: true,
     voiceCommercialUse: true,
+    voiceClonesAllowed: 0, // Voice cloning feature not implemented
 
     // Music
     musicTracksPerMonth: 50,
-    introOutroAccess: true,
-    introOutroDownloads: true,
+    sunoMusicAccess: true,
     premiumMusicLibrary: true,
     voiceMusicMixing: true,
+    musicCommercialUse: true,
+
+    // Video
+    videoExportsPerMonth: 30,
+    hdVideoExport: true,
+    fourKVideoExport: false,
+    videoCommercialUse: true,
+
+    // Intro/Outro
+    introOutroAccess: true,
+    introOutroPerMonth: 30,
+    introOutroDownloads: true,
 
     // Design
     imageGenerationsPerMonth: 100,
@@ -310,19 +483,26 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     freeCourses: true,
     allCourses: true,
     certificates: true,
+    customCertificates: false,
     earlyAccess: false,
-    playgroundTests: 100,
+    playgroundTests: 200,
 
     // Downloads
     pdfExport: true,
     jsonExport: true,
     audioDownloads: true,
     videoExport: true,
-    removeBranding: false,
+    removeBranding: true, // Can remove watermarks
+    priorityQueue: true,
+
+    // Quality
+    draftQuality: true,
+    standardQuality: true,
+    premiumQuality: true,
 
     // API
     apiAccess: false,
-    apiCallsPerMonth: 0,
+    apiCallsPerMonth: 100,
     webhooks: false,
 
     // Team
@@ -333,14 +513,17 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     // Support
     supportLevel: 'priority',
     responseTime: '12-24 hours',
+
+    // History
+    historyRetentionDays: 90,
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // BUSINESS TIER - $99/month - Teams and agencies
+  // TEAM PRO TIER - $99/month - Teams and agencies
   // ─────────────────────────────────────────────────────────────────────────────
-  business: {
+  team_pro: {
     // Prompts
-    promptsPerMonth: 2000,
+    promptsPerMonth: 1000,
     tokensPerMonth: 5000,
     advancedModels: true,
 
@@ -351,13 +534,25 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     premiumElevenLabsVoices: true, // Premium voices
     voiceDownloads: true,
     voiceCommercialUse: true,
+    voiceClonesAllowed: 0, // Voice cloning feature not implemented
 
     // Music
     musicTracksPerMonth: 150,
-    introOutroAccess: true,
-    introOutroDownloads: true,
+    sunoMusicAccess: true,
     premiumMusicLibrary: true,
     voiceMusicMixing: true,
+    musicCommercialUse: true,
+
+    // Video
+    videoExportsPerMonth: 100,
+    hdVideoExport: true,
+    fourKVideoExport: true, // 4K enabled
+    videoCommercialUse: true,
+
+    // Intro/Outro
+    introOutroAccess: true,
+    introOutroPerMonth: 100,
+    introOutroDownloads: true,
 
     // Design
     imageGenerationsPerMonth: 300,
@@ -378,6 +573,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     freeCourses: true,
     allCourses: true,
     certificates: true,
+    customCertificates: false,
     earlyAccess: true,
     playgroundTests: 500,
 
@@ -387,6 +583,12 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     audioDownloads: true,
     videoExport: true,
     removeBranding: true, // White-label
+    priorityQueue: true,
+
+    // Quality
+    draftQuality: true,
+    standardQuality: true,
+    premiumQuality: true,
 
     // API
     apiAccess: true,
@@ -399,8 +601,11 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     adminDashboard: true,
 
     // Support
-    supportLevel: 'priority',
+    supportLevel: 'priority_chat',
     responseTime: '4-12 hours',
+
+    // History
+    historyRetentionDays: 180,
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -419,13 +624,25 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     premiumElevenLabsVoices: true,
     voiceDownloads: true,
     voiceCommercialUse: true,
+    voiceClonesAllowed: 0, // Voice cloning feature not implemented
 
     // Music
     musicTracksPerMonth: -1, // Unlimited
-    introOutroAccess: true,
-    introOutroDownloads: true,
+    sunoMusicAccess: true,
     premiumMusicLibrary: true,
     voiceMusicMixing: true,
+    musicCommercialUse: true,
+
+    // Video
+    videoExportsPerMonth: -1, // Unlimited
+    hdVideoExport: true,
+    fourKVideoExport: true,
+    videoCommercialUse: true,
+
+    // Intro/Outro
+    introOutroAccess: true,
+    introOutroPerMonth: -1, // Unlimited
+    introOutroDownloads: true,
 
     // Design
     imageGenerationsPerMonth: -1, // Unlimited
@@ -446,6 +663,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     freeCourses: true,
     allCourses: true,
     certificates: true,
+    customCertificates: true, // Custom branding
     earlyAccess: true,
     playgroundTests: -1, // Unlimited
 
@@ -455,6 +673,12 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     audioDownloads: true,
     videoExport: true,
     removeBranding: true,
+    priorityQueue: true,
+
+    // Quality
+    draftQuality: true,
+    standardQuality: true,
+    premiumQuality: true,
 
     // API
     apiAccess: true,
@@ -469,6 +693,9 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     // Support
     supportLevel: 'dedicated',
     responseTime: '1-4 hours',
+
+    // History
+    historyRetentionDays: 365, // 1 year
   },
 };
 
@@ -558,18 +785,29 @@ export function isUnlimited(value: number): boolean {
 }
 
 /**
+ * Format a limit value for display
+ */
+export function formatLimitValue(value: number): string {
+  if (value === -1) return 'Unlimited';
+  if (value === 0) return '—';
+  if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+  return value.toString();
+}
+
+/**
  * Normalize tier string to SubscriptionTier type
  */
 export function normalizeTier(tier: string | undefined | null): SubscriptionTier {
   if (!tier) return 'free';
 
-  const lowerTier = tier.toLowerCase();
+  const lowerTier = tier.toLowerCase().replace('-', '_');
 
   // Handle various tier name formats
   if (lowerTier === 'free' || lowerTier === 'trial') return 'free';
   if (lowerTier === 'starter' || lowerTier === 'basic') return 'starter';
+  if (lowerTier === 'academy_plus' || lowerTier === 'academy' || lowerTier === 'academyplus') return 'academy_plus';
   if (lowerTier === 'pro' || lowerTier === 'professional') return 'pro';
-  if (lowerTier === 'business' || lowerTier === 'team' || lowerTier === 'team_pro') return 'business';
+  if (lowerTier === 'team_pro' || lowerTier === 'team' || lowerTier === 'business') return 'team_pro';
   if (lowerTier === 'enterprise' || lowerTier === 'unlimited') return 'enterprise';
 
   return 'free';
@@ -592,19 +830,42 @@ export function getUpgradeFeatures(
   }
 
   if (!currentLimits.elevenLabsVoices && targetLimits.elevenLabsVoices) {
-    features.push('25+ premium ElevenLabs voices');
+    features.push('ElevenLabs voices');
   }
+
+  if (!currentLimits.premiumElevenLabsVoices && targetLimits.premiumElevenLabsVoices) {
+    features.push('Premium ElevenLabs voices');
+  }
+
+  // Voice cloning feature removed - not implemented
+  // if (currentLimits.voiceClonesAllowed < targetLimits.voiceClonesAllowed) { ... }
 
   if (!currentLimits.voiceDownloads && targetLimits.voiceDownloads) {
     features.push('Voice audio downloads');
   }
 
-  if (!currentLimits.introOutroAccess && targetLimits.introOutroAccess) {
-    features.push('Intro/Outro Builder');
+  if (!currentLimits.voiceCommercialUse && targetLimits.voiceCommercialUse) {
+    features.push('Commercial voice license');
+  }
+
+  if (!currentLimits.sunoMusicAccess && targetLimits.sunoMusicAccess) {
+    features.push('Suno AI music generation');
   }
 
   if (!currentLimits.premiumMusicLibrary && targetLimits.premiumMusicLibrary) {
     features.push('Premium music library');
+  }
+
+  if (!currentLimits.musicCommercialUse && targetLimits.musicCommercialUse) {
+    features.push('Commercial music license');
+  }
+
+  if (!currentLimits.fourKVideoExport && targetLimits.fourKVideoExport) {
+    features.push('4K video exports');
+  }
+
+  if (!currentLimits.introOutroAccess && targetLimits.introOutroAccess) {
+    features.push('Intro/Outro Builder');
   }
 
   if (!currentLimits.storyModeVoice && targetLimits.storyModeVoice) {
@@ -623,16 +884,20 @@ export function getUpgradeFeatures(
     features.push('DALL-E 3 image generation');
   }
 
+  if (!currentLimits.removeBranding && targetLimits.removeBranding) {
+    features.push('Remove watermarks');
+  }
+
+  if (!currentLimits.priorityQueue && targetLimits.priorityQueue) {
+    features.push('Priority generation queue');
+  }
+
   if (!currentLimits.apiAccess && targetLimits.apiAccess) {
     features.push('API access');
   }
 
   if (currentLimits.teamMembers < targetLimits.teamMembers) {
     features.push(`Up to ${targetLimits.teamMembers === -1 ? 'unlimited' : targetLimits.teamMembers} team members`);
-  }
-
-  if (!currentLimits.removeBranding && targetLimits.removeBranding) {
-    features.push('Remove branding (white-label)');
   }
 
   return features;
@@ -645,8 +910,9 @@ export function getUpgradeFeatures(
 export const TIER_PRICING: Record<SubscriptionTier, { monthly: number; yearly: number }> = {
   free: { monthly: 0, yearly: 0 },
   starter: { monthly: 1900, yearly: 15600 }, // $19/mo, $156/yr ($13/mo)
+  academy_plus: { monthly: 2900, yearly: 24000 }, // $29/mo, $240/yr ($20/mo)
   pro: { monthly: 4900, yearly: 40800 }, // $49/mo, $408/yr ($34/mo)
-  business: { monthly: 9900, yearly: 82800 }, // $99/mo, $828/yr ($69/mo)
+  team_pro: { monthly: 9900, yearly: 82800 }, // $99/mo, $828/yr ($69/mo)
   enterprise: { monthly: 29900, yearly: 299000 }, // $299/mo, $2990/yr (~$249/mo)
 };
 
@@ -662,6 +928,7 @@ export default {
   hasFeatureAccess,
   getFeatureLimit,
   isUnlimited,
+  formatLimitValue,
   normalizeTier,
   getUpgradeFeatures,
 };

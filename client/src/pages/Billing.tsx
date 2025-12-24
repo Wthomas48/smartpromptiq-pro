@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { redirectToStripeCheckout, stripeMode } from "@/lib/stripe";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +21,12 @@ import {
   DollarSign,
   TrendingUp,
   ExternalLink,
-  CheckCircle
+  CheckCircle,
+  GraduationCap,
+  Rocket,
+  Building2
 } from "lucide-react";
+import { PRICING_TIERS } from "@/config/pricing";
 
 interface SubscriptionPlan {
   id: string;
@@ -121,118 +126,46 @@ export default function Billing() {
     retry: false
   });
 
-  // Subscription plans
-  const plans: SubscriptionPlan[] = [
-    {
-      id: "free",
-      name: "Free",
-      price: 0,
-      billing: billingCycle,
-      features: [
-        "5 AI prompts per month",
-        "Basic categories",
-        "Standard templates",
-        "Community support"
-      ],
-      limits: {
-        prompts: 5,
-        tokens: 1000,
-        categories: 3
-      },
-      current: billingInfo?.currentPlan === "free"
+  // Subscription plans - using centralized config
+  const plans: SubscriptionPlan[] = PRICING_TIERS.map(tier => ({
+    id: tier.id,
+    name: tier.name,
+    price: billingCycle === "monthly" ? tier.monthlyPrice / 100 : tier.yearlyPrice / 100,
+    billing: billingCycle,
+    features: tier.features.slice(0, 6), // Show first 6 features
+    limits: {
+      prompts: tier.limits.tokensPerMonth,
+      tokens: tier.limits.tokensPerMonth * 1000,
+      categories: tier.limits.teamMembers === -1 ? -1 : 15
     },
-    {
-      id: "starter",
-      name: "Starter",
-      price: billingCycle === "monthly" ? 14.99 : 149.9,
-      billing: billingCycle,
-      features: [
-        "200 AI prompts per month",
-        "All categories",
-        "Email support",
-        "Templates",
-        "Basic analytics"
-      ],
-      limits: {
-        prompts: 200,
-        tokens: 50000,
-        categories: 15
-      },
-      popular: true,
-      current: billingInfo?.currentPlan === "starter"
-    },
-    {
-      id: "pro",
-      name: "Pro",
-      price: billingCycle === "monthly" ? 49.99 : 499,
-      billing: billingCycle,
-      features: [
-        "1000 AI prompts per month",
-        "Advanced customization",
-        "Priority support",
-        "Analytics dashboard",
-        "Export functionality"
-      ],
-      limits: {
-        prompts: 1000,
-        tokens: 250000,
-        categories: 15
-      },
-      popular: false,
-      current: billingInfo?.currentPlan === "pro"
-    },
-    {
-      id: "enterprise",
-      name: "Enterprise",
-      price: billingCycle === "monthly" ? 149.99 : 1499,
-      billing: billingCycle,
-      features: [
-        "Unlimited AI prompts",
-        "Custom categories",
-        "Team collaboration",
-        "API access",
-        "White-label options",
-        "Dedicated support",
-        "Custom integrations"
-      ],
-      limits: {
-        prompts: -1, // Unlimited
-        tokens: -1,
-        categories: -1
-      },
-      current: billingInfo?.currentPlan === "enterprise"
-    }
-  ];
+    popular: tier.popular || false,
+    current: billingInfo?.currentPlan === tier.id ||
+             (tier.id === 'academy_plus' && billingInfo?.currentPlan === 'academy')
+  }));
 
-  // Upgrade subscription mutation - uses Stripe Checkout Session
+  // Upgrade subscription mutation - uses Stripe.js redirectToCheckout
+  // NO MOCK FALLBACKS - All errors are thrown properly
   const upgradeMutation = useMutation({
     mutationFn: async ({ planId, billing }: { planId: string; billing: string }) => {
-      const response = await apiRequest("POST", "/api/billing/create-checkout-session", {
+      // Log checkout attempt
+      console.log(`💳 Initiating Stripe Checkout for upgrade to: ${planId}, cycle: ${billing}`);
+      console.log(`💳 Stripe Mode: ${stripeMode.toUpperCase()}`);
+
+      // Use Stripe.js redirectToCheckout - NO MOCK FALLBACKS
+      // Token is fetched automatically from localStorage('token') by the stripe module
+      await redirectToStripeCheckout({
         tierId: planId,
-        billingCycle: billing,
-        successUrl: `${window.location.origin}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${window.location.origin}/billing?canceled=true`
+        billingCycle: billing as 'monthly' | 'yearly',
       });
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create checkout session');
-      }
-      return result;
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        toast({
-          title: "Redirecting to payment...",
-          description: "Please wait while we redirect you to Stripe.",
-        });
-      }
+
+      // If redirect succeeds, this won't be reached
+      return { success: true };
     },
     onError: (error: any) => {
+      console.error('❌ Upgrade checkout failed:', error);
       toast({
         title: "Upgrade Failed",
-        description: error.message || "Failed to create checkout session",
+        description: error.message || "Failed to start checkout. Please try again.",
         variant: "destructive",
       });
     },
@@ -283,8 +216,11 @@ export default function Billing() {
   const getPlanIcon = (planId: string) => {
     switch (planId) {
       case "free": return <Users className="w-5 h-5" />;
+      case "starter": return <Rocket className="w-5 h-5" />;
+      case "academy_plus": return <GraduationCap className="w-5 h-5" />;
       case "pro": return <Star className="w-5 h-5" />;
-      case "enterprise": return <Crown className="w-5 h-5" />;
+      case "team_pro": return <Crown className="w-5 h-5" />;
+      case "enterprise": return <Building2 className="w-5 h-5" />;
       default: return <Zap className="w-5 h-5" />;
     }
   };
@@ -432,54 +368,67 @@ export default function Billing() {
                 }`}
               >
                 Yearly
-                <Badge className="ml-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Save 20%</Badge>
+                <Badge className="ml-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Save ~30%</Badge>
               </button>
             </div>
           </div>
 
-          {/* Pricing Plans */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {/* Pricing Plans - 6 Tiers */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-12">
             {plans.map((plan) => (
-              <Card key={plan.id} className={`relative ${plan.popular ? "border-indigo-500 border-2" : ""} ${plan.current ? "ring-2 ring-green-500" : ""}`}>
-                {plan.popular && (
+              <Card key={plan.id} className={`relative ${plan.popular ? "border-indigo-500 border-2 scale-105" : ""} ${plan.current ? "ring-2 ring-green-500" : ""}`}>
+                {plan.popular && !plan.current && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-indigo-600 text-white">Most Popular</Badge>
+                    <Badge className="bg-indigo-600 text-white text-xs">Most Popular</Badge>
                   </div>
                 )}
                 {plan.current && (
-                  <div className="absolute -top-3 right-4">
-                    <Badge className="bg-green-600 text-white">Current Plan</Badge>
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <Badge className="bg-green-600 text-white text-xs">Current Plan</Badge>
                   </div>
                 )}
-                
-                <CardHeader className="text-center">
-                  <div className="flex justify-center mb-4 text-indigo-600 dark:text-indigo-400">
+
+                <CardHeader className="text-center pb-2">
+                  <div className="flex justify-center mb-2 text-indigo-600 dark:text-indigo-400">
                     {getPlanIcon(plan.id)}
                   </div>
-                  <CardTitle className="text-2xl text-slate-900 dark:text-slate-100">{plan.name}</CardTitle>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-slate-900 dark:text-slate-100">${plan.price}</span>
-                    <span className="text-slate-600 dark:text-slate-400">/{plan.billing === "monthly" ? "month" : "year"}</span>
+                  <CardTitle className="text-lg text-slate-900 dark:text-slate-100">{plan.name}</CardTitle>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                      ${plan.price % 1 === 0 ? plan.price : plan.price.toFixed(0)}
+                    </span>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      /{plan.billing === "monthly" ? "mo" : "yr"}
+                    </span>
                   </div>
+                  {plan.billing === "yearly" && plan.price > 0 && (
+                    <div className="text-xs text-green-600 mt-1">
+                      Save ~{Math.round((1 - plan.price / (PRICING_TIERS.find(t => t.id === plan.id)?.monthlyPrice || 1) / 100 * 12) * 100)}%
+                    </div>
+                  )}
                 </CardHeader>
-                
-                <CardContent>
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-center">
-                        <Check className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" />
-                        <span className="text-sm text-slate-700 dark:text-slate-300">{feature}</span>
+
+                <CardContent className="pt-0">
+                  <ul className="space-y-1 mb-4">
+                    {plan.features.slice(0, 4).map((feature, index) => (
+                      <li key={index} className="flex items-start">
+                        <Check className="w-3 h-3 text-green-500 mr-1.5 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-slate-700 dark:text-slate-300">{feature}</span>
                       </li>
                     ))}
+                    {plan.features.length > 4 && (
+                      <li className="text-xs text-indigo-600 ml-4">+{plan.features.length - 4} more</li>
+                    )}
                   </ul>
-                  
+
                   <Button
                     onClick={() => handleUpgrade(plan)}
-                    disabled={plan.current || upgradeMutation.isPending}
-                    className={`w-full ${plan.popular ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
+                    disabled={plan.current || upgradeMutation.isPending || plan.price === 0}
+                    className={`w-full text-xs py-2 ${plan.popular ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
                     variant={plan.current ? "outline" : plan.popular ? "default" : "outline"}
+                    size="sm"
                   >
-                    {plan.current ? "Current Plan" : `Upgrade to ${plan.name}`}
+                    {plan.current ? "Current" : plan.price === 0 ? "Free" : plan.id === "enterprise" ? "Contact Sales" : "Upgrade"}
                   </Button>
                 </CardContent>
               </Card>

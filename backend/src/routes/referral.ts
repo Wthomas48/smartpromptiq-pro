@@ -1,16 +1,25 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// Middleware to check authentication
-const requireAuth = (req: Request, res: Response, next: Function) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
+// Optional auth middleware - populates req.user if token exists, but doesn't require it
+const optionalAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return next(); // No token, continue without user
+    }
+
+    // Let the authenticate middleware handle the token
+    return authenticate(req, res, next);
+  } catch (error) {
+    // Token invalid, continue without user
+    next();
   }
-  next();
 };
 
 // Generate a unique referral code
@@ -25,7 +34,7 @@ function generateReferralCode(firstName?: string): string {
 // ============================================
 // GET /api/referral/my-code - Get or create user's referral code
 // ============================================
-router.get('/my-code', requireAuth, async (req: Request, res: Response) => {
+router.get('/my-code', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = (req.user as any).id;
 
@@ -88,7 +97,7 @@ router.get('/my-code', requireAuth, async (req: Request, res: Response) => {
 // ============================================
 // GET /api/referral/stats - Get detailed referral statistics
 // ============================================
-router.get('/stats', requireAuth, async (req: Request, res: Response) => {
+router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = (req.user as any).id;
 
@@ -554,7 +563,7 @@ router.post('/track-conversion', async (req: Request, res: Response) => {
 // ============================================
 // GET /api/referral/history - Get referral history for user
 // ============================================
-router.get('/history', requireAuth, async (req: Request, res: Response) => {
+router.get('/history', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = (req.user as any).id;
     const { page = 1, limit = 20 } = req.query;
@@ -602,7 +611,7 @@ router.get('/history', requireAuth, async (req: Request, res: Response) => {
 // ============================================
 // POST /api/referral/customize-code - Customize referral code (premium feature)
 // ============================================
-router.post('/customize-code', requireAuth, async (req: Request, res: Response) => {
+router.post('/customize-code', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = (req.user as any).id;
     const { newCode } = req.body;

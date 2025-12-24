@@ -1035,8 +1035,41 @@ function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
 // All tracks use REAL audio files from our royalty-free collection
 // ==========================================
 
-// Helper for local music URLs
-const localMusic = (filename: string) => `/music/${encodeURIComponent(filename)}`;
+// Helper for music URLs - using free SoundHelix samples since local files aren't available
+// These are royalty-free sample tracks for demo purposes
+const SOUNDHELIX_TRACKS = [
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3',
+  'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3',
+];
+
+// Map track IDs to consistent SoundHelix URLs
+const trackUrlCache: Record<string, string> = {};
+const localMusic = (filename: string): string => {
+  // Check if we already assigned a URL to this filename
+  if (trackUrlCache[filename]) {
+    return trackUrlCache[filename];
+  }
+  // Assign a consistent SoundHelix track based on filename hash
+  const hash = filename.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const trackIndex = hash % SOUNDHELIX_TRACKS.length;
+  trackUrlCache[filename] = SOUNDHELIX_TRACKS[trackIndex];
+  return trackUrlCache[filename];
+};
 
 const premiumTracks = [
   // ========== ⚡ UPBEAT & ENERGETIC (8 tracks) ==========

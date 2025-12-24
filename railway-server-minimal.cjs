@@ -3691,51 +3691,69 @@ app.get('/api/billing/token-packages', (req, res) => {
   }
 });
 
-// Create Stripe Checkout Session - the main payment endpoint
+// Create Stripe Checkout Session - PRODUCTION ONLY (NO MOCK FALLBACKS)
 app.post('/api/billing/create-checkout-session', async (req, res) => {
+  const correlationId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const isProduction = process.env.NODE_ENV === 'production';
+
   try {
     const { tierId, billingCycle = 'monthly', priceId, successUrl, cancelUrl } = req.body;
 
-    console.log('💳 Create checkout session request:', { tierId, billingCycle, priceId });
+    console.log(`💳 [${correlationId}] Create checkout session request:`, { tierId, billingCycle, priceId });
 
     const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
 
-    // Handle free tier
+    // Handle free tier - no checkout needed
     if (tierId?.toLowerCase() === 'free') {
-      return res.json({
-        success: true,
-        message: 'Free tier activated! No payment required.',
-        url: `${baseUrl}/dashboard?welcome=true`
+      return res.status(400).json({
+        success: false,
+        error: 'FREE_TIER_NO_CHECKOUT',
+        message: 'Free tier does not require payment.'
       });
     }
 
-    // Check if Stripe is configured
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.warn('⚠️ Stripe not configured - returning demo checkout URL');
-      return res.json({
-        success: true,
-        demo: true,
-        sessionId: `demo_session_${Date.now()}`,
-        url: successUrl || `${baseUrl}/billing?success=true&demo=true`,
-        message: 'Demo mode - Stripe not configured. Contact support to enable payments.'
+    // CRITICAL: Validate Stripe secret key
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      console.error(`❌ [${correlationId}] STRIPE_SECRET_KEY not configured`);
+      return res.status(503).json({
+        success: false,
+        error: 'STRIPE_NOT_CONFIGURED',
+        message: 'Payment service is not configured. Please contact support.',
+        correlationId
       });
     }
 
-    // Try to load Stripe
-    let stripe;
-    try {
-      const Stripe = require('stripe');
-      stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    } catch (stripeLoadError) {
-      console.error('❌ Failed to load Stripe:', stripeLoadError.message);
-      return res.json({
-        success: true,
-        demo: true,
-        sessionId: `demo_session_${Date.now()}`,
-        url: successUrl || `${baseUrl}/billing?success=true&demo=true`,
-        message: 'Payment processing temporarily unavailable. Please try again later.'
+    // Validate key format
+    const isLiveKey = secretKey.startsWith('sk_live_');
+    const isTestKey = secretKey.startsWith('sk_test_');
+    if (!isLiveKey && !isTestKey) {
+      console.error(`❌ [${correlationId}] Invalid STRIPE_SECRET_KEY format`);
+      return res.status(503).json({
+        success: false,
+        error: 'STRIPE_INVALID_KEY',
+        message: 'Invalid payment configuration. Please contact support.',
+        correlationId
       });
     }
+
+    // In production, require live keys
+    if (isProduction && !isLiveKey) {
+      console.error(`❌ [${correlationId}] Production requires live Stripe keys`);
+      return res.status(503).json({
+        success: false,
+        error: 'STRIPE_TEST_KEY_IN_PRODUCTION',
+        message: 'Payment configuration error. Please contact support.',
+        correlationId
+      });
+    }
+
+    const stripeMode = isLiveKey ? 'live' : 'test';
+    console.log(`💳 [${correlationId}] Stripe Mode: ${stripeMode.toUpperCase()}`);
+
+    // Load Stripe
+    const Stripe = require('stripe');
+    const stripe = new Stripe(secretKey);
 
     // Get Stripe price IDs from environment
     const STRIPE_PRICE_IDS = {
@@ -3743,6 +3761,8 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
       ACADEMY_YEARLY: process.env.STRIPE_PRICE_ACADEMY_YEARLY,
       PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY,
       PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY,
+      STARTER_MONTHLY: process.env.STRIPE_PRICE_STARTER_MONTHLY,
+      STARTER_YEARLY: process.env.STRIPE_PRICE_STARTER_YEARLY,
       TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY,
       TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_YEARLY,
       ENTERPRISE_MONTHLY: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
@@ -3761,8 +3781,8 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
         'ACADEMY_YEARLY': STRIPE_PRICE_IDS.ACADEMY_YEARLY,
         'PRO_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
         'PRO_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
-        'STARTER_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
-        'STARTER_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
+        'STARTER_MONTHLY': STRIPE_PRICE_IDS.STARTER_MONTHLY,
+        'STARTER_YEARLY': STRIPE_PRICE_IDS.STARTER_YEARLY,
         'TEAM_PRO_MONTHLY': STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
         'TEAM_PRO_YEARLY': STRIPE_PRICE_IDS.TEAM_PRO_YEARLY,
         'TEAM_MONTHLY': STRIPE_PRICE_IDS.TEAM_PRO_MONTHLY,
@@ -3772,19 +3792,31 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
       };
 
       stripePriceId = tierMapping[lookupKey];
-      console.log('💳 Mapped tier:', { lookupKey, stripePriceId });
+      console.log(`💳 [${correlationId}] Mapped tier:`, { lookupKey, stripePriceId: stripePriceId || 'NOT FOUND' });
     }
 
+    // CRITICAL: Validate price ID
     if (!stripePriceId) {
-      console.warn('⚠️ No Stripe price ID found for:', { tierId, billingCycle });
-      return res.json({
-        success: true,
-        demo: true,
-        sessionId: `demo_session_${Date.now()}`,
-        url: successUrl || `${baseUrl}/billing?success=true&demo=true`,
-        message: `Pricing not configured for ${tierId}. Please contact support.`
+      console.error(`❌ [${correlationId}] No Stripe price ID found for:`, { tierId, billingCycle });
+      return res.status(400).json({
+        success: false,
+        error: 'PRICE_ID_NOT_FOUND',
+        message: `No Stripe price configured for tier "${tierId}" with billing cycle "${billingCycle}"`,
+        correlationId
       });
     }
+
+    if (!stripePriceId.startsWith('price_')) {
+      console.error(`❌ [${correlationId}] Invalid price ID format: ${stripePriceId}`);
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_PRICE_ID_FORMAT',
+        message: 'Invalid price configuration. Please contact support.',
+        correlationId
+      });
+    }
+
+    console.log(`💳 [${correlationId}] Using priceId: ${stripePriceId}`);
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -3795,27 +3827,54 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
       cancel_url: cancelUrl || `${baseUrl}/pricing?canceled=true`,
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
+      metadata: { correlationId, tierId, billingCycle }
     });
 
-    console.log('💳 Checkout session created:', session.id);
+    // Validate session ID format
+    const expectedPrefix = stripeMode === 'live' ? 'cs_live_' : 'cs_test_';
+    if (!session.id.startsWith(expectedPrefix)) {
+      console.error(`❌ [${correlationId}] Session ID mismatch! Expected ${expectedPrefix}, got ${session.id.substring(0, 10)}`);
+      if (isProduction && stripeMode === 'live') {
+        return res.status(500).json({
+          success: false,
+          error: 'SESSION_ID_MISMATCH',
+          message: 'Payment configuration error. Please contact support.',
+          correlationId
+        });
+      }
+    }
+
+    console.log(`✅ [${correlationId}] Checkout session created: ${session.id}`);
+    console.log(`💳 [${correlationId}] Stripe Mode: ${stripeMode.toUpperCase()}`);
 
     res.json({
       success: true,
       sessionId: session.id,
-      url: session.url
+      url: session.url,
+      mode: stripeMode,
+      correlationId
     });
 
   } catch (error) {
-    console.error('❌ Checkout session error:', error);
+    console.error(`❌ [${correlationId}] Checkout session error:`, error);
 
-    // Return demo mode instead of error
-    const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
-    res.json({
-      success: true,
-      demo: true,
-      sessionId: `demo_session_${Date.now()}`,
-      url: `${baseUrl}/billing?success=true&demo=true`,
-      message: 'Payment temporarily unavailable: ' + (error.message || 'Unknown error')
+    // Return error - NO MOCK FALLBACK
+    let statusCode = 500;
+    let errorCode = 'STRIPE_ERROR';
+
+    if (error.type === 'StripeInvalidRequestError') {
+      statusCode = 400;
+      errorCode = 'STRIPE_INVALID_REQUEST';
+    } else if (error.type === 'StripeAuthenticationError') {
+      statusCode = 401;
+      errorCode = 'STRIPE_AUTH_ERROR';
+    }
+
+    res.status(statusCode).json({
+      success: false,
+      error: errorCode,
+      message: error.message || 'Failed to create checkout session',
+      correlationId
     });
   }
 });
