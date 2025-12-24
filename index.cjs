@@ -31,11 +31,11 @@ prismaLocations.forEach(loc => {
 });
 
 try {
-  // Try to load Prisma from backend folder first (where postinstall generates it)
-  const { PrismaClient } = require('./backend/node_modules/@prisma/client');
+  // Try to load Prisma from root node_modules first (where postinstall generates it)
+  const { PrismaClient } = require('@prisma/client');
   prisma = new PrismaClient();
   dbAvailable = true;
-  console.log('✅ Prisma client loaded from backend');
+  console.log('✅ Prisma client loaded from root');
 
   // Verify connection
   prisma.$connect().then(() => {
@@ -50,13 +50,13 @@ try {
     console.error('❌ Database connection failed:', err.message);
   });
 } catch (err1) {
-  console.log('⚠️ Backend Prisma failed:', err1.message);
+  console.log('⚠️ Root Prisma failed:', err1.message);
   try {
-    // Fallback to root node_modules
-    const { PrismaClient } = require('@prisma/client');
+    // Fallback to backend node_modules
+    const { PrismaClient } = require('./backend/node_modules/@prisma/client');
     prisma = new PrismaClient();
     dbAvailable = true;
-    console.log('✅ Prisma client loaded from root');
+    console.log('✅ Prisma client loaded from backend');
 
     // Verify connection
     prisma.$connect().then(() => {

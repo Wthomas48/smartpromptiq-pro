@@ -12,7 +12,7 @@
         "build:client": "cd client && npm install && npm run build",
         "build:server": "echo 'Server build complete'",
         "generate": "npx prisma generate --schema=./backend/prisma/schema.prisma",
-        "postinstall": "echo 'Skipping root postinstall - Prisma generate runs in build phase'",
+        "postinstall": "prisma generate --schema=./backend/prisma/schema.prisma || echo 'Prisma generate skipped'",
         "install:deps": "cd client && npm install",
         "install:client": "cd client && npm install",
         "install:all": "npm install && cd client && npm install && cd ../backend && npm install",
