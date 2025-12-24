@@ -102,6 +102,7 @@ const createRateLimiter = (tier = 'free', customConfig = {}) => {
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: ipKeyGenerator,
+    validate: false,
     handler: (req, res) => {
       const retryAfter = Math.ceil(config.windowMs / 1000);
       const resetTime = new Date(Date.now() + config.windowMs);
@@ -146,6 +147,7 @@ const ipRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
+  validate: false,
   handler: (req, res) => {
     console.log(`🚫 IP rate limit exceeded`);
     res.status(429).json({
@@ -166,6 +168,7 @@ const burstProtection = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
+  validate: false,
   handler: (req, res) => {
     console.log(`🚫 Burst protection triggered`);
     res.status(429).json({
@@ -200,6 +203,7 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
+  validate: false,
   requestWasSuccessful: (_req, res) => res.statusCode < 400
 });
 
