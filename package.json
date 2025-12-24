@@ -16,7 +16,7 @@
         "install:deps": "cd client && npm install",
         "install:client": "cd client && npm install",
         "install:all": "npm install && cd client && npm install && cd ../backend && npm install",
-        "start": "node index.cjs",
+        "start": "npx prisma generate --schema=./backend/prisma/schema.prisma && node index.cjs",
         "deploy": "node deploy-all.js",
         "deploy:frontend": "node deploy-frontend.js",
         "deploy:backend": "node deploy-railway.js",
