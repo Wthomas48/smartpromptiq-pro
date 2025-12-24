@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_22", "openssl"]
+nixPkgs = ["nodejs_22", "openssl", "openssl_3"]
 
 [phases.install]
 cmds = [
@@ -10,10 +10,14 @@ cmds = [
 
 [phases.build]
 cmds = [
+  "echo '=== Removing old Prisma engines ==='",
+  "rm -rf backend/node_modules/.prisma/client/*.node 2>/dev/null || true",
+  "rm -rf node_modules/.prisma/client/*.node 2>/dev/null || true",
   "echo '=== Generating Prisma Client in backend ==='",
   "cd backend && npx prisma generate --schema=./prisma/schema.prisma",
   "echo '=== Listing generated Prisma engines ==='",
   "ls -la backend/node_modules/.prisma/client/*.node 2>/dev/null || echo 'No .node files found'",
+  "file backend/node_modules/.prisma/client/*.node 2>/dev/null || echo 'Cannot check file type'",
   "echo '=== Copying Prisma client to root ==='",
   "mkdir -p node_modules/.prisma/client",
   "mkdir -p node_modules/@prisma/client",
