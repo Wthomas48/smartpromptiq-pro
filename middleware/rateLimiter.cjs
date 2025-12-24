@@ -1,6 +1,6 @@
 // middleware/rateLimiter.cjs
-const { rateLimit, MemoryStore } = require('express-rate-limit');
-const { getClientIp } = require('../utils/clientIp.cjs');
+const rateLimit = require('express-rate-limit');
+const { MemoryStore } = require('express-rate-limit');
 
 // Initialize Redis connection if available
 let redis;
@@ -98,7 +98,7 @@ const RATE_LIMIT_CONFIGS = {
   }
 };
 
-// Create rate limiter for specific tier
+// Create rate limiter for specific tier - using default keyGenerator (safe)
 const createRateLimiter = (tier = 'free', customConfig = {}) => {
   const config = { ...RATE_LIMIT_CONFIGS[tier], ...customConfig };
 
@@ -112,27 +112,13 @@ const createRateLimiter = (tier = 'free', customConfig = {}) => {
     max: config.max,
     standardHeaders: config.standardHeaders,
     legacyHeaders: config.legacyHeaders,
-
-    // KEY FIX: Use real client IP for rate limiting
-    keyGenerator: (req) => {
-      const clientIP = getClientIp(req);
-      console.log(`🔍 Rate limiting key for ${tier}: ${clientIP} (was: ${req.ip})`);
-      return clientIP;
-    },
-
-    // SILENCE the ERL validation warning about X-Forwarded-For
-    validate: {
-      trustProxy: false, // Disable validation since we handle proxy manually
-      xForwardedForHeader: false
-    },
-
+    // Use default keyGenerator - express-rate-limit handles IP safely
     handler: (req, res) => {
       const retryAfter = Math.ceil(config.windowMs / 1000);
       const now = new Date();
       const resetTime = new Date(now.getTime() + config.windowMs);
-      const clientIP = getClientIp(req);
 
-      console.log(`🚫 Rate limit exceeded for ${clientIP} on tier ${tier}`);
+      console.log(`🚫 Rate limit exceeded on tier ${tier}`);
 
       res.status(429).json({
         error: config.message,
@@ -172,21 +158,16 @@ const dynamicRateLimiter = (req, res, next) => {
   return limiter(req, res, next);
 };
 
-// IP-based rate limiter for aggressive protection
+// IP-based rate limiter for aggressive protection - using default keyGenerator
 const ipRateLimiter = rateLimit({
   store: createStore('ip'),
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 100, // 100 requests per minute per IP
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: getClientIp,
-  validate: {
-    trustProxy: false,
-    xForwardedForHeader: false
-  },
+  // Use default keyGenerator - express-rate-limit handles IP safely
   handler: (req, res) => {
-    const clientIP = getClientIp(req);
-    console.log(`🚫 IP rate limit exceeded for ${clientIP}`);
+    console.log(`🚫 IP rate limit exceeded`);
     res.status(429).json({
       error: 'Too many requests from this IP, please try again later',
       retryAfter: 60
@@ -197,28 +178,16 @@ const ipRateLimiter = rateLimit({
   }
 });
 
-// Burst protection for API endpoints
+// Burst protection for API endpoints - using default keyGenerator
 const burstProtection = rateLimit({
   store: createStore('burst'),
   windowMs: 10 * 1000, // 10 seconds
-  max: (req) => {
-    const clientIP = getClientIp(req);
-    // More lenient for localhost development
-    if (clientIP === '127.0.0.1' || clientIP === '::1' || req.hostname === 'localhost') {
-      return 100; // 100 requests per 10 seconds for localhost
-    }
-    return 10; // 10 requests per 10 seconds for other IPs
-  },
+  max: 20, // Fixed max instead of function for simplicity
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: getClientIp,
-  validate: {
-    trustProxy: false,
-    xForwardedForHeader: false
-  },
+  // Use default keyGenerator - express-rate-limit handles IP safely
   handler: (req, res) => {
-    const clientIP = getClientIp(req);
-    console.log(`🚫 Burst protection triggered for ${clientIP}`);
+    console.log(`🚫 Burst protection triggered`);
     res.status(429).json({
       error: 'Too many requests too quickly, please slow down',
       retryAfter: 10
@@ -241,7 +210,7 @@ const cleanup = () => {
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup);
 
-// General rate limiter following modern pattern
+// General rate limiter - using default keyGenerator
 const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
 const max = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 200);
 
@@ -250,11 +219,8 @@ const generalLimiter = rateLimit({
   max,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => getClientIp(req),
-  requestWasSuccessful: (_req, res) => res.statusCode < 400,
-  validate: {
-    xForwardedForHeader: false
-  }
+  // Use default keyGenerator - express-rate-limit handles IP safely
+  requestWasSuccessful: (_req, res) => res.statusCode < 400
 });
 
 module.exports = {
