@@ -16,19 +16,53 @@ const app = express();
 let prisma = null;
 let dbAvailable = false;
 
+// Check for available Prisma locations
+const fs = require('fs');
+const prismaLocations = [
+  './node_modules/@prisma/client',
+  './node_modules/.prisma/client',
+  './backend/node_modules/@prisma/client',
+  './backend/node_modules/.prisma/client'
+];
+console.log('🔍 Checking Prisma locations:');
+prismaLocations.forEach(loc => {
+  console.log(`   ${loc}: ${fs.existsSync(loc) ? '✅ exists' : '❌ not found'}`);
+});
+
 try {
   // Try to load Prisma from root node_modules first (Railway/production)
   const { PrismaClient } = require('@prisma/client');
   prisma = new PrismaClient();
   dbAvailable = true;
   console.log('✅ Prisma client loaded from root');
+
+  // Verify connection
+  prisma.$connect().then(() => {
+    console.log('✅ Database connected successfully');
+    // Check if Course model exists
+    if (prisma.course) {
+      console.log('✅ Course model available');
+    } else {
+      console.log('❌ Course model NOT found in Prisma client');
+    }
+  }).catch(err => {
+    console.error('❌ Database connection failed:', err.message);
+  });
 } catch (err1) {
+  console.log('⚠️ Root Prisma failed:', err1.message);
   try {
     // Fallback to backend folder (local development)
     const { PrismaClient } = require('./backend/node_modules/@prisma/client');
     prisma = new PrismaClient();
     dbAvailable = true;
     console.log('✅ Prisma client loaded from backend');
+
+    // Verify connection
+    prisma.$connect().then(() => {
+      console.log('✅ Database connected successfully');
+    }).catch(err => {
+      console.error('❌ Database connection failed:', err.message);
+    });
   } catch (err2) {
     console.warn('⚠️ Prisma client not available - running in demo mode');
     console.warn('   Error 1:', err1.message);
