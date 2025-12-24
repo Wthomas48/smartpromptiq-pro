@@ -32,35 +32,57 @@ prismaLocations.forEach(loc => {
 
 try {
   // Try to load Prisma from root node_modules first (where postinstall generates it)
+  console.log('🔧 Attempting to load Prisma from @prisma/client...');
   const { PrismaClient } = require('@prisma/client');
-  prisma = new PrismaClient();
+  console.log('✅ Prisma module loaded, creating client...');
+  prisma = new PrismaClient({
+    log: ['warn', 'error'],
+  });
   dbAvailable = true;
-  console.log('✅ Prisma client loaded from root');
+  console.log('✅ Prisma client created from root');
 
   // Verify connection
-  prisma.$connect().then(() => {
+  prisma.$connect().then(async () => {
     console.log('✅ Database connected successfully');
     // Check if Course model exists
     if (prisma.course) {
       console.log('✅ Course model available');
+      // Try to count courses
+      try {
+        const count = await prisma.course.count();
+        console.log(`📚 Found ${count} courses in database`);
+      } catch (e) {
+        console.log('⚠️ Could not count courses:', e.message);
+      }
     } else {
       console.log('❌ Course model NOT found in Prisma client');
     }
   }).catch(err => {
     console.error('❌ Database connection failed:', err.message);
+    console.error('   Full error:', err);
   });
 } catch (err1) {
   console.log('⚠️ Root Prisma failed:', err1.message);
+  console.log('   Stack:', err1.stack);
   try {
     // Fallback to backend node_modules
+    console.log('🔧 Attempting fallback to ./backend/node_modules/@prisma/client...');
     const { PrismaClient } = require('./backend/node_modules/@prisma/client');
-    prisma = new PrismaClient();
+    prisma = new PrismaClient({
+      log: ['warn', 'error'],
+    });
     dbAvailable = true;
     console.log('✅ Prisma client loaded from backend');
 
     // Verify connection
-    prisma.$connect().then(() => {
+    prisma.$connect().then(async () => {
       console.log('✅ Database connected successfully');
+      try {
+        const count = await prisma.course.count();
+        console.log(`📚 Found ${count} courses in database`);
+      } catch (e) {
+        console.log('⚠️ Could not count courses:', e.message);
+      }
     }).catch(err => {
       console.error('❌ Database connection failed:', err.message);
     });
@@ -68,6 +90,7 @@ try {
     console.warn('⚠️ Prisma client not available - running in demo mode');
     console.warn('   Error 1:', err1.message);
     console.warn('   Error 2:', err2.message);
+    console.warn('   Stack 2:', err2.stack);
     // Create mock prisma for demo mode
     prisma = {
       user: {
