@@ -10,11 +10,16 @@ cmds = [
 
 [phases.build]
 cmds = [
-  "echo '=== Generating Prisma Client ==='",
-  "npx prisma generate --schema=./backend/prisma/schema.prisma",
-  "echo '=== Checking Prisma Client ==='",
-  "ls -la node_modules/@prisma/client || echo 'No @prisma/client in root'",
-  "ls -la node_modules/.prisma/client || echo 'No .prisma/client in root'",
+  "echo '=== Generating Prisma Client in backend ==='",
+  "cd backend && npx prisma generate",
+  "echo '=== Copying Prisma client to root ==='",
+  "mkdir -p node_modules/.prisma",
+  "mkdir -p node_modules/@prisma",
+  "cp -r backend/node_modules/.prisma/client node_modules/.prisma/",
+  "cp -r backend/node_modules/@prisma/client node_modules/@prisma/",
+  "echo '=== Verifying Prisma client ==='",
+  "ls -la node_modules/.prisma/client/ | head -5",
+  "ls -la node_modules/@prisma/client/ | head -5",
   "echo '=== Building Client ==='",
   "cd client && npm run build"
 ]
