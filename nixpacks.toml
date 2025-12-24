@@ -1,14 +1,21 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "openssl"]
+nixPkgs = ["nodejs_22", "openssl"]
 
 [phases.install]
-cmds = ["npm install", "cd client && npm install", "cd backend && npm install"]
+cmds = [
+  "npm install",
+  "cd client && npm install",
+  "cd backend && npm install"
+]
 
 [phases.build]
 cmds = [
-  "cd backend && npx prisma generate",
-  "cp -r backend/node_modules/.prisma node_modules/ || true",
-  "cp -r backend/node_modules/@prisma node_modules/ || true",
+  "echo '=== Generating Prisma Client ==='",
+  "npx prisma generate --schema=./backend/prisma/schema.prisma",
+  "echo '=== Checking Prisma Client ==='",
+  "ls -la node_modules/@prisma/client || echo 'No @prisma/client in root'",
+  "ls -la node_modules/.prisma/client || echo 'No .prisma/client in root'",
+  "echo '=== Building Client ==='",
   "cd client && npm run build"
 ]
 
