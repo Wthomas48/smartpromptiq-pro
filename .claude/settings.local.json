@@ -277,7 +277,8 @@
       "Bash(start \"\" \"http://localhost:5173/chrome-extension\")",
       "Bash(start \"\" \"http://localhost:5173/accessibility\")",
       "Bash(python:*)",
-      "Bash(for i in 1 2 3 4 5 6)"
+      "Bash(for i in 1 2 3 4 5 6)",
+      "Bash(railway redeploy:*)"
     ],
     "deny": [],
     "ask": []
