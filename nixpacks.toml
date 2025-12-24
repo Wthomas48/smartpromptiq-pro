@@ -11,18 +11,19 @@ cmds = [
 [phases.build]
 cmds = [
   "echo '=== Generating Prisma Client in backend ==='",
-  "cd backend && npx prisma generate",
+  "cd backend && npx prisma generate --schema=./prisma/schema.prisma",
+  "echo '=== Listing generated Prisma engines ==='",
+  "ls -la backend/node_modules/.prisma/client/*.node 2>/dev/null || echo 'No .node files found'",
   "echo '=== Copying Prisma client to root ==='",
-  "mkdir -p node_modules/.prisma",
-  "mkdir -p node_modules/@prisma",
-  "cp -r backend/node_modules/.prisma/client node_modules/.prisma/",
-  "cp -r backend/node_modules/@prisma/client node_modules/@prisma/",
-  "echo '=== Verifying Prisma client ==='",
-  "ls -la node_modules/.prisma/client/ | head -5",
-  "ls -la node_modules/@prisma/client/ | head -5",
+  "mkdir -p node_modules/.prisma/client",
+  "mkdir -p node_modules/@prisma/client",
+  "cp -r backend/node_modules/.prisma/client/* node_modules/.prisma/client/",
+  "cp -r backend/node_modules/@prisma/client/* node_modules/@prisma/client/",
+  "echo '=== Verifying Prisma engines in root ==='",
+  "ls -la node_modules/.prisma/client/*.node 2>/dev/null || echo 'No .node files in root'",
   "echo '=== Building Client ==='",
   "cd client && npm run build"
 ]
 
 [start]
-cmd = "node index.cjs"
+cmd = "npx prisma generate --schema=./backend/prisma/schema.prisma && node index.cjs"
