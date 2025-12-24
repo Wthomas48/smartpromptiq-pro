@@ -3,6 +3,31 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const fetch = require('node-fetch');
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// ---- Run Prisma Generate at startup (ensures correct binaries for runtime) ----
+if (process.env.NODE_ENV === 'production') {
+  console.log('🔧 Running Prisma generate for production runtime...');
+  try {
+    // Check if we have DATABASE_URL
+    if (process.env.DATABASE_URL) {
+      console.log('✅ DATABASE_URL is configured');
+      // Run prisma generate from backend
+      execSync('cd backend && npx prisma generate --schema=./prisma/schema.prisma', {
+        stdio: 'inherit',
+        timeout: 60000
+      });
+      console.log('✅ Prisma client generated successfully');
+    } else {
+      console.warn('⚠️ DATABASE_URL not set - skipping Prisma generation');
+    }
+  } catch (err) {
+    console.error('❌ Prisma generate failed:', err.message);
+  }
+}
+
 const health = require('./routes/health.cjs');
 const sunoRoutes = require('./routes/suno.cjs');
 const elevenlabsRoutes = require('./routes/elevenlabs.cjs');
@@ -17,8 +42,6 @@ let prisma = null;
 let dbAvailable = false;
 
 // Check for available Prisma locations
-const fs = require('fs');
-const path = require('path');
 const prismaLocations = [
   './backend/node_modules/@prisma/client',
   './backend/node_modules/.prisma/client',
@@ -31,6 +54,10 @@ prismaLocations.forEach(loc => {
 });
 
 try {
+  // Clear require cache for prisma to pick up fresh generate
+  const backendPrismaPath = require.resolve('./backend/node_modules/@prisma/client');
+  delete require.cache[backendPrismaPath];
+
   // Try to load Prisma from backend folder first (where postinstall generates it)
   const { PrismaClient } = require('./backend/node_modules/@prisma/client');
   prisma = new PrismaClient();
@@ -52,6 +79,12 @@ try {
 } catch (err1) {
   console.log('⚠️ Backend Prisma failed:', err1.message);
   try {
+    // Clear require cache for root prisma
+    try {
+      const rootPrismaPath = require.resolve('@prisma/client');
+      delete require.cache[rootPrismaPath];
+    } catch (e) {}
+
     // Fallback to root node_modules
     const { PrismaClient } = require('@prisma/client');
     prisma = new PrismaClient();
