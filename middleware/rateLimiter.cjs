@@ -1,6 +1,5 @@
 // middleware/rateLimiter.cjs
-const rateLimit = require('express-rate-limit');
-const { MemoryStore } = require('express-rate-limit');
+const { rateLimit, MemoryStore, ipKeyGenerator } = require('express-rate-limit');
 
 // Initialize Redis connection if available
 let redis;
@@ -102,8 +101,7 @@ const createRateLimiter = (tier = 'free', customConfig = {}) => {
     max: config.max,
     standardHeaders: true,
     legacyHeaders: false,
-    // Disable all validation to prevent ERR_ERL_KEY_GEN_IPV6
-    validate: false,
+    keyGenerator: ipKeyGenerator,
     handler: (req, res) => {
       const retryAfter = Math.ceil(config.windowMs / 1000);
       const resetTime = new Date(Date.now() + config.windowMs);
@@ -147,7 +145,7 @@ const ipRateLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  validate: false,
+  keyGenerator: ipKeyGenerator,
   handler: (req, res) => {
     console.log(`🚫 IP rate limit exceeded`);
     res.status(429).json({
@@ -167,7 +165,7 @@ const burstProtection = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  validate: false,
+  keyGenerator: ipKeyGenerator,
   handler: (req, res) => {
     console.log(`🚫 Burst protection triggered`);
     res.status(429).json({
@@ -201,7 +199,7 @@ const generalLimiter = rateLimit({
   max,
   standardHeaders: true,
   legacyHeaders: false,
-  validate: false,
+  keyGenerator: ipKeyGenerator,
   requestWasSuccessful: (_req, res) => res.statusCode < 400
 });
 
@@ -218,4 +216,3 @@ module.exports = {
   cleanup,
   redis
 };
-// Build trigger 1766593115
