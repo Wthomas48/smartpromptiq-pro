@@ -17,21 +17,22 @@ let prisma = null;
 let dbAvailable = false;
 
 try {
-  // Try to load Prisma from backend folder first
-  const { PrismaClient } = require('./backend/node_modules/@prisma/client');
+  // Try to load Prisma from root node_modules first (Railway/production)
+  const { PrismaClient } = require('@prisma/client');
   prisma = new PrismaClient();
   dbAvailable = true;
-  console.log('✅ Prisma client loaded from backend');
+  console.log('✅ Prisma client loaded from root');
 } catch (err1) {
   try {
-    // Fallback to root node_modules
-    const { PrismaClient } = require('@prisma/client');
+    // Fallback to backend folder (local development)
+    const { PrismaClient } = require('./backend/node_modules/@prisma/client');
     prisma = new PrismaClient();
     dbAvailable = true;
-    console.log('✅ Prisma client loaded from root');
+    console.log('✅ Prisma client loaded from backend');
   } catch (err2) {
     console.warn('⚠️ Prisma client not available - running in demo mode');
-    console.warn('   Error:', err2.message);
+    console.warn('   Error 1:', err1.message);
+    console.warn('   Error 2:', err2.message);
     // Create mock prisma for demo mode
     prisma = {
       user: {
