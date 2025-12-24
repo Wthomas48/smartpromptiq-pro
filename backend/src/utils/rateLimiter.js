@@ -2,7 +2,7 @@
  * Rate Limiter - Implements tier-based rate limiting and abuse prevention
  */
 
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { SUBSCRIPTION_TIERS } = require('../../../shared/pricing/pricingConfig');
 const prisma = require('../config/database');
 
@@ -17,9 +17,12 @@ class SmartRateLimiter {
    */
   createLimiter(type) {
     return rateLimit({
-      keyGenerator: (req) => {
-        // Use user ID if authenticated, otherwise IP
-        return req.user?.id || req.ip;
+      keyGenerator: (req, res) => {
+        // Use user ID if authenticated, otherwise use ipKeyGenerator
+        if (req.user?.id) {
+          return req.user.id;
+        }
+        return ipKeyGenerator(req, res);
       },
       windowMs: this.getWindowMs(type),
       max: async (req) => {
@@ -33,6 +36,7 @@ class SmartRateLimiter {
       }),
       standardHeaders: true,
       legacyHeaders: false,
+      validate: false,
       onLimitReached: (req) => {
         this.logRateLimitExceeded(req, type);
       }
