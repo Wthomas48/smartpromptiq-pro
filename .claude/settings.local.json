@@ -276,7 +276,8 @@
       "Bash(start \"\" \"http://localhost:5173/suno-music-builder\")",
       "Bash(start \"\" \"http://localhost:5173/chrome-extension\")",
       "Bash(start \"\" \"http://localhost:5173/accessibility\")",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(for i in 1 2 3 4 5 6)"
     ],
     "deny": [],
     "ask": []
