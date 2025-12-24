@@ -7,7 +7,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const dotenv = require('dotenv');
 
 // Import route modules
@@ -72,6 +72,8 @@ app.use('/api', rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: ipKeyGenerator,
+  validate: false,
 }));
 
 // Body parsing middleware (with special handling for webhooks)

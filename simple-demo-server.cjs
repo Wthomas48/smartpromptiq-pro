@@ -1,7 +1,7 @@
 // Simple demo server without Redis dependency
 const express = require('express');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 const app = express();
 
@@ -129,6 +129,8 @@ const createRateLimiter = (windowMs, max, message) => rateLimit({
   message: { success: false, error: message },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: ipKeyGenerator,
+  validate: false,
   skipSuccessfulRequests: false,
   skipFailedRequests: false,
 });

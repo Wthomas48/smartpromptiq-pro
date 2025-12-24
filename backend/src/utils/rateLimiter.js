@@ -17,13 +17,7 @@ class SmartRateLimiter {
    */
   createLimiter(type) {
     return rateLimit({
-      keyGenerator: (req, res) => {
-        // Use user ID if authenticated, otherwise use ipKeyGenerator
-        if (req.user?.id) {
-          return req.user.id;
-        }
-        return ipKeyGenerator(req, res);
-      },
+      keyGenerator: ipKeyGenerator,
       windowMs: this.getWindowMs(type),
       max: async (req) => {
         return this.getLimit(req, type);
