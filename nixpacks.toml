@@ -26,4 +26,4 @@ cmds = [
 ]
 
 [start]
-cmd = "npx prisma generate --schema=./backend/prisma/schema.prisma && node index.cjs"
+cmd = "cd backend && npx prisma generate && cd .. && node index.cjs"
