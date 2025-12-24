@@ -16,9 +16,10 @@ cmds = [
   "rm -rf backend/node_modules/.prisma 2>/dev/null || true",
   "rm -rf node_modules/.prisma 2>/dev/null || true",
   "echo '=== Generating Prisma Client in backend ==='",
-  "cd backend && npx prisma generate --schema=./prisma/schema.prisma",
+  "cd backend && PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 npx prisma generate --schema=./prisma/schema.prisma",
   "echo '=== Listing ALL generated Prisma files ==='",
   "ls -la backend/node_modules/.prisma/client/ 2>/dev/null || echo 'No .prisma/client found'",
+  "ls -la backend/node_modules/.prisma/client/*.node 2>/dev/null || echo 'No .node engine files found'",
   "echo '=== Copying ENTIRE Prisma client to root ==='",
   "mkdir -p node_modules/.prisma",
   "mkdir -p node_modules/@prisma",
@@ -26,6 +27,7 @@ cmds = [
   "cp -r backend/node_modules/@prisma/* node_modules/@prisma/",
   "echo '=== Verifying Prisma in root ==='",
   "ls -la node_modules/.prisma/client/ 2>/dev/null || echo 'No .prisma/client in root'",
+  "ls -la node_modules/.prisma/client/*.node 2>/dev/null || echo 'No .node engine files in root'",
   "echo '=== Building Client ==='",
   "cd client && npm run build"
 ]
