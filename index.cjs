@@ -4045,8 +4045,7 @@ app.get('/api/referral/history', billingAuth, async (req, res) => {
 // ========================================
 // Static File Serving & SPA Fallback
 // ========================================
-const path = require('path');
-const fs = require('fs');
+// path and fs are already required at the top of the file
 
 // Serve static files from client build
 const clientDistPath = path.join(__dirname, 'client/dist');
