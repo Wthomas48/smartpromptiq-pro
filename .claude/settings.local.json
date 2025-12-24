@@ -275,7 +275,8 @@
       "Bash(git rm:*)",
       "Bash(start \"\" \"http://localhost:5173/suno-music-builder\")",
       "Bash(start \"\" \"http://localhost:5173/chrome-extension\")",
-      "Bash(start \"\" \"http://localhost:5173/accessibility\")"
+      "Bash(start \"\" \"http://localhost:5173/accessibility\")",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
