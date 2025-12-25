@@ -174,10 +174,10 @@ export function useFeatureGate(featureKey: keyof TierLimits): UseFeatureGateResu
   // Upgrade Modal Component
   const UpgradeModal: React.FC = useCallback(() => {
     const featureName = FEATURE_DISPLAY_NAMES[featureKey] || featureKey;
-    const requiredTierName = TIER_DISPLAY_NAMES[requiredTier];
-    const requiredTierColor = TIER_COLORS[requiredTier];
-    const requiredTierPrice = TIER_PRICING[requiredTier];
-    const upgradeFeatures = getUpgradeFeatures(userTier, requiredTier);
+    const requiredTierName = TIER_DISPLAY_NAMES[requiredTier] || 'Pro';
+    const requiredTierColor = TIER_COLORS[requiredTier] || 'from-amber-500 to-orange-500';
+    const requiredTierPrice = TIER_PRICING[requiredTier] || { monthly: 1900, yearly: 19000 };
+    const upgradeFeatures = getUpgradeFeatures(userTier, requiredTier) || [];
 
     return (
       <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>

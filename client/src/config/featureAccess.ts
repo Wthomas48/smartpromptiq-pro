@@ -821,8 +821,13 @@ export function getUpgradeFeatures(
   targetTier: SubscriptionTier
 ): string[] {
   const features: string[] = [];
-  const currentLimits = TIER_LIMITS[currentTier];
-  const targetLimits = TIER_LIMITS[targetTier];
+  const currentLimits = TIER_LIMITS[currentTier] || TIER_LIMITS.free;
+  const targetLimits = TIER_LIMITS[targetTier] || TIER_LIMITS.pro;
+
+  // Safety check - return empty array if limits not found
+  if (!currentLimits || !targetLimits) {
+    return [];
+  }
 
   // Compare and list improvements
   if (!currentLimits.advancedModels && targetLimits.advancedModels) {

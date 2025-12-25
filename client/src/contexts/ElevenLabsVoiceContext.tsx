@@ -346,7 +346,7 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
-          text: text.slice(0, 5000),
+          text: (text || '').slice(0, 5000),
           voiceName: options.voice || selectedVoice,
           preset: options.preset || selectedPreset,
           category: options.category,
