@@ -155,7 +155,7 @@ const AcademySearchBar: React.FC = () => {
                     Courses ({results.courses.count})
                   </h3>
                   <div className="space-y-2">
-                    {results.courses.results.slice(0, 5).map((course: any) => (
+                    {(results.courses?.results || []).slice(0, 5).map((course: any) => (
                       <button
                         key={course.id}
                         onClick={() => handleResultClick('course', course.slug)}
@@ -216,7 +216,7 @@ const AcademySearchBar: React.FC = () => {
                     Lessons ({results.lessons.count})
                   </h3>
                   <div className="space-y-2">
-                    {results.lessons.results.slice(0, 5).map((lesson: any) => (
+                    {(results.lessons?.results || []).slice(0, 5).map((lesson: any) => (
                       <button
                         key={lesson.id}
                         onClick={() => handleResultClick('lesson', undefined, lesson.id)}

@@ -865,7 +865,7 @@ const MusicMaker: React.FC<MusicMakerProps> = ({
       if (data.audioUrl) {
         const newTrack = {
           id: data.trackId || `gen-${Date.now()}`,
-          name: data.title || generationPrompt.substring(0, 30),
+          name: data.title || (generationPrompt || 'Generated Track').substring(0, 30),
           audioUrl: data.audioUrl,
           genre: selectedGenre || 'upbeat',
           duration: data.duration || musicDuration,

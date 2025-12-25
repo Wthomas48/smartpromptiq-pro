@@ -91,16 +91,17 @@ export default function PricingPage() {
       setUpgradeContext({ tier, feature, template });
 
       // Show context-aware message
+      const safeTier = tier || 'pro';
       if (tier && feature === 'template') {
         toast({
           title: "Upgrade to Access Premium Templates",
-          description: `Unlock all premium templates with ${tier.charAt(0).toUpperCase() + tier.slice(1)} plan!`,
+          description: `Unlock all premium templates with ${safeTier.charAt(0).toUpperCase() + safeTier.slice(1)} plan!`,
           duration: 5000,
         });
       } else if (tier) {
         toast({
           title: "Upgrade Recommended",
-          description: `Consider upgrading to ${tier.charAt(0).toUpperCase() + tier.slice(1)} for enhanced features!`,
+          description: `Consider upgrading to ${safeTier.charAt(0).toUpperCase() + safeTier.slice(1)} for enhanced features!`,
           duration: 5000,
         });
       }

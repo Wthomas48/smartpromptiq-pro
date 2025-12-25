@@ -357,30 +357,30 @@ ${mood.toLowerCase() === 'energetic' ? 'Energy rushing through the night' : 'Dan
 [Chorus]
 This is ${songTitle || 'our moment'}
 ${mood.toLowerCase() === 'happy' ? 'Feel the joy inside' : 'Feel the emotions rise'}
-${theme ? `${theme.charAt(0).toUpperCase() + theme.slice(1)} on my mind` : 'Taking it one step at a time'}
+${theme ? `${(theme || '').charAt(0).toUpperCase() + (theme || '').slice(1)} on my mind` : 'Taking it one step at a time'}
 Let the music be our guide
 
 [Verse 2]
-${mood.toLowerCase() === 'calm' ? 'Softly' : 'Loudly'} we move along
-Every beat, a ${mood.toLowerCase() === 'romantic' ? 'love' : 'power'} song
-${genre.toLowerCase().includes('hip-hop') ? 'Spitting rhymes all night long' : 'Harmonies so strong'}
+${(mood || 'upbeat').toLowerCase() === 'calm' ? 'Softly' : 'Loudly'} we move along
+Every beat, a ${(mood || 'upbeat').toLowerCase() === 'romantic' ? 'love' : 'power'} song
+${(genre || 'pop').toLowerCase().includes('hip-hop') ? 'Spitting rhymes all night long' : 'Harmonies so strong'}
 This is where we belong
 
 [Chorus]
 This is ${songTitle || 'our moment'}
-${mood.toLowerCase() === 'happy' ? 'Feel the joy inside' : 'Feel the emotions rise'}
-${theme ? `${theme.charAt(0).toUpperCase() + theme.slice(1)} on my mind` : 'Taking it one step at a time'}
+${(mood || 'upbeat').toLowerCase() === 'happy' ? 'Feel the joy inside' : 'Feel the emotions rise'}
+${theme ? `${(theme || '').charAt(0).toUpperCase() + (theme || '').slice(1)} on my mind` : 'Taking it one step at a time'}
 Let the music be our guide
 
 [Bridge]
-${mood.toLowerCase() === 'epic' ? 'Rising up, we touch the sky' : 'In the silence, we find peace'}
-${mood.toLowerCase() === 'mysterious' ? 'Shadows dance, the night is deep' : 'Every heart begins to beat'}
-${genre.toLowerCase().includes('electronic') ? 'Synths ignite, we come alive' : 'Together we\'re complete'}
+${(mood || 'upbeat').toLowerCase() === 'epic' ? 'Rising up, we touch the sky' : 'In the silence, we find peace'}
+${(mood || 'upbeat').toLowerCase() === 'mysterious' ? 'Shadows dance, the night is deep' : 'Every heart begins to beat'}
+${(genre || 'pop').toLowerCase().includes('electronic') ? 'Synths ignite, we come alive' : 'Together we\'re complete'}
 
 [Outro]
 ${songTitle || 'This is it'}... let it flow
-${mood.toLowerCase() === 'motivational' ? 'Never stop, never slow' : 'Let the music grow'}
-${theme ? theme.charAt(0).toUpperCase() + theme.slice(1) : 'Dreams'}... forever glow`;
+${(mood || 'upbeat').toLowerCase() === 'motivational' ? 'Never stop, never slow' : 'Let the music grow'}
+${theme ? (theme || '').charAt(0).toUpperCase() + (theme || '').slice(1) : 'Dreams'}... forever glow`;
 
     return lyricsTemplate;
   };

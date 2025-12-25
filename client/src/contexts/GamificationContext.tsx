@@ -272,7 +272,7 @@ export const GamificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         xp: newXP,
         level: newLevel,
         levelProgress: calculateLevelProgress(newXP, newLevel),
-        recentXP: [transaction, ...prev.recentXP.slice(0, 49)],
+        recentXP: [transaction, ...(prev.recentXP || []).slice(0, 49)],
         weeklyXP: prev.weeklyXP + amount,
         monthlyXP: prev.monthlyXP + amount,
       };

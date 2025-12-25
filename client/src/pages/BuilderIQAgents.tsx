@@ -680,8 +680,9 @@ const BuilderIQAgents: React.FC = () => {
 
   // Read agent description aloud
   const readAgentAloud = (agent: AgentTemplate) => {
+    const capabilities = (agent.capabilities || []).slice(0, 3).join(', ') || 'various tasks';
     voiceService.speak(
-      `${agent.name}. ${agent.description}. This agent specializes in ${agent.capabilities.slice(0, 3).join(', ')}.`,
+      `${agent.name || 'This agent'}. ${agent.description || ''}. This agent specializes in ${capabilities}.`,
       { personality: 'enthusiastic' }
     );
   };
@@ -857,12 +858,12 @@ const BuilderIQAgents: React.FC = () => {
               <CardContent>
                 {/* Capabilities */}
                 <div className="flex flex-wrap gap-1 mb-4">
-                  {agent.capabilities.slice(0, 4).map((cap, i) => (
+                  {(agent.capabilities || []).slice(0, 4).map((cap, i) => (
                     <Badge key={i} variant="outline" className="text-xs border-slate-600 text-gray-500">
                       {cap}
                     </Badge>
                   ))}
-                  {agent.capabilities.length > 4 && (
+                  {(agent.capabilities?.length || 0) > 4 && (
                     <Badge variant="outline" className="text-xs border-slate-600 text-gray-500">
                       +{agent.capabilities.length - 4}
                     </Badge>

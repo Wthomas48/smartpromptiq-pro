@@ -78,7 +78,7 @@ export default function TokenBalance() {
           <div className="flex items-center gap-2">
             {getTierIcon()}
             <Badge className={getTierColor()}>
-              {tier.charAt(0).toUpperCase() + tier.slice(1)}
+              {(tier || 'free').charAt(0).toUpperCase() + (tier || 'free').slice(1)}
             </Badge>
           </div>
           {isLowBalance && <AlertCircle className="h-4 w-4 text-red-500" />}

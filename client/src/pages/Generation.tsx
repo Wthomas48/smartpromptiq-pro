@@ -77,7 +77,8 @@ export default function Generation() {
       if (questionnaireData.isTemplate && questionnaireData.templateData) {
         setPromptTitle(questionnaireData.templateData.name);
       } else if (directMode) {
-        setPromptTitle(`${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Prompt`);
+        const safeCategory = selectedCategory || 'general';
+        setPromptTitle(`${safeCategory.charAt(0).toUpperCase() + safeCategory.slice(1)} Prompt`);
       } else {
         const category = questionnaireData.category || "business";
         setPromptTitle(`${category.charAt(0).toUpperCase() + category.slice(1)} Strategy Prompt`);

@@ -412,7 +412,7 @@ export default function AIModelIntegrationDemo() {
                     <SelectContent>
                       {categories.map(cat => (
                         <SelectItem key={cat} value={cat}>
-                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          {(cat || '').charAt(0).toUpperCase() + (cat || '').slice(1)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -625,7 +625,7 @@ export default function AIModelIntegrationDemo() {
                         <SelectContent>
                           {categories.map(cat => (
                             <SelectItem key={cat} value={cat}>
-                              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                              {(cat || '').charAt(0).toUpperCase() + (cat || '').slice(1)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -691,7 +691,7 @@ export default function AIModelIntegrationDemo() {
                           </div>
                           {result.success ? (
                             <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-                              {result.content.substring(0, 150)}...
+                              {(result.content || '').substring(0, 150)}...
                             </p>
                           ) : (
                             <p className="text-sm text-red-600 mb-1">

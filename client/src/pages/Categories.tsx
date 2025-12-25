@@ -516,12 +516,12 @@ export default function Categories() {
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-1 mb-4">
-                  {category.tags.slice(0, 3).map((tag) => (
+                  {(category.tags || []).slice(0, 3).map((tag) => (
                     <Badge key={tag} variant="secondary" className="text-xs bg-slate-100 text-slate-700 hover:bg-slate-200">
                       {tag}
                     </Badge>
                   ))}
-                  {category.tags.length > 3 && (
+                  {(category.tags?.length || 0) > 3 && (
                     <Badge variant="secondary" className="text-xs bg-slate-100 text-slate-700">
                       +{category.tags.length - 3}
                     </Badge>
@@ -574,7 +574,7 @@ export default function Categories() {
                     What you'll create:
                   </h4>
                   <ul className="text-sm text-slate-600 space-y-1">
-                    {category.examples.slice(0, 2).map((example, idx) => (
+                    {(category.examples || []).slice(0, 2).map((example, idx) => (
                       <li key={idx} className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full"></div>
                         {example}

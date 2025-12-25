@@ -118,7 +118,7 @@ export default function Register() {
 
     try {
       // Extract name from email for simplicity
-      const emailName = formData.email.split('@')[0];
+      const emailName = (formData.email || '').split('@')[0] || 'User';
       const firstName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
 
       // Prepare signup data

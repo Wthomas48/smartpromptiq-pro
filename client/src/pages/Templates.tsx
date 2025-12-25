@@ -976,7 +976,7 @@ export default function Templates() {
                     {template.tier === 'starter' && <Shield className="w-3 h-3 mr-1" />}
                     {template.tier === 'pro' && <Crown className="w-3 h-3 mr-1 fill-current" />}
                     {template.tier === 'business' && <Star className="w-3 h-3 mr-1 fill-current" />}
-                    {template.tier.charAt(0).toUpperCase() + template.tier.slice(1)}
+                    {(template.tier || 'free').charAt(0).toUpperCase() + (template.tier || 'free').slice(1)}
                   </Badge>
                 )}
               </div>
