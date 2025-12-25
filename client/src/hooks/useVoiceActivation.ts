@@ -787,8 +787,15 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
       setState(prev => ({ ...prev, isSpeaking: false }));
     };
 
-    utterance.onerror = (event) => {
-      console.error('Speech error:', event);
+    utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+      // Gracefully handle interrupted/canceled errors - these are normal
+      const errorType = (event as any)?.error || 'unknown';
+      if (errorType === 'interrupted' || errorType === 'canceled' || errorType === 'cancelled') {
+        console.log('🎙️ Speech stopped by user or new request');
+        setState(prev => ({ ...prev, isSpeaking: false }));
+        return;
+      }
+      console.error('Speech error:', errorType);
       setState(prev => ({ ...prev, isSpeaking: false }));
     };
 

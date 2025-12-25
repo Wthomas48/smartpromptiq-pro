@@ -129,6 +129,12 @@ export default function AccessibilitySettings() {
       );
       utterance.rate = preferences.voiceSpeed;
       utterance.volume = preferences.voiceVolume / 100;
+      utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+        // Gracefully handle interrupted/canceled errors
+        if (e.error !== 'interrupted' && e.error !== 'canceled') {
+          console.warn('AccessibilitySettings voice test error:', e.error);
+        }
+      };
       window.speechSynthesis.speak(utterance);
     }
   };

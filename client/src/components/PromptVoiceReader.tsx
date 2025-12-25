@@ -128,6 +128,17 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
       onPlayStateChange?.(false);
     };
 
+    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+      // Gracefully handle interrupted/canceled errors - these are normal
+      if (e.error === 'interrupted' || e.error === 'canceled') {
+        console.log('PromptVoiceReader: Speech stopped by user');
+      } else {
+        console.warn('PromptVoiceReader speech error:', e.error);
+      }
+      setIsPlaying(false);
+      onPlayStateChange?.(false);
+    };
+
     utteranceRef.current = utterance;
     synthRef.current.speak(utterance);
     setUseBrowserTTS(true);

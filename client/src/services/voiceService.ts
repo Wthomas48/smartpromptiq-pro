@@ -355,7 +355,17 @@ class VoiceService {
       setTimeout(() => this.processQueue(), 100);
     };
 
-    utterance.onerror = (event) => {
+    utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+      // Gracefully handle interrupted/canceled errors - these are normal user actions
+      const errorType = event?.error || 'unknown';
+      if (errorType === 'interrupted' || errorType === 'canceled' || errorType === 'cancelled') {
+        console.log('🔊 Speech stopped by user or new speech request');
+        this.isSpeaking = false;
+        // Don't emit error for normal interruptions
+        setTimeout(() => this.processQueue(), 100);
+        return;
+      }
+
       console.error('Speech error:', event);
       this.isSpeaking = false;
       this.emit('speechError', { error: event, text: speech.text });

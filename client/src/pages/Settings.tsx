@@ -156,6 +156,14 @@ export default function Settings() {
             setIsTestPlaying(false);
             setTestingVoice(null);
           };
+          utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+            // Gracefully handle interrupted/canceled errors
+            if (e.error !== 'interrupted' && e.error !== 'canceled') {
+              console.warn('Settings voice test error:', e.error);
+            }
+            setIsTestPlaying(false);
+            setTestingVoice(null);
+          };
           window.speechSynthesis.speak(utterance);
           setIsTestPlaying(true);
           toast({
