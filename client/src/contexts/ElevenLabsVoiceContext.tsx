@@ -181,14 +181,27 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
       onEnd?.();
     };
 
-    utterance.onerror = (e) => {
-      console.error('Browser speech error:', e);
+    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
       isBrowserSpeakingRef.current = false;
+
+      // 'interrupted' and 'canceled' are expected when speech is stopped/cancelled
+      if (e.error === 'interrupted' || e.error === 'canceled') {
+        console.log('Speech synthesis was interrupted (expected behavior)');
+        setNarrationState(prev => ({
+          ...prev,
+          isPlaying: false,
+          isLoading: false,
+        }));
+        return;
+      }
+
+      // Only log actual errors
+      console.error('Speech synthesis error:', e.error);
       setNarrationState(prev => ({
         ...prev,
         isPlaying: false,
         isLoading: false,
-        error: 'Browser speech synthesis error',
+        error: `Speech error: ${e.error}`,
       }));
     };
 

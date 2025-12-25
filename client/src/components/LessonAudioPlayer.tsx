@@ -159,8 +159,11 @@ const LessonAudioPlayer: React.FC<LessonAudioPlayerProps> = ({ content, lessonTi
       }
     };
 
-    utterance.onerror = (error) => {
-      console.error('Speech synthesis error:', error);
+    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+      // 'interrupted' is expected when speech is cancelled
+      if (e.error !== 'interrupted' && e.error !== 'canceled') {
+        console.error('LessonAudioPlayer speech error:', e.error);
+      }
       setIsPlaying(false);
       setIsPaused(false);
       saveProgress(chunkIndex);

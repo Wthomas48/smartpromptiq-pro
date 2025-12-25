@@ -259,7 +259,12 @@ Together, we'll guide you through creating a complete app blueprint. What's the 
 
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+      if (e.error !== 'interrupted' && e.error !== 'canceled') {
+        console.warn('StoryModeVoice speech error:', e.error);
+      }
+      setIsSpeaking(false);
+    };
 
     synthRef.current.speak(utterance);
   }, []);

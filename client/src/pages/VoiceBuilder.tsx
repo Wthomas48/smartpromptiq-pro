@@ -365,7 +365,13 @@ const VoiceBuilder: React.FC = () => {
 
     utterance.onstart = () => setIsPreviewing(true);
     utterance.onend = () => setIsPreviewing(false);
-    utterance.onerror = () => setIsPreviewing(false);
+    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+      // 'interrupted' is expected when speech is cancelled
+      if (e.error !== 'interrupted' && e.error !== 'canceled') {
+        console.warn('VoiceBuilder preview error:', e.error);
+      }
+      setIsPreviewing(false);
+    };
 
     previewSynthRef.current.speak(utterance);
   }, [script, voiceSettings, isPreviewing, toast]);
@@ -429,7 +435,11 @@ const VoiceBuilder: React.FC = () => {
         resolve('browser-tts-active');
       };
 
-      utterance.onerror = () => {
+      utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+        // 'interrupted' is expected, not an error
+        if (e.error !== 'interrupted' && e.error !== 'canceled') {
+          console.warn('Browser voice generation error:', e.error);
+        }
         resolve(null);
       };
 
@@ -595,7 +605,12 @@ const VoiceBuilder: React.FC = () => {
           setIsPlaying(true);
 
           utterance.onend = () => setIsPlaying(false);
-          utterance.onerror = () => setIsPlaying(false);
+          utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+            if (e.error !== 'interrupted' && e.error !== 'canceled') {
+              console.warn('Browser TTS fallback error:', e.error);
+            }
+            setIsPlaying(false);
+          };
 
           toast({
             title: 'Playing Browser Voice',

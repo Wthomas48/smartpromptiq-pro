@@ -497,8 +497,11 @@ const BuilderIQQuestionnaire: React.FC = () => {
         console.log('🔊 Fallback speech ended');
         onComplete();
       };
-      utterance.onerror = (e) => {
-        console.error('🔊 Fallback speech error:', e);
+      utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+        // 'interrupted' is expected when speech is cancelled
+        if (e.error !== 'interrupted' && e.error !== 'canceled') {
+          console.error('🔊 Fallback speech error:', e.error);
+        }
         onComplete();
       };
 

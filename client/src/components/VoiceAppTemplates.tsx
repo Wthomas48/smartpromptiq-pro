@@ -254,7 +254,12 @@ const VoiceAppTemplates: React.FC<VoiceAppTemplatesProps> = ({
 
     utterance.onstart = () => setIsPlaying(true);
     utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => setIsPlaying(false);
+    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+      if (e.error !== 'interrupted' && e.error !== 'canceled') {
+        console.warn('VoiceAppTemplates speech error:', e.error);
+      }
+      setIsPlaying(false);
+    };
 
     window.speechSynthesis.speak(utterance);
   }, [isPlaying, toast]);
