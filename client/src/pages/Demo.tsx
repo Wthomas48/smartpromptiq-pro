@@ -2224,7 +2224,7 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                         {JSON.stringify({
                           showOutput,
                           hasContent: !!generatedContent,
-                          contentPreview: generatedContent?.content?.slice(0, 50) + (generatedContent?.content?.length > 50 ? '...' : ''),
+                          contentPreview: (generatedContent?.content || '').slice(0, 50) + ((generatedContent?.content?.length || 0) > 50 ? '...' : ''),
                           isGenerating,
                           userRole: user?.role,
                           generationTime: generationStartTime ? Date.now() - generationStartTime : null

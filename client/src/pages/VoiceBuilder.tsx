@@ -346,7 +346,13 @@ const VoiceBuilder: React.FC = () => {
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(script.slice(0, 500)); // Preview first 500 chars
+    const safeScript = script || '';
+    if (!safeScript.trim()) {
+      console.warn('VoiceBuilder: No script text for preview');
+      setIsPreviewing(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(safeScript.slice(0, 500)); // Preview first 500 chars
     utterance.rate = voiceSettings.rate;
     utterance.pitch = voiceSettings.pitch;
     utterance.volume = voiceSettings.volume;
@@ -393,7 +399,13 @@ const VoiceBuilder: React.FC = () => {
 
       // For browsers that don't support audio capture, just use speechSynthesis for playback
       // and create a data URL from a simple audio oscillator as placeholder
-      const utterance = new SpeechSynthesisUtterance(text.slice(0, 5000));
+      const safeText = text || '';
+      if (!safeText.trim()) {
+        console.warn('VoiceBuilder: No text for browser voice generation');
+        resolve(null);
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(safeText.slice(0, 5000));
       utterance.rate = voiceSettings.rate;
       utterance.pitch = voiceSettings.pitch;
       utterance.volume = voiceSettings.volume;
@@ -444,15 +456,26 @@ const VoiceBuilder: React.FC = () => {
       // Use ElevenLabs or OpenAI based on toggle
       const endpoint = useElevenLabs ? '/api/elevenlabs/generate' : '/api/voice/generate';
 
+      const safeScriptForAPI = script || '';
+      if (!safeScriptForAPI.trim()) {
+        toast({
+          title: 'No Script',
+          description: 'Please enter some text to generate voice.',
+          variant: 'destructive',
+        });
+        setIsGenerating(false);
+        return;
+      }
+
       const body = useElevenLabs
         ? {
-            text: script.slice(0, 5000),
+            text: safeScriptForAPI.slice(0, 5000),
             voiceName: selectedVoice,
             preset: 'natural',
             category: selectedCategory,
           }
         : {
-            text: script,
+            text: safeScriptForAPI,
             voice: selectedVoice,
             style: selectedStyle,
             settings: voiceSettings,
@@ -483,7 +506,7 @@ const VoiceBuilder: React.FC = () => {
           `Voice - ${selectedVoice} - ${new Date().toLocaleTimeString()}`,
           {
             voiceName: selectedVoice,
-            script: script.slice(0, 200),
+            script: (script || '').slice(0, 200),
             category: selectedCategory || undefined,
             style: selectedStyle,
             duration: estimatedDuration,
@@ -545,7 +568,18 @@ const VoiceBuilder: React.FC = () => {
 
         // Use browser TTS directly
         if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(script.slice(0, 5000));
+          const safeFallbackScript = script || '';
+          if (!safeFallbackScript.trim()) {
+            console.warn('VoiceBuilder: No script for browser TTS fallback');
+            toast({
+              title: 'No Text',
+              description: 'Please enter some text to speak.',
+              variant: 'destructive',
+            });
+            setIsGenerating(false);
+            return;
+          }
+          const utterance = new SpeechSynthesisUtterance(safeFallbackScript.slice(0, 5000));
           utterance.rate = voiceSettings.rate;
           utterance.pitch = voiceSettings.pitch;
           utterance.volume = voiceSettings.volume;
@@ -582,7 +616,13 @@ const VoiceBuilder: React.FC = () => {
         });
 
         if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(script.slice(0, 5000));
+          const safeFallbackScript2 = script || '';
+          if (!safeFallbackScript2.trim()) {
+            console.warn('VoiceBuilder: No script for OpenAI fallback TTS');
+            setIsGenerating(false);
+            return;
+          }
+          const utterance = new SpeechSynthesisUtterance(safeFallbackScript2.slice(0, 5000));
           utterance.rate = voiceSettings.rate;
           utterance.pitch = voiceSettings.pitch;
           utterance.volume = voiceSettings.volume;
@@ -1305,7 +1345,12 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                                     setIsPlaying(false);
                                   } else {
                                     // Re-play browser TTS
-                                    const utterance = new SpeechSynthesisUtterance(script.slice(0, 5000));
+                                    const safeReplayScript = script || '';
+                                    if (!safeReplayScript.trim()) {
+                                      console.warn('VoiceBuilder: No script for replay');
+                                      return;
+                                    }
+                                    const utterance = new SpeechSynthesisUtterance(safeReplayScript.slice(0, 5000));
                                     utterance.rate = voiceSettings.rate;
                                     utterance.pitch = voiceSettings.pitch;
                                     utterance.volume = voiceSettings.volume;
@@ -1437,7 +1482,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                     </CardHeader>
                     <CardContent>
                       <p className="text-gray-400 text-sm mb-4 line-clamp-3">
-                        {template.template.slice(0, 150)}...
+                        {(template.template || '').slice(0, 150)}...
                       </p>
                       <Button
                         onClick={() => {

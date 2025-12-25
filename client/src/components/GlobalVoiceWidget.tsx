@@ -365,7 +365,7 @@ const GlobalVoiceWidget: React.FC<GlobalVoiceWidgetProps> = ({
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{currentVoice.persona}</p>
                     <div className="flex gap-1 mt-1">
-                      {currentVoice.bestFor.slice(0, 2).map((tag, i) => (
+                      {(currentVoice.bestFor || []).slice(0, 2).map((tag, i) => (
                         <Badge key={i} variant="secondary" className="text-xs px-2 py-0">{tag}</Badge>
                       ))}
                     </div>

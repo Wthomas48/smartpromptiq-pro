@@ -136,18 +136,19 @@ const PROMPT_TEMPLATES = [
 const simulateAIResponse = async (prompt: string, model: string): Promise<string> => {
   await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
 
+  const safePrompt = prompt || '';
   const responses: Record<string, string> = {
-    'gpt-4': `**GPT-4 Analysis:**\n\nBased on your prompt, here's a comprehensive response:\n\n1. **Key Insights:** Your request shows clear intent for ${prompt.length > 50 ? 'detailed analysis' : 'quick information'}.\n\n2. **Recommendations:**\n   - Consider breaking down complex tasks\n   - Use specific examples for better results\n   - Iterate on the output for refinement\n\n3. **Next Steps:** I can help you expand on any of these points. Just ask!\n\n*Token usage: ~${Math.floor(prompt.length / 4)} input, ~150 output*`,
+    'gpt-4': `**GPT-4 Analysis:**\n\nBased on your prompt, here's a comprehensive response:\n\n1. **Key Insights:** Your request shows clear intent for ${safePrompt.length > 50 ? 'detailed analysis' : 'quick information'}.\n\n2. **Recommendations:**\n   - Consider breaking down complex tasks\n   - Use specific examples for better results\n   - Iterate on the output for refinement\n\n3. **Next Steps:** I can help you expand on any of these points. Just ask!\n\n*Token usage: ~${Math.floor(safePrompt.length / 4)} input, ~150 output*`,
 
-    'gpt-3.5-turbo': `Here's a quick response to your query:\n\n${prompt.slice(0, 100)}...\n\nI've analyzed your request and here are the key points:\n• Fast processing completed\n• Main concepts identified\n• Ready for follow-up questions\n\nNeed more detail? Just ask!`,
+    'gpt-3.5-turbo': `Here's a quick response to your query:\n\n${safePrompt.slice(0, 100)}...\n\nI've analyzed your request and here are the key points:\n• Fast processing completed\n• Main concepts identified\n• Ready for follow-up questions\n\nNeed more detail? Just ask!`,
 
-    'claude-3-opus': `I've carefully considered your request. Here's my thoughtful analysis:\n\n**Understanding Your Needs:**\nYour prompt indicates you're looking for ${prompt.includes('business') ? 'business insights' : prompt.includes('code') ? 'technical solutions' : 'creative assistance'}.\n\n**My Approach:**\nI'll provide a nuanced, comprehensive response that considers multiple perspectives.\n\n**Key Considerations:**\n1. Context matters - I've considered the broader implications\n2. Quality over speed - Taking time to think deeply\n3. Actionable insights - Practical next steps included\n\n**Conclusion:**\nThis is a starting point for deeper exploration. I'm happy to dive deeper into any aspect.`,
+    'claude-3-opus': `I've carefully considered your request. Here's my thoughtful analysis:\n\n**Understanding Your Needs:**\nYour prompt indicates you're looking for ${safePrompt.includes('business') ? 'business insights' : safePrompt.includes('code') ? 'technical solutions' : 'creative assistance'}.\n\n**My Approach:**\nI'll provide a nuanced, comprehensive response that considers multiple perspectives.\n\n**Key Considerations:**\n1. Context matters - I've considered the broader implications\n2. Quality over speed - Taking time to think deeply\n3. Actionable insights - Practical next steps included\n\n**Conclusion:**\nThis is a starting point for deeper exploration. I'm happy to dive deeper into any aspect.`,
 
-    'claude-3-sonnet': `Here's a balanced response:\n\n**Quick Summary:**\n${prompt.slice(0, 80)}...\n\n**Analysis:**\n- Identified main request\n- Processed context\n- Generated relevant response\n\n**Output:**\nYour request has been processed efficiently. I've balanced speed with quality to give you useful results quickly.\n\nWant me to elaborate on any point?`,
+    'claude-3-sonnet': `Here's a balanced response:\n\n**Quick Summary:**\n${safePrompt.slice(0, 80)}...\n\n**Analysis:**\n- Identified main request\n- Processed context\n- Generated relevant response\n\n**Output:**\nYour request has been processed efficiently. I've balanced speed with quality to give you useful results quickly.\n\nWant me to elaborate on any point?`,
 
-    'gemini-pro': `🔍 **Gemini Analysis:**\n\nI've processed your request using Google's latest AI capabilities.\n\n**Findings:**\n• Query type: ${prompt.length > 100 ? 'Complex' : 'Standard'}\n• Confidence: High\n• Related topics identified\n\n**Response:**\nBased on my analysis, here are actionable insights tailored to your needs.\n\n**Pro Tip:** Try adding more context for even better results!`,
+    'gemini-pro': `🔍 **Gemini Analysis:**\n\nI've processed your request using Google's latest AI capabilities.\n\n**Findings:**\n• Query type: ${safePrompt.length > 100 ? 'Complex' : 'Standard'}\n• Confidence: High\n• Related topics identified\n\n**Response:**\nBased on my analysis, here are actionable insights tailored to your needs.\n\n**Pro Tip:** Try adding more context for even better results!`,
 
-    'llama-3-70b': `**Open Source AI Response:**\n\nProcessed with Llama 3 70B:\n\n> ${prompt.slice(0, 60)}...\n\n**Results:**\n- Analysis complete\n- Privacy-focused processing\n- No data retention\n\n**Output:**\nHere's what I found based on your query. As an open-source model, I prioritize transparency and user privacy.\n\n*Community-driven AI at your service!*`,
+    'llama-3-70b': `**Open Source AI Response:**\n\nProcessed with Llama 3 70B:\n\n> ${safePrompt.slice(0, 60)}...\n\n**Results:**\n- Analysis complete\n- Privacy-focused processing\n- No data retention\n\n**Output:**\nHere's what I found based on your query. As an open-source model, I prioritize transparency and user privacy.\n\n*Community-driven AI at your service!*`,
   };
 
   return responses[model] || responses['gpt-4'];
@@ -607,13 +608,13 @@ export default function PromptPlayground() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {promptHistory.slice(0, 5).map((historyPrompt, index) => (
+                  {(promptHistory || []).slice(0, 5).map((historyPrompt, index) => (
                     <button
                       key={index}
                       onClick={() => setPrompt(historyPrompt)}
                       className="w-full p-2 rounded bg-white/5 hover:bg-white/10 text-left text-sm text-gray-400 truncate"
                     >
-                      {historyPrompt.slice(0, 50)}...
+                      {(historyPrompt || '').slice(0, 50)}...
                     </button>
                   ))}
                 </CardContent>

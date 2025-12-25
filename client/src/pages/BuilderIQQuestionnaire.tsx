@@ -740,8 +740,9 @@ const BuilderIQQuestionnaire: React.FC = () => {
       // Extract what they want to build
       const buildMatch = lower.match(/(?:build|create|make|need)\s+(?:a\s+)?(.+)/);
       const appIdea = buildMatch ? buildMatch[1] : 'your app';
+      const safeAppIdea = appIdea || 'your app';
       speakFeedback(
-        `Awesome! ${appIdea.charAt(0).toUpperCase() + appIdea.slice(1)} sounds exciting! ` +
+        `Awesome! ${safeAppIdea.charAt(0).toUpperCase() + safeAppIdea.slice(1)} sounds exciting! ` +
         "Let me ask you a few questions to understand exactly what you need. " +
         "This will only take a couple of minutes, and then I'll generate a complete blueprint for you!",
         'enthusiastic'
@@ -858,7 +859,8 @@ const BuilderIQQuestionnaire: React.FC = () => {
         }
       }
       // No match found - be helpful
-      const optionNames = currentQuestion.options.slice(0, 3).map(o => o.label).join(', ');
+      const safeOptions = currentQuestion.options || [];
+      const optionNames = safeOptions.slice(0, 3).map(o => o.label).join(', ') || 'the available options';
       speakFeedback(
         `I didn't quite catch that. You can say options like: ${optionNames}. Or say 'help' for all options!`,
         'friendly'
@@ -888,7 +890,8 @@ const BuilderIQQuestionnaire: React.FC = () => {
           : `${matchedOptions[0]} added!`;
         speakFeedback(feedbackText + " Say more options or 'done' when finished!", 'enthusiastic');
       } else if (!lower.includes('done')) {
-        const optionNames = currentQuestion.options.slice(0, 3).map(o => o.label).join(', ');
+        const safeMultiOptions = currentQuestion.options || [];
+        const optionNames = safeMultiOptions.slice(0, 3).map(o => o.label).join(', ') || 'the available options';
         speakFeedback(
           `Hmm, I didn't recognize that. Try saying: ${optionNames}. Or say 'help' for all options!`,
           'friendly'
@@ -1122,7 +1125,9 @@ const BuilderIQQuestionnaire: React.FC = () => {
 
     try {
       // Generate app name if not provided
-      const appName = responses.app_name || `Smart${responses.target_audience?.[0] ? responses.target_audience[0].charAt(0).toUpperCase() + responses.target_audience[0].slice(1).replace(/_/g, '') : 'App'}`;
+      const targetAudienceFirst = responses.target_audience?.[0] || '';
+      const safeTargetAudience = targetAudienceFirst ? targetAudienceFirst.charAt(0).toUpperCase() + targetAudienceFirst.slice(1).replace(/_/g, '') : 'App';
+      const appName = responses.app_name || `Smart${safeTargetAudience}`;
 
       // Build features list
       const features = [
@@ -1632,7 +1637,7 @@ Complexity level: ${responses.complexity || 'standard'}.`;
                   <MessageSquare className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
                   <div>
                     <span className="text-xs text-gray-500 block mb-1">You said:</span>
-                    <p className="text-white text-sm leading-relaxed">"{voice.transcript.slice(-150)}"</p>
+                    <p className="text-white text-sm leading-relaxed">"{(voice.transcript || '').slice(-150)}"</p>
                   </div>
                 </div>
               </div>

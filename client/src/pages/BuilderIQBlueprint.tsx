@@ -125,8 +125,8 @@ const BuilderIQBlueprint: React.FC = () => {
 **Description:** ${blueprintData.appDescription}
 **Industry:** ${blueprintData.industry}
 **Category:** ${blueprintData.category}
-**Complexity:** ${blueprintData.complexity.charAt(0).toUpperCase() + blueprintData.complexity.slice(1)}
-**Platform:** ${blueprintData.appType === 'both' ? 'Web + Mobile' : blueprintData.appType.charAt(0).toUpperCase() + blueprintData.appType.slice(1)}
+**Complexity:** ${(blueprintData.complexity || 'medium').charAt(0).toUpperCase() + (blueprintData.complexity || 'medium').slice(1)}
+**Platform:** ${blueprintData.appType === 'both' ? 'Web + Mobile' : (blueprintData.appType || 'web').charAt(0).toUpperCase() + (blueprintData.appType || 'web').slice(1)}
 
 ## 🎯 TARGET USERS
 ${blueprintData.targetAudience.map(t => `- ${formatLabel(t)}`).join('\n')}
@@ -312,11 +312,12 @@ Generated with BuilderIQ by SmartPromptIQ
     if (voice.isSpeaking) {
       voice.stopSpeaking();
     } else {
+      const safeFeatures = blueprintData?.features || [];
       const summary = `
-        Your app is called ${blueprintData?.appName}.
-        It's a ${blueprintData?.complexity} ${blueprintData?.category} for ${blueprintData?.industry}.
-        Key features include ${blueprintData?.features.slice(0, 3).map(formatLabel).join(', ')}.
-        The design style is ${formatLabel(blueprintData?.designStyle || '')}.
+        Your app is called ${blueprintData?.appName || 'your app'}.
+        It's a ${blueprintData?.complexity || 'new'} ${blueprintData?.category || 'application'} for ${blueprintData?.industry || 'your industry'}.
+        Key features include ${safeFeatures.slice(0, 3).map(formatLabel).join(', ') || 'various features'}.
+        The design style is ${formatLabel(blueprintData?.designStyle || 'modern')}.
         Your blueprint is ready for development!
       `;
       voice.speak(summary);

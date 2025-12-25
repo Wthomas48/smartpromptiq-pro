@@ -456,7 +456,7 @@ const VoiceToSong: React.FC = () => {
         mood: selectedMood,
         duration: song.duration,
         description: `AI Song • ${songStyles.find(s => s.id === selectedStyle)?.name || selectedStyle}`,
-        prompt: activeMode === 'lyrics' ? lyrics.slice(0, 100) : songDescription?.slice(0, 100) || 'Voice melody',
+        prompt: activeMode === 'lyrics' ? (lyrics || '').slice(0, 100) : (songDescription || '').slice(0, 100) || 'Voice melody',
         isAiGenerated: true,
         withVocals: true,
         vocalStyle: selectedVocal,

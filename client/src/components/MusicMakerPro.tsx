@@ -1473,9 +1473,10 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
       }
 
       // Create the new track
-      const trackName = generationPrompt.length > 25
-        ? generationPrompt.slice(0, 25) + '...'
-        : generationPrompt;
+      const safePrompt = generationPrompt || 'Generated Track';
+      const trackName = safePrompt.length > 25
+        ? safePrompt.slice(0, 25) + '...'
+        : safePrompt;
 
       const providerLabel = provider === 'elevenlabs' ? '🎵 ElevenLabs AI' : '🔊 Local Synthesis';
 
@@ -1975,10 +1976,11 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                         <Button
                           variant="outline"
                           onClick={() => {
-                            if (voiceContext?.speak && customLyrics.trim()) {
-                              voiceContext.speak(customLyrics.slice(0, 200), { voice: selectedVoice });
+                            const safeLyrics = customLyrics || '';
+                            if (voiceContext?.speak && safeLyrics.trim()) {
+                              voiceContext.speak(safeLyrics.slice(0, 200), { voice: selectedVoice });
                               toast({ title: 'Testing Voice', description: `Playing preview with ${selectedVoice}` });
-                            } else if (!customLyrics.trim()) {
+                            } else if (!safeLyrics.trim()) {
                               toast({ title: 'Enter text first', description: 'Please enter some text to preview', variant: 'destructive' });
                             }
                           }}

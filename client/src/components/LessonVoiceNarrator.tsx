@@ -147,19 +147,26 @@ const LessonVoiceNarrator: React.FC<LessonVoiceNarratorProps> = ({
 
     try {
       // Use ElevenLabs Academy endpoint for best quality
+      const safeTextToNarrate = textToNarrate || '';
+      if (!safeTextToNarrate.trim()) {
+        console.warn('LessonVoiceNarrator: No text to narrate');
+        setIsLoading(false);
+        return;
+      }
+
       const endpoint = useElevenLabs
         ? '/api/elevenlabs/academy/generate'
         : '/api/voice/generate';
 
       const body = useElevenLabs
         ? {
-            lessonContent: textToNarrate.slice(0, 5000),
+            lessonContent: safeTextToNarrate.slice(0, 5000),
             lessonTitle,
             voiceName: selectedVoice,
             style: selectedPersona.style,
           }
         : {
-            text: textToNarrate.slice(0, 4000),
+            text: safeTextToNarrate.slice(0, 4000),
             voice: selectedVoice,
             style: selectedPersona.style,
             settings: voiceSettings,

@@ -144,17 +144,24 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
     setUseBrowserTTS(false);
 
     try {
+      const safeContent = content || '';
+      if (!safeContent.trim()) {
+        console.warn('PromptVoiceReader: No content to read');
+        setIsLoading(false);
+        return;
+      }
+
       const endpoint = useElevenLabs ? '/api/elevenlabs/generate' : '/api/voice/generate';
 
       const body = useElevenLabs
         ? {
-            text: content.slice(0, 5000),
+            text: safeContent.slice(0, 5000),
             voiceName: selectedVoice,
             category: category || 'prompt',
             preset: 'natural',
           }
         : {
-            text: content.slice(0, 4000),
+            text: safeContent.slice(0, 4000),
             voice: selectedVoice,
             style: selectedPersona.style.toLowerCase(),
             settings: voiceSettings,
