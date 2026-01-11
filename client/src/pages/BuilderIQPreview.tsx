@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest } from '@/lib/queryClient';
+import { useVoiceService } from '@/services/voiceService';
 import BackButton from '@/components/BackButton';
 import {
   Play, Pause, Volume2, VolumeX, Smartphone, Monitor, Tablet,
@@ -47,6 +48,7 @@ const BuilderIQPreview: React.FC = () => {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const voiceService = useVoiceService();
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [savedAppId, setSavedAppId] = useState<string | null>(null);
   const [deviceView, setDeviceView] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
@@ -64,6 +66,7 @@ const BuilderIQPreview: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [hasAnnouncedPreview, setHasAnnouncedPreview] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -125,15 +128,64 @@ const BuilderIQPreview: React.FC = () => {
     },
   ];
 
+  // State to track if we've attempted loading
+  const [loadAttempted, setLoadAttempted] = useState(false);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+
   // Load preview data from database (if available) or localStorage
+  // Runs on mount, when user changes, or when retry is triggered
   useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+
     const loadPreviewData = async () => {
+      if (!isMounted) return;
+      setIsLoadingPreview(true);
+      console.log('📱 Loading preview data... (attempt:', retryCount + 1, ')');
+
+      // Add a timeout to prevent infinite loading - set loading to false after 8 seconds max
+      timeoutId = setTimeout(() => {
+        if (isMounted) {
+          console.log('📱 Loading timeout reached, completing load attempt');
+          // Try localStorage one more time before giving up
+          const stored = localStorage.getItem('builderiq_responses');
+          if (stored && !previewData) {
+            try {
+              const responses = JSON.parse(stored);
+              const storedAppName = localStorage.getItem('builderiq_app_name');
+              const audioStored = localStorage.getItem('builderiq_audio');
+              const audioData = audioStored ? JSON.parse(audioStored) : responses.audio_selection;
+
+              setPreviewData({
+                appName: storedAppName || responses.app_name || 'SmartApp',
+                appDescription: responses.main_purpose || 'Your amazing new application',
+                appType: responses.app_type || 'web',
+                designStyle: responses.design_style || 'professional',
+                colorScheme: responses.color_scheme || 'purple_black_blue',
+                features: responses.key_features || [],
+                authentication: responses.authentication || 'basic',
+                payments: responses.payments || 'none',
+                aiFeatures: responses.ai_features || [],
+                audioSelection: audioData,
+              });
+              console.log('📱 Loaded app from localStorage (timeout fallback)');
+            } catch (e) {
+              console.error('📱 Timeout fallback parse failed:', e);
+            }
+          }
+          setLoadAttempted(true);
+          setIsLoadingPreview(false);
+        }
+      }, 8000);
+
       // First check if we have a saved app ID
       const appId = localStorage.getItem('builderiq_app_id');
 
       // Try to load from database if user is logged in and we have an app ID
       if (user && appId) {
         try {
+          console.log('📱 Attempting to load from database, appId:', appId);
           const response = await apiRequest('GET', `/api/builderiq/apps/${appId}`);
           const data = await response.json();
 
@@ -156,6 +208,11 @@ const BuilderIQPreview: React.FC = () => {
               audioSelection: blueprint?.audioSelection,
             });
             console.log('📱 Loaded app from database:', app.name);
+            if (isMounted) {
+              setLoadAttempted(true);
+              setIsLoadingPreview(false);
+              clearTimeout(timeoutId);
+            }
             return; // Successfully loaded from database
           }
         } catch (error) {
@@ -164,34 +221,83 @@ const BuilderIQPreview: React.FC = () => {
         }
       }
 
-      // Fallback to localStorage
+      // Fallback to localStorage - always try this
       const stored = localStorage.getItem('builderiq_responses');
       const audioStored = localStorage.getItem('builderiq_audio');
       const storedAppName = localStorage.getItem('builderiq_app_name');
 
-      if (stored) {
-        const responses = JSON.parse(stored);
-        // Get audio from separate storage or from responses
-        const audioData = audioStored ? JSON.parse(audioStored) : responses.audio_selection;
+      console.log('📱 Checking localStorage, stored:', !!stored, 'appName:', storedAppName);
 
-        setPreviewData({
-          appName: storedAppName || responses.app_name || 'SmartApp',
-          appDescription: responses.main_purpose || 'Your amazing new application',
-          appType: responses.app_type || 'web',
-          designStyle: responses.design_style || 'professional',
-          colorScheme: responses.color_scheme || 'purple_black_blue',
-          features: responses.key_features || [],
-          authentication: responses.authentication || 'basic',
-          payments: responses.payments || 'none',
-          aiFeatures: responses.ai_features || [],
-          audioSelection: audioData,
-        });
-        console.log('📱 Loaded app from localStorage');
+      if (stored) {
+        try {
+          const responses = JSON.parse(stored);
+          // Get audio from separate storage or from responses
+          const audioData = audioStored ? JSON.parse(audioStored) : responses.audio_selection;
+
+          setPreviewData({
+            appName: storedAppName || responses.app_name || 'SmartApp',
+            appDescription: responses.main_purpose || 'Your amazing new application',
+            appType: responses.app_type || 'web',
+            designStyle: responses.design_style || 'professional',
+            colorScheme: responses.color_scheme || 'purple_black_blue',
+            features: responses.key_features || [],
+            authentication: responses.authentication || 'basic',
+            payments: responses.payments || 'none',
+            aiFeatures: responses.ai_features || [],
+            audioSelection: audioData,
+          });
+          console.log('📱 Loaded app from localStorage');
+        } catch (parseError) {
+          console.error('📱 Failed to parse localStorage data:', parseError);
+        }
+      } else {
+        console.log('📱 No preview data found in localStorage');
+      }
+
+      if (isMounted) {
+        setLoadAttempted(true);
+        setIsLoadingPreview(false);
+        clearTimeout(timeoutId);
       }
     };
 
     loadPreviewData();
-  }, [user]);
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [user, retryCount]); // Re-run when user changes or retry is triggered
+
+  // Voice announcement when preview loads (if user was in voice mode)
+  useEffect(() => {
+    if (previewData && !hasAnnouncedPreview && !isLoadingPreview) {
+      const wasInVoiceMode = localStorage.getItem('builderiq_voice_mode') === 'true';
+      if (wasInVoiceMode) {
+        setHasAnnouncedPreview(true);
+        // Clear the voice mode flag after use
+        localStorage.removeItem('builderiq_voice_mode');
+
+        // Build a dynamic announcement based on the app features
+        const featureCount = previewData.features?.length || 0;
+        const hasAuth = previewData.authentication && previewData.authentication !== 'none';
+        const hasPayments = previewData.payments && previewData.payments !== 'none';
+        const hasAI = previewData.aiFeatures && previewData.aiFeatures.length > 0;
+
+        let announcement = `Here's your ${previewData.appName} preview! `;
+        announcement += `I've created a ${previewData.appType} app with ${featureCount} amazing features. `;
+
+        if (hasAuth) announcement += 'It includes user authentication. ';
+        if (hasPayments) announcement += 'Payment processing is ready. ';
+        if (hasAI) announcement += 'And it has AI-powered features built in! ';
+
+        announcement += "You can explore the interactive preview on this page. When you're ready, click Deploy to bring your app to life!";
+
+        voiceService.speak(announcement, { personality: 'enthusiastic' });
+      }
+    }
+  }, [previewData, hasAnnouncedPreview, isLoadingPreview, voiceService]);
 
   // Handle audio playback
   useEffect(() => {
@@ -311,6 +417,54 @@ const BuilderIQPreview: React.FC = () => {
 
   const colors = getColorScheme();
 
+  // Show loading state while loading
+  if (isLoadingPreview) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full border-4 border-purple-500/30" />
+            <div className="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" />
+            <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-purple-400 animate-pulse" />
+          </div>
+          <p className="text-gray-400 mb-2">Loading your app preview...</p>
+          <p className="text-gray-500 text-sm">This should only take a moment</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show no data state only after loading is complete and no data was found
+  if (!previewData && loadAttempted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">No App Preview Found</h2>
+          <p className="text-gray-400 mb-6">
+            It looks like you haven't created an app blueprint yet, or the preview data wasn't saved properly.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              onClick={() => {
+                setLoadAttempted(false);
+                setRetryCount(prev => prev + 1);
+              }}
+              variant="outline"
+              className="border-slate-700 text-gray-300"
+            >
+              Try Again
+            </Button>
+            <Button onClick={() => navigate('/builderiq/questionnaire')} className="bg-purple-500 hover:bg-purple-600">
+              Start Building Your App
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Safety check - if still no data, show create button
   if (!previewData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">

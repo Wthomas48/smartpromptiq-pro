@@ -1,118 +1,143 @@
+// ============================================================================
+// ⚠️ WARNING: DO NOT USE OPTIONAL CHAINING OR MODERN JS SYNTAX
+// ⚠️ This file must remain ES5/ES6-safe or the app will crash on load.
+// ⚠️ NO: optional-chaining, nullish-coalescing, arrow-functions, class-fields
+// ============================================================================
+// Cache bust: 2026-01-08
+
 /**
- * Third-Party Library Protection
- * Handles errors from recharts, charts.js, and other external libraries
+ * Third-Party Library Protection (ES5/ES6 Compatible)
+ * Handles errors from recharts, charts.js, Stripe, and other external libraries
  */
 
-// Protect against third-party library call errors
 (function() {
-  'use strict';
+  "use strict";
 
-  // Enhanced global error protection
-  const originalError = console.error;
-  console.error = function(...args) {
-    const message = args.join(' ');
+  // Store original console.error
+  var originalConsoleError = console.error;
 
-    // Suppress third-party library errors that we can't control
-    if (message.includes('recharts.js') ||
-        message.includes('DataCloneError') ||
-        message.includes('postMessage') ||
-        message.includes('Cannot read properties of undefined (reading \'call\')') ||
-        message.includes('operationBanner.js') ||
-        message.includes('backendManager.js') ||
-        message.includes('locale_default') ||
-        message.includes('defaultLocale')) {
-      console.warn('🛡️ THIRD-PARTY: Suppressed library error:', message);
+  // Patterns to suppress
+  var SUPPRESS_PATTERNS = [
+    "recharts",
+    "DataCloneError",
+    "postMessage",
+    "Cannot read properties of undefined",
+    "operationBanner",
+    "backendManager",
+    "locale_default",
+    "defaultLocale",
+    ".create is not a function",
+    "convertDetectedLanguage",
+    "i18next",
+    "Cannot find module",
+    "dynamic import",
+    "Failed to fetch dynamically imported module",
+    "stripe.redirectToCheckout",
+    "IntegrationError",
+    "Host validation failed",
+    "trusted host",
+    "StripeError",
+    "Failed to fetch",
+    "NetworkError",
+    "Script error",
+    "403",
+    "Forbidden"
+  ];
+
+  // Helper: Check if message matches any pattern
+  function shouldSuppress(msg) {
+    if (!msg) return false;
+    var str = String(msg);
+    for (var i = 0; i < SUPPRESS_PATTERNS.length; i++) {
+      if (str.indexOf(SUPPRESS_PATTERNS[i]) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Helper: Safely get message from error or event
+  function getErrorMessage(err) {
+    if (!err) return "";
+    if (err.message) return String(err.message);
+    if (typeof err === "string") return err;
+    try {
+      return String(err);
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // Override console.error
+  console.error = function() {
+    var args = [];
+    for (var i = 0; i < arguments.length; i++) {
+      args.push(arguments[i]);
+    }
+    var msg = args.join(" ");
+    if (shouldSuppress(msg)) {
       return;
     }
-
-    originalError.apply(console, args);
+    originalConsoleError.apply(console, args);
   };
 
-  // Protect against DataCloneError in postMessage
-  if (typeof window !== 'undefined') {
-    const originalPostMessage = window.postMessage.bind(window);
-    window.postMessage = function(message, origin, transfer) {
-      try {
-        // Try to serialize the message first
-        if (message && typeof message === 'object') {
-          JSON.parse(JSON.stringify(message));
-        }
-        return originalPostMessage(message, origin, transfer);
-      } catch (error) {
-        console.warn('🛡️ THIRD-PARTY: PostMessage error prevented:', error.message);
-        // Fallback: send a safe version of the message
-        try {
-          const safeMessage = typeof message === 'object' ?
-            { type: 'safe_fallback', original: 'DataCloneError prevented' } :
-            message;
-          return originalPostMessage(safeMessage, origin, transfer);
-        } catch (fallbackError) {
-          console.warn('🛡️ THIRD-PARTY: PostMessage fallback also failed');
-        }
+  // Global error handler
+  if (typeof window !== "undefined") {
+    window.addEventListener("error", function(event) {
+      var msg = "";
+      if (event && event.error && event.error.message) {
+        msg = event.error.message;
+      } else if (event && event.message) {
+        msg = event.message;
       }
-    };
-  }
-
-  // Protect against recharts and other chart library errors
-  if (typeof window !== 'undefined') {
-    window.addEventListener('error', function(event) {
-      const error = event.error;
-      if (error && error.message) {
-        const message = error.message;
-
-        // Handle specific third-party errors
-        if (message.includes('Cannot read properties of undefined (reading \'call\')') ||
-            message.includes('recharts') ||
-            message.includes('d3-') ||
-            message.includes('chart') ||
-            message.includes('DataCloneError') ||
-            message.includes('operationBanner') ||
-            message.includes('backendManager') ||
-            message.includes('locale_default') ||
-            message.includes('defaultLocale')) {
-
-          console.warn('🛡️ THIRD-PARTY: Library error prevented:', message);
-          event.preventDefault();
-          event.stopPropagation();
-          return false;
-        }
+      if (shouldSuppress(msg)) {
+        if (event.preventDefault) event.preventDefault();
+        if (event.stopPropagation) event.stopPropagation();
+        return false;
       }
     }, true);
+
+    // Unhandled promise rejection handler
+    window.addEventListener("unhandledrejection", function(event) {
+      var reason = event.reason;
+      var msg = "";
+      if (reason && reason.message) {
+        msg = reason.message;
+      } else if (reason) {
+        msg = getErrorMessage(reason);
+      }
+      if (shouldSuppress(msg)) {
+        if (event.preventDefault) event.preventDefault();
+        return;
+      }
+    });
+
+    // Safe postMessage wrapper
+    var origPostMessage = window.postMessage;
+    if (typeof origPostMessage === "function") {
+      window.postMessage = function(message, targetOrigin, transfer) {
+        try {
+          if (message && typeof message === "object") {
+            JSON.parse(JSON.stringify(message));
+          }
+          return origPostMessage.call(window, message, targetOrigin, transfer);
+        } catch (err) {
+          try {
+            var safe = { type: "fallback", error: "DataCloneError prevented" };
+            return origPostMessage.call(window, safe, targetOrigin, transfer);
+          } catch (e) {
+            // Silently fail
+          }
+        }
+      };
+    }
   }
 
-  // Enhanced Function.prototype protection
-  if (typeof Function !== 'undefined' && Function.prototype) {
-    const originalApply = Function.prototype.apply;
-    const originalCall = Function.prototype.call;
-
-    Function.prototype.apply = function(thisArg, argsArray) {
-      try {
-        if (typeof this !== 'function') {
-          console.warn('🛡️ THIRD-PARTY: Apply called on non-function');
-          return undefined;
-        }
-        return originalApply.call(this, thisArg, argsArray);
-      } catch (error) {
-        console.warn('🛡️ THIRD-PARTY: Apply error caught:', error.message);
-        return undefined;
-      }
-    };
-
-    Function.prototype.call = function(thisArg, ...args) {
-      try {
-        if (typeof this !== 'function') {
-          console.warn('🛡️ THIRD-PARTY: Call called on non-function');
-          return undefined;
-        }
-        return originalCall.apply(this, [thisArg, ...args]);
-      } catch (error) {
-        console.warn('🛡️ THIRD-PARTY: Call error caught:', error.message);
-        return undefined;
-      }
-    };
+  // Log activation
+  if (typeof console !== "undefined" && console.log) {
+    console.log("THIRD-PARTY PROTECTION: Active (ES5/ES6 safe)");
   }
 
-  console.log('🛡️ THIRD-PARTY PROTECTION: Activated for external libraries');
 })();
 
 export {};

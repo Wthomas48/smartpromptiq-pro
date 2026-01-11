@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useElevenLabsVoiceSafe } from '@/contexts/ElevenLabsVoiceContext';
 import { ELEVENLABS_VOICES, OPENAI_VOICES } from '@/config/voices';
+import { getApiBaseUrl } from '@/config/api';
 import {
   Volume2, VolumeX, Play, Pause, Square, Download, RefreshCw,
   Settings, ChevronDown, ChevronUp, Sparkles, Loader2, Globe,
@@ -162,6 +163,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
         return;
       }
 
+      const baseUrl = getApiBaseUrl();
       const endpoint = useElevenLabs ? '/api/elevenlabs/generate' : '/api/voice/generate';
 
       const body = useElevenLabs
@@ -179,7 +181,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
             category: category || 'prompt',
           };
 
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -341,7 +343,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
             <div className="text-sm font-medium text-gray-800 dark:text-white">
               {isGenerating ? 'Generating...' : isPlaying ? 'Speaking...' : 'Read Aloud'}
             </div>
-            <div className="text-xs text-gray-500 flex items-center gap-1">
+            <div className="text-xs text-gray-400 flex items-center gap-1">
               {useElevenLabs && <Zap className="w-3 h-3 text-purple-500" />}
               ~{estimatedDuration}s
             </div>
@@ -375,7 +377,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
             {isPlaying ? `${selectedPersona.emoji} Speaking...` : 'Read Prompt Aloud'}
             {useElevenLabs && <Zap className="w-3 h-3 text-purple-500" />}
           </div>
-          <div className="text-xs text-gray-500">{wordCount} words</div>
+          <div className="text-xs text-gray-400">{wordCount} words</div>
           {audioUrl && (
             <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
               <div
@@ -428,7 +430,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
                 </Badge>
               )}
             </h4>
-            <p className="text-xs text-gray-500">Hear your prompt spoken aloud</p>
+            <p className="text-xs text-gray-400">Hear your prompt spoken aloud</p>
           </div>
         </div>
         <Badge className="bg-purple-500/20 text-purple-700 dark:text-purple-300">
@@ -486,7 +488,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
       {/* Settings */}
       <button
         onClick={() => setShowSettings(!showSettings)}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+        className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
       >
         <Settings className="w-4 h-4" />
         Voice Settings
@@ -497,7 +499,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
         <div className="p-3 bg-white dark:bg-gray-800/50 rounded-lg space-y-3">
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500">Speed</span>
+              <span className="text-gray-400">Speed</span>
               <span className="text-gray-700 dark:text-gray-300">{voiceSettings.rate.toFixed(2)}x</span>
             </div>
             <Slider
@@ -511,7 +513,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
 
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500">Volume</span>
+              <span className="text-gray-400">Volume</span>
               <span className="text-gray-700 dark:text-gray-300">{Math.round(voiceSettings.volume * 100)}%</span>
             </div>
             <Slider
@@ -601,7 +603,7 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
               <span className="text-lg">{selectedPersona.emoji}</span>
               <div>
                 <span className="text-gray-700 dark:text-gray-200 font-medium">{selectedPersona.name}</span>
-                <span className="text-gray-500 ml-2">{selectedPersona.style}</span>
+                <span className="text-gray-400 ml-2">{selectedPersona.style}</span>
               </div>
             </div>
             {useElevenLabs && (

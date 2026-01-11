@@ -400,11 +400,184 @@ const SongGenerationProgress: React.FC<{ progress: number; stage: string }> = ({
 };
 
 // ==========================================
+// DEMO AUDIO GENERATION HELPERS
+// ==========================================
+
+// Genre-specific audio parameters for demo mode
+const GENRE_AUDIO_PARAMS: Record<string, { baseFreq: number; bpm: number; waveType: OscillatorType }> = {
+  pop: { baseFreq: 440, bpm: 120, waveType: 'sine' },
+  rock: { baseFreq: 330, bpm: 140, waveType: 'sawtooth' },
+  hiphop: { baseFreq: 220, bpm: 90, waveType: 'square' },
+  rnb: { baseFreq: 392, bpm: 85, waveType: 'sine' },
+  electronic: { baseFreq: 523, bpm: 128, waveType: 'sawtooth' },
+  country: { baseFreq: 349, bpm: 110, waveType: 'triangle' },
+  jazz: { baseFreq: 466, bpm: 100, waveType: 'sine' },
+  reggae: { baseFreq: 294, bpm: 75, waveType: 'triangle' },
+};
+
+// Generate demo audio using Web Audio API
+async function generateDemoAudio(genre: string, durationSecs: number): Promise<string | null> {
+  try {
+    const params = GENRE_AUDIO_PARAMS[genre] || GENRE_AUDIO_PARAMS.pop;
+    const sampleRate = 44100;
+    const numSamples = Math.floor(sampleRate * Math.min(durationSecs, 30)); // Cap at 30s for demo
+
+    // Create offline audio context
+    const offlineCtx = new OfflineAudioContext(2, numSamples, sampleRate);
+
+    // Create oscillator for melody
+    const osc = offlineCtx.createOscillator();
+    osc.type = params.waveType;
+    osc.frequency.value = params.baseFreq;
+
+    // Add some frequency variation for interest
+    const beatInterval = 60 / params.bpm;
+    for (let i = 0; i < durationSecs; i += beatInterval) {
+      const noteOffset = [0, 4, 7, 12, 7, 4][Math.floor(i / beatInterval) % 6];
+      const freq = params.baseFreq * Math.pow(2, noteOffset / 12);
+      osc.frequency.setValueAtTime(freq, i);
+    }
+
+    // Create gain for volume envelope
+    const gainNode = offlineCtx.createGain();
+    gainNode.gain.value = 0.3;
+
+    // Add fade in/out
+    gainNode.gain.setValueAtTime(0, 0);
+    gainNode.gain.linearRampToValueAtTime(0.3, 0.5);
+    gainNode.gain.setValueAtTime(0.3, Math.max(0, durationSecs - 1));
+    gainNode.gain.linearRampToValueAtTime(0, durationSecs);
+
+    // Connect nodes
+    osc.connect(gainNode);
+    gainNode.connect(offlineCtx.destination);
+
+    // Start and stop
+    osc.start(0);
+    osc.stop(durationSecs);
+
+    // Render to buffer
+    const buffer = await offlineCtx.startRendering();
+
+    // Convert to WAV blob
+    const wavBlob = audioBufferToWav(buffer);
+    return URL.createObjectURL(wavBlob);
+  } catch (error) {
+    console.error('Failed to generate demo audio:', error);
+    return null;
+  }
+}
+
+// Simple fallback tone generator
+async function generateFallbackTone(durationSecs: number): Promise<string> {
+  const sampleRate = 44100;
+  const numSamples = Math.floor(sampleRate * Math.min(durationSecs, 10));
+  const offlineCtx = new OfflineAudioContext(1, numSamples, sampleRate);
+
+  const osc = offlineCtx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.value = 440;
+
+  const gain = offlineCtx.createGain();
+  gain.gain.value = 0.2;
+
+  osc.connect(gain);
+  gain.connect(offlineCtx.destination);
+
+  osc.start(0);
+  osc.stop(durationSecs);
+
+  const buffer = await offlineCtx.startRendering();
+  const wavBlob = audioBufferToWav(buffer);
+  return URL.createObjectURL(wavBlob);
+}
+
+// Convert AudioBuffer to WAV Blob
+function audioBufferToWav(buffer: AudioBuffer): Blob {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const format = 1; // PCM
+  const bitDepth = 16;
+
+  const bytesPerSample = bitDepth / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataSize = buffer.length * blockAlign;
+  const headerSize = 44;
+  const totalSize = headerSize + dataSize;
+
+  const arrayBuffer = new ArrayBuffer(totalSize);
+  const view = new DataView(arrayBuffer);
+
+  // WAV header
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, totalSize - 8, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true); // fmt chunk size
+  view.setUint16(20, format, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitDepth, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  // Write audio data
+  const channels: Float32Array[] = [];
+  for (let i = 0; i < numChannels; i++) {
+    channels.push(buffer.getChannelData(i));
+  }
+
+  let offset = 44;
+  for (let i = 0; i < buffer.length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = Math.max(-1, Math.min(1, channels[ch][i]));
+      const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+      view.setInt16(offset, intSample, true);
+      offset += 2;
+    }
+  }
+
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
+
+// ==========================================
 // MAIN VOICE TO SONG COMPONENT
 // ==========================================
 
 const VoiceToSong: React.FC = () => {
   const { toast } = useToast();
+
+  // Try to use global feedback for more visible notifications
+  let globalFeedback: any = null;
+  try {
+    // Dynamic import to avoid breaking if not available
+    const { useGlobalFeedback } = require('./GlobalFeedback');
+    globalFeedback = useGlobalFeedback();
+  } catch {
+    // Fallback to toast only
+  }
+
+  // Helper to show feedback with fallback
+  const showFeedback = (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string) => {
+    // Use global feedback if available (more visible)
+    if (globalFeedback) {
+      globalFeedback[type](title, message);
+    }
+    // Also show toast as backup
+    toast({
+      title,
+      description: message,
+      variant: type === 'error' ? 'destructive' : type === 'success' ? 'success' : 'default',
+    });
+  };
 
   // State
   const [activeMode, setActiveMode] = useState<'lyrics' | 'voice' | 'describe'>('lyrics');
@@ -456,13 +629,16 @@ const VoiceToSong: React.FC = () => {
         mood: selectedMood,
         duration: song.duration,
         description: `AI Song • ${songStyles.find(s => s.id === selectedStyle)?.name || selectedStyle}`,
-        prompt: activeMode === 'lyrics' ? (lyrics || '').slice(0, 100) : (songDescription || '').slice(0, 100) || 'Voice melody',
+        prompt: activeMode === 'lyrics' ? (lyrics || '').slice(0, 500) : (songDescription || '').slice(0, 500) || 'Voice melody',
+        fullLyrics: activeMode === 'lyrics' ? lyrics : undefined, // Save full lyrics for regeneration
         isAiGenerated: true,
         withVocals: true,
         vocalStyle: selectedVocal,
         sourceType: 'song-mode',
         createdAt: new Date().toISOString(),
-        audioUrl: '', // Don't save blob URLs
+        // Note: Blob URLs can't be persisted - audio will be regenerated on demand
+        audioUrl: '',
+        canRegenerate: true, // Flag indicating this song can be regenerated
       };
 
       allTracks.unshift(newSong);
@@ -480,9 +656,100 @@ const VoiceToSong: React.FC = () => {
     }
   };
 
+  // State for library playback
+  const [libraryPlayingSongId, setLibraryPlayingSongId] = useState<string | null>(null);
+  const [libraryLoadingSongId, setLibraryLoadingSongId] = useState<string | null>(null);
+  const libraryAudioRef = useRef<HTMLAudioElement | null>(null);
+  const libraryAudioCacheRef = useRef<Map<string, string>>(new Map());
+
+  // Play song from library - regenerates audio if needed
+  const playLibrarySong = async (song: any) => {
+    // If already playing this song, pause it
+    if (libraryPlayingSongId === song.id && libraryAudioRef.current) {
+      libraryAudioRef.current.pause();
+      setLibraryPlayingSongId(null);
+      return;
+    }
+
+    // Check if we have cached audio for this song
+    const cachedUrl = libraryAudioCacheRef.current.get(song.id);
+    if (cachedUrl) {
+      playLibraryAudio(song.id, cachedUrl, song.name);
+      return;
+    }
+
+    // Need to regenerate audio
+    setLibraryLoadingSongId(song.id);
+    showFeedback('info', 'Generating Audio...', `Recreating "${song.name}"`);
+
+    try {
+      // Generate audio based on saved song data
+      const audioUrl = await generateDemoAudio(song.genre || 'pop', song.duration || 30);
+
+      if (audioUrl) {
+        // Cache the generated audio
+        libraryAudioCacheRef.current.set(song.id, audioUrl);
+        playLibraryAudio(song.id, audioUrl, song.name);
+        showFeedback('success', 'Now Playing', song.name);
+      } else {
+        throw new Error('Failed to generate audio');
+      }
+    } catch (err) {
+      console.error('Library playback error:', err);
+      showFeedback('error', 'Playback Failed', 'Could not generate audio for this song');
+    } finally {
+      setLibraryLoadingSongId(null);
+    }
+  };
+
+  // Helper to play library audio
+  const playLibraryAudio = (songId: string, audioUrl: string, songName: string) => {
+    // Stop any currently playing audio
+    if (libraryAudioRef.current) {
+      libraryAudioRef.current.pause();
+    }
+
+    // Create new audio element
+    const audio = new Audio(audioUrl);
+    libraryAudioRef.current = audio;
+
+    audio.onended = () => {
+      setLibraryPlayingSongId(null);
+    };
+
+    audio.onerror = () => {
+      console.error('Library audio error');
+      setLibraryPlayingSongId(null);
+      showFeedback('error', 'Playback Error', 'Audio failed to play');
+    };
+
+    audio.play()
+      .then(() => {
+        setLibraryPlayingSongId(songId);
+      })
+      .catch(err => {
+        console.error('Library play error:', err);
+        showFeedback('error', 'Playback Blocked', 'Click again to play');
+      });
+  };
+
+  // Cleanup library audio on unmount
+  useEffect(() => {
+    return () => {
+      if (libraryAudioRef.current) {
+        libraryAudioRef.current.pause();
+        libraryAudioRef.current = null;
+      }
+    };
+  }, []);
+
   // Playback
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioLoaded, setIsAudioLoaded] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
+  const isTransitioningRef = useRef(false);
   const songCacheRef = useRef<Map<string, string>>(new Map());
 
   // Apply lyrics template
@@ -570,11 +837,35 @@ const VoiceToSong: React.FC = () => {
       const data = await response.json();
 
       if (data.success || data.audioUrl) {
+        let audioUrl = data.audioUrl;
+
+        // Handle demo mode - generate audio client-side
+        if (audioUrl?.startsWith('generate-client-side:') || data.isDemo) {
+          console.log('Demo mode - generating audio client-side');
+
+          // Generate audio using Web Audio API
+          const genre = audioUrl?.replace('generate-client-side:', '') || selectedStyle;
+          audioUrl = await generateDemoAudio(genre, songDuration);
+
+          if (!audioUrl) {
+            toast({
+              title: 'Demo Mode',
+              description: 'Audio generation API not configured. Using demo audio.',
+            });
+            // Use a simple tone as fallback
+            audioUrl = await generateFallbackTone(songDuration);
+          }
+        }
+
         const newSong = {
-          audioUrl: data.audioUrl,
+          audioUrl: audioUrl || '',
           title: songTitle || data.title || 'My AI Song',
           duration: data.duration || songDuration,
         };
+
+        if (!newSong.audioUrl) {
+          throw new Error('No audio URL available');
+        }
 
         setGeneratedSong(newSong);
         setGenerationProgress(100);
@@ -588,11 +879,43 @@ const VoiceToSong: React.FC = () => {
           description: 'Your AI-generated song is ready to play and saved to your library!',
         });
 
-        // Auto-play after short delay
-        setTimeout(() => {
+        // Setup audio after short delay
+        setTimeout(async () => {
           setIsGenerating(false);
+          setIsAudioLoaded(false);
+          setAudioError(null);
+
           if (audioRef.current && data.audioUrl) {
             audioRef.current.src = data.audioUrl;
+
+            // Wait for audio to be ready before attempting to play
+            audioRef.current.oncanplaythrough = async () => {
+              setIsAudioLoaded(true);
+              console.log('Audio loaded and ready to play');
+
+              // Try auto-play (may be blocked by browser)
+              try {
+                playPromiseRef.current = audioRef.current!.play();
+                await playPromiseRef.current;
+                playPromiseRef.current = null;
+                setIsPlaying(true);
+              } catch (err: any) {
+                playPromiseRef.current = null;
+                if (err?.name !== 'AbortError') {
+                  console.log('Auto-play blocked by browser, user needs to click play');
+                }
+              }
+            };
+
+            audioRef.current.onerror = (e) => {
+              console.error('Audio load error:', e);
+              setAudioError('Failed to load the generated audio. Please try regenerating.');
+            };
+
+            // Trigger load
+            audioRef.current.load();
+          } else {
+            setAudioError('No audio URL received from generation. Please try again.');
           }
         }, 1500);
       } else {
@@ -609,16 +932,135 @@ const VoiceToSong: React.FC = () => {
     }
   };
 
+  // Safe pause helper - waits for any pending play to complete
+  const safePause = async () => {
+    if (!audioRef.current) return;
+
+    // If there's a pending play promise, wait for it
+    if (playPromiseRef.current) {
+      try {
+        await playPromiseRef.current;
+      } catch {
+        // Play was aborted, which is fine
+      }
+      playPromiseRef.current = null;
+    }
+
+    audioRef.current.pause();
+  };
+
+  // Safe play helper - tracks the promise
+  const safePlay = async (): Promise<boolean> => {
+    if (!audioRef.current) return false;
+
+    try {
+      playPromiseRef.current = audioRef.current.play();
+      await playPromiseRef.current;
+      playPromiseRef.current = null;
+      return true;
+    } catch (err: any) {
+      playPromiseRef.current = null;
+      // AbortError is expected when play is interrupted
+      if (err?.name === 'AbortError') {
+        console.log('Play interrupted (expected during transitions)');
+        return false;
+      }
+      console.error('Playback error:', err);
+      setAudioError('Failed to play audio. Please try again.');
+      return false;
+    }
+  };
+
   // Play/pause generated song
-  const togglePlayback = () => {
-    if (!audioRef.current || !generatedSong) return;
+  const togglePlayback = async () => {
+    if (!audioRef.current || !generatedSong) {
+      toast({
+        title: 'No Song Available',
+        description: 'Please generate a song first',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Check if audio source is set
+    if (!audioRef.current.src || audioRef.current.src === window.location.href) {
+      // No source set - try to set it
+      if (generatedSong.audioUrl) {
+        audioRef.current.src = generatedSong.audioUrl;
+        setIsAudioLoaded(false);
+        setAudioError(null);
+      } else {
+        toast({
+          title: 'Audio Not Available',
+          description: 'The generated audio URL is not available. Please regenerate the song.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+
+    // Prevent rapid clicking during transitions
+    if (isTransitioningRef.current) {
+      console.log('Audio transition in progress, ignoring click');
+      return;
+    }
+
+    isTransitioningRef.current = true;
+    setAudioError(null);
 
     if (isPlaying) {
-      audioRef.current.pause();
+      await safePause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      // If not loaded yet, wait for it
+      if (!isAudioLoaded && audioRef.current.readyState < 3) {
+        toast({
+          title: 'Loading Audio...',
+          description: 'Please wait for the audio to load',
+        });
+
+        // Wait for canplaythrough event
+        const loadPromise = new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Audio load timeout'));
+          }, 10000);
+
+          if (audioRef.current) {
+            audioRef.current.oncanplaythrough = () => {
+              clearTimeout(timeout);
+              setIsAudioLoaded(true);
+              resolve();
+            };
+            audioRef.current.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error('Audio failed to load'));
+            };
+            // Trigger load
+            audioRef.current.load();
+          }
+        });
+
+        try {
+          await loadPromise;
+        } catch (err: any) {
+          setAudioError(err.message || 'Failed to load audio');
+          toast({
+            title: 'Audio Load Failed',
+            description: 'Could not load the audio. Please try regenerating.',
+            variant: 'destructive'
+          });
+          isTransitioningRef.current = false;
+          return;
+        }
+      }
+
+      const success = await safePlay();
+      if (success) {
+        setIsPlaying(true);
+      }
     }
-    setIsPlaying(!isPlaying);
+
+    isTransitioningRef.current = false;
   };
 
   return (
@@ -693,13 +1135,21 @@ const VoiceToSong: React.FC = () => {
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          className="bg-gradient-to-r from-purple-500 to-pink-500"
-                          onClick={() => {
-                            // TODO: Play this song - would need to regenerate audio
-                            toast({ title: 'Playing...', description: `${song.name}` });
-                          }}
+                          className={`${
+                            libraryPlayingSongId === song.id
+                              ? 'bg-gradient-to-r from-red-500 to-orange-500'
+                              : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                          }`}
+                          disabled={libraryLoadingSongId === song.id}
+                          onClick={() => playLibrarySong(song)}
                         >
-                          <Play className="w-4 h-4" />
+                          {libraryLoadingSongId === song.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : libraryPlayingSongId === song.id ? (
+                            <Pause className="w-4 h-4" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
                         </Button>
                         <Button
                           size="sm"
@@ -781,14 +1231,29 @@ const VoiceToSong: React.FC = () => {
                 </div>
 
                 {/* Controls */}
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center gap-2">
                   <Button
                     onClick={togglePlayback}
                     size="lg"
-                    className="h-16 w-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90"
+                    disabled={isTransitioningRef.current}
+                    className={`h-16 w-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 ${
+                      isTransitioningRef.current ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
-                    {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
+                    {isTransitioningRef.current ? (
+                      <Loader2 className="w-8 h-8 animate-spin" />
+                    ) : isPlaying ? (
+                      <Pause className="w-8 h-8" />
+                    ) : (
+                      <Play className="w-8 h-8 ml-1" />
+                    )}
                   </Button>
+                  {!isAudioLoaded && !audioError && generatedSong?.audioUrl && (
+                    <p className="text-sm text-gray-400">Loading audio...</p>
+                  )}
+                  {isAudioLoaded && !isPlaying && !audioError && (
+                    <p className="text-sm text-gray-400">Click to play</p>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -811,11 +1276,34 @@ const VoiceToSong: React.FC = () => {
                   </Button>
                 </div>
 
+                {/* Show error if any */}
+                {audioError && (
+                  <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm">
+                    {audioError}
+                  </div>
+                )}
+
                 <audio
                   ref={audioRef}
+                  src={generatedSong?.audioUrl || ''}
+                  preload="auto"
                   onEnded={() => setIsPlaying(false)}
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
+                  onCanPlayThrough={() => setIsAudioLoaded(true)}
+                  onLoadStart={() => {
+                    setIsAudioLoaded(false);
+                    setAudioError(null);
+                  }}
+                  onError={(e) => {
+                    console.error('Audio element error:', e);
+                    setIsPlaying(false);
+                    setIsAudioLoaded(false);
+                    const audio = e.currentTarget as HTMLAudioElement;
+                    if (audio.src && audio.src !== window.location.href) {
+                      setAudioError('Failed to load audio. The audio source may be unavailable.');
+                    }
+                  }}
                 />
               </div>
             </CardContent>

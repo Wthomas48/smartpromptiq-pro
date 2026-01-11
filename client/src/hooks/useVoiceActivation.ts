@@ -115,6 +115,7 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
   const isWakeWordDetectedRef = useRef(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const isVoiceModeActiveRef = useRef(false); // Track if voice mode is active for auto-restart
+  const isPausedRef = useRef(false); // Track if temporarily paused (e.g., during speech)
 
   // NEW: Anti-repeat and smart recognition refs
   const lastProcessedTranscriptRef = useRef<string>('');
@@ -243,12 +244,12 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
     console.log('🎤 Creating new SpeechRecognition instance (Browser:', browserInfo.isChrome ? 'Chrome' : browserInfo.isFirefox ? 'Firefox' : 'Other', ')');
     const recognition = new SpeechRecognition();
 
-    // Chrome works better with continuous = false and manual restart
-    // Firefox and others work fine with continuous = true
-    recognition.continuous = !browserInfo.isChrome; // Chrome: restart manually, Others: continuous
+    // FIXED: Enable continuous mode for all browsers to keep listening
+    // Chrome may stop after silence, but we handle that in onend with auto-restart
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = language;
-    recognition.maxAlternatives = 1;
+    recognition.maxAlternatives = 3; // Get more alternatives for better accuracy
 
     recognition.onstart = () => {
       console.log('🎤 Recognition onstart fired');
@@ -277,38 +278,56 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
     };
 
     recognition.onend = () => {
-      const browserInfo = getBrowserInfo();
-      console.log('🎤 Recognition onend fired, isVoiceModeActive:', isVoiceModeActiveRef.current, 'Browser:', browserInfo.isChrome ? 'Chrome' : 'Other');
+      console.log('🎤 Recognition onend fired, isVoiceModeActive:', isVoiceModeActiveRef.current, 'isPaused:', isPausedRef.current);
+
+      // Don't auto-restart if we're paused (e.g., BuilderIQ is speaking)
+      if (isPausedRef.current) {
+        console.log('🎤 Paused state - not auto-restarting (will resume via resumeListening)');
+        setState(prev => ({ ...prev, isListening: false, audioLevel: 0 }));
+        onListeningChange?.(false);
+        return;
+      }
 
       // Auto restart if voice mode is still active
       if (isVoiceModeActiveRef.current) {
         console.log('🎤 Voice mode active - auto-restarting recognition...');
-        // Keep listening state true since we're restarting
 
-        // Chrome needs a longer delay before restarting
-        const restartDelay = browserInfo.isChrome ? 300 : 100;
+        // Use exponential backoff for restart attempts
+        const attemptRestart = (attempt: number = 1) => {
+          const delay = Math.min(100 * attempt, 500); // 100ms, 200ms, 300ms, max 500ms
 
-        setTimeout(() => {
-          try {
-            // For Chrome, create a fresh recognition instance to avoid issues
-            if (browserInfo.isChrome) {
-              console.log('🎤 Chrome: Creating fresh recognition instance for restart');
-              recognitionRef.current = initRecognition();
-              if (recognitionRef.current) {
-                recognitionRef.current.start();
-                console.log('🎤 Chrome: Fresh recognition started');
-              }
-            } else {
-              recognition.start();
-              console.log('🎤 Recognition restarted successfully');
+          setTimeout(() => {
+            if (!isVoiceModeActiveRef.current) {
+              console.log('🎤 Voice mode deactivated during restart, aborting');
+              setState(prev => ({ ...prev, isListening: false, audioLevel: 0 }));
+              onListeningChange?.(false);
+              return;
             }
-          } catch (e: any) {
-            console.log('🎤 Could not restart:', e.message);
-            // Only update state to not listening if restart failed
-            setState(prev => ({ ...prev, isListening: false, audioLevel: 0 }));
-            onListeningChange?.(false);
-          }
-        }, restartDelay);
+
+            try {
+              // Create fresh instance each time - more reliable than reusing
+              const freshRecognition = initRecognition();
+              if (freshRecognition) {
+                recognitionRef.current = freshRecognition;
+                freshRecognition.start();
+                console.log('🎤 Recognition restarted successfully (attempt', attempt, ')');
+              }
+            } catch (e: any) {
+              console.log('🎤 Restart attempt', attempt, 'failed:', e.message);
+
+              if (attempt < 3) {
+                // Retry with backoff
+                attemptRestart(attempt + 1);
+              } else {
+                console.log('🎤 All restart attempts failed');
+                setState(prev => ({ ...prev, isListening: false, audioLevel: 0 }));
+                onListeningChange?.(false);
+              }
+            }
+          }, delay);
+        };
+
+        attemptRestart(1);
       } else {
         setState(prev => ({ ...prev, isListening: false, audioLevel: 0 }));
         onListeningChange?.(false);
@@ -316,8 +335,7 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
     };
 
     recognition.onerror = (event) => {
-      const browserInfo = getBrowserInfo();
-      console.log('🎤 Recognition error:', event.error, 'Browser:', browserInfo.isChrome ? 'Chrome' : 'Other');
+      console.log('🎤 Recognition error:', event.error);
 
       const errorMessages: Record<string, string> = {
         'no-speech': 'No speech detected. Try speaking louder or closer to the microphone.',
@@ -328,55 +346,39 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
         'service-not-allowed': 'Speech service not allowed. Try again later.',
       };
 
-      const errorMessage = errorMessages[event.error] || `Error: ${event.error}`;
+      // These errors are recoverable - restart silently without breaking experience
+      const recoverableErrors = ['no-speech', 'aborted', 'network', 'audio-capture'];
 
-      // For no-speech errors, just log and keep state as listening (will auto-restart via onend)
-      if (event.error === 'no-speech') {
-        console.log('🎤 No speech detected - waiting for speech...');
-        // For Chrome, we need to manually restart since continuous mode is off
-        if (browserInfo.isChrome && isVoiceModeActiveRef.current) {
-          console.log('🎤 Chrome: Restarting after no-speech');
-          setTimeout(() => {
-            try {
-              recognitionRef.current = initRecognition();
-              if (recognitionRef.current) {
-                recognitionRef.current.start();
-              }
-            } catch (e) {
-              console.log('🎤 Could not restart after no-speech:', e);
-            }
-          }, 200);
+      if (recoverableErrors.includes(event.error) && isVoiceModeActiveRef.current) {
+        console.log('🎤 Recoverable error:', event.error, '- will auto-restart via onend');
+        // Don't set error state for recoverable errors - just let onend handle restart
+        // But for no-speech specifically, we want to restart more aggressively
+        if (event.error === 'no-speech') {
+          // Force immediate restart for no-speech (Chrome stops listening after silence)
+          console.log('🎤 No speech detected - forcing immediate restart');
+          try {
+            recognition.stop(); // Force stop to trigger onend
+          } catch (e) {
+            // Already stopped, onend will fire
+          }
         }
         return;
       }
 
-      // For aborted errors, don't show error message
-      if (event.error === 'aborted') {
-        console.log('🎤 Recognition aborted');
+      // For permission errors, show the message
+      if (event.error === 'not-allowed') {
+        const errorMessage = errorMessages[event.error];
+        setState(prev => ({
+          ...prev,
+          error: errorMessage,
+          isListening: false,
+        }));
+        isVoiceModeActiveRef.current = false; // Stop auto-restart attempts
         return;
       }
 
-      // Chrome sometimes fires 'network' errors spuriously - just restart
-      if (event.error === 'network' && browserInfo.isChrome && isVoiceModeActiveRef.current) {
-        console.log('🎤 Chrome network error - attempting restart');
-        setTimeout(() => {
-          try {
-            recognitionRef.current = initRecognition();
-            if (recognitionRef.current) {
-              recognitionRef.current.start();
-            }
-          } catch (e) {
-            console.log('🎤 Could not restart after network error:', e);
-          }
-        }, 500);
-        return;
-      }
-
-      setState(prev => ({
-        ...prev,
-        error: errorMessage,
-        isListening: false,
-      }));
+      // For other errors, log but don't break the experience
+      console.log('🎤 Unhandled error:', event.error, '- continuing...');
     };
 
     recognition.onresult = (event) => {
@@ -818,26 +820,54 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
     const browserInfo = getBrowserInfo();
     console.log('🎤 startListening called - Browser:', browserInfo.isChrome ? 'Chrome' : 'Other');
 
-    // Mark voice mode as active for auto-restart
+    // Mark voice mode as active for auto-restart, clear pause state
     isVoiceModeActiveRef.current = true;
     isWakeWordDetectedRef.current = true;
+    isPausedRef.current = false;
 
-    // First, request microphone permission and keep the stream active
+    // Reuse existing stream if available, otherwise request new one
     try {
-      // Stop any previous stream
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      }
+      if (!mediaStreamRef.current || mediaStreamRef.current.getTracks().every(t => t.readyState === 'ended')) {
+        console.log('🎤 Requesting new microphone stream...');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            // Enhanced audio constraints for better voice pickup
+            channelCount: 1, // Mono is better for speech
+            sampleRate: { ideal: 16000 }, // 16kHz is optimal for speech recognition
+            sampleSize: { ideal: 16 },
+          }
+        });
+        mediaStreamRef.current = stream;
+        console.log('🎤 New microphone stream acquired with', stream.getAudioTracks().length, 'audio track(s)');
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+        // Log track settings for debugging
+        const track = stream.getAudioTracks()[0];
+        if (track) {
+          const settings = track.getSettings();
+          console.log('🎤 Audio track settings:', {
+            deviceId: settings.deviceId?.substring(0, 8) + '...',
+            channelCount: settings.channelCount,
+            sampleRate: settings.sampleRate,
+            echoCancellation: settings.echoCancellation,
+            noiseSuppression: settings.noiseSuppression,
+            autoGainControl: settings.autoGainControl,
+          });
         }
-      });
-      mediaStreamRef.current = stream;
-      console.log('🎤 Microphone permission granted, stream active');
+      } else {
+        console.log('🎤 Reusing existing microphone stream');
+        // Verify stream is still active
+        const track = mediaStreamRef.current.getAudioTracks()[0];
+        if (track && track.readyState !== 'live') {
+          console.log('🎤 Stream track not live, requesting new stream');
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+          });
+          mediaStreamRef.current = stream;
+        }
+      }
       setState(prev => ({ ...prev, permissionStatus: 'granted', error: null }));
     } catch (error: any) {
       // Handle permission denied gracefully - no console.error to avoid scary messages
@@ -917,13 +947,69 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
     }
   }, [initRecognition]);
 
-  // Stop listening
-  const stopListening = useCallback(() => {
-    console.log('🎤 stopListening called');
+  // Pause listening temporarily (keeps stream alive for quick resume)
+  const pauseListening = useCallback(() => {
+    console.log('🎤 pauseListening called - keeping stream and voice mode alive');
 
-    // IMPORTANT: Set this BEFORE stopping recognition to prevent auto-restart
+    // Mark as paused to prevent auto-restart in onend handler
+    isPausedRef.current = true;
+
+    // Keep isVoiceModeActiveRef true so we remember we want voice mode
+    // But the isPausedRef will prevent auto-restart
+
+    try {
+      recognitionRef.current?.stop();
+    } catch (e) {
+      // Ignore - might already be stopped
+    }
+
+    setState(prev => ({
+      ...prev,
+      isListening: false,
+      interimTranscript: '',
+    }));
+  }, []);
+
+  // Resume listening after a pause (uses existing stream)
+  const resumeListening = useCallback(() => {
+    console.log('🎤 resumeListening called');
+
+    // Clear pause state
+    isPausedRef.current = false;
+
+    // Ensure voice mode is active
+    isVoiceModeActiveRef.current = true;
+    isWakeWordDetectedRef.current = true;
+
+    // Small delay to let any pending onend handlers complete
+    setTimeout(() => {
+      // Create fresh recognition instance and start
+      const freshRecognition = initRecognition();
+      if (freshRecognition) {
+        recognitionRef.current = freshRecognition;
+        try {
+          freshRecognition.start();
+          console.log('🎤 Recognition resumed successfully');
+        } catch (e: any) {
+          console.log('🎤 Resume failed:', e.message, '- trying full restart');
+          // Fall back to full startListening
+          setTimeout(() => startListening(), 100);
+        }
+      } else {
+        console.log('🎤 Could not create recognition instance, trying full restart');
+        setTimeout(() => startListening(), 100);
+      }
+    }, 50);
+  }, [initRecognition, startListening]);
+
+  // Stop listening - can optionally keep stream alive for quick restart
+  const stopListening = useCallback((keepStreamAlive = false) => {
+    console.log('🎤 stopListening called, keepStreamAlive:', keepStreamAlive);
+
+    // IMPORTANT: Set these BEFORE stopping recognition to prevent auto-restart
     isVoiceModeActiveRef.current = false;
     isWakeWordDetectedRef.current = false;
+    isPausedRef.current = false; // Clear pause state on full stop
 
     // Clear debounce timeout
     if (transcriptDebounceRef.current) {
@@ -937,17 +1023,19 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
       // Ignore
     }
 
-    // Stop the media stream
-    if (mediaStreamRef.current) {
+    // Only stop the media stream if not keeping alive (for permanent stop)
+    if (!keepStreamAlive && mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
 
-    // Clear session data to avoid stale repeats on next activation
-    lastProcessedTranscriptRef.current = '';
-    sessionTranscriptsRef.current = [];
-    processedCommandsRef.current.clear();
-    greetingSpokenRef.current = false; // Reset so greeting plays on next activation
+    // Only clear session data on permanent stop
+    if (!keepStreamAlive) {
+      lastProcessedTranscriptRef.current = '';
+      sessionTranscriptsRef.current = [];
+      processedCommandsRef.current.clear();
+      greetingSpokenRef.current = false;
+    }
 
     setState(prev => ({
       ...prev,
@@ -1111,6 +1199,8 @@ export function useVoiceActivation(options: UseVoiceActivationOptions = {}) {
     ...state,
     startListening,
     stopListening,
+    pauseListening,
+    resumeListening,
     toggleListening,
     clearTranscript,
     speak,

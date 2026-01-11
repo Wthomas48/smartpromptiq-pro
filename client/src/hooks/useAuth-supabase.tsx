@@ -65,7 +65,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         console.log('🔍 Initializing Supabase auth...');
 
-        const { data: { session }, error } = await supabase.auth.getSession();
+        let session = null;
+        let error = null;
+        try {
+          const result = await supabase.auth.getSession();
+          session = result.data?.session;
+          error = result.error;
+        } catch (e: any) {
+          // Silently handle 403 errors (expected for unauthenticated users)
+          if (e?.code === 403 || e?.status === 403) {
+            console.log('ℹ️ No active session (user not authenticated)');
+          } else {
+            error = e;
+          }
+        }
 
         if (error) {
           console.error('❌ Error getting session:', error);
@@ -243,7 +256,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkAuth = async () => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      let session = null;
+      let error = null;
+      try {
+        const result = await supabase.auth.getSession();
+        session = result.data?.session;
+        error = result.error;
+      } catch (e: any) {
+        // Silently handle 403 errors (expected for unauthenticated users)
+        if (e?.code === 403 || e?.status === 403) {
+          // Not authenticated - this is expected
+        } else {
+          error = e;
+        }
+      }
 
       if (error || !session) {
         setUser(null);

@@ -21,6 +21,7 @@ import VoiceMusicMixer from '@/components/VoiceMusicMixer';
 import VoiceToSong from '@/components/VoiceToSong';
 import PremiumMusicLibrary from '@/components/PremiumMusicLibrary';
 import { useAudioStoreSafe } from '@/contexts/AudioStoreContext';
+import { getApiBaseUrl } from '@/config/api';
 import {
   Mic, MicOff, Volume2, VolumeX, Play, Pause, Square,
   Download, Share2, Save, Sparkles, Wand2, Copy, Check,
@@ -317,6 +318,8 @@ const VoiceBuilder: React.FC = () => {
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previewSynthRef = useRef<SpeechSynthesis | null>(null);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
+  const isTransitioningRef = useRef(false);
 
   // Initialize speech synthesis for preview
   useEffect(() => {
@@ -540,7 +543,8 @@ const VoiceBuilder: React.FC = () => {
 
         // Try OpenAI as first fallback
         try {
-          const response = await fetch('/api/voice/generate', {
+          const baseUrl = getApiBaseUrl();
+          const response = await fetch(`${baseUrl}/api/voice/generate`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -745,7 +749,8 @@ const VoiceBuilder: React.FC = () => {
     toast({ title: 'Enhancing...', description: 'AI is improving your script' });
 
     try {
-      const response = await fetch('/api/voice/enhance-script', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/voice/enhance-script`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -813,7 +818,7 @@ const VoiceBuilder: React.FC = () => {
                   <Mic className="w-5 h-5 text-cyan-400" />
                 </div>
                 <div className="text-white text-sm font-medium">Script to Audio</div>
-                <div className="text-gray-500 text-[10px]">Generate voiceovers</div>
+                <div className="text-gray-300 text-[10px]">Generate voiceovers</div>
               </button>
 
               {/* Story Mode Voice */}
@@ -829,7 +834,7 @@ const VoiceBuilder: React.FC = () => {
                   <Bot className="w-5 h-5 text-pink-400" />
                 </div>
                 <div className="text-white text-sm font-medium">Story Mode</div>
-                <div className="text-gray-500 text-[10px]">Voice conversations</div>
+                <div className="text-gray-300 text-[10px]">Voice conversations</div>
               </button>
 
               {/* Music Maker */}
@@ -845,7 +850,7 @@ const VoiceBuilder: React.FC = () => {
                   <Music className="w-5 h-5 text-violet-400" />
                 </div>
                 <div className="text-white text-sm font-medium">Music Maker</div>
-                <div className="text-gray-500 text-[10px]">Background tracks</div>
+                <div className="text-gray-300 text-[10px]">Background tracks</div>
               </button>
 
               {/* Song Mode - HOT NEW FEATURE! */}
@@ -862,7 +867,7 @@ const VoiceBuilder: React.FC = () => {
                   <Music2 className="w-5 h-5 text-rose-400" />
                 </div>
                 <div className="text-white text-sm font-medium">Song Mode</div>
-                <div className="text-gray-500 text-[10px]">Voice to Song!</div>
+                <div className="text-gray-300 text-[10px]">Voice to Song!</div>
               </button>
 
               {/* Voice Templates */}
@@ -878,7 +883,7 @@ const VoiceBuilder: React.FC = () => {
                   <FileText className="w-5 h-5 text-amber-400" />
                 </div>
                 <div className="text-white text-sm font-medium">Voice Scripts</div>
-                <div className="text-gray-500 text-[10px]">Pre-made templates</div>
+                <div className="text-gray-300 text-[10px]">Pre-made templates</div>
               </button>
 
               {/* Voice App Builder */}
@@ -894,7 +899,7 @@ const VoiceBuilder: React.FC = () => {
                   <Rocket className="w-5 h-5 text-red-400" />
                 </div>
                 <div className="text-white text-sm font-medium">Voice Apps</div>
-                <div className="text-gray-500 text-[10px]">Build voice-first apps</div>
+                <div className="text-gray-300 text-[10px]">Build voice-first apps</div>
               </button>
 
               {/* Categories */}
@@ -910,7 +915,7 @@ const VoiceBuilder: React.FC = () => {
                   <Layers className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div className="text-white text-sm font-medium">Categories</div>
-                <div className="text-gray-500 text-[10px]">Voice by industry</div>
+                <div className="text-gray-300 text-[10px]">Voice by industry</div>
               </button>
 
               {/* Voice + Music Mixer - NEW! */}
@@ -927,7 +932,7 @@ const VoiceBuilder: React.FC = () => {
                   <Sliders className="w-5 h-5 text-orange-400" />
                 </div>
                 <div className="text-white text-sm font-medium">Mixer</div>
-                <div className="text-gray-500 text-[10px]">Voice + Music</div>
+                <div className="text-gray-300 text-[10px]">Voice + Music</div>
               </button>
 
               {/* My Voice Library */}
@@ -943,7 +948,7 @@ const VoiceBuilder: React.FC = () => {
                   <FileAudio className="w-5 h-5 text-indigo-400" />
                 </div>
                 <div className="text-white text-sm font-medium">My Library</div>
-                <div className="text-gray-500 text-[10px]">Saved voices</div>
+                <div className="text-gray-300 text-[10px]">Saved voices</div>
               </button>
             </div>
 
@@ -1083,10 +1088,10 @@ const VoiceBuilder: React.FC = () => {
                                 {voice.persona}
                               </Badge>
                             </div>
-                            <div className={`text-xs mt-0.5 ${selectedVoice === voice.id ? 'text-white/80' : 'text-gray-400'}`}>
+                            <div className={`text-xs mt-0.5 ${selectedVoice === voice.id ? 'text-white/80' : 'text-gray-300'}`}>
                               {voice.tagline}
                             </div>
-                            <div className={`text-[10px] mt-1 italic ${selectedVoice === voice.id ? 'text-white/60' : 'text-gray-500'}`}>
+                            <div className={`text-[10px] mt-1 italic ${selectedVoice === voice.id ? 'text-white/60' : 'text-gray-400'}`}>
                               {voice.vibe}
                             </div>
                             {selectedVoice === voice.id && (
@@ -1159,7 +1164,7 @@ const VoiceBuilder: React.FC = () => {
                   <CardContent className="space-y-4">
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-400">Speed</span>
+                        <span className="text-gray-300">Speed</span>
                         <span className="text-white">{voiceSettings.rate.toFixed(2)}x</span>
                       </div>
                       <Slider
@@ -1173,7 +1178,7 @@ const VoiceBuilder: React.FC = () => {
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-400">Pitch</span>
+                        <span className="text-gray-300">Pitch</span>
                         <span className="text-white">{voiceSettings.pitch.toFixed(2)}</span>
                       </div>
                       <Slider
@@ -1187,7 +1192,7 @@ const VoiceBuilder: React.FC = () => {
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-400">Volume</span>
+                        <span className="text-gray-300">Volume</span>
                         <span className="text-white">{Math.round(voiceSettings.volume * 100)}%</span>
                       </div>
                       <Slider
@@ -1254,7 +1259,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
 
                     {/* Stats bar */}
                     <div className="flex items-center justify-between mt-3 text-sm">
-                      <div className="flex gap-4 text-gray-400">
+                      <div className="flex gap-4 text-gray-300">
                         <span>{charCount} characters</span>
                         <span>{wordCount} words</span>
                         <span>~{estimatedDuration}s duration</span>
@@ -1285,7 +1290,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                           ))}
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-gray-500">
+                        <div className="flex items-center gap-2 text-gray-400">
                           <AudioWaveform className="w-5 h-5" />
                           <span>Audio waveform will appear here</span>
                         </div>
@@ -1352,7 +1357,13 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                           <div className="flex items-center gap-3">
                             <Button
                               size="sm"
-                              onClick={() => {
+                              onClick={async () => {
+                                // Prevent rapid clicking during transitions
+                                if (isTransitioningRef.current) {
+                                  console.log('Audio transition in progress, ignoring click');
+                                  return;
+                                }
+
                                 if (generatedAudioUrl.startsWith('browser-tts://')) {
                                   // Stop browser TTS
                                   if (isPlaying) {
@@ -1373,16 +1384,47 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                                     const englishVoice = voices.find(v => v.lang.startsWith('en'));
                                     if (englishVoice) utterance.voice = englishVoice;
                                     utterance.onend = () => setIsPlaying(false);
+                                    utterance.onerror = (e: SpeechSynthesisErrorEvent) => {
+                                      if (e.error !== 'interrupted' && e.error !== 'canceled') {
+                                        console.warn('TTS replay error:', e.error);
+                                      }
+                                      setIsPlaying(false);
+                                    };
                                     window.speechSynthesis.speak(utterance);
                                     setIsPlaying(true);
                                   }
                                 } else if (audioRef.current) {
+                                  isTransitioningRef.current = true;
+
                                   if (isPlaying) {
+                                    // Safe pause - wait for any pending play promise
+                                    if (playPromiseRef.current) {
+                                      try {
+                                        await playPromiseRef.current;
+                                      } catch {
+                                        // Play was aborted, which is fine
+                                      }
+                                      playPromiseRef.current = null;
+                                    }
                                     audioRef.current.pause();
+                                    setIsPlaying(false);
                                   } else {
-                                    audioRef.current.play();
+                                    // Safe play - track the promise
+                                    try {
+                                      playPromiseRef.current = audioRef.current.play();
+                                      await playPromiseRef.current;
+                                      playPromiseRef.current = null;
+                                      setIsPlaying(true);
+                                    } catch (err: any) {
+                                      playPromiseRef.current = null;
+                                      // AbortError is expected when play is interrupted
+                                      if (err?.name !== 'AbortError') {
+                                        console.error('Audio play error:', err);
+                                      }
+                                    }
                                   }
-                                  setIsPlaying(!isPlaying);
+
+                                  isTransitioningRef.current = false;
                                 }
                               }}
                               className="bg-cyan-500 hover:bg-cyan-600"
@@ -1393,7 +1435,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                               <div className="text-white font-medium">
                                 {generatedAudioUrl.startsWith('browser-tts://') ? 'Browser Voice (Preview)' : 'Generated Audio'}
                               </div>
-                              <div className="text-xs text-gray-400">
+                              <div className="text-xs text-gray-300">
                                 {generatedAudioUrl.startsWith('browser-tts://')
                                   ? 'Using free browser TTS - upgrade for premium AI voices'
                                   : `~${estimatedDuration} seconds`}
@@ -1460,7 +1502,18 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                           </div>
                         </div>
                         {!generatedAudioUrl.startsWith('browser-tts://') && (
-                          <audio ref={audioRef} src={generatedAudioUrl} className="hidden" />
+                          <audio
+                            ref={audioRef}
+                            src={generatedAudioUrl}
+                            className="hidden"
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            onEnded={() => setIsPlaying(false)}
+                            onError={(e) => {
+                              console.error('Audio element error:', e);
+                              setIsPlaying(false);
+                            }}
+                          />
                         )}
                       </div>
                     )}
@@ -1474,7 +1527,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
           <TabsContent value="templates" className="space-y-6">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-white mb-2">Voice Script Templates</h2>
-              <p className="text-gray-400">Pre-written scripts optimized for voice delivery. Just customize and generate!</p>
+              <p className="text-gray-300">Pre-written scripts optimized for voice delivery. Just customize and generate!</p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1496,7 +1549,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-gray-400 text-sm mb-4 line-clamp-3">
+                      <p className="text-gray-300 text-sm mb-4 line-clamp-3">
                         {(template.template || '').slice(0, 150)}...
                       </p>
                       <Button
@@ -1571,7 +1624,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
           <TabsContent value="categories" className="space-y-6">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-white mb-2">Voice Categories</h2>
-              <p className="text-gray-400">Choose a category to get optimized voice settings and templates</p>
+              <p className="text-gray-300">Choose a category to get optimized voice settings and templates</p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1593,7 +1646,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                         <Icon className="w-8 h-8 text-white" />
                       </div>
                       <CardTitle className="text-white">{category.name}</CardTitle>
-                      <CardDescription className="text-gray-400">
+                      <CardDescription className="text-gray-300">
                         {category.description}
                       </CardDescription>
                     </CardHeader>
@@ -1619,7 +1672,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                 <FileAudio className="w-10 h-10 text-gray-500" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">No voice projects yet</h3>
-              <p className="text-gray-400 mb-6">Generate your first AI voiceover to see it here</p>
+              <p className="text-gray-300 mb-6">Generate your first AI voiceover to see it here</p>
               <Button
                 onClick={() => setActiveTab('create')}
                 className="bg-gradient-to-r from-cyan-500 to-purple-500 hover:opacity-90"
@@ -1642,7 +1695,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
             <h2 className="text-3xl font-bold text-white mb-4">
               Voice Builder Works Everywhere in SmartPromptIQ
             </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
+            <p className="text-gray-300 max-w-2xl mx-auto">
               Generate voice content directly from your app blueprints, courses, and prompts
             </p>
           </div>
@@ -1653,7 +1706,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                 <Rocket className="w-7 h-7 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">App Builder Integration</h3>
-              <p className="text-gray-400 text-sm mb-4">
+              <p className="text-gray-300 text-sm mb-4">
                 Generate a 60-second pitch narration directly from your app blueprint
               </p>
               <Button variant="outline" className="border-purple-500/50 text-purple-300" onClick={() => navigate('/builderiq')}>
@@ -1667,7 +1720,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                 <GraduationCap className="w-7 h-7 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Academy Integration</h3>
-              <p className="text-gray-400 text-sm mb-4">
+              <p className="text-gray-300 text-sm mb-4">
                 Create professional narrations for your course lessons and tutorials
               </p>
               <Button variant="outline" className="border-blue-500/50 text-blue-300" onClick={() => navigate('/academy')}>
@@ -1681,7 +1734,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
                 <Sparkles className="w-7 h-7 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Prompt Generator</h3>
-              <p className="text-gray-400 text-sm mb-4">
+              <p className="text-gray-300 text-sm mb-4">
                 Convert your generated marketing copy into professional voiceovers
               </p>
               <Button variant="outline" className="border-green-500/50 text-green-300" onClick={() => navigate('/categories')}>
@@ -1699,7 +1752,7 @@ Example: 'Welcome to SmartPromptIQ - the all-in-one platform for AI-powered cont
           <h2 className="text-3xl font-bold text-white mb-4">
             Ready to Give Your Content a Voice?
           </h2>
-          <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+          <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
             Start creating professional AI voiceovers today. Free preview available.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">

@@ -30,6 +30,8 @@ export const PremiumMusicLibrary: React.FC<PremiumMusicLibraryProps> = ({
   const [showWaveform, setShowWaveform] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
+  const isTransitioningRef = useRef(false);
 
   // Get filtered tracks
   const getFilteredTracks = (): PremiumTrack[] => {
@@ -50,17 +52,61 @@ export const PremiumMusicLibrary: React.FC<PremiumMusicLibraryProps> = ({
 
   const filteredTracks = getFilteredTracks();
 
-  // Audio controls
-  const playTrack = (track: PremiumTrack) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
+  // Safe pause helper - waits for any pending play to complete
+  const safePause = async () => {
+    if (!audioRef.current) return;
+
+    // If there's a pending play promise, wait for it
+    if (playPromiseRef.current) {
+      try {
+        await playPromiseRef.current;
+      } catch {
+        // Play was aborted, which is fine
+      }
+      playPromiseRef.current = null;
     }
+
+    audioRef.current.pause();
+  };
+
+  // Audio controls
+  const playTrack = async (track: PremiumTrack) => {
+    // Prevent rapid toggling during transitions
+    if (isTransitioningRef.current) {
+      console.log('Audio transition in progress, ignoring click');
+      return;
+    }
+
+    isTransitioningRef.current = true;
+
+    // Safely stop any current playback
+    await safePause();
 
     const audio = new Audio(track.audioUrl);
     audio.volume = volume;
     audioRef.current = audio;
 
-    audio.play().then(() => {
+    // Set up event handlers before playing
+    audio.onended = () => {
+      setIsPlaying(false);
+      setProgress(0);
+      setShowWaveform(false);
+      if (progressInterval.current) {
+        clearInterval(progressInterval.current);
+      }
+    };
+
+    audio.onerror = (e) => {
+      console.error('Audio error:', e);
+      setIsPlaying(false);
+      isTransitioningRef.current = false;
+    };
+
+    try {
+      playPromiseRef.current = audio.play();
+      await playPromiseRef.current;
+      playPromiseRef.current = null;
+
       setCurrentTrack(track);
       setIsPlaying(true);
       setShowWaveform(true);
@@ -71,45 +117,64 @@ export const PremiumMusicLibrary: React.FC<PremiumMusicLibraryProps> = ({
           setProgress((audio.currentTime / audio.duration) * 100);
         }
       }, 100);
-    }).catch(err => {
-      console.error('Audio playback failed:', err);
-    });
-
-    audio.onended = () => {
-      setIsPlaying(false);
-      setProgress(0);
-      setShowWaveform(false);
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
+    } catch (err: any) {
+      playPromiseRef.current = null;
+      // AbortError is expected when play is interrupted
+      if (err?.name !== 'AbortError') {
+        console.error('Audio playback failed:', err);
       }
-    };
-  };
-
-  const pauseTrack = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      setIsPlaying(false);
     }
+
+    isTransitioningRef.current = false;
   };
 
-  const resumeTrack = () => {
-    if (audioRef.current) {
-      audioRef.current.play();
+  const pauseTrack = async () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+
+    await safePause();
+    setIsPlaying(false);
+
+    isTransitioningRef.current = false;
+  };
+
+  const resumeTrack = async () => {
+    if (!audioRef.current || isTransitioningRef.current) return;
+
+    isTransitioningRef.current = true;
+
+    try {
+      playPromiseRef.current = audioRef.current.play();
+      await playPromiseRef.current;
+      playPromiseRef.current = null;
       setIsPlaying(true);
-    }
-  };
-
-  const stopTrack = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      setIsPlaying(false);
-      setProgress(0);
-      setShowWaveform(false);
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
+    } catch (err: any) {
+      playPromiseRef.current = null;
+      if (err?.name !== 'AbortError') {
+        console.error('Resume failed:', err);
       }
     }
+
+    isTransitioningRef.current = false;
+  };
+
+  const stopTrack = async () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+
+    await safePause();
+
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setProgress(0);
+    setShowWaveform(false);
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+    }
+
+    isTransitioningRef.current = false;
   };
 
   const handleVolumeChange = (newVolume: number) => {
@@ -128,6 +193,10 @@ export const PremiumMusicLibrary: React.FC<PremiumMusicLibraryProps> = ({
   // Cleanup
   useEffect(() => {
     return () => {
+      // Synchronous cleanup - just pause directly since we're unmounting
+      if (playPromiseRef.current) {
+        playPromiseRef.current.catch(() => {}); // Ignore any pending errors
+      }
       if (audioRef.current) {
         audioRef.current.pause();
       }

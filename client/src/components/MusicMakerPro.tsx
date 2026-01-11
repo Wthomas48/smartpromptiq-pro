@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useElevenLabsVoiceSafe } from '@/contexts/ElevenLabsVoiceContext';
 import { ELEVENLABS_VOICES } from '@/config/voices';
+import { getApiBaseUrl } from '@/config/api';
 import {
   Music, Play, Pause, Square, Download, Sparkles, Loader2,
   Volume2, Clock, Zap, RefreshCw, Wand2, Radio, Headphones,
@@ -259,7 +260,7 @@ const AIGenerationProgress: React.FC<{ progress: number; stage: string }> = ({ p
                   ? `bg-gradient-to-r ${s.color} scale-110`
                   : 'bg-slate-700 scale-100'
               }`}>
-                <s.icon className={`w-5 h-5 ${progress > i * 25 ? 'text-white' : 'text-gray-500'}`} />
+                <s.icon className={`w-5 h-5 ${progress > i * 25 ? 'text-white' : 'text-gray-400'}`} />
               </div>
               {i < stages.length - 1 && (
                 <div className={`w-8 h-1 mx-1 rounded transition-all duration-500 ${
@@ -279,7 +280,7 @@ const AIGenerationProgress: React.FC<{ progress: number; stage: string }> = ({ p
             <div className="absolute inset-0 bg-white/20 animate-shimmer" />
           </div>
         </div>
-        <p className="text-gray-500 mt-2">{Math.round(progress)}% Complete</p>
+        <p className="text-gray-400 mt-2">{Math.round(progress)}% Complete</p>
       </div>
     </div>
   );
@@ -361,7 +362,7 @@ const TrackCard: React.FC<{
             <Badge variant="outline" className="text-xs border-slate-600 text-gray-400">
               {track.genre}
             </Badge>
-            <span className="text-xs text-gray-500">{track.duration}s</span>
+            <span className="text-xs text-gray-400">{track.duration}s</span>
           </div>
         </div>
 
@@ -1328,20 +1329,73 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
   const trackCacheRef = useRef<Map<string, string>>(new Map());
   const [isLoadingTrack, setIsLoadingTrack] = useState(false);
 
+  // Track play promise to prevent race conditions
+  const playPromiseRef = useRef<Promise<void> | null>(null);
+  const isTransitioningRef = useRef(false);
+
+  // Safe pause helper - waits for any pending play to complete
+  const safePause = useCallback(async () => {
+    if (!audioRef.current) return;
+
+    // If there's a pending play promise, wait for it
+    if (playPromiseRef.current) {
+      try {
+        await playPromiseRef.current;
+      } catch {
+        // Play was aborted, which is fine
+      }
+      playPromiseRef.current = null;
+    }
+
+    audioRef.current.pause();
+  }, []);
+
+  // Safe play helper - tracks the promise
+  const safePlay = useCallback(async (): Promise<boolean> => {
+    if (!audioRef.current) return false;
+
+    try {
+      playPromiseRef.current = audioRef.current.play();
+      await playPromiseRef.current;
+      playPromiseRef.current = null;
+      return true;
+    } catch (err: any) {
+      playPromiseRef.current = null;
+      // AbortError is expected when play is interrupted - not a real error
+      if (err?.name === 'AbortError') {
+        console.log('Play interrupted (expected during transitions)');
+        return false;
+      }
+      console.error('Playback error:', err);
+      return false;
+    }
+  }, []);
+
   // Play track - generates audio on-demand using Web Audio API
   const playTrack = useCallback(async (track: any) => {
-    // If same track is playing, toggle pause/play
+    // Prevent rapid toggling during transitions
+    if (isTransitioningRef.current) {
+      console.log('Audio transition in progress, ignoring click');
+      return;
+    }
+
+    // If same track is playing, toggle pause
     if (selectedTrack?.id === track.id && isPlaying) {
-      audioRef.current?.pause();
+      isTransitioningRef.current = true;
+      await safePause();
       setIsPlaying(false);
+      isTransitioningRef.current = false;
       return;
     }
 
     // If same track is paused, resume
     if (selectedTrack?.id === track.id && !isPlaying && audioRef.current) {
-      audioRef.current.play()
-        .then(() => setIsPlaying(true))
-        .catch(err => console.log('Resume failed:', err));
+      isTransitioningRef.current = true;
+      const success = await safePlay();
+      if (success) {
+        setIsPlaying(true);
+      }
+      isTransitioningRef.current = false;
       return;
     }
 
@@ -1351,37 +1405,103 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
     // Use the track's audioUrl directly - all tracks now have real audio files
     let audioUrl = track.audioUrl;
 
-    // If no audioUrl, show error
+    // If no audioUrl (saved track from localStorage), regenerate audio
     if (!audioUrl) {
-      toast({
-        title: 'Track Unavailable',
-        description: 'This track does not have an audio file.',
-        variant: 'destructive',
-      });
-      return;
+      // Check if we have a cached version
+      const cachedUrl = trackCacheRef.current.get(track.id);
+      if (cachedUrl) {
+        audioUrl = cachedUrl;
+      } else {
+        // Need to regenerate audio for this track
+        setIsLoadingTrack(true);
+        toast({
+          title: 'Generating Audio...',
+          description: `Recreating "${track.name}"`,
+        });
+
+        try {
+          // Generate audio based on track's genre
+          const genre = track.genre || 'upbeat';
+          const duration = track.duration || 30;
+          audioUrl = await generateProceduralTrack(genre, Math.min(duration, 30));
+
+          if (audioUrl) {
+            // Cache the generated audio
+            trackCacheRef.current.set(track.id, audioUrl);
+            toast({
+              title: 'Audio Ready',
+              description: `Now playing "${track.name}"`,
+            });
+          } else {
+            throw new Error('Failed to generate audio');
+          }
+        } catch (err) {
+          console.error('Track regeneration error:', err);
+          toast({
+            title: 'Playback Failed',
+            description: 'Could not generate audio for this track.',
+            variant: 'destructive',
+          });
+          setIsLoadingTrack(false);
+          return;
+        } finally {
+          setIsLoadingTrack(false);
+        }
+      }
     }
 
     if (audioRef.current && audioUrl) {
+      isTransitioningRef.current = true;
+
+      // First, safely stop any current playback
+      await safePause();
+
+      // Set new source and volume
       audioRef.current.src = audioUrl;
       audioRef.current.volume = volume;
-      audioRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-          toast({
-            title: `▶️ Now Playing`,
-            description: `${track.name}`,
-          });
-        })
-        .catch((err) => {
-          console.error('Playback error:', err);
-          toast({
-            title: 'Click to Enable Audio',
-            description: 'Browser requires interaction before playing',
-            variant: 'destructive',
-          });
-        });
+
+      // Wait for audio to be ready before playing
+      audioRef.current.oncanplaythrough = async () => {
+        if (audioRef.current) {
+          const success = await safePlay();
+          if (success) {
+            setIsPlaying(true);
+            toast({
+              title: `▶️ Now Playing`,
+              description: `${track.name}`,
+            });
+          } else {
+            toast({
+              title: 'Click to Enable Audio',
+              description: 'Browser requires interaction before playing',
+              variant: 'destructive',
+            });
+          }
+          isTransitioningRef.current = false;
+        }
+      };
+
+      // Also handle immediate play for cached audio
+      audioRef.current.onloadeddata = () => {
+        // oncanplaythrough will handle the actual play
+      };
+
+      // Fallback: try playing after a short delay if oncanplaythrough doesn't fire
+      setTimeout(async () => {
+        if (isTransitioningRef.current && audioRef.current && audioRef.current.src === audioUrl) {
+          const success = await safePlay();
+          if (success) {
+            setIsPlaying(true);
+            toast({
+              title: `▶️ Now Playing`,
+              description: `${track.name}`,
+            });
+          }
+          isTransitioningRef.current = false;
+        }
+      }, 500);
     }
-  }, [selectedTrack, isPlaying, volume, toast]);
+  }, [selectedTrack, isPlaying, volume, toast, safePause, safePlay]);
 
   // Toggle like
   const toggleLike = useCallback((trackId: string) => {
@@ -1432,9 +1552,13 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
         // Build a rich prompt for sound effect generation
         const soundPrompt = `${detectedGenre} music background, ${generationPrompt}, ${trackDuration > 10 ? 'ambient atmosphere' : 'musical elements'}`;
 
-        const elevenLabsResponse = await fetch('/api/elevenlabs/sound-effects/generate', {
+        const baseUrl = getApiBaseUrl();
+        const elevenLabsResponse = await fetch(`${baseUrl}/api/elevenlabs/sound-effects/generate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
           body: JSON.stringify({
             prompt: soundPrompt,
             duration: trackDuration,
@@ -1512,17 +1636,35 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
       });
 
       // Auto-play after a short delay
-      setTimeout(() => {
+      setTimeout(async () => {
         setIsGenerating(false);
         setSelectedTrack(newTrack);
 
-        // Play the new track
+        // Play the new track using safe play pattern
         if (audioRef.current) {
+          // First safely pause any current playback
+          await safePause();
+
           audioRef.current.src = audioUrl;
           audioRef.current.volume = volume;
-          audioRef.current.play()
-            .then(() => setIsPlaying(true))
-            .catch(err => console.log('Auto-play blocked:', err));
+
+          // Wait for audio to load before playing
+          audioRef.current.oncanplaythrough = async () => {
+            const success = await safePlay();
+            if (success) {
+              setIsPlaying(true);
+            }
+          };
+
+          // Fallback for cached/fast loading audio
+          setTimeout(async () => {
+            if (audioRef.current && !isPlaying && audioRef.current.src === audioUrl) {
+              const success = await safePlay();
+              if (success) {
+                setIsPlaying(true);
+              }
+            }
+          }, 300);
         }
 
         // Switch to studio tab to show the new track
@@ -1538,7 +1680,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
       });
       setIsGenerating(false);
     }
-  }, [generationPrompt, selectedGenre, musicDuration, withVocals, volume, toast]);
+  }, [generationPrompt, selectedGenre, musicDuration, withVocals, volume, toast, safePause, safePlay, isPlaying]);
 
   // Helper to detect genre from prompt text - ENHANCED with all 16 genres
   const detectGenreFromPrompt = (prompt: string): string => {
@@ -1667,7 +1809,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                         value={generationPrompt}
                         onChange={(e) => setGenerationPrompt(e.target.value)}
                         placeholder="Example: An uplifting corporate track with piano and strings, perfect for a tech startup video..."
-                        className="min-h-28 bg-slate-800/50 border-slate-600 text-white placeholder:text-gray-500"
+                        className="min-h-28 bg-slate-800/50 border-slate-600 text-white placeholder:text-gray-400"
                       />
                     </div>
 
@@ -1696,7 +1838,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                       <div className="flex items-center justify-between mb-3">
                         <label className="text-gray-300 text-sm font-medium">Select Genre</label>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">Preview:</span>
+                          <span className="text-xs text-gray-400">Preview:</span>
                           <Select value={previewDuration.toString()} onValueChange={(v) => setPreviewDuration(Number(v))}>
                             <SelectTrigger className="w-20 h-7 bg-slate-800 border-slate-600 text-white text-xs">
                               <SelectValue />
@@ -1842,7 +1984,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                         {/* Instrument Focus */}
                         <div>
                           <label className="text-gray-300 text-sm font-medium mb-3 block">
-                            Instrument Focus <span className="text-gray-500">(select multiple)</span>
+                            Instrument Focus <span className="text-gray-400">(select multiple)</span>
                           </label>
                           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                             {instrumentOptions.map((inst) => (
@@ -1968,7 +2110,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                             placeholder={voiceStyle === 'singing'
                               ? "Enter your song lyrics here..."
                               : "Enter the text to be spoken over the music..."}
-                            className="min-h-24 bg-slate-800/50 border-slate-600 text-white placeholder:text-gray-500"
+                            className="min-h-24 bg-slate-800/50 border-slate-600 text-white placeholder:text-gray-400"
                           />
                         </div>
 
@@ -1990,7 +2132,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                           Preview Voice
                         </Button>
 
-                        <p className="text-xs text-gray-500 text-center">
+                        <p className="text-xs text-gray-400 text-center">
                           Voice will be layered over generated music using ElevenLabs
                         </p>
                       </div>
@@ -2020,7 +2162,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                       Generate Music with AI
                     </Button>
 
-                    <p className="text-center text-gray-500 text-sm">
+                    <p className="text-center text-gray-400 text-sm">
                       16 genres • 8 moods • Professional quality • ~75 tokens per track
                     </p>
                   </CardContent>
@@ -2092,7 +2234,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                             <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-300">
                               {track.genre}
                             </Badge>
-                            <span className="text-xs text-gray-500">{track.duration}s</span>
+                            <span className="text-xs text-gray-400">{track.duration}s</span>
                             {track.createdAt && (
                               <span className="text-xs text-gray-600">
                                 {new Date(track.createdAt).toLocaleDateString()}
@@ -2167,7 +2309,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                       {/* Prompt display */}
                       {track.prompt && (
                         <div className="mt-3 p-2 bg-slate-900/50 rounded-lg">
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-400">
                             <span className="text-purple-400">Prompt:</span> {track.prompt}
                           </p>
                         </div>
@@ -2200,7 +2342,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                 <CardContent className="p-12 text-center">
                   <Disc3 className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-400 mb-2">No tracks yet</h3>
-                  <p className="text-gray-500 mb-6">Generate your first AI track to see it here</p>
+                  <p className="text-gray-400 mb-6">Generate your first AI track to see it here</p>
                   <Button onClick={() => setActiveTab('generate')} className="bg-gradient-to-r from-purple-500 to-pink-500">
                     <Wand2 className="w-4 h-4 mr-2" />
                     Create Your First Track
@@ -2271,7 +2413,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
               {/* Progress & Volume */}
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex-1 flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-10">
+                  <span className="text-xs text-gray-400 w-10">
                     {audioRef.current ? Math.floor(audioRef.current.currentTime) : 0}s
                   </span>
                   <div
@@ -2289,7 +2431,7 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
                       style={{ width: `${playbackProgress}%` }}
                     />
                   </div>
-                  <span className="text-xs text-gray-500 w-10">
+                  <span className="text-xs text-gray-400 w-10">
                     {audioRef.current ? Math.floor(audioRef.current.duration || 0) : selectedTrack.duration}s
                   </span>
                 </div>
@@ -2326,12 +2468,23 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
       {/* Hidden Audio Element */}
       <audio
         ref={audioRef}
-        onEnded={() => {
+        onEnded={async () => {
           setIsPlaying(false);
           setPlaybackProgress(0);
           if (isLooping && audioRef.current) {
             audioRef.current.currentTime = 0;
-            audioRef.current.play();
+            // Use safe play for looping
+            try {
+              playPromiseRef.current = audioRef.current.play();
+              await playPromiseRef.current;
+              playPromiseRef.current = null;
+              setIsPlaying(true);
+            } catch (err: any) {
+              playPromiseRef.current = null;
+              if (err?.name !== 'AbortError') {
+                console.error('Loop play error:', err);
+              }
+            }
           }
         }}
         onPlay={() => setIsPlaying(true)}
@@ -2340,6 +2493,10 @@ const MusicMakerPro: React.FC<MusicMakerProProps> = ({ onMusicSelected, compact 
           if (audioRef.current?.duration) {
             setPlaybackProgress((audioRef.current.currentTime / audioRef.current.duration) * 100);
           }
+        }}
+        onError={(e) => {
+          console.error('Audio element error:', e);
+          setIsPlaying(false);
         }}
         className="hidden"
       />

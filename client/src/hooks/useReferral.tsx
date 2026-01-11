@@ -125,11 +125,16 @@ export function useReferral(): UseReferralReturn {
   const fetchLeaderboard = useCallback(async () => {
     try {
       const response = await apiRequest('GET', '/api/referral/leaderboard');
-      if (response.success) {
+      if (response.success && Array.isArray(response.data)) {
         setLeaderboard(response.data);
+      } else {
+        // Return empty leaderboard if response is invalid
+        setLeaderboard([]);
       }
     } catch (err: any) {
-      console.error('Failed to fetch leaderboard:', err);
+      // Silently handle errors - just set empty leaderboard
+      console.log('Leaderboard not available:', err.message);
+      setLeaderboard([]);
     }
   }, []);
 

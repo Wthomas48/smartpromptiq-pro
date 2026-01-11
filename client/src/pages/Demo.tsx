@@ -144,7 +144,9 @@ const OutputSection = memo(({
         backgroundColor: generatedContent ? '#f0fdf4' : '#f9fafb',
         borderRadius: '16px',
         boxShadow: generatedContent ? '0 0 20px rgba(16, 185, 129, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
-        animation: generatedContent ? 'borderGlow 2s ease-in-out' : 'none'
+        animationName: generatedContent ? 'borderGlow' : 'none',
+        animationDuration: generatedContent ? '2s' : '0s',
+        animationTimingFunction: 'ease-in-out'
       }}
     >
       <div className="bg-white border-2 border-green-300 rounded-2xl shadow-2xl overflow-hidden">
@@ -2308,7 +2310,9 @@ This comprehensive development plan provides a roadmap to successfully launch Fi
                         backgroundColor: generatedContent ? '#f0fdf4' : '#f9fafb',
                         borderRadius: '16px',
                         boxShadow: generatedContent ? '0 0 20px rgba(16, 185, 129, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
-                        animation: generatedContent ? 'borderGlow 2s ease-in-out' : 'none'
+                        animationName: generatedContent ? 'borderGlow' : 'none',
+                        animationDuration: generatedContent ? '2s' : '0s',
+                        animationTimingFunction: 'ease-in-out'
                       }}
                     >
                       <div className={`rounded-2xl p-6 border-2 ${

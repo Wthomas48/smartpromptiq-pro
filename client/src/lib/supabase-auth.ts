@@ -104,7 +104,18 @@ function getReadableAuthError(error: any): string {
 // ============================================================================
 
 export async function fetchOwnProfileWithRetry(userId?: string, retries = 5): Promise<UserProfile | null> {
-  const id = userId || (await supabase.auth.getUser()).data.user?.id
+  let id = userId;
+  if (!id) {
+    try {
+      const result = await supabase.auth.getUser();
+      id = result.data.user?.id;
+    } catch (e: any) {
+      // Silently handle 403 errors (expected for unauthenticated users)
+      if (e?.code !== 403 && e?.status !== 403) {
+        console.error('Error getting user:', e);
+      }
+    }
+  }
   if (!id) throw new Error('No user ID available')
 
   for (let i = 0; i < retries; i++) {
@@ -131,7 +142,16 @@ export async function fetchOwnProfileWithRetry(userId?: string, retries = 5): Pr
 export async function updateOwnProfile(
   updates: Partial<Pick<UserProfile, 'full_name' | 'avatar_url'>>
 ): Promise<UserProfile> {
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data?.user;
+  } catch (e: any) {
+    // Silently handle 403 errors
+    if (e?.code !== 403 && e?.status !== 403) {
+      throw e;
+    }
+  }
   if (!user) throw new Error('Not authenticated')
 
   const { data, error } = await supabase
@@ -302,7 +322,20 @@ export function useSupabaseAuth(): UseSupabaseAuth {
     const initializeAuth = async () => {
       try {
         console.log('🔄 Initializing Supabase auth...')
-        const { data: { session }, error } = await supabase.auth.getSession()
+        let session = null;
+        let error = null;
+        try {
+          const result = await supabase.auth.getSession();
+          session = result.data?.session;
+          error = result.error;
+        } catch (e: any) {
+          // Silently handle 403 errors (expected for unauthenticated users)
+          if (e?.code === 403 || e?.status === 403) {
+            console.log('ℹ️ No active session (user not authenticated)');
+          } else {
+            error = e;
+          }
+        }
 
         if (error) throw error
 

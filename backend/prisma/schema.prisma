@@ -59,6 +59,7 @@ model User {
   templates              Template[]
   subscriptions          Subscription[]
   tokenTransactions      TokenTransaction[]
+  tokenPurchases         TokenPurchase[]
   usageLogs              UsageLog[]
   prompts                Prompt[]
   feedback               Feedback[]
@@ -68,6 +69,7 @@ model User {
   lessonProgress         LessonProgress[]
   certificates           Certificate[]
   courseReviews          CourseReview[]
+  academySubscription    AcademySubscription?
 
   @@map("users")
 }
@@ -262,6 +264,35 @@ model TokenTransaction {
   @@index([userId, type])
   @@index([expiresAt])
   @@map("token_transactions")
+}
+
+// Token Purchase record for idempotency and audit trail
+model TokenPurchase {
+  id     String @id @default(cuid())
+  userId String
+
+  // Purchase details
+  tokenCount    Int    // Number of tokens purchased
+  amountInCents Int    // Amount paid in cents
+  packageKey    String // small, medium, large, bulk
+
+  // Stripe integration - unique to prevent double-crediting
+  stripePaymentIntentId String @unique
+
+  // Status
+  status String @default("completed") // pending, completed, refunded, failed
+
+  // Metadata
+  expiresAt DateTime? // Token expiration date (90 days from purchase)
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stripePaymentIntentId])
+  @@index([createdAt])
+  @@map("token_purchases")
 }
 
 model UsageLog {
@@ -645,6 +676,8 @@ model AcademySubscription {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])

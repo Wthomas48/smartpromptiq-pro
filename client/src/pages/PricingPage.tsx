@@ -255,7 +255,7 @@ export default function PricingPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           {/* Hero Section */}
           <div className="text-center mb-16">
@@ -264,10 +264,10 @@ export default function PricingPage() {
                 <Sparkles className="w-8 h-8 text-white" />
               </div>
             </div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-4">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
               Learn Prompt Engineering. Build AI Tools. All in One Platform.
             </h1>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8">
+            <p className="text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto mb-8">
               Choose Academy Only for education, Pro for full platform access, or Team Pro for collaboration.
               Start free or choose a plan that scales with your needs.
             </p>
@@ -284,13 +284,13 @@ export default function PricingPage() {
 
           {/* Billing Toggle */}
           <div className="flex justify-center mb-12">
-            <div className="bg-white p-1 rounded-lg border shadow-sm">
+            <div className="bg-white dark:bg-slate-800 p-1 rounded-lg border dark:border-slate-700 shadow-sm">
               <button
                 onClick={() => setBillingCycle('monthly')}
                 className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingCycle === 'monthly'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 Monthly
@@ -300,7 +300,7 @@ export default function PricingPage() {
                 className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                   billingCycle === 'yearly'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 Yearly
@@ -333,18 +333,18 @@ export default function PricingPage() {
           </div>
 
           {/* Features Comparison */}
-          <Card className="mb-16">
+          <Card className="mb-16 dark:bg-slate-800 dark:border-slate-700">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Feature Comparison</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl dark:text-white">Feature Comparison</CardTitle>
+              <CardDescription className="dark:text-slate-300">
                 Compare features across all plans to find what's right for you
               </CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm dark:text-gray-200">
                 <thead>
-                  <tr className="border-b bg-slate-50">
-                    <th className="text-left p-3 font-medium sticky left-0 bg-slate-50">Feature</th>
+                  <tr className="border-b bg-slate-50 dark:bg-slate-700 dark:border-slate-600">
+                    <th className="text-left p-3 font-medium sticky left-0 bg-slate-50 dark:bg-slate-700 dark:text-white">Feature</th>
                     <th className="text-center p-3 font-medium">Free</th>
                     <th className="text-center p-3 font-medium text-blue-600">Starter</th>
                     <th className="text-center p-3 font-medium text-teal-600">Academy+</th>
@@ -355,8 +355,8 @@ export default function PricingPage() {
                 </thead>
                 <tbody>
                   {/* PRICING ROW */}
-                  <tr className="border-b bg-gradient-to-r from-indigo-50 to-purple-50">
-                    <td className="p-3 font-semibold sticky left-0 bg-gradient-to-r from-indigo-50 to-purple-50">Monthly Price</td>
+                  <tr className="border-b bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 dark:border-slate-600">
+                    <td className="p-3 font-semibold sticky left-0 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30">Monthly Price</td>
                     <td className="text-center p-3 font-bold">Free</td>
                     <td className="text-center p-3 font-bold text-blue-600">$19</td>
                     <td className="text-center p-3 font-bold text-teal-600">$29</td>
@@ -366,11 +366,11 @@ export default function PricingPage() {
                   </tr>
 
                   {/* CREATIVE TOOLS SECTION */}
-                  <tr className="border-b bg-purple-100">
-                    <td className="p-3 font-semibold sticky left-0 bg-purple-100" colSpan={7}>CREATIVE TOOLS</td>
+                  <tr className="border-b bg-purple-100 dark:bg-purple-900/30 dark:border-slate-600">
+                    <td className="p-3 font-semibold sticky left-0 bg-purple-100 dark:bg-purple-900/30" colSpan={7}>CREATIVE TOOLS</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">AI Prompts/Month</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">AI Prompts/Month</td>
                     <td className="text-center p-3">5</td>
                     <td className="text-center p-3">50</td>
                     <td className="text-center p-3">100</td>
@@ -378,8 +378,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">1,000</td>
                     <td className="text-center p-3 font-medium text-green-600">5,000+</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Voice Generations</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Voice Generations</td>
                     <td className="text-center p-3">5</td>
                     <td className="text-center p-3">50</td>
                     <td className="text-center p-3">75</td>
@@ -387,8 +387,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">500</td>
                     <td className="text-center p-3 font-medium text-green-600">Unlimited</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Suno Music Tracks</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Suno Music Tracks</td>
                     <td className="text-center p-3">3</td>
                     <td className="text-center p-3">10</td>
                     <td className="text-center p-3">20</td>
@@ -396,8 +396,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">150</td>
                     <td className="text-center p-3 font-medium text-green-600">Unlimited</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Image Generations</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Image Generations</td>
                     <td className="text-center p-3">5</td>
                     <td className="text-center p-3">30</td>
                     <td className="text-center p-3">50</td>
@@ -405,8 +405,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">300</td>
                     <td className="text-center p-3 font-medium text-green-600">Unlimited</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Video Exports</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Video Exports</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3">5</td>
                     <td className="text-center p-3">10</td>
@@ -414,8 +414,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">100</td>
                     <td className="text-center p-3 font-medium text-green-600">Unlimited</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Intro/Outro Videos</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Intro/Outro Videos</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3">5</td>
                     <td className="text-center p-3">10</td>
@@ -423,8 +423,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">100</td>
                     <td className="text-center p-3 font-medium text-green-600">Unlimited</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">BuilderIQ Blueprints</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">BuilderIQ Blueprints</td>
                     <td className="text-center p-3">1</td>
                     <td className="text-center p-3">3</td>
                     <td className="text-center p-3">5</td>
@@ -434,11 +434,11 @@ export default function PricingPage() {
                   </tr>
 
                   {/* ACADEMY SECTION */}
-                  <tr className="border-b bg-teal-100">
-                    <td className="p-3 font-semibold sticky left-0 bg-teal-100" colSpan={7}>ACADEMY & EDUCATION</td>
+                  <tr className="border-b bg-teal-100 dark:bg-teal-900/30 dark:border-slate-600">
+                    <td className="p-3 font-semibold sticky left-0 bg-teal-100 dark:bg-teal-900/30" colSpan={7}>ACADEMY & EDUCATION</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Academy Courses</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Academy Courses</td>
                     <td className="text-center p-3">3 courses</td>
                     <td className="text-center p-3">3 courses</td>
                     <td className="text-center p-3 font-medium text-green-600">All 57</td>
@@ -446,8 +446,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium text-green-600">All 57</td>
                     <td className="text-center p-3 font-medium text-green-600">All 57</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Certificates</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Certificates</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-green-600">✓</td>
@@ -455,8 +455,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 text-green-600">✓</td>
                     <td className="text-center p-3 font-medium text-green-600">Custom Branded</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Playground Tests</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Playground Tests</td>
                     <td className="text-center p-3">5/mo</td>
                     <td className="text-center p-3">25/mo</td>
                     <td className="text-center p-3">50/mo</td>
@@ -466,38 +466,29 @@ export default function PricingPage() {
                   </tr>
 
                   {/* QUALITY & EXPORT SECTION */}
-                  <tr className="border-b bg-blue-100">
-                    <td className="p-3 font-semibold sticky left-0 bg-blue-100" colSpan={7}>QUALITY & EXPORTS</td>
+                  <tr className="border-b bg-blue-100 dark:bg-blue-900/30 dark:border-slate-600">
+                    <td className="p-3 font-semibold sticky left-0 bg-blue-100 dark:bg-blue-900/30" colSpan={7}>QUALITY & EXPORTS</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">HD Video Export (1080p)</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">HD Video Export (1080p)</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-green-600">✓</td>
                     <td className="text-center p-3 text-green-600">✓</td>
-                    <td className="text-center p-3 text-green-600">✓</td>
-                    <td className="text-center p-3 text-green-600">✓</td>
-                    <td className="text-center p-3 text-green-600">✓</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">4K Video Export</td>
-                    <td className="text-center p-3 text-gray-400">—</td>
-                    <td className="text-center p-3 text-gray-400">—</td>
-                    <td className="text-center p-3 text-gray-400">—</td>
-                    <td className="text-center p-3 text-gray-400">—</td>
-                    <td className="text-center p-3 text-green-600">✓</td>
-                    <td className="text-center p-3 text-green-600">✓</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Remove Watermarks</td>
-                    <td className="text-center p-3 text-gray-400">—</td>
-                    <td className="text-center p-3 text-gray-400">—</td>
-                    <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-green-600">✓</td>
                     <td className="text-center p-3 text-green-600">✓</td>
                     <td className="text-center p-3 text-green-600">✓</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Commercial License</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">4K Video Export</td>
+                    <td className="text-center p-3 text-gray-400">—</td>
+                    <td className="text-center p-3 text-gray-400">—</td>
+                    <td className="text-center p-3 text-gray-400">—</td>
+                    <td className="text-center p-3 text-gray-400">—</td>
+                    <td className="text-center p-3 text-green-600">✓</td>
+                    <td className="text-center p-3 text-green-600">✓</td>
+                  </tr>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Remove Watermarks</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
@@ -505,8 +496,17 @@ export default function PricingPage() {
                     <td className="text-center p-3 text-green-600">✓</td>
                     <td className="text-center p-3 text-green-600">✓</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Priority Queue</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Commercial License</td>
+                    <td className="text-center p-3 text-gray-400">—</td>
+                    <td className="text-center p-3 text-gray-400">—</td>
+                    <td className="text-center p-3 text-gray-400">—</td>
+                    <td className="text-center p-3 text-green-600">✓</td>
+                    <td className="text-center p-3 text-green-600">✓</td>
+                    <td className="text-center p-3 text-green-600">✓</td>
+                  </tr>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Priority Queue</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
@@ -516,11 +516,11 @@ export default function PricingPage() {
                   </tr>
 
                   {/* TEAM & API SECTION */}
-                  <tr className="border-b bg-amber-100">
-                    <td className="p-3 font-semibold sticky left-0 bg-amber-100" colSpan={7}>TEAM & API</td>
+                  <tr className="border-b bg-amber-100 dark:bg-amber-900/30 dark:border-slate-600">
+                    <td className="p-3 font-semibold sticky left-0 bg-amber-100 dark:bg-amber-900/30" colSpan={7}>TEAM & API</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Team Members</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Team Members</td>
                     <td className="text-center p-3">1</td>
                     <td className="text-center p-3">1</td>
                     <td className="text-center p-3">1</td>
@@ -528,8 +528,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">2-5</td>
                     <td className="text-center p-3 font-medium text-green-600">Unlimited</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">API Access</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">API Access</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
@@ -537,8 +537,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">1,000/mo</td>
                     <td className="text-center p-3 font-medium text-green-600">Unlimited</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Team Workspace</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Team Workspace</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
@@ -546,8 +546,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 text-green-600">✓</td>
                     <td className="text-center p-3 text-green-600">✓</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">White-label</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">White-label</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
                     <td className="text-center p-3 text-gray-400">—</td>
@@ -557,11 +557,11 @@ export default function PricingPage() {
                   </tr>
 
                   {/* SUPPORT SECTION */}
-                  <tr className="border-b bg-green-100">
-                    <td className="p-3 font-semibold sticky left-0 bg-green-100" colSpan={7}>SUPPORT</td>
+                  <tr className="border-b bg-green-100 dark:bg-green-900/30 dark:border-slate-600">
+                    <td className="p-3 font-semibold sticky left-0 bg-green-100 dark:bg-green-900/30" colSpan={7}>SUPPORT</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Support Level</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Support Level</td>
                     <td className="text-center p-3">Community</td>
                     <td className="text-center p-3">Email</td>
                     <td className="text-center p-3">Email</td>
@@ -569,8 +569,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">Priority Chat</td>
                     <td className="text-center p-3 font-medium text-green-600">Dedicated Manager</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">Response Time</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Response Time</td>
                     <td className="text-center p-3">48-72h</td>
                     <td className="text-center p-3">24-48h</td>
                     <td className="text-center p-3">24-48h</td>
@@ -578,8 +578,8 @@ export default function PricingPage() {
                     <td className="text-center p-3 font-medium">4-12h</td>
                     <td className="text-center p-3 font-medium text-green-600">1-4h</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="p-3 sticky left-0 bg-white">History Retention</td>
+                  <tr className="border-b dark:border-slate-600">
+                    <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">History Retention</td>
                     <td className="text-center p-3">7 days</td>
                     <td className="text-center p-3">14 days</td>
                     <td className="text-center p-3">30 days</td>
@@ -593,29 +593,29 @@ export default function PricingPage() {
           </Card>
 
           {/* Add-on Packages */}
-          <Card className="mb-16">
+          <Card className="mb-16 dark:bg-slate-800 dark:border-slate-700">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Need More? Add-on Packages</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl dark:text-white">Need More? Add-on Packages</CardTitle>
+              <CardDescription className="dark:text-slate-300">
                 Boost your limits with one-time add-on purchases
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {ADDON_PACKAGES.map((pkg) => (
-                  <Card key={pkg.key} className={`relative ${pkg.popular ? 'ring-2 ring-indigo-500' : ''}`}>
+                  <Card key={pkg.key} className={`relative dark:bg-slate-700 dark:border-slate-600 ${pkg.popular ? 'ring-2 ring-indigo-500' : ''}`}>
                     {pkg.popular && (
                       <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
                         <Badge className="bg-indigo-600 text-white text-xs">Best Value</Badge>
                       </div>
                     )}
                     <CardContent className="p-4 text-center">
-                      <h3 className="font-bold text-lg mb-1">{pkg.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2">{pkg.description}</p>
-                      <div className="text-2xl font-bold text-indigo-600 mb-3">
+                      <h3 className="font-bold text-lg mb-1 dark:text-white">{pkg.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{pkg.description}</p>
+                      <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-3">
                         ${(pkg.priceInCents / 100).toFixed(2)}
                       </div>
-                      <div className="text-xs text-gray-500 space-y-1">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                         {pkg.contents.prompts && <div>+{pkg.contents.prompts} prompts</div>}
                         {pkg.contents.voices && <div>+{pkg.contents.voices} voices</div>}
                         {pkg.contents.music && <div>+{pkg.contents.music} music tracks</div>}
@@ -635,14 +635,14 @@ export default function PricingPage() {
 
   // Authenticated user view
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">
+          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
             Billing & Subscriptions
           </h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+          <p className="text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto">
             Manage your subscription, track usage, and purchase additional tokens
           </p>
         </div>
@@ -661,7 +661,7 @@ export default function PricingPage() {
         )}
 
         {/* Main Content Tabs */}
-        <Card>
+        <Card className="dark:bg-slate-800 dark:border-slate-700">
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <div className="border-b">
@@ -714,13 +714,13 @@ export default function PricingPage() {
 
                     {/* Billing Cycle Toggle */}
                     <div className="flex justify-center">
-                      <div className="bg-white p-1 rounded-lg border">
+                      <div className="bg-white dark:bg-slate-700 p-1 rounded-lg border dark:border-slate-600">
                         <button
                           onClick={() => setBillingCycle('monthly')}
                           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                             billingCycle === 'monthly'
                               ? 'bg-indigo-600 text-white'
-                              : 'text-slate-600 hover:text-slate-900'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                           }`}
                         >
                           Monthly
@@ -730,7 +730,7 @@ export default function PricingPage() {
                           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                             billingCycle === 'yearly'
                               ? 'bg-indigo-600 text-white'
-                              : 'text-slate-600 hover:text-slate-900'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                           }`}
                         >
                           Yearly
@@ -775,7 +775,7 @@ export default function PricingPage() {
 
                 <TabsContent value="usage" className="mt-0">
                   <div className="text-center py-8">
-                    <p className="text-gray-500">Detailed usage analytics coming soon...</p>
+                    <p className="text-gray-500 dark:text-gray-400">Detailed usage analytics coming soon...</p>
                   </div>
                 </TabsContent>
               </div>

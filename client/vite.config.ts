@@ -17,6 +17,16 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    host: true, // Allow external connections
+    hmr: {
+      // Configure HMR to be more resilient
+      protocol: 'ws',
+      host: 'localhost',
+      port: 5173,
+      clientPort: 5173,
+      timeout: 5000,
+      overlay: false, // Don't show error overlay for HMR issues
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
@@ -28,9 +38,9 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false,
+    sourcemap: 'hidden', // Generate sourcemaps but don't expose to users - upload to error tracking
     minify: true,
-    target: 'esnext',
+    target: 'es2019', // ES2019 for broader compatibility (supports optional chaining)
     rollupOptions: {
       output: {
         // Force new file hashes to bust cache
@@ -48,8 +58,17 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1500
   },
+  optimizeDeps: {
+    include: [
+      '@supabase/supabase-js',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-label',
+      'class-variance-authority'
+    ],
+    force: false
+  },
   esbuild: {
-    target: 'esnext',
+    target: 'es2019', // Match build target for consistency
     minify: true
   },
   preview: {

@@ -5,16 +5,34 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     <meta name="cache-bust" content="nuclear-deploy-v1758587431914" />
+
+    <!-- CSP Meta Tag (fallback for static hosting, backend helmet takes precedence) -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com https://m.stripe.network https://m.stripe.com https://b.stripecdn.com https://www.google.com https://www.gstatic.com https://apis.google.com https://cdnjs.cloudflare.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://checkout.stripe.com https://cdnjs.cloudflare.com;
+      font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+      img-src 'self' data: blob: https: https://*.stripe.com https://*.supabase.co;
+      media-src 'self' blob: data: https://www.soundhelix.com https://*.supabase.co https://api.elevenlabs.io https://*.elevenlabs.io;
+      connect-src 'self' https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://m.stripe.com https://*.supabase.co wss://*.supabase.co https://api.openai.com https://api.anthropic.com https://api.elevenlabs.io https://*.railway.app wss://*.railway.app http://localhost:* ws://localhost:*;
+      frame-src 'self' https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://www.google.com;
+      worker-src 'self' blob:;
+      child-src 'self' blob:;
+      object-src 'none';
+      form-action 'self' https://checkout.stripe.com;
+    ">
+
     <title>Smart PromptIQ - Transform Ideas into AI-Powered Blueprints</title>
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#8b5cf6" />
     <meta name="msapplication-TileColor" content="#8b5cf6" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SmartPromptIQ" />
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
 
     <!-- SEO Meta Tags -->
     <meta name="description" content="Smart PromptIQ revolutionizes how you create. Generate comprehensive AI-powered prompts for business strategies, creative briefs, and technical projects. Transform your ideas into actionable blueprints that drive results." />
@@ -82,17 +100,35 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Registration - DELAYED to prevent TDZ errors -->
     <script>
       if ('serviceWorker' in navigator) {
+        // CRITICAL: Delay SW registration until React app is fully initialized
+        // This prevents "Cannot access 'X' before initialization" errors
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('ServiceWorker registered:', registration.scope);
-            })
-            .catch((error) => {
-              console.log('ServiceWorker registration failed:', error);
-            });
+          // Wait for React to hydrate before registering SW
+          setTimeout(() => {
+            navigator.serviceWorker.register('/sw.js')
+              .then((registration) => {
+                console.log('ServiceWorker registered:', registration.scope);
+
+                // Handle updates - prompt user to refresh
+                registration.addEventListener('updatefound', () => {
+                  const newWorker = registration.installing;
+                  if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // New version available - can dispatch event or show toast
+                        console.log('New version available - refresh to update');
+                      }
+                    });
+                  }
+                });
+              })
+              .catch((error) => {
+                console.log('ServiceWorker registration failed:', error);
+              });
+          }, 2000); // 2 second delay ensures React is fully mounted
         });
       }
     </script>

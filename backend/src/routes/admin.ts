@@ -1,9 +1,121 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
+import Stripe from 'stripe';
 import { authenticate } from '../middleware/auth';
 import prisma from '../config/database';
+import { logger } from '../lib/logger';
 
 const router = express.Router();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE CONFIGURATION FOR ADMIN PAYMENT VERIFICATION
+// ═══════════════════════════════════════════════════════════════════════════════
+let stripe: Stripe | null = null;
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+if (stripeSecretKey && (stripeSecretKey.startsWith('sk_live_') || stripeSecretKey.startsWith('sk_test_'))) {
+  stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
+  console.log('✅ Admin routes: Stripe initialized for payment verification');
+} else {
+  console.warn('⚠️ Admin routes: Stripe not configured - payment verification disabled');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN SEED ENDPOINT (One-time setup, protected by secret key)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import bcrypt from 'bcryptjs';
+
+/**
+ * POST /api/admin/seed
+ * Creates or updates the admin user
+ * Protected by ADMIN_SEED_SECRET environment variable
+ */
+router.post('/seed', async (req: express.Request, res: express.Response) => {
+  try {
+    const { secret } = req.body;
+    const adminSeedSecret = process.env.ADMIN_SEED_SECRET || 'smartpromptiq-admin-seed-2024';
+
+    // Verify seed secret
+    if (secret !== adminSeedSecret) {
+      logger.warn('Admin seed attempt with invalid secret', { ip: req.ip });
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid seed secret'
+      });
+    }
+
+    const adminEmail = 'admin@smartpromptiq.net';
+    const adminPassword = 'Admin123!';
+
+    // Check if admin exists
+    const existingAdmin = await prisma.user.findUnique({
+      where: { email: adminEmail }
+    });
+
+    const hashedPassword = await bcrypt.hash(adminPassword, 12);
+
+    if (existingAdmin) {
+      // Update existing admin
+      await prisma.user.update({
+        where: { email: adminEmail },
+        data: {
+          role: 'ADMIN',
+          password: hashedPassword
+        }
+      });
+
+      logger.info('Admin user updated', { email: adminEmail });
+
+      return res.json({
+        success: true,
+        message: 'Admin user updated successfully',
+        data: {
+          email: adminEmail,
+          role: 'ADMIN',
+          action: 'updated'
+        }
+      });
+    }
+
+    // Create new admin
+    const admin = await prisma.user.create({
+      data: {
+        email: adminEmail,
+        password: hashedPassword,
+        firstName: 'Admin',
+        lastName: 'User',
+        role: 'ADMIN',
+        plan: 'ENTERPRISE',
+        subscriptionTier: 'ENTERPRISE',
+        tokenBalance: 999999,
+        generationsUsed: 0,
+        generationsLimit: 999999,
+        isActive: true
+      }
+    });
+
+    logger.info('Admin user created', { email: adminEmail, id: admin.id });
+
+    res.json({
+      success: true,
+      message: 'Admin user created successfully',
+      data: {
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
+        action: 'created'
+      }
+    });
+  } catch (error: any) {
+    console.error('Admin seed error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to seed admin user',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
 // Admin authentication middleware
 const requireAdmin = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -1312,6 +1424,518 @@ router.post('/payments/:id/refund', authenticate, requireAdmin, async (req, res)
     res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE PAYMENT VERIFICATION ENDPOINTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/admin/payments/verify/:subscriptionId
+ * Verify a subscription's payment status directly with Stripe
+ */
+router.get('/payments/verify/:subscriptionId', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { subscriptionId } = req.params;
+
+    if (!stripe) {
+      return res.status(503).json({
+        success: false,
+        message: 'Stripe is not configured. Payment verification unavailable.'
+      });
+    }
+
+    // Find the local subscription record
+    const localSubscription = await prisma.subscription.findFirst({
+      where: {
+        OR: [
+          { id: subscriptionId },
+          { stripeSubscriptionId: subscriptionId }
+        ]
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            stripeCustomerId: true
+          }
+        }
+      }
+    });
+
+    if (!localSubscription) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subscription not found in local database'
+      });
+    }
+
+    // If we have a Stripe subscription ID, verify with Stripe
+    let stripeData: any = null;
+    if (localSubscription.stripeSubscriptionId) {
+      try {
+        const stripeSubscription = await stripe.subscriptions.retrieve(
+          localSubscription.stripeSubscriptionId,
+          { expand: ['latest_invoice', 'customer', 'default_payment_method'] }
+        );
+
+        stripeData = {
+          id: stripeSubscription.id,
+          status: stripeSubscription.status,
+          currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
+          currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
+          cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+          canceledAt: stripeSubscription.canceled_at ? new Date(stripeSubscription.canceled_at * 1000).toISOString() : null,
+          created: new Date(stripeSubscription.created * 1000).toISOString(),
+          latestInvoice: stripeSubscription.latest_invoice ? {
+            id: (stripeSubscription.latest_invoice as any).id,
+            status: (stripeSubscription.latest_invoice as any).status,
+            amountPaid: (stripeSubscription.latest_invoice as any).amount_paid,
+            amountDue: (stripeSubscription.latest_invoice as any).amount_due,
+            paidAt: (stripeSubscription.latest_invoice as any).status_transitions?.paid_at
+              ? new Date((stripeSubscription.latest_invoice as any).status_transitions.paid_at * 1000).toISOString()
+              : null
+          } : null,
+          customer: stripeSubscription.customer ? {
+            id: typeof stripeSubscription.customer === 'string' ? stripeSubscription.customer : stripeSubscription.customer.id,
+            email: typeof stripeSubscription.customer !== 'string' ? (stripeSubscription.customer as any).email : null
+          } : null
+        };
+
+        logger.info('Stripe subscription verified', {
+          subscriptionId,
+          stripeStatus: stripeSubscription.status,
+          localStatus: localSubscription.status
+        });
+      } catch (stripeError: any) {
+        logger.error('Stripe verification failed', stripeError, { subscriptionId });
+        stripeData = {
+          error: true,
+          message: stripeError.message || 'Failed to retrieve from Stripe',
+          code: stripeError.code
+        };
+      }
+    }
+
+    // Check for sync discrepancies
+    const syncStatus = {
+      inSync: true,
+      discrepancies: [] as string[]
+    };
+
+    if (stripeData && !stripeData.error) {
+      // Check status sync
+      const stripeStatusMap: Record<string, string> = {
+        'active': 'active',
+        'past_due': 'past_due',
+        'canceled': 'canceled',
+        'incomplete': 'pending',
+        'incomplete_expired': 'expired',
+        'trialing': 'active',
+        'unpaid': 'past_due'
+      };
+
+      const expectedLocalStatus = stripeStatusMap[stripeData.status] || stripeData.status;
+      if (localSubscription.status !== expectedLocalStatus) {
+        syncStatus.inSync = false;
+        syncStatus.discrepancies.push(
+          `Status mismatch: Local="${localSubscription.status}", Stripe="${stripeData.status}"`
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        local: {
+          id: localSubscription.id,
+          userId: localSubscription.userId,
+          userEmail: localSubscription.user.email,
+          userName: localSubscription.user.firstName && localSubscription.user.lastName
+            ? `${localSubscription.user.firstName} ${localSubscription.user.lastName}`
+            : localSubscription.user.email.split('@')[0],
+          tier: localSubscription.tier,
+          status: localSubscription.status,
+          priceInCents: localSubscription.priceInCents,
+          stripeSubscriptionId: localSubscription.stripeSubscriptionId,
+          createdAt: localSubscription.createdAt,
+          updatedAt: localSubscription.updatedAt
+        },
+        stripe: stripeData,
+        syncStatus,
+        verifiedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Payment verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during payment verification'
+    });
+  }
+});
+
+/**
+ * GET /api/admin/payments/stripe-customers
+ * List all Stripe customers with their payment status
+ */
+router.get('/payments/stripe-customers', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { limit = 20, starting_after } = req.query;
+
+    if (!stripe) {
+      return res.status(503).json({
+        success: false,
+        message: 'Stripe is not configured'
+      });
+    }
+
+    // Fetch customers from Stripe
+    const params: any = {
+      limit: Math.min(Number(limit), 100),
+      expand: ['data.subscriptions']
+    };
+    if (starting_after) {
+      params.starting_after = starting_after;
+    }
+
+    const customers = await stripe.customers.list(params);
+
+    // Match with local users
+    const enrichedCustomers = await Promise.all(
+      customers.data.map(async (customer) => {
+        const localUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { stripeCustomerId: customer.id },
+              { email: customer.email || '' }
+            ]
+          },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            subscriptionTier: true,
+            tokensUsed: true,
+            generationsUsed: true,
+            lastLogin: true
+          }
+        });
+
+        return {
+          stripeCustomerId: customer.id,
+          email: customer.email,
+          name: customer.name,
+          created: new Date(customer.created * 1000).toISOString(),
+          subscriptions: (customer.subscriptions?.data || []).map((sub: any) => ({
+            id: sub.id,
+            status: sub.status,
+            currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+            cancelAtPeriodEnd: sub.cancel_at_period_end
+          })),
+          localUser: localUser ? {
+            id: localUser.id,
+            email: localUser.email,
+            name: localUser.firstName && localUser.lastName
+              ? `${localUser.firstName} ${localUser.lastName}`
+              : localUser.email.split('@')[0],
+            tier: localUser.subscriptionTier,
+            lastLogin: localUser.lastLogin
+          } : null,
+          synced: !!localUser
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: {
+        customers: enrichedCustomers,
+        hasMore: customers.has_more,
+        totalFetched: enrichedCustomers.length
+      }
+    });
+  } catch (error) {
+    console.error('Stripe customers fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch Stripe customers'
+    });
+  }
+});
+
+/**
+ * GET /api/admin/payments/recent-charges
+ * Get recent Stripe charges for payment monitoring
+ */
+router.get('/payments/recent-charges', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { limit = 20 } = req.query;
+
+    if (!stripe) {
+      return res.status(503).json({
+        success: false,
+        message: 'Stripe is not configured'
+      });
+    }
+
+    const charges = await stripe.charges.list({
+      limit: Math.min(Number(limit), 100),
+      expand: ['data.customer', 'data.invoice']
+    });
+
+    const formattedCharges = charges.data.map(charge => ({
+      id: charge.id,
+      amount: charge.amount,
+      amountRefunded: charge.amount_refunded,
+      currency: charge.currency,
+      status: charge.status,
+      paid: charge.paid,
+      refunded: charge.refunded,
+      disputed: charge.disputed,
+      customer: charge.customer ? {
+        id: typeof charge.customer === 'string' ? charge.customer : charge.customer.id,
+        email: typeof charge.customer !== 'string' ? (charge.customer as any).email : null
+      } : null,
+      receiptEmail: charge.receipt_email,
+      description: charge.description,
+      failureCode: charge.failure_code,
+      failureMessage: charge.failure_message,
+      created: new Date(charge.created * 1000).toISOString(),
+      invoice: charge.invoice ? {
+        id: typeof charge.invoice === 'string' ? charge.invoice : charge.invoice.id
+      } : null
+    }));
+
+    // Calculate summary stats
+    const summary = {
+      totalCharges: formattedCharges.length,
+      successfulCharges: formattedCharges.filter(c => c.status === 'succeeded').length,
+      failedCharges: formattedCharges.filter(c => c.status === 'failed').length,
+      totalAmount: formattedCharges.reduce((sum, c) => sum + (c.status === 'succeeded' ? c.amount : 0), 0),
+      totalRefunded: formattedCharges.reduce((sum, c) => sum + c.amountRefunded, 0)
+    };
+
+    res.json({
+      success: true,
+      data: {
+        charges: formattedCharges,
+        summary,
+        hasMore: charges.has_more
+      }
+    });
+  } catch (error) {
+    console.error('Recent charges fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch recent charges'
+    });
+  }
+});
+
+/**
+ * POST /api/admin/payments/sync-subscription/:subscriptionId
+ * Sync a subscription's status from Stripe to local database
+ */
+router.post('/payments/sync-subscription/:subscriptionId', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { subscriptionId } = req.params;
+
+    if (!stripe) {
+      return res.status(503).json({
+        success: false,
+        message: 'Stripe is not configured'
+      });
+    }
+
+    // Find local subscription
+    const localSubscription = await prisma.subscription.findFirst({
+      where: {
+        OR: [
+          { id: subscriptionId },
+          { stripeSubscriptionId: subscriptionId }
+        ]
+      }
+    });
+
+    if (!localSubscription) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subscription not found'
+      });
+    }
+
+    if (!localSubscription.stripeSubscriptionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subscription has no Stripe ID - cannot sync'
+      });
+    }
+
+    // Fetch from Stripe
+    const stripeSubscription = await stripe.subscriptions.retrieve(localSubscription.stripeSubscriptionId);
+
+    // Map Stripe status to local status
+    const statusMap: Record<string, string> = {
+      'active': 'active',
+      'past_due': 'past_due',
+      'canceled': 'canceled',
+      'incomplete': 'pending',
+      'incomplete_expired': 'expired',
+      'trialing': 'active',
+      'unpaid': 'past_due',
+      'paused': 'paused'
+    };
+
+    const newStatus = statusMap[stripeSubscription.status] || stripeSubscription.status;
+
+    // Update local subscription
+    const updatedSubscription = await prisma.subscription.update({
+      where: { id: localSubscription.id },
+      data: {
+        status: newStatus,
+        updatedAt: new Date()
+      }
+    });
+
+    // Log the sync action
+    logger.info('Subscription synced from Stripe', {
+      subscriptionId: localSubscription.id,
+      stripeSubscriptionId: localSubscription.stripeSubscriptionId,
+      oldStatus: localSubscription.status,
+      newStatus,
+      syncedBy: req.user!.id
+    });
+
+    res.json({
+      success: true,
+      message: 'Subscription synced successfully',
+      data: {
+        subscriptionId: updatedSubscription.id,
+        previousStatus: localSubscription.status,
+        newStatus,
+        stripeStatus: stripeSubscription.status,
+        syncedAt: new Date().toISOString(),
+        syncedBy: req.user!.id
+      }
+    });
+  } catch (error: any) {
+    console.error('Subscription sync error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to sync subscription'
+    });
+  }
+});
+
+/**
+ * GET /api/admin/payments/dashboard
+ * Comprehensive payment dashboard with Stripe data
+ */
+router.get('/payments/dashboard', authenticate, requireAdmin, async (req, res) => {
+  try {
+    // Local database stats
+    const localStats = {
+      totalSubscriptions: await prisma.subscription.count(),
+      activeSubscriptions: await prisma.subscription.count({ where: { status: 'active' } }),
+      canceledSubscriptions: await prisma.subscription.count({ where: { status: 'canceled' } }),
+      pendingSubscriptions: await prisma.subscription.count({ where: { status: 'pending' } })
+    };
+
+    // Revenue from local database
+    const revenueResult = await prisma.subscription.aggregate({
+      where: { status: 'active' },
+      _sum: { priceInCents: true }
+    });
+
+    // Stripe live data (if available)
+    let stripeStats: any = null;
+    if (stripe) {
+      try {
+        // Get balance
+        const balance = await stripe.balance.retrieve();
+
+        // Get recent payment intents
+        const recentPayments = await stripe.paymentIntents.list({
+          limit: 10,
+          created: {
+            gte: Math.floor(Date.now() / 1000) - (24 * 60 * 60) // Last 24 hours
+          }
+        });
+
+        // Get subscription stats
+        const activeSubscriptions = await stripe.subscriptions.list({
+          status: 'active',
+          limit: 1
+        });
+
+        stripeStats = {
+          available: true,
+          balance: {
+            available: balance.available.map(b => ({ amount: b.amount, currency: b.currency })),
+            pending: balance.pending.map(b => ({ amount: b.amount, currency: b.currency }))
+          },
+          recentPayments: {
+            count: recentPayments.data.length,
+            totalAmount: recentPayments.data.reduce((sum, p) => sum + (p.amount || 0), 0),
+            succeeded: recentPayments.data.filter(p => p.status === 'succeeded').length,
+            failed: recentPayments.data.filter(p => p.status === 'canceled' || p.status === 'requires_payment_method').length
+          },
+          hasActiveSubscriptions: activeSubscriptions.data.length > 0
+        };
+      } catch (stripeError: any) {
+        stripeStats = {
+          available: false,
+          error: stripeError.message
+        };
+      }
+    }
+
+    // Recent payment events from local database
+    const recentSubscriptions = await prisma.subscription.findMany({
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        local: {
+          ...localStats,
+          monthlyRecurringRevenue: (revenueResult._sum.priceInCents || 0) / 100
+        },
+        stripe: stripeStats,
+        recentActivity: recentSubscriptions.map(sub => ({
+          id: sub.id,
+          userEmail: sub.user.email,
+          tier: sub.tier,
+          status: sub.status,
+          amount: sub.priceInCents / 100,
+          createdAt: sub.createdAt
+        })),
+        generatedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Payment dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate payment dashboard'
     });
   }
 });

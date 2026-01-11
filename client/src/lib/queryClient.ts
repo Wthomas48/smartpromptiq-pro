@@ -2,8 +2,24 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { queueRequest, RequestPriority } from "@/utils/requestQueue";
 import { getApiBaseUrl } from "@/config/api";
 
+/**
+ * Handle 401 errors by clearing invalid auth tokens
+ * This is a global safeguard to ensure stale tokens are cleaned up
+ */
+function handleUnauthorizedError() {
+  console.log('🔐 401 Unauthorized - clearing auth data');
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  // Dispatch a custom event so auth context can react
+  window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
+    // Handle 401 by clearing invalid tokens
+    if (res.status === 401) {
+      handleUnauthorizedError();
+    }
     const text = (await res.text()) || res.statusText;
     const error = new Error(`${res.status}: ${text}`);
     (error as any).status = res.status;

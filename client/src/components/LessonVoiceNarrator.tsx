@@ -6,6 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { useElevenLabsVoiceSafe } from '@/contexts/ElevenLabsVoiceContext';
 import { ELEVENLABS_VOICES, OPENAI_VOICES, getVoicesForCategory } from '@/config/voices';
+import { getApiBaseUrl } from '@/config/api';
 import {
   Mic, Play, Pause, Square, Download, Sparkles,
   Volume2, Loader2, RefreshCw, Clock, ChevronDown, ChevronUp, Settings,
@@ -93,7 +94,8 @@ const LessonVoiceNarrator: React.FC<LessonVoiceNarratorProps> = ({
     setIsGeneratingScript(true);
 
     try {
-      const response = await fetch('/api/voice/generate-lesson-narration', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/voice/generate-lesson-narration`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -354,7 +356,7 @@ const LessonVoiceNarrator: React.FC<LessonVoiceNarratorProps> = ({
                   </Badge>
                 )}
               </h4>
-              <p className="text-xs text-gray-500">Ultra-realistic voice narration</p>
+              <p className="text-xs text-gray-400">Ultra-realistic voice narration</p>
             </div>
           </div>
           <Badge className="bg-purple-500/20 text-purple-700 dark:text-purple-300">
@@ -392,7 +394,7 @@ const LessonVoiceNarrator: React.FC<LessonVoiceNarratorProps> = ({
               <span className="text-2xl">{selectedPersona.emoji}</span>
               <div className="text-left">
                 <div className="font-medium text-gray-800 dark:text-white">{selectedPersona.name}</div>
-                <div className="text-xs text-gray-500">{selectedPersona.vibe}</div>
+                <div className="text-xs text-gray-400">{selectedPersona.vibe}</div>
               </div>
             </div>
             {showVoiceSelect ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -429,7 +431,7 @@ const LessonVoiceNarrator: React.FC<LessonVoiceNarratorProps> = ({
         {/* Settings Toggle */}
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
         >
           <Settings className="w-4 h-4" />
           Voice Settings
@@ -440,7 +442,7 @@ const LessonVoiceNarrator: React.FC<LessonVoiceNarratorProps> = ({
           <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-3">
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-gray-500">Speed (slower for learning)</span>
+                <span className="text-gray-400">Speed (slower for learning)</span>
                 <span className="text-gray-700 dark:text-gray-300">{voiceSettings.rate.toFixed(2)}x</span>
               </div>
               <Slider
@@ -516,12 +518,12 @@ const LessonVoiceNarrator: React.FC<LessonVoiceNarratorProps> = ({
                   />
                 </div>
                 <div className="flex justify-between mt-1">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-400">
                     {audioRef.current?.currentTime
                       ? `${Math.floor(audioRef.current.currentTime / 60)}:${String(Math.floor(audioRef.current.currentTime % 60)).padStart(2, '0')}`
                       : '0:00'}
                   </span>
-                  <span className="text-xs text-gray-500">~{estimatedDuration}s</span>
+                  <span className="text-xs text-gray-400">~{estimatedDuration}s</span>
                 </div>
               </div>
 
@@ -539,7 +541,7 @@ const LessonVoiceNarrator: React.FC<LessonVoiceNarratorProps> = ({
                 <span className="text-lg">{selectedPersona.emoji}</span>
                 <div>
                   <span className="text-gray-700 dark:text-gray-200 font-medium">{selectedPersona.name}</span>
-                  <span className="text-gray-500 ml-2">{selectedPersona.vibe}</span>
+                  <span className="text-gray-400 ml-2">{selectedPersona.vibe}</span>
                 </div>
               </div>
               {useElevenLabs && (

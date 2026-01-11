@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { getApiBaseUrl } from '@/config/api';
 import {
   Mic, Play, Pause, Square, Download, Share2, Sparkles,
   Volume2, Loader2, RefreshCw, Clock, Zap, Copy, Check,
@@ -88,7 +89,8 @@ const VoicePitchGenerator: React.FC<VoicePitchGeneratorProps> = ({
     setIsGeneratingScript(true);
 
     try {
-      const response = await fetch('/api/voice/generate-from-blueprint', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/voice/generate-from-blueprint`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,7 +145,8 @@ const VoicePitchGenerator: React.FC<VoicePitchGeneratorProps> = ({
     setIsGeneratingAudio(true);
 
     try {
-      const response = await fetch('/api/voice/generate', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/voice/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -339,7 +342,7 @@ const VoicePitchGenerator: React.FC<VoicePitchGeneratorProps> = ({
         ) : (
           <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-600">
             <p className="text-gray-200 text-sm whitespace-pre-wrap">{script}</p>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700 text-xs text-gray-500">
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-700 text-xs text-gray-400">
               <span>{script.length} chars • ~{Math.ceil(script.split(/\s+/).length / 150 * 60)}s</span>
               <span>{estimatedTokens} tokens to generate</span>
             </div>

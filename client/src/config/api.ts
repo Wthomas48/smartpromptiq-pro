@@ -2,6 +2,10 @@
  * API Configuration for different environments
  */
 
+// ✅ FIX: All imports MUST be at the top to prevent TDZ errors in production
+import { ensureSafeUser } from '../utils/safeDataUtils';
+import { auth } from '../lib/supabase';
+
 // ✅ ENHANCED: Comprehensive environment configuration with host validation
 const config = {
   // Allowed hosts for different environments
@@ -254,13 +258,8 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
   }
 };
 
-// Import safe utilities
-import { ensureSafeUser } from '../utils/safeDataUtils';
-
-// Import Supabase auth
-import { auth } from '../lib/supabase';
-
 // ✅ HYBRID: Authentication functions with Supabase + Backend fallback
+// NOTE: imports moved to top of file to prevent TDZ errors
 export const authAPI = {
   // Supabase signin (existing)
   signin: async (credentials: { email: string; password: string }) => {

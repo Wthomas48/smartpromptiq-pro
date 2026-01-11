@@ -190,33 +190,63 @@ router.get('/stats', authenticate, async (req: AuthRequest, res: Response) => {
 // ============================================
 router.get('/leaderboard', async (req: Request, res: Response) => {
   try {
-    const topReferrers = await prisma.referralCode.findMany({
-      where: {
-        successfulReferrals: { gt: 0 },
-        isActive: true,
-      },
-      orderBy: { successfulReferrals: 'desc' },
-      take: 10,
-      select: {
-        successfulReferrals: true,
-        totalEarnings: true,
-        userId: true,
-      },
-    });
+    // Try to get leaderboard, but return empty array if table doesn't exist
+    let topReferrers: any[] = [];
+
+    try {
+      topReferrers = await prisma.referralCode.findMany({
+        where: {
+          successfulReferrals: { gt: 0 },
+          isActive: true,
+        },
+        orderBy: { successfulReferrals: 'desc' },
+        take: 10,
+        select: {
+          successfulReferrals: true,
+          totalEarnings: true,
+          userId: true,
+        },
+      });
+    } catch (dbError: any) {
+      // If table doesn't exist or query fails, return empty leaderboard
+      console.log('Leaderboard query failed (table may not exist):', dbError.message);
+      return res.json({
+        success: true,
+        data: [],
+        message: 'Leaderboard not available yet',
+      });
+    }
+
+    // If no referrers found, return empty array
+    if (!topReferrers || topReferrers.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+      });
+    }
 
     // Get user names (anonymized)
     const leaderboard = await Promise.all(
       topReferrers.map(async (r, index) => {
-        const user = await prisma.user.findUnique({
-          where: { id: r.userId },
-          select: { firstName: true },
-        });
-        return {
-          rank: index + 1,
-          name: user?.firstName ? `${user.firstName.charAt(0)}***` : 'Anonymous',
-          referrals: r.successfulReferrals,
-          earnings: r.totalEarnings,
-        };
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: r.userId },
+            select: { firstName: true },
+          });
+          return {
+            rank: index + 1,
+            name: user?.firstName ? `${user.firstName.charAt(0)}***` : 'Anonymous',
+            referrals: r.successfulReferrals,
+            earnings: r.totalEarnings,
+          };
+        } catch {
+          return {
+            rank: index + 1,
+            name: 'Anonymous',
+            referrals: r.successfulReferrals,
+            earnings: r.totalEarnings,
+          };
+        }
       })
     );
 
@@ -226,7 +256,12 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Error getting leaderboard:', error);
-    res.status(500).json({ error: 'Failed to get leaderboard' });
+    // Return empty leaderboard instead of 500 error
+    res.json({
+      success: true,
+      data: [],
+      message: 'Leaderboard temporarily unavailable',
+    });
   }
 });
 

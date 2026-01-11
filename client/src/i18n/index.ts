@@ -41,14 +41,20 @@ const resources = {
   ko: { translation: ko },
 };
 
-// Initialize i18n without using React hooks at module level
+// Supported language codes for validation
+const supportedLngs = ['en', 'es', 'fr', 'de', 'pt', 'zh', 'ja', 'ar', 'hi', 'ko'];
+
+// Initialize i18n - use LanguageDetector class directly (not instance)
+// and configure via detection options in init()
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
+    supportedLngs,
     fallbackLng: 'en',
     debug: false,
+    load: 'languageOnly', // Don't load region-specific (e.g., 'en-US' -> 'en')
     react: {
       useSuspense: false, // Disable suspense to avoid hook issues
     },

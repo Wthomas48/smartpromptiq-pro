@@ -74,12 +74,36 @@ export const auth = {
   },
 
   getCurrentUser: async () => {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    return { user, error }
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      // 403 errors are expected for unauthenticated users - don't log as error
+      if (error && (error.status === 403 || error.code === 403)) {
+        return { user: null, error: null }
+      }
+      return { user, error }
+    } catch (e: any) {
+      // Silently handle 403 errors (user not authenticated)
+      if (e?.code === 403 || e?.status === 403) {
+        return { user: null, error: null }
+      }
+      return { user: null, error: e }
+    }
   },
 
   getSession: async () => {
-    const { data: { session }, error } = await supabase.auth.getSession()
-    return { session, error }
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      // 403 errors are expected for unauthenticated users - don't log as error
+      if (error && (error.status === 403 || error.code === 403)) {
+        return { session: null, error: null }
+      }
+      return { session, error }
+    } catch (e: any) {
+      // Silently handle 403 errors (user not authenticated)
+      if (e?.code === 403 || e?.status === 403) {
+        return { session: null, error: null }
+      }
+      return { session: null, error: e }
+    }
   }
 }

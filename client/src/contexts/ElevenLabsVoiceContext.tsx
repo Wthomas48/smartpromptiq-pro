@@ -6,6 +6,7 @@ import {
   ELEVENLABS_VOICE_IDS,
   type VoicePersona
 } from '@/config/voices';
+import { getApiBaseUrl } from '@/config/api';
 
 // ElevenLabs voice types
 export interface ElevenLabsVoice {
@@ -352,7 +353,8 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
     }));
 
     try {
-      const response = await fetch('/api/elevenlabs/generate', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/elevenlabs/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -419,7 +421,8 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
     }));
 
     try {
-      const response = await fetch('/api/elevenlabs/page/narrate', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/elevenlabs/page/narrate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -477,7 +480,8 @@ export function ElevenLabsVoiceProvider({ children }: ElevenLabsVoiceProviderPro
     }));
 
     try {
-      const response = await fetch('/api/elevenlabs/academy/generate', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/elevenlabs/academy/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

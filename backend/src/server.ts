@@ -5,7 +5,23 @@ import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { connectDatabase } from './config/database';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// OBSERVABILITY IMPORTS
+// ═══════════════════════════════════════════════════════════════════════════════
+import { logger } from './lib/logger';
+import { metrics } from './lib/metrics';
+import { alerting } from './lib/alerting';
+import {
+  correlationIdMiddleware,
+  requestLoggingMiddleware,
+  errorTrackingMiddleware,
+  slowRequestMiddleware,
+  securityLoggingMiddleware
+} from './middleware/observability';
+import observabilityRoutes from './routes/observability';
 
 import authRoutes from './routes/auth';
 import authProxyRoutes from './routes/authProxy';
@@ -38,7 +54,97 @@ import costsRoutes from './routes/costs';
 import audioRoutes from './routes/audio';
 import shotstackRoutes from './routes/shotstack';
 
-dotenv.config();
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECURE ENVIRONMENT LOADING
+// Priority: .env.local (secrets) > .env (defaults) > Railway env vars
+// ═══════════════════════════════════════════════════════════════════════════════
+const envLocalPath = path.resolve(__dirname, '../.env.local');
+const envPath = path.resolve(__dirname, '../.env');
+
+// Load .env first (defaults/placeholders)
+dotenv.config({ path: envPath });
+
+// Override with .env.local if it exists (contains real secrets)
+if (fs.existsSync(envLocalPath)) {
+  console.log('🔐 Loading secrets from .env.local');
+  dotenv.config({ path: envLocalPath, override: true });
+} else {
+  console.log('⚠️ No .env.local found - using .env (ensure secrets are configured in production env vars)');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECURITY: Validate critical environment variables
+// ═══════════════════════════════════════════════════════════════════════════════
+const validateSecrets = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const warnings: string[] = [];
+  const errors: string[] = [];
+
+  // Check for placeholder values
+  const placeholderPatterns = [
+    'REPLACE_WITH_',
+    'YOUR_',
+    'your-',
+    'PASTE_YOUR_',
+    'placeholder',
+    '[YOUR-'
+  ];
+
+  const checkSecret = (name: string, value: string | undefined, required: boolean = true) => {
+    if (!value) {
+      if (required) errors.push(`❌ ${name} is not set`);
+      return;
+    }
+
+    const hasPlaceholder = placeholderPatterns.some(pattern =>
+      value.toUpperCase().includes(pattern.toUpperCase())
+    );
+
+    if (hasPlaceholder) {
+      if (isProduction) {
+        errors.push(`❌ ${name} contains placeholder value`);
+      } else {
+        warnings.push(`⚠️ ${name} contains placeholder value`);
+      }
+    }
+  };
+
+  // Critical secrets that must be set
+  checkSecret('DATABASE_URL', process.env.DATABASE_URL);
+  checkSecret('JWT_SECRET', process.env.JWT_SECRET);
+  checkSecret('STRIPE_SECRET_KEY', process.env.STRIPE_SECRET_KEY);
+
+  // Production-required secrets
+  if (isProduction) {
+    checkSecret('SUPABASE_JWT_SECRET', process.env.SUPABASE_JWT_SECRET);
+    checkSecret('STRIPE_WEBHOOK_SECRET', process.env.STRIPE_WEBHOOK_SECRET);
+  }
+
+  // Log warnings
+  if (warnings.length > 0) {
+    console.log('\n🔐 Security Warnings:');
+    warnings.forEach(w => console.log(`   ${w}`));
+  }
+
+  // In production, fail fast on errors
+  if (errors.length > 0) {
+    console.error('\n🚨 SECURITY ERRORS:');
+    errors.forEach(e => console.error(`   ${e}`));
+
+    if (isProduction) {
+      console.error('\n❌ Cannot start server with missing/placeholder secrets in production');
+      console.error('   Configure environment variables in Railway or your hosting provider');
+      process.exit(1);
+    } else {
+      console.warn('\n⚠️ Running in development with incomplete configuration');
+      console.warn('   Copy backend/.env.local.example to backend/.env.local and fill in your secrets');
+    }
+  } else {
+    console.log('\n✅ Security configuration validated');
+  }
+};
+
+validateSecrets();
 
 // 🔍 DEBUG: Enhanced startup logging for Railway deployment
 console.log('🚀 STARTUP DEBUG INFO:');
@@ -56,9 +162,83 @@ const PORT = process.env.PORT || 5000;
 console.log('📡 Server will start on PORT:', PORT);
 console.log('🔄 Admin routes updated - force restart');
 
-// Security middleware
-app.use(helmet());
+// Security middleware with CSP configuration for Stripe, fonts, and inline styles
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'", // Required for Stripe.js inline scripts
+        "'unsafe-eval'",   // Some third-party scripts need this
+        "https://js.stripe.com",
+        "https://checkout.stripe.com",
+        "https://m.stripe.network",
+        "https://m.stripe.com",
+        "https://b.stripecdn.com",
+        "https://www.google.com",
+        "https://www.gstatic.com",
+        "https://apis.google.com"
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'", // Required for styled-components, emotion, and Stripe UI
+        "https://fonts.googleapis.com",
+        "https://checkout.stripe.com"
+      ],
+      fontSrc: [
+        "'self'",
+        "data:",
+        "https://fonts.gstatic.com",
+        "https://fonts.googleapis.com"
+      ],
+      imgSrc: [
+        "'self'",
+        "data:",
+        "blob:",
+        "https:",
+        "https://*.stripe.com",
+        "https://*.supabase.co"
+      ],
+      connectSrc: [
+        "'self'",
+        "https://api.stripe.com",
+        "https://checkout.stripe.com",
+        "https://m.stripe.network",
+        "https://m.stripe.com",
+        "https://*.supabase.co",
+        "wss://*.supabase.co",
+        "https://api.openai.com",
+        "https://api.anthropic.com",
+        "https://api.elevenlabs.io",
+        "https://*.railway.app",
+        "wss://*.railway.app",
+        // Allow localhost in development
+        ...(process.env.NODE_ENV !== 'production' ? ["http://localhost:*", "ws://localhost:*"] : [])
+      ],
+      frameSrc: [
+        "'self'",
+        "https://js.stripe.com",
+        "https://checkout.stripe.com",
+        "https://hooks.stripe.com",
+        "https://www.google.com" // reCAPTCHA if used
+      ],
+      workerSrc: ["'self'", "blob:"],
+      childSrc: ["'self'", "blob:"],
+      objectSrc: ["'none'"],
+      formAction: ["'self'", "https://checkout.stripe.com"],
+      frameAncestors: ["'self'"],
+      baseUri: ["'self'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+    }
+  },
+  crossOriginEmbedderPolicy: false, // Disable for Stripe iframe compatibility
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resources
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" } // Allow Stripe popups
+}));
 app.use(compression());
+
+console.log('🔒 Helmet CSP configured for Stripe, fonts, and third-party scripts');
 
 // ✅ ENHANCED: Comprehensive CORS configuration with centralized host management
 const corsConfig = {
@@ -80,6 +260,10 @@ const corsConfig = {
 
   // Production domains
   productionDomains: [
+    'smartpromptiq.com',
+    'www.smartpromptiq.com',
+    'smartpromptiq.net',
+    'www.smartpromptiq.net',
     'smartpromptiq.up.railway.app',
     'smartpromptiq-pro.up.railway.app',
     'smartpromptiq.railway.app',
@@ -194,10 +378,22 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// Logging
-app.use(morgan('dev'));
+// ═══════════════════════════════════════════════════════════════════════════════
+// OBSERVABILITY MIDDLEWARE (before body parsing for full request tracking)
+// ═══════════════════════════════════════════════════════════════════════════════
+app.use(correlationIdMiddleware);
+app.use(slowRequestMiddleware);
+app.use(securityLoggingMiddleware);
+app.use(requestLoggingMiddleware);
+
+// Morgan logging - only in development for console output
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
 
 // Body parsing middleware
+// IMPORTANT: Stripe webhook needs raw body BEFORE json parsing
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -294,6 +490,11 @@ app.get('/api', (req, res) => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// OBSERVABILITY ROUTES (before other API routes for metrics/health access)
+// ═══════════════════════════════════════════════════════════════════════════════
+app.use('/api', observabilityRoutes);
+
 // Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api', authProxyRoutes); // Mount proxy routes at /api/proxy/*
@@ -366,36 +567,56 @@ app.use('*', (req, res) => {
   });
 });
 
-// Error handling middleware
-app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('❌ Server Error:', error);
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? error.message : undefined
-  });
-});
+// ═══════════════════════════════════════════════════════════════════════════════
+// ERROR HANDLING WITH OBSERVABILITY
+// ═══════════════════════════════════════════════════════════════════════════════
+app.use(errorTrackingMiddleware);
 
 // Audio cleanup scheduler (optional - enable via env var)
 import { startCleanupScheduler } from './workers/cleanupAudio';
 
 // Start server
 app.listen(PORT, '0.0.0.0', async () => {
+  // Use structured logging for server startup
+  logger.info('Server starting', {
+    port: PORT,
+    environment: process.env.NODE_ENV,
+    frontendUrl: process.env.FRONTEND_URL,
+    nodeVersion: process.version
+  });
+
+  // Console output for Railway/development visibility
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
   console.log(`🔗 Health check available at: http://localhost:${PORT}/api/health`);
+  console.log(`📊 Observability dashboard: http://localhost:${PORT}/api/observability/dashboard`);
+  console.log(`📈 Prometheus metrics: http://localhost:${PORT}/api/metrics`);
   console.log(`🏠 Root endpoint available at: http://localhost:${PORT}/`);
   console.log(`🛡️ Server bound to 0.0.0.0:${PORT} for Railway compatibility`);
-  console.log(`🔗 Health Check: http://localhost:${PORT}/health`);
-  console.log(`🔗 API Info: http://localhost:${PORT}/api`);
 
   // Connect to database
   await connectDatabase();
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // START OBSERVABILITY SYSTEMS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Start alerting engine with 60-second check interval
+  alerting.startChecking(60);
+  logger.info('Alerting engine started', { checkIntervalSeconds: 60 });
+
+  // Log business event for server startup
+  logger.businessEvent('server_started', {
+    port: PORT,
+    environment: process.env.NODE_ENV,
+    uptimeSeconds: 0
+  });
+
   // Start audio cleanup scheduler in production (every 24 hours)
   if (process.env.ENABLE_CLEANUP_SCHEDULER === 'true') {
     startCleanupScheduler(24);
+    logger.info('Cleanup scheduler started', { intervalHours: 24 });
   }
 });
 

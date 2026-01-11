@@ -73,6 +73,7 @@ import {
   type MusicGenreType,
 } from '@/config/premiumMusic';
 import { useAudioStoreSafe } from '@/contexts/AudioStoreContext';
+import { getApiBaseUrl } from '@/config/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE DEFINITIONS
@@ -389,9 +390,13 @@ export default function VideoBuilder() {
     setIsGeneratingVoice(true);
 
     try {
-      const response = await fetch('/api/elevenlabs/generate', {
+      const baseUrl = getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/elevenlabs/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify({
           text: script,
           voiceName: selectedVoice,
@@ -628,7 +633,7 @@ export default function VideoBuilder() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-400 to-violet-400 bg-clip-text text-transparent">
                 Video Builder
               </h1>
-              <p className="text-gray-400">Create stunning short videos with AI voice & music</p>
+              <p className="text-gray-300">Create stunning short videos with AI voice & music</p>
             </div>
             {selectedTemplate && (
               <Badge className="ml-auto bg-violet-500/20 text-violet-300 border-violet-500/30">
@@ -717,8 +722,8 @@ export default function VideoBuilder() {
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-400 mt-1">{template.description}</p>
-                              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                              <p className="text-sm text-gray-300 mt-1">{template.description}</p>
+                              <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                                 <span className="flex items-center gap-1">
                                   {template.aspectRatio === '9:16' ? (
                                     <RectangleVertical className="w-3 h-3" />
@@ -838,7 +843,7 @@ export default function VideoBuilder() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs text-gray-400">Subtitle</label>
+                            <label className="text-xs text-gray-300">Subtitle</label>
                             <Input
                               value={scene.subtitle || ''}
                               onChange={(e) => updateScene(scene.id, { subtitle: e.target.value })}
@@ -847,7 +852,7 @@ export default function VideoBuilder() {
                             />
                           </div>
                           <div>
-                            <label className="text-xs text-gray-400">Duration: {scene.duration}s</label>
+                            <label className="text-xs text-gray-300">Duration: {scene.duration}s</label>
                             <Slider
                               value={[scene.duration]}
                               onValueChange={([v]) => updateScene(scene.id, { duration: v })}
@@ -864,14 +869,14 @@ export default function VideoBuilder() {
                     <Button
                       onClick={addScene}
                       variant="outline"
-                      className="w-full border-dashed border-white/20 text-gray-400 hover:text-white"
+                      className="w-full border-dashed border-white/20 text-gray-300 hover:text-white"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Add Scene
                     </Button>
 
                     {scenes.length > 0 && (
-                      <div className="flex justify-between text-sm text-gray-400 pt-2 border-t border-white/10">
+                      <div className="flex justify-between text-sm text-gray-300 pt-2 border-t border-white/10">
                         <span>{scenes.length} scenes</span>
                         <span>Total: {formatTime(totalDuration)}</span>
                       </div>
@@ -939,7 +944,7 @@ export default function VideoBuilder() {
                           </Button>
                         ))}
                       </div>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-gray-400 mt-2">
                         {ELEVENLABS_VOICES.find(v => v.id === selectedVoice)?.style}
                       </p>
                     </div>
@@ -955,7 +960,7 @@ export default function VideoBuilder() {
                         placeholder="Enter the text you want to convert to voice..."
                         className="min-h-[150px] bg-white/5 border-white/10 text-white"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-400 mt-1">
                         {script.length} characters
                       </p>
                     </div>
@@ -1053,7 +1058,7 @@ export default function VideoBuilder() {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <h4 className="font-medium text-white truncate">{track.name}</h4>
-                                    <p className="text-sm text-gray-400">{track.mood}</p>
+                                    <p className="text-sm text-gray-300">{track.mood}</p>
                                   </div>
                                   {selectedTrack?.id === track.id && (
                                     <Check className="w-5 h-5 text-blue-400" />
@@ -1481,23 +1486,23 @@ export default function VideoBuilder() {
 
                 {/* Preview Info */}
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between text-gray-400">
+                  <div className="flex justify-between text-gray-300">
                     <span>Aspect Ratio:</span>
                     <span className="text-white">{aspectRatio}</span>
                   </div>
-                  <div className="flex justify-between text-gray-400">
+                  <div className="flex justify-between text-gray-300">
                     <span>Duration:</span>
                     <span className="text-white">{formatTime(totalDuration)}</span>
                   </div>
-                  <div className="flex justify-between text-gray-400">
+                  <div className="flex justify-between text-gray-300">
                     <span>Scenes:</span>
                     <span className="text-white">{scenes.length || 1}</span>
                   </div>
-                  <div className="flex justify-between text-gray-400">
+                  <div className="flex justify-between text-gray-300">
                     <span>Voice:</span>
                     <span className="text-white">{voiceUrl ? 'Yes' : 'No'}</span>
                   </div>
-                  <div className="flex justify-between text-gray-400">
+                  <div className="flex justify-between text-gray-300">
                     <span>Music:</span>
                     <span className="text-white">{selectedTrack?.name || 'None'}</span>
                   </div>
@@ -1553,7 +1558,7 @@ export default function VideoBuilder() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="text-sm text-gray-400 space-y-2">
+                <ul className="text-sm text-gray-300 space-y-2">
                   <li className="flex items-start gap-2">
                     <ChevronRight className="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" />
                     Use 9:16 for TikTok & Reels

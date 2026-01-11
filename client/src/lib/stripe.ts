@@ -122,18 +122,15 @@ export async function redirectToStripeCheckout(
   console.log(`💳 [${correlationId}] Stripe Mode: ${stripeMode.toUpperCase()}`);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STEP 1: Validate Stripe.js is available
+  // STEP 1: Validate Stripe configuration
+  // NOTE: We no longer need to load Stripe.js for checkout redirect
+  // The backend returns the checkout URL directly
   // ═══════════════════════════════════════════════════════════════════════════
   if (!STRIPE_PUBLISHABLE_KEY) {
     throw new Error('Stripe is not configured. Please contact support.');
   }
 
-  const stripe = await getStripe();
-  if (!stripe) {
-    throw new Error('Failed to load Stripe. Please refresh the page and try again.');
-  }
-
-  console.log(`💳 [${correlationId}] Stripe.js loaded successfully`);
+  console.log(`💳 [${correlationId}] Stripe configured`);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 2: Get auth token (use provided or fetch from storage)
@@ -154,16 +151,33 @@ export async function redirectToStripeCheckout(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch('/api/billing/create-checkout-session', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      tierId: params.tierId,
-      billingCycle: params.billingCycle,
-      successUrl: params.successUrl || `${window.location.origin}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: params.cancelUrl || `${window.location.origin}/pricing?canceled=true`,
-    }),
-  });
+  // Create abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+  let response: Response;
+  try {
+    response = await fetch('/api/billing/create-checkout-session', {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        tierId: params.tierId,
+        billingCycle: params.billingCycle,
+        successUrl: params.successUrl || `${window.location.origin}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: params.cancelUrl || `${window.location.origin}/pricing?canceled=true`,
+      }),
+    });
+  } catch (fetchError: any) {
+    clearTimeout(timeoutId);
+    if (fetchError.name === 'AbortError') {
+      console.error(`❌ [${correlationId}] Request timed out after 30 seconds`);
+      throw new Error('Payment request timed out. Please check your connection and try again.');
+    }
+    console.error(`❌ [${correlationId}] Network error:`, fetchError);
+    throw new Error('Unable to connect to payment server. Please try again.');
+  }
+  clearTimeout(timeoutId);
 
   const data: CheckoutSessionResponse = await response.json();
 
@@ -212,18 +226,22 @@ export async function redirectToStripeCheckout(
   console.log(`💳 [${correlationId}] Backend mode: ${data.mode}`);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // STEP 6: Redirect to Stripe Checkout using Stripe.js
+  // STEP 6: Redirect to Stripe Checkout using the URL from backend
+  // NOTE: stripe.redirectToCheckout is deprecated as of Stripe.js 2025-09-30
+  // We now use the checkout URL returned directly from the backend
   // ═══════════════════════════════════════════════════════════════════════════
   console.log(`💳 [${correlationId}] Redirecting to Stripe Checkout...`);
 
-  const { error } = await stripe.redirectToCheckout({ sessionId });
-
-  if (error) {
-    console.error(`❌ [${correlationId}] Stripe redirect error:`, error);
-    throw new Error(error.message || 'Failed to redirect to checkout');
+  // Use the checkout URL directly from the backend response
+  if (data.url) {
+    console.log(`💳 [${correlationId}] Using checkout URL from backend`);
+    window.location.href = data.url;
+  } else {
+    // Fallback: construct URL from session ID (legacy method)
+    console.log(`💳 [${correlationId}] Constructing checkout URL from session ID`);
+    window.location.href = `https://checkout.stripe.com/c/pay/${sessionId}`;
   }
 
-  // If we get here, the redirect should have happened
   console.log(`💳 [${correlationId}] Redirect initiated successfully`);
 }
 

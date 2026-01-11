@@ -575,7 +575,9 @@ const VoiceMusicMixer: React.FC = () => {
 
   // Audio refs
   const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const playPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
   const playbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isTransitioningRef = useRef(false);
 
   // Calculate total duration based on tracks
   useEffect(() => {
@@ -694,17 +696,37 @@ const VoiceMusicMixer: React.FC = () => {
     audioRefs.current.delete(trackId);
   };
 
+  // Safe pause all audio - waits for pending play promises
+  const safePauseAll = async () => {
+    // Wait for all pending play promises
+    const promises = Array.from(playPromisesRef.current.values());
+    if (promises.length > 0) {
+      await Promise.allSettled(promises);
+      playPromisesRef.current.clear();
+    }
+
+    // Now pause all audio
+    audioRefs.current.forEach(audio => audio.pause());
+  };
+
   // Playback controls
-  const playMix = () => {
+  const playMix = async () => {
     if (project.tracks.length === 0) {
       toast({ title: 'No tracks', description: 'Add some tracks first!', variant: 'destructive' });
       return;
     }
 
+    // Prevent rapid toggling
+    if (isTransitioningRef.current) {
+      console.log('Mix transition in progress, ignoring');
+      return;
+    }
+
+    isTransitioningRef.current = true;
     setIsPlaying(true);
 
     // Create audio elements for each track
-    project.tracks.forEach(track => {
+    for (const track of project.tracks) {
       if (!audioRefs.current.has(track.id)) {
         const audio = new Audio(track.audioUrl);
         audioRefs.current.set(track.id, audio);
@@ -715,9 +737,22 @@ const VoiceMusicMixer: React.FC = () => {
       audio.currentTime = Math.max(0, currentTime - track.startTime);
 
       if (currentTime >= track.startTime && currentTime < track.startTime + track.duration) {
-        audio.play().catch(console.error);
+        try {
+          const playPromise = audio.play();
+          playPromisesRef.current.set(track.id, playPromise);
+          await playPromise;
+          playPromisesRef.current.delete(track.id);
+        } catch (err: any) {
+          playPromisesRef.current.delete(track.id);
+          // AbortError is expected when play is interrupted
+          if (err?.name !== 'AbortError') {
+            console.error('Track play error:', err);
+          }
+        }
       }
-    });
+    }
+
+    isTransitioningRef.current = false;
 
     // Update playback progress
     playbackIntervalRef.current = setInterval(() => {
@@ -754,25 +789,38 @@ const VoiceMusicMixer: React.FC = () => {
     }, 100);
   };
 
-  const pauseMix = () => {
+  const pauseMix = async () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+
     setIsPlaying(false);
-    audioRefs.current.forEach(audio => audio.pause());
+    await safePauseAll();
     if (playbackIntervalRef.current) {
       clearInterval(playbackIntervalRef.current);
     }
+
+    isTransitioningRef.current = false;
   };
 
-  const stopMix = () => {
+  const stopMix = async () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+
     setIsPlaying(false);
     setCurrentTime(0);
     setPlaybackProgress(0);
+
+    await safePauseAll();
+
     audioRefs.current.forEach(audio => {
-      audio.pause();
       audio.currentTime = 0;
     });
+
     if (playbackIntervalRef.current) {
       clearInterval(playbackIntervalRef.current);
     }
+
+    isTransitioningRef.current = false;
   };
 
   // Export mix

@@ -51,10 +51,19 @@ async function logVoiceCost(userId: string | null, action: string, cost: number,
   }
 }
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client (lazy initialization to prevent startup crashes)
+let openai: OpenAI | null = null;
+
+const getOpenAIClient = (): OpenAI => {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey.includes('REPLACE') || apiKey === 'sk-proj-REPLACE_WITH_YOUR_OPENAI_API_KEY') {
+      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in your .env file.');
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+};
 
 // Voice generation constants
 const VOICE_TOKEN_COST_PER_100_CHARS = 10;
@@ -203,7 +212,7 @@ async function generateWithOpenAI(
   try {
     console.log(`🎙️ Generating OpenAI TTS: voice=${voice}, chars=${text.length}`);
 
-    const response = await openai.audio.speech.create({
+    const response = await getOpenAIClient().audio.speech.create({
       model: 'tts-1-hd',  // High-definition quality
       voice: voice,
       input: text,
@@ -522,7 +531,7 @@ router.post('/generate', async (req: Request, res: Response) => {
 
     // Use TTS-1-HD for the absolute best quality
     // This model produces clearer, more natural-sounding audio
-    const mp3Response = await openai.audio.speech.create({
+    const mp3Response = await getOpenAIClient().audio.speech.create({
       model: 'tts-1-hd', // HD = High Definition quality - clearer, less noise
       voice: voice as VoiceId,
       input: text,
@@ -634,7 +643,7 @@ ${styleContext}
 
 Return ONLY the enhanced script, no explanations.`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -701,7 +710,7 @@ Target audience: ${targetAudience || 'general users and potential investors'}
 
 Return ONLY the script, ready to be read aloud. No stage directions or brackets.`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -756,7 +765,7 @@ Lesson: ${lessonTitle || 'Lesson'}
 
 Return ONLY the narration script, ready to be read aloud.`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -815,7 +824,7 @@ Transform the content into a ${voiceStyle} voice-over script that:
 
 Return ONLY the voice-over script.`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },

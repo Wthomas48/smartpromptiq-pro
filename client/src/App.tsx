@@ -64,6 +64,9 @@ import AcademySignUp from "@/pages/AcademySignUp";
 import AcademySearch from "@/pages/AcademySearch";
 import AcademyLearningPaths from "@/pages/AcademyLearningPaths";
 import Contact from "@/pages/Contact";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
+import Support from "@/pages/Support";
 import Onboarding from "@/pages/Onboarding";
 // BuilderIQ - App Creation Platform
 import BuilderIQ from "@/pages/BuilderIQ";
@@ -230,6 +233,11 @@ function Router() {
       <Route path="/documentation" component={Documentation} />
       <Route path="/settings" component={Settings} />
       <Route path="/contact" component={Contact} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/privacy" component={PrivacyPolicy} />
+      <Route path="/terms-of-service" component={TermsOfService} />
+      <Route path="/terms" component={TermsOfService} />
+      <Route path="/support" component={Support} />
 
       {/* Gamification & Marketplace */}
       <Route path="/rewards" component={GamificationDashboard} />

@@ -161,7 +161,7 @@ export default function PricingCard({ tier, onSelect, loading = false, showUpgra
         </div>
 
         <CardTitle className="text-xl font-bold">{name}</CardTitle>
-        <CardDescription className="text-sm text-gray-600 min-h-[2.5rem]">
+        <CardDescription className="text-sm text-gray-600 dark:text-gray-300 min-h-[2.5rem]">
           {description}
         </CardDescription>
 
@@ -172,7 +172,7 @@ export default function PricingCard({ tier, onSelect, loading = false, showUpgra
             <>
               <div className="text-4xl font-bold">
                 ${(price / 100).toFixed(0)}
-                <span className="text-lg font-normal text-gray-600">
+                <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
                   /{billingCycle === 'yearly' ? 'year' : 'month'}
                 </span>
               </div>
@@ -188,32 +188,32 @@ export default function PricingCard({ tier, onSelect, loading = false, showUpgra
 
       <CardContent className="pt-0">
         {/* Monthly Limits Summary */}
-        <div className="mb-4 p-3 bg-white/60 rounded-lg space-y-2">
+        <div className="mb-4 p-3 bg-white/60 dark:bg-slate-800/60 rounded-lg space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">AI Prompts</span>
+            <span className="text-gray-600 dark:text-gray-300">AI Prompts</span>
             <span className="font-semibold text-indigo-600">{formatLimit(limits.tokensPerMonth)}/mo</span>
           </div>
           {limits.voiceGenerations !== undefined && limits.voiceGenerations > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Voice</span>
+              <span className="text-gray-600 dark:text-gray-300">Voice</span>
               <span className="font-medium">{formatLimit(limits.voiceGenerations)}/mo</span>
             </div>
           )}
           {limits.musicTracks !== undefined && limits.musicTracks > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Music</span>
+              <span className="text-gray-600 dark:text-gray-300">Music</span>
               <span className="font-medium">{formatLimit(limits.musicTracks)}/mo</span>
             </div>
           )}
           {limits.imageGenerations !== undefined && limits.imageGenerations > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Images</span>
+              <span className="text-gray-600 dark:text-gray-300">Images</span>
               <span className="font-medium">{formatLimit(limits.imageGenerations)}/mo</span>
             </div>
           )}
           {limits.videoExports !== undefined && limits.videoExports > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Videos</span>
+              <span className="text-gray-600 dark:text-gray-300">Videos</span>
               <span className="font-medium">{formatLimit(limits.videoExports)}/mo</span>
             </div>
           )}
@@ -224,7 +224,7 @@ export default function PricingCard({ tier, onSelect, loading = false, showUpgra
           {features.slice(0, 6).map((feature, index) => (
             <li key={index} className="flex items-start">
               <Check className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-              <span className="text-sm text-gray-700">{feature}</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">{feature}</span>
             </li>
           ))}
           {features.length > 6 && (
@@ -261,7 +261,7 @@ export default function PricingCard({ tier, onSelect, loading = false, showUpgra
         )}
 
         {/* Key Limits */}
-        <div className="mb-6 text-xs text-gray-500 space-y-1">
+        <div className="mb-6 text-xs text-gray-500 dark:text-gray-400 space-y-1">
           {limits.teamMembers !== 1 && limits.teamMembers !== -1 && (
             <div>Up to {limits.teamMembers} team members</div>
           )}

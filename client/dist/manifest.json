@@ -12,68 +12,15 @@
   "categories": ["productivity", "education", "utilities"],
   "icons": [
     {
-      "src": "/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/dashboard.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Dashboard View"
-    },
-    {
-      "src": "/screenshots/mobile.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Mobile View"
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
     }
   ],
   "shortcuts": [
@@ -81,29 +28,25 @@
       "name": "Generate Prompt",
       "short_name": "Generate",
       "description": "Create a new AI prompt",
-      "url": "/categories",
-      "icons": [{ "src": "/icons/generate-96x96.png", "sizes": "96x96" }]
+      "url": "/categories"
     },
     {
       "name": "Academy",
       "short_name": "Learn",
       "description": "Browse Academy courses",
-      "url": "/academy/courses",
-      "icons": [{ "src": "/icons/academy-96x96.png", "sizes": "96x96" }]
+      "url": "/academy/courses"
     },
     {
       "name": "BuilderIQ",
       "short_name": "Build",
       "description": "Create app blueprints",
-      "url": "/builderiq",
-      "icons": [{ "src": "/icons/builder-96x96.png", "sizes": "96x96" }]
+      "url": "/builderiq"
     },
     {
       "name": "Marketplace",
       "short_name": "Market",
       "description": "Browse prompt marketplace",
-      "url": "/marketplace",
-      "icons": [{ "src": "/icons/market-96x96.png", "sizes": "96x96" }]
+      "url": "/marketplace"
     }
   ],
   "related_applications": [],

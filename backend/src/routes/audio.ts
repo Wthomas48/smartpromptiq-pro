@@ -23,10 +23,19 @@ import { API_COSTS, COST_CONTROL_FLAGS } from '../config/costs';
 const router = Router();
 const prisma = new PrismaClient();
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client (lazy initialization to prevent startup crashes)
+let openai: OpenAI | null = null;
+
+const getOpenAIClient = (): OpenAI => {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey.includes('REPLACE') || apiKey === 'sk-proj-REPLACE_WITH_YOUR_OPENAI_API_KEY') {
+      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in your .env file.');
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+};
 
 // ElevenLabs configuration
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
@@ -184,7 +193,7 @@ async function generateWithOpenAI(
   settings: any
 ): Promise<{ buffer: Buffer; format: string } | { error: string }> {
   try {
-    const response = await openai.audio.speech.create({
+    const response = await getOpenAIClient().audio.speech.create({
       model: 'tts-1-hd',
       voice,
       input: text,

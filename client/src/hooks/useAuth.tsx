@@ -131,8 +131,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (import.meta.env.DEV) {
           console.log('checkAuth: Checking Supabase session...');
         }
-        const { supabase } = await import('@/lib/supabase');
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { auth } = await import('@/lib/supabase');
+        const { session, error } = await auth.getSession();
 
         if (!error && session?.user) {
           if (import.meta.env.DEV) {
@@ -304,6 +304,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     clearInvalidTokens();
     checkAuth();
+  }, []);
+
+  // Listen for global unauthorized events (from API layer)
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      console.log("🔐 Global unauthorized event received - clearing auth state");
+      setIsAuthenticated(false);
+      setUser(null);
+      setToken(null);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   // ✅ BACKEND ONLY: Login using backend authentication only
@@ -542,8 +557,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshUserData = async () => {
     try {
       // Check current Supabase session
-      const { supabase } = await import('@/lib/supabase');
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { auth } = await import('@/lib/supabase');
+      const { session, error } = await auth.getSession();
 
       if (error || !session?.user) {
         console.log("No valid Supabase session, clearing auth data...");

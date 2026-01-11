@@ -79,26 +79,27 @@ export interface AddOnPackage {
 }
 
 // Get Stripe Price IDs from environment variables
+// Supports both Railway naming convention (STRIPE_XXX_MONTHLY_PRICE_ID) and standard (STRIPE_PRICE_XXX_MONTHLY)
 export const getStripePriceIds = () => ({
-  // Starter Plan (NEW)
-  STARTER_MONTHLY: process.env.STRIPE_PRICE_STARTER_MONTHLY || '',
-  STARTER_YEARLY: process.env.STRIPE_PRICE_STARTER_YEARLY || '',
+  // Starter Plan
+  STARTER_MONTHLY: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_STARTER_MONTHLY || '',
+  STARTER_YEARLY: process.env.STRIPE_STARTER_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_STARTER_YEARLY || '',
 
-  // Academy+ Subscription (renamed from Academy)
+  // Academy+ Subscription
   ACADEMY_PLUS_MONTHLY: process.env.STRIPE_PRICE_ACADEMY_MONTHLY || '',
   ACADEMY_PLUS_YEARLY: process.env.STRIPE_PRICE_ACADEMY_YEARLY || '',
 
   // Pro Plan (Full Platform)
-  PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY || '',
-  PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY || '',
+  PRO_MONTHLY: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_PRO_MONTHLY || '',
+  PRO_YEARLY: process.env.STRIPE_PRO_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_PRO_YEARLY || '',
 
   // Team Pro Plan (2-5 members)
-  TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_PRO_MONTHLY || '',
-  TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_PRO_YEARLY || '',
+  TEAM_PRO_MONTHLY: process.env.STRIPE_TEAM_PRO_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_TEAM_PRO_MONTHLY || '',
+  TEAM_PRO_YEARLY: process.env.STRIPE_TEAM_PRO_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_TEAM_PRO_YEARLY || '',
 
   // Enterprise Plan
-  ENTERPRISE_MONTHLY: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || '',
-  ENTERPRISE_YEARLY: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || '',
+  ENTERPRISE_MONTHLY: process.env.STRIPE_ENTERPRISE_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || '',
+  ENTERPRISE_YEARLY: process.env.STRIPE_ENTERPRISE_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || '',
 
   // Token Packages
   TOKENS_25: process.env.STRIPE_PRICE_TOKENS_25 || '',

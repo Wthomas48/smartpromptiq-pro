@@ -379,6 +379,85 @@ const BuilderIQQuestionnaire: React.FC = () => {
   const hasAskedRef = useRef(false);
   const voicesLoadedRef = useRef(false);
   const voiceModeJustActivated = useRef(false); // Track fresh voice mode activation
+  const lastSpeakEndTimeRef = useRef<number>(0); // Track when speaking ended to avoid hearing ourselves
+  const isSpeakingRef = useRef<boolean>(false); // Track if we're currently speaking
+  const audioContextRef = useRef<AudioContext | null>(null); // For accessibility confirmation sounds
+
+  // Accessibility sound effects using Web Audio API
+  const playAccessibilitySound = useCallback((type: 'select' | 'deselect' | 'next' | 'error' | 'complete') => {
+    try {
+      // Create or reuse AudioContext
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioContextRef.current;
+
+      // Resume if suspended (required after user interaction)
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      // Different sounds for different actions
+      switch (type) {
+        case 'select':
+          // Pleasant rising tone for selection
+          oscillator.frequency.setValueAtTime(440, ctx.currentTime);
+          oscillator.frequency.linearRampToValueAtTime(660, ctx.currentTime + 0.1);
+          gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + 0.15);
+          break;
+        case 'deselect':
+          // Falling tone for deselection
+          oscillator.frequency.setValueAtTime(520, ctx.currentTime);
+          oscillator.frequency.linearRampToValueAtTime(350, ctx.currentTime + 0.1);
+          gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.12);
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + 0.12);
+          break;
+        case 'next':
+          // Quick double beep for navigation
+          oscillator.frequency.setValueAtTime(600, ctx.currentTime);
+          gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+          gainNode.gain.setValueAtTime(0, ctx.currentTime + 0.05);
+          gainNode.gain.setValueAtTime(0.1, ctx.currentTime + 0.08);
+          gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.13);
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + 0.15);
+          break;
+        case 'error':
+          // Low buzz for errors
+          oscillator.type = 'sawtooth';
+          oscillator.frequency.setValueAtTime(200, ctx.currentTime);
+          gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + 0.2);
+          break;
+        case 'complete':
+          // Celebratory ascending arpeggio
+          oscillator.frequency.setValueAtTime(523, ctx.currentTime); // C5
+          oscillator.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
+          oscillator.frequency.setValueAtTime(784, ctx.currentTime + 0.2); // G5
+          oscillator.frequency.setValueAtTime(1047, ctx.currentTime + 0.3); // C6
+          gainNode.gain.setValueAtTime(0.15, ctx.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + 0.4);
+          break;
+      }
+    } catch (e) {
+      // Audio not available - fail silently
+      console.log('Accessibility sound not available');
+    }
+  }, []);
 
   // Preload voices on component mount
   useEffect(() => {
@@ -406,25 +485,44 @@ const BuilderIQQuestionnaire: React.FC = () => {
     };
   }, []);
 
-  // Create a session when questionnaire starts (if user is logged in)
+  // Create a session when questionnaire starts (if user is logged in with valid token)
   useEffect(() => {
     const createSession = async () => {
-      if (!user || sessionId) return; // Only create if logged in and no session yet
+      // Only create if logged in, have a token, and no session yet
+      const token = localStorage.getItem('token');
+      if (!user || !token || sessionId) return;
 
       try {
-        const response = await apiRequest('POST', '/api/builderiq/sessions', {
-          sessionType: 'questionnaire',
-          industry: initialIndustry,
-          voiceEnabled: false,
+        // Use direct fetch to avoid queryClient throwing on 401
+        const response = await fetch('/api/builderiq/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            sessionType: 'questionnaire',
+            industry: initialIndustry,
+            voiceEnabled: false,
+          })
         });
-        const data = await response.json();
-        if (data.success && data.data?.id) {
-          setSessionId(data.data.id);
-          console.log('📋 BuilderIQ session created:', data.data.id);
+
+        // Handle 401 gracefully without throwing
+        if (response.status === 401) {
+          console.log('📋 BuilderIQ: Continuing without session (auth required)');
+          return;
         }
-      } catch (error) {
-        console.error('Failed to create BuilderIQ session:', error);
-        // Continue without session - will save locally only
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.id) {
+            setSessionId(data.data.id);
+            console.log('📋 BuilderIQ session created:', data.data.id);
+          }
+        }
+      } catch (error: any) {
+        // Network error - continue without session
+        console.log('📋 BuilderIQ: Session creation skipped:', error?.message);
       }
     };
 
@@ -449,9 +547,14 @@ const BuilderIQQuestionnaire: React.FC = () => {
     speakResponses: false, // We'll use voiceService instead
     voicePersonality: 'friendly',
     onTranscript: (transcript) => {
-      // Only process if voice mode is ready and not currently speaking
-      if (voiceModeReady && !voiceService.isSpeaking) {
+      // Only process if voice mode is ready, not speaking, and enough time since last speech
+      const timeSinceSpeakEnd = Date.now() - lastSpeakEndTimeRef.current;
+      const isSafeToProcess = !isSpeakingRef.current && !voiceService.isSpeaking && timeSinceSpeakEnd > 800;
+
+      if (voiceModeReady && isSafeToProcess) {
         handleVoiceInput(transcript);
+      } else {
+        console.log('🎤 Ignoring transcript (speaking guard):', transcript.substring(0, 30), { isSpeaking: isSpeakingRef.current, timeSinceSpeakEnd });
       }
     },
     onCommand: (command) => {
@@ -527,35 +630,52 @@ const BuilderIQQuestionnaire: React.FC = () => {
       return;
     }
 
-    // Build the question prompt with options for better UX
-    let prompt = currentQuestion.voicePrompt || currentQuestion.title;
+    // Build the question prompt with question number for accessibility
+    const questionNumber = currentIndex + 1;
+    const totalQuestions = visibleQuestions.length;
+
+    // Start with question number announcement for visually impaired users
+    let prompt = `Question ${questionNumber} of ${totalQuestions}. `;
+    prompt += currentQuestion.voicePrompt || currentQuestion.title;
 
     // Add a brief pause and option hint for single/multiple select questions
     if (currentQuestion.type === 'single' && currentQuestion.options && currentQuestion.options.length <= 4) {
-      const optionNames = currentQuestion.options.map(o => o.label).join(', or ');
-      prompt += `. You can say: ${optionNames}`;
+      const optionNames = currentQuestion.options.map((o, i) => `${i + 1}: ${o.label}`).join(', ');
+      prompt += `. Your options are: ${optionNames}. Say a number or option name to select.`;
+    } else if (currentQuestion.type === 'multiple' && currentQuestion.options) {
+      const optionCount = currentQuestion.options.length;
+      prompt += `. There are ${optionCount} options. Say the names or numbers to select multiple, then say 'done' when finished.`;
+    } else if (currentQuestion.type === 'text' || currentQuestion.type === 'textarea') {
+      prompt += ` Speak your answer, then say 'next' to continue.`;
     }
 
     console.log('🔊 Asking question:', prompt.substring(0, 80) + '...');
 
-    // Stop listening while speaking to prevent hearing ourselves
+    // Mark speaking BEFORE anything else to prevent race conditions
+    isSpeakingRef.current = true;
+
+    // Pause listening while speaking to prevent hearing ourselves (keeps stream alive for fast resume)
     if (voice.isListening) {
       console.log('🎤 Pausing listening while speaking...');
-      voice.stopListening();
+      voice.pauseListening();
     }
 
     setIsAskingQuestion(true);
 
-    // Function to start listening after speech
+    // Function to resume listening after speech (faster than full restart)
     const startListeningAfterSpeech = () => {
+      // Mark speaking as done and record end time
+      isSpeakingRef.current = false;
+      lastSpeakEndTimeRef.current = Date.now();
+
       setIsAskingQuestion(false);
       if (voiceMode) {
         setTimeout(() => {
-          console.log('🎤 Starting listening after question...');
+          console.log('🎤 Resuming listening after question...');
           if (!voice.isListening) {
-            voice.startListening();
+            voice.resumeListening();
           }
-        }, 400);
+        }, 500); // Longer delay to avoid hearing echo
       }
     };
 
@@ -566,6 +686,7 @@ const BuilderIQQuestionnaire: React.FC = () => {
         personality: 'enthusiastic',
         onStart: () => {
           console.log('🔊 Speech started');
+          isSpeakingRef.current = true;
         },
         onEnd: () => {
           console.log('🔊 Speech ended, resuming listening...');
@@ -573,6 +694,8 @@ const BuilderIQQuestionnaire: React.FC = () => {
         },
         onError: (e) => {
           console.error('Speech error:', e);
+          isSpeakingRef.current = false;
+          lastSpeakEndTimeRef.current = Date.now();
           // Try fallback on error
           tryFallbackSpeech(prompt, startListeningAfterSpeech);
         },
@@ -582,27 +705,40 @@ const BuilderIQQuestionnaire: React.FC = () => {
       console.log('🔊 voiceService not ready, using fallback');
       tryFallbackSpeech(prompt, startListeningAfterSpeech);
     }
-  }, [currentQuestion, isAskingQuestion, voiceMode, voice, voiceService, tryFallbackSpeech]);
+  }, [currentQuestion, isAskingQuestion, voiceMode, voice, voiceService, tryFallbackSpeech, currentIndex, visibleQuestions.length]);
 
   // Read help text using unified voice service
   const readHelp = useCallback(() => {
     if (currentQuestion?.voiceHelp) {
-      // Stop listening while speaking help
+      // Mark speaking BEFORE anything else
+      isSpeakingRef.current = true;
+
+      // Pause listening while speaking help (keeps stream alive for fast resume)
       if (voice.isListening) {
-        voice.stopListening();
+        voice.pauseListening();
       }
 
       voiceService.speak(currentQuestion.voiceHelp, {
         personality: 'teacher',
+        onStart: () => {
+          isSpeakingRef.current = true;
+        },
         onEnd: () => {
+          // Mark speaking as done
+          isSpeakingRef.current = false;
+          lastSpeakEndTimeRef.current = Date.now();
+
           // Resume listening after help is read
           if (voiceMode) {
-            setTimeout(() => voice.startListening(), 300);
+            setTimeout(() => voice.resumeListening(), 500);
           }
         },
         onError: () => {
+          isSpeakingRef.current = false;
+          lastSpeakEndTimeRef.current = Date.now();
+
           if (voiceMode) {
-            setTimeout(() => voice.startListening(), 300);
+            setTimeout(() => voice.resumeListening(), 500);
           }
         }
       });
@@ -615,515 +751,58 @@ const BuilderIQQuestionnaire: React.FC = () => {
 
   // Helper to speak feedback with proper listening pause/resume
   const speakFeedback = useCallback((text: string, personality: 'enthusiastic' | 'friendly' | 'teacher' = 'enthusiastic', afterCallback?: () => void) => {
-    // Stop listening while speaking
+    // Mark that we're speaking BEFORE any speech starts
+    isSpeakingRef.current = true;
+
+    // Pause listening while speaking (keeps stream alive for quick resume)
     if (voice.isListening) {
-      voice.stopListening();
+      voice.pauseListening();
     }
 
     voiceService.speak(text, {
       personality,
+      onStart: () => {
+        isSpeakingRef.current = true;
+      },
       onEnd: () => {
+        // Mark speaking as done and record end time
+        isSpeakingRef.current = false;
+        lastSpeakEndTimeRef.current = Date.now();
+
         // Execute callback if provided
         afterCallback?.();
-        // Resume listening after speaking (unless callback handled it)
-        if (voiceMode && !afterCallback) {
-          setTimeout(() => voice.startListening(), 300);
+
+        // Resume listening after speaking with buffer time
+        if (voiceMode) {
+          setTimeout(() => voice.resumeListening(), 500); // Longer delay to avoid hearing echo
         }
       },
       onError: () => {
+        // Mark speaking as done even on error
+        isSpeakingRef.current = false;
+        lastSpeakEndTimeRef.current = Date.now();
+
         afterCallback?.();
-        if (voiceMode && !afterCallback) {
-          setTimeout(() => voice.startListening(), 300);
+        // Resume listening even on error
+        if (voiceMode) {
+          setTimeout(() => voice.resumeListening(), 500);
         }
       }
     });
   }, [voice, voiceService, voiceMode]);
 
-  // Navigation - MUST be defined before handleVoiceInput to avoid circular reference
-  const canGoNext = useCallback(() => {
-    if (!currentQuestion?.required) return true;
-    const value = responses[currentQuestion.id];
-    if (currentQuestion.type === 'multiple') {
-      return Array.isArray(value) && value.length > 0;
-    }
-    return !!value;
-  }, [currentQuestion, responses]);
-
-  const goNext = useCallback(() => {
-    if (!canGoNext()) {
-      const message = 'Please answer this question before continuing';
-      toast({
-        title: 'Required',
-        description: message,
-        variant: 'destructive',
-      });
-      if (voiceMode) {
-        speakFeedback(message, 'friendly');
-      }
-      return;
-    }
-
-    if (currentIndex < visibleQuestions.length - 1) {
-      // Stop listening before transition
-      if (voice.isListening) {
-        voice.stopListening();
-      }
-      voiceService.stop(); // Cancel any ongoing speech
-
-      hasAskedRef.current = false; // Reset so auto-ask can work
-      setCurrentIndex(currentIndex + 1);
-      // The auto-ask useEffect will handle asking the next question
-    } else {
-      handleComplete();
-    }
-  }, [currentIndex, visibleQuestions.length, voiceMode, voice, voiceService, speakFeedback, toast, canGoNext]);
-
-  const goPrevious = useCallback(() => {
-    if (currentIndex > 0) {
-      // Stop listening before transition
-      if (voice.isListening) {
-        voice.stopListening();
-      }
-      voiceService.stop();
-
-      hasAskedRef.current = false;
-      setCurrentIndex(currentIndex - 1);
-    }
-  }, [currentIndex, voice, voiceService]);
-
-  // Process voice input with smart responses
-  const handleVoiceInput = useCallback((transcript: string) => {
-    const lower = transcript.toLowerCase().trim();
-    const now = Date.now();
-
-    // Anti-repeat: Skip if same transcript within 2 seconds
-    if (lower === lastProcessedTranscript.current && now - lastProcessedTime.current < 2000) {
-      console.log('🎤 Skipping duplicate transcript:', lower);
-      return;
-    }
-
-    // Anti-repeat: Skip very short or empty transcripts
-    if (lower.length < 2) {
-      return;
-    }
-
-    lastProcessedTranscript.current = lower;
-    lastProcessedTime.current = now;
-    console.log('🎤 Processing voice input:', lower);
-
-    // ========== GREETING & CONVERSATIONAL COMMANDS ==========
-
-    // "Hello SmartPrompt" - Friendly greeting with app building context
-    if (lower.includes('hello smart') || lower.includes('hey smart') || lower.includes('hi smart') ||
-        lower.includes('hello prompt') || lower.includes('hey prompt') || lower.includes('hi prompt')) {
-      speakFeedback(
-        "Hey there! I'm SmartPrompt, your AI app building assistant! " +
-        "What kind of app would you like to build today? You can say things like " +
-        "'I want to build a shopping app' or 'help me create a booking system'. Let's make something amazing!",
-        'enthusiastic'
-      );
-      return;
-    }
-
-    // "What can you do?" / "What can you help with?"
-    if (lower.includes('what can you') || lower.includes('what do you do') || lower.includes('how can you help')) {
-      speakFeedback(
-        "I can help you build any kind of app! Just tell me what you're thinking. " +
-        "For example: e-commerce stores, booking systems, dashboards, social platforms, " +
-        "portfolio sites, SaaS products, mobile apps, and much more. " +
-        "What's your idea?",
-        'friendly'
-      );
-      return;
-    }
-
-    // "I want to build..." / "Help me create..." / "Make me a..."
-    if (lower.includes('i want to build') || lower.includes('help me create') || lower.includes('make me a') ||
-        lower.includes('i need a') || lower.includes('build me a') || lower.includes('create a')) {
-      // Extract what they want to build
-      const buildMatch = lower.match(/(?:build|create|make|need)\s+(?:a\s+)?(.+)/);
-      const appIdea = buildMatch ? buildMatch[1] : 'your app';
-      const safeAppIdea = appIdea || 'your app';
-      speakFeedback(
-        `Awesome! ${safeAppIdea.charAt(0).toUpperCase() + safeAppIdea.slice(1)} sounds exciting! ` +
-        "Let me ask you a few questions to understand exactly what you need. " +
-        "This will only take a couple of minutes, and then I'll generate a complete blueprint for you!",
-        'enthusiastic'
-      );
-      // Ask the first question after greeting
-      setTimeout(() => askCurrentQuestion(), 2500);
-      return;
-    }
-
-    // "Thank you" / "Thanks"
-    if (lower.includes('thank you') || lower.includes('thanks')) {
-      speakFeedback(
-        "You're welcome! I'm here to help you build something amazing. Let's keep going!",
-        'friendly'
-      );
-      return;
-    }
-
-    // "Good job" / "Great" / "Perfect" / "Awesome"
-    if (lower.includes('good job') || lower.includes('great') || lower.includes('perfect') ||
-        lower.includes('awesome') || lower.includes('excellent') || lower.includes('nice')) {
-      speakFeedback(
-        "Thanks! I love your energy! Let's keep building!",
-        'enthusiastic'
-      );
-      return;
-    }
-
-    // "Stop" / "Pause" / "Wait"
-    if (lower === 'stop' || lower === 'pause' || lower === 'wait' || lower.includes('hold on')) {
-      voiceService.stop();
-      speakFeedback("Okay, I'll wait. Say 'continue' when you're ready!", 'friendly');
-      return;
-    }
-
-    // "Start over" / "Reset"
-    if (lower.includes('start over') || lower.includes('reset') || lower.includes('begin again')) {
-      speakFeedback(
-        "No problem! Let's start fresh. I'll take you back to the first question.",
-        'friendly',
-        () => setCurrentIndex(0)
-      );
-      return;
-    }
-
-    // "How long will this take?"
-    if (lower.includes('how long') || lower.includes('how many questions')) {
-      const remaining = visibleQuestions.length - currentIndex;
-      speakFeedback(
-        `You're doing great! There are ${remaining} questions left. ` +
-        "Most people finish in about 2 to 3 minutes. Let's keep going!",
-        'friendly'
-      );
-      return;
-    }
-
-    // ========== NAVIGATION COMMANDS ==========
-
-    if (lower.includes('next') || lower.includes('continue') || lower.includes('proceed') || lower.includes('move on')) {
-      goNext();
-      return;
-    }
-    if (lower.includes('back') || lower.includes('previous') || lower.includes('go back')) {
-      goPrevious();
-      return;
-    }
-    if (lower.includes('help') || lower.includes('what are my options') || lower.includes('options')) {
-      readHelp();
-      return;
-    }
-    if (lower.includes('skip') || lower.includes('skip this')) {
-      if (!currentQuestion.required) {
-        speakFeedback("Skipping this question!", 'enthusiastic', () => goNext());
-      } else {
-        speakFeedback("This question is required, but I can help! " + (currentQuestion.voiceHelp || "What would you like to answer?"), 'friendly');
-      }
-      return;
-    }
-    if (lower.includes('done') || lower.includes('that\'s all') || lower.includes('finished') || lower.includes("that's it")) {
-      if (currentQuestion.type === 'multiple') {
-        const selected = responses[currentQuestion.id] || [];
-        if (selected.length > 0) {
-          speakFeedback(`Perfect! You selected ${selected.length} options. Moving on!`, 'enthusiastic', () => goNext());
-        } else {
-          speakFeedback("You haven't selected anything yet. What would you like to choose?", 'friendly');
-        }
-      } else {
-        // Treat as "next" for non-multiple questions
-        goNext();
-      }
-      return;
-    }
-    if (lower.includes('repeat') || lower.includes('say again') || lower.includes('what was the question') || lower.includes('say that again')) {
-      askCurrentQuestion();
-      return;
-    }
-
-    // ========== ANSWER PROCESSING ==========
-
-    if (currentQuestion.type === 'single' && currentQuestion.options) {
-      // Try to match voice input to an option
-      for (const option of currentQuestion.options) {
-        const aliases = option.voiceAliases || [option.value, option.label.toLowerCase()];
-        for (const alias of aliases) {
-          if (lower.includes(alias.toLowerCase())) {
-            handleSingleSelect(option.value);
-            // Auto-advance after selection with brief confirmation
-            speakFeedback(`${option.label}! Perfect!`, 'enthusiastic', () => {
-              // Automatically go to next question after selection
-              setTimeout(() => goNext(), 500);
-            });
-            return;
-          }
-        }
-      }
-      // No match found - be helpful
-      const safeOptions = currentQuestion.options || [];
-      const optionNames = safeOptions.slice(0, 3).map(o => o.label).join(', ') || 'the available options';
-      speakFeedback(
-        `I didn't quite catch that. You can say options like: ${optionNames}. Or say 'help' for all options!`,
-        'friendly'
-      );
-    } else if (currentQuestion.type === 'multiple' && currentQuestion.options) {
-      let matched = false;
-      let matchedOptions: string[] = [];
-      const currentSelections = [...(responses[currentQuestion.id] || [])];
-
-      for (const option of currentQuestion.options) {
-        const aliases = option.voiceAliases || [option.value, option.label.toLowerCase()];
-        for (const alias of aliases) {
-          if (lower.includes(alias.toLowerCase())) {
-            if (!currentSelections.includes(option.value)) {
-              currentSelections.push(option.value);
-              matchedOptions.push(option.label);
-              matched = true;
-            }
-          }
-        }
-      }
-
-      if (matched) {
-        setResponses(prev => ({ ...prev, [currentQuestion.id]: currentSelections }));
-        const feedbackText = matchedOptions.length > 1
-          ? `Added ${matchedOptions.join(' and ')}!`
-          : `${matchedOptions[0]} added!`;
-        speakFeedback(feedbackText + " Say more options or 'done' when finished!", 'enthusiastic');
-      } else if (!lower.includes('done')) {
-        const safeMultiOptions = currentQuestion.options || [];
-        const optionNames = safeMultiOptions.slice(0, 3).map(o => o.label).join(', ') || 'the available options';
-        speakFeedback(
-          `Hmm, I didn't recognize that. Try saying: ${optionNames}. Or say 'help' for all options!`,
-          'friendly'
-        );
-      }
-    } else if (currentQuestion.type === 'text' || currentQuestion.type === 'textarea') {
-      // For text questions - clean up the transcript before saving
-      const cleanTranscript = transcript.trim();
-
-      // Check if user wants to finalize their answer
-      if (lower.includes("that's good") || lower.includes("that's fine") || lower.includes("sounds good") ||
-          lower.includes("that's perfect") || lower.includes("looks good") || lower.includes("that's correct")) {
-        speakFeedback("Perfect! Moving to the next question!", 'enthusiastic', () => {
-          setTimeout(() => goNext(), 500);
-        });
-        return;
-      }
-
-      if (cleanTranscript.length > 0) {
-        // Filter out command words from the transcript
-        const commandWords = ['next', 'continue', 'done', 'finish', 'that\'s it', 'that is it', 'ok', 'okay'];
-        let filteredTranscript = cleanTranscript;
-        for (const word of commandWords) {
-          filteredTranscript = filteredTranscript.replace(new RegExp(word, 'gi'), '').trim();
-        }
-
-        if (filteredTranscript.length > 3) {
-          const currentValue = responses[currentQuestion.id] || '';
-          const newValue = currentValue ? `${currentValue} ${filteredTranscript}` : filteredTranscript;
-          setResponses(prev => ({ ...prev, [currentQuestion.id]: newValue }));
-          speakFeedback("Got it! Keep talking to add more, or say 'next' when done!", 'enthusiastic');
-        }
-      }
-    }
-  }, [currentQuestion, responses, speakFeedback, askCurrentQuestion, readHelp, visibleQuestions.length, currentIndex, voiceService, goNext]);
-
-  // Auto-ask question when question changes (NOT when voice mode toggles - that's handled in toggleVoiceMode)
-  useEffect(() => {
-    // Only auto-ask if:
-    // 1. Voice mode is active and ready
-    // 2. We haven't just activated voice mode (that's handled in toggleVoiceMode)
-    // 3. We haven't already asked this question
-    if (voiceMode && voiceModeReady && currentQuestion && !hasAskedRef.current && !voiceModeJustActivated.current) {
-      console.log('🎤 Auto-asking question on question change, index:', currentIndex);
-      hasAskedRef.current = true;
-      // Small delay to let the page render
-      const timer = setTimeout(() => {
-        // Make sure we're still in voice mode
-        if (voiceMode && voiceModeReady) {
-          askCurrentQuestion();
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [currentIndex, voiceModeReady, voiceMode, currentQuestion, askCurrentQuestion]);
-
-  // Reset the asked flag when question changes
-  useEffect(() => {
-    hasAskedRef.current = false;
-    voiceModeJustActivated.current = false; // Reset after first question change
-  }, [currentIndex]);
-
-  // State for microphone permission
-  const [micPermissionStatus, setMicPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
-  const [showMicPermissionDialog, setShowMicPermissionDialog] = useState(false);
-
-  // Request microphone permission with awesome UX
-  const requestMicrophonePermission = async (): Promise<boolean> => {
-    try {
-      console.log('🎤 Requesting microphone permission...');
-
-      // Try to get microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Permission granted! Stop the stream since we just needed permission
-      stream.getTracks().forEach(track => track.stop());
-
-      setMicPermissionStatus('granted');
-      console.log('🎤 Microphone permission granted!');
-      return true;
-    } catch (error: any) {
-      console.error('🎤 Microphone permission error:', error);
-
-      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-        setMicPermissionStatus('denied');
-        toast({
-          title: "Microphone Access Needed",
-          description: "Please click the camera/microphone icon in your browser's address bar and select 'Allow' for microphone, then try again.",
-          variant: "destructive",
-          duration: 8000,
-        });
-
-        // Speak guidance for visually impaired users
-        voiceService.speak(
-          "I need microphone access to hear you. Please look for the microphone or lock icon in your browser's address bar, click it, and select Allow for microphone. Then try enabling voice mode again.",
-          { personality: 'friendly' }
-        );
-      } else if (error.name === 'NotFoundError') {
-        toast({
-          title: "No Microphone Found",
-          description: "Please connect a microphone and try again.",
-          variant: "destructive",
-        });
-        voiceService.speak("I couldn't find a microphone. Please connect one and try again.", { personality: 'friendly' });
-      }
-
-      return false;
-    }
-  };
-
-  // Toggle voice mode with permission check
-  const toggleVoiceMode = async () => {
-    if (!voiceMode) {
-      console.log('🎤 Activating voice mode...');
-
-      // FIRST: Request microphone permission
-      const hasPermission = await requestMicrophonePermission();
-
-      if (!hasPermission) {
-        console.log('🎤 Microphone permission denied, cannot activate voice mode');
-        return; // Don't activate voice mode without permission
-      }
-
-      // Permission granted! Now activate voice mode
-      setVoiceMode(true);
-      setVoiceModeReady(false);
-      voiceModeJustActivated.current = true;
-      hasAskedRef.current = false;
-
-      // Force initialize voice service (unlocks audio on user gesture)
-      voiceService.forceInit();
-
-      // Start listening for voice immediately (so user can interrupt if needed)
-      setTimeout(() => {
-        console.log('🎤 Starting voice recognition...');
-        voice.startListening();
-      }, 200);
-
-      // Speak awesome activation message - shorter so we get to questions faster
-      const activationMessage = "Voice mode active! I'll read questions and listen to your answers. Let's go!";
-
-      console.log('🔊 Speaking activation message...');
-      voiceService.speak(activationMessage, {
-        personality: 'enthusiastic',
-        onStart: () => {
-          console.log('🔊 Activation speech started');
-        },
-        onEnd: () => {
-          console.log('🎤 Activation speech complete, now asking question...');
-          setVoiceModeReady(true);
-          voiceModeJustActivated.current = false; // Reset so auto-ask works
-
-          // Now ask the first question
-          setTimeout(() => {
-            hasAskedRef.current = false; // Ensure we ask the question
-            askCurrentQuestion();
-          }, 400);
-        },
-        onError: (e) => {
-          console.log('🎤 Activation speech error:', e, '- trying to continue...');
-          setVoiceModeReady(true);
-          voiceModeJustActivated.current = false;
-
-          // Try with fallback speech
-          setTimeout(() => {
-            hasAskedRef.current = false;
-            askCurrentQuestion();
-          }, 400);
-        }
-      });
-
-      // Show toast for visual confirmation
-      toast({
-        title: "Voice Mode Activated!",
-        description: "I'll read questions aloud and listen to your answers. Say 'help' anytime for guidance.",
-      });
-
-    } else {
-      console.log('🎤 Deactivating voice mode...');
-      setVoiceMode(false);
-      setVoiceModeReady(false);
-      voiceModeJustActivated.current = false;
-      hasAskedRef.current = false;
-
-      // Stop listening first
-      voice.stopListening();
-
-      // Cancel any ongoing speech
-      voiceService.stop();
-
-      // Say friendly goodbye
-      voiceService.speak(
-        "Voice mode deactivated. You can continue by typing your answers. " +
-        "Enable voice mode anytime to have me read questions and listen to you. Talk to you soon!",
-        { personality: 'friendly' }
-      );
-
-      toast({
-        title: "Voice Mode Off",
-        description: "You can type your answers or re-enable voice anytime.",
-      });
-    }
-  };
-
-  // Handle response changes
-  const handleSingleSelect = (value: string) => {
-    setResponses(prev => ({ ...prev, [currentQuestion.id]: value }));
-  };
-
-  const handleMultiSelect = (value: string, checked: boolean) => {
-    setResponses(prev => {
-      const current = prev[currentQuestion.id] || [];
-      if (checked) {
-        return { ...prev, [currentQuestion.id]: [...current, value] };
-      } else {
-        return { ...prev, [currentQuestion.id]: current.filter((v: string) => v !== value) };
-      }
-    });
-  };
-
-  const handleTextChange = (value: string) => {
-    setResponses(prev => ({ ...prev, [currentQuestion.id]: value }));
-  };
-
-  const handleComplete = async () => {
+  // handleComplete - MUST be defined before goNext to avoid circular reference
+  const handleComplete = useCallback(async () => {
     setIsGenerating(true);
 
+    // Stop voice recognition during generation
     if (voiceMode) {
-      voiceService.speak("Excellent! I have all the information I need! Let me show you a preview of your app. You're going to love this!", { personality: 'enthusiastic' });
+      voice.stopListening();
+      // Announce that generation is starting
+      voiceService.speak(
+        "Perfect! I'm now generating your app blueprint. This will just take a moment. I'll show you an amazing preview when it's ready!",
+        { personality: 'enthusiastic' }
+      );
     }
 
     try {
@@ -1235,18 +914,736 @@ Complexity level: ${responses.complexity || 'standard'}.`;
       }
       localStorage.setItem('builderiq_app_name', appName);
       localStorage.setItem('builderiq_master_prompt', masterPrompt);
+      // Store voice mode preference so preview page can continue voice experience
+      localStorage.setItem('builderiq_voice_mode', voiceMode ? 'true' : 'false');
 
-      // Navigate to preview
-      navigate('/builderiq/preview');
+      // Announce success before navigating (if voice mode)
+      if (voiceMode) {
+        voiceService.speak(
+          "Your app blueprint is ready! Taking you to the preview now where you can see your amazing app come to life!",
+          {
+            personality: 'enthusiastic',
+            onEnd: () => {
+              navigate('/builderiq/preview');
+            }
+          }
+        );
+      } else {
+        // Navigate immediately if not in voice mode
+        navigate('/builderiq/preview');
+      }
     } catch (error) {
       console.error('Error completing questionnaire:', error);
       setIsGenerating(false);
+
+      // Announce error if in voice mode
+      if (voiceMode) {
+        voiceService.speak(
+          "Oops, something went wrong. Let me try that again for you. Don't worry, your answers are safe!",
+          { personality: 'friendly' }
+        );
+      }
+
       toast({
         title: 'Error',
         description: 'Something went wrong. Please try again.',
         variant: 'destructive',
       });
     }
+  }, [voiceMode, voice, voiceService, responses, audioSelection, user, sessionId, toast, navigate]);
+
+  // Navigation - MUST be defined before handleVoiceInput to avoid circular reference
+  const canGoNext = useCallback(() => {
+    if (!currentQuestion?.required) return true;
+    const value = responses[currentQuestion.id];
+    if (currentQuestion.type === 'multiple') {
+      return Array.isArray(value) && value.length > 0;
+    }
+    return !!value;
+  }, [currentQuestion, responses]);
+
+  const goNext = useCallback(() => {
+    if (!canGoNext()) {
+      const message = 'Please answer this question before continuing';
+      toast({
+        title: 'Required',
+        description: message,
+        variant: 'destructive',
+      });
+      if (voiceMode) {
+        speakFeedback(message, 'friendly');
+      }
+      return;
+    }
+
+    if (currentIndex < visibleQuestions.length - 1) {
+      // Pause listening during transition (keeps stream alive for faster resume)
+      if (voice.isListening) {
+        voice.pauseListening();
+      }
+      voiceService.stop(); // Cancel any ongoing speech
+
+      // Play navigation sound for accessibility
+      playAccessibilitySound('next');
+
+      hasAskedRef.current = false; // Reset so auto-ask can work
+      setCurrentIndex(currentIndex + 1);
+
+      // The auto-ask useEffect will handle asking the next question
+      // Voice will be resumed after the question is asked via askCurrentQuestion
+    } else {
+      // Last question - complete the questionnaire!
+      console.log('🎤 Last question reached, completing questionnaire...');
+      if (voiceMode) {
+        // Mark speaking and stop voice recognition before completion
+        isSpeakingRef.current = true;
+        voice.stopListening();
+        voiceService.speak(
+          "Fantastic! You've answered all the questions! Now let me generate your amazing app blueprint. This will just take a moment!",
+          {
+            personality: 'enthusiastic',
+            onEnd: () => {
+              isSpeakingRef.current = false;
+              handleComplete();
+            },
+            onError: () => {
+              isSpeakingRef.current = false;
+              handleComplete();
+            }
+          }
+        );
+      } else {
+        handleComplete();
+      }
+    }
+  }, [currentIndex, visibleQuestions.length, voiceMode, voice, voiceService, speakFeedback, toast, canGoNext, handleComplete, playAccessibilitySound]);
+
+  const goPrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      // Stop listening before transition
+      if (voice.isListening) {
+        voice.stopListening();
+      }
+      voiceService.stop();
+
+      hasAskedRef.current = false;
+      setCurrentIndex(currentIndex - 1);
+    }
+  }, [currentIndex, voice, voiceService]);
+
+  // Process voice input with smart responses
+  const handleVoiceInput = useCallback((transcript: string) => {
+    const lower = transcript.toLowerCase().trim();
+    const now = Date.now();
+
+    // Anti-repeat: Skip if same transcript within 2 seconds
+    if (lower === lastProcessedTranscript.current && now - lastProcessedTime.current < 2000) {
+      console.log('🎤 Skipping duplicate transcript:', lower);
+      return;
+    }
+
+    // Anti-repeat: Skip very short or empty transcripts
+    if (lower.length < 2) {
+      return;
+    }
+
+    lastProcessedTranscript.current = lower;
+    lastProcessedTime.current = now;
+    console.log('🎤 Processing voice input:', lower);
+
+    // ========== GREETING & CONVERSATIONAL COMMANDS ==========
+
+    // "Hello SmartPrompt" - Friendly greeting with app building context
+    if (lower.includes('hello smart') || lower.includes('hey smart') || lower.includes('hi smart') ||
+        lower.includes('hello prompt') || lower.includes('hey prompt') || lower.includes('hi prompt')) {
+      speakFeedback(
+        "Hey there! I'm SmartPrompt, your AI app building assistant! " +
+        "What kind of app would you like to build today? You can say things like " +
+        "'I want to build a shopping app' or 'help me create a booking system'. Let's make something amazing!",
+        'enthusiastic'
+      );
+      return;
+    }
+
+    // "What can you do?" / "What can you help with?"
+    if (lower.includes('what can you') || lower.includes('what do you do') || lower.includes('how can you help')) {
+      speakFeedback(
+        "I can help you build any kind of app! Just tell me what you're thinking. " +
+        "For example: e-commerce stores, booking systems, dashboards, social platforms, " +
+        "portfolio sites, SaaS products, mobile apps, and much more. " +
+        "What's your idea?",
+        'friendly'
+      );
+      return;
+    }
+
+    // "I want to build..." / "Help me create..." / "Make me a..."
+    if (lower.includes('i want to build') || lower.includes('help me create') || lower.includes('make me a') ||
+        lower.includes('i need a') || lower.includes('build me a') || lower.includes('create a')) {
+      // Extract what they want to build
+      const buildMatch = lower.match(/(?:build|create|make|need)\s+(?:a\s+)?(.+)/);
+      const appIdea = buildMatch ? buildMatch[1] : 'your app';
+      const safeAppIdea = appIdea || 'your app';
+      speakFeedback(
+        `Awesome! ${safeAppIdea.charAt(0).toUpperCase() + safeAppIdea.slice(1)} sounds exciting! ` +
+        "Let me ask you a few questions to understand exactly what you need. " +
+        "This will only take a couple of minutes, and then I'll generate a complete blueprint for you!",
+        'enthusiastic'
+      );
+      // Ask the first question after greeting
+      setTimeout(() => askCurrentQuestion(), 2500);
+      return;
+    }
+
+    // "Thank you" / "Thanks"
+    if (lower.includes('thank you') || lower.includes('thanks')) {
+      speakFeedback(
+        "You're welcome! I'm here to help you build something amazing. Let's keep going!",
+        'friendly'
+      );
+      return;
+    }
+
+    // "Good job" / "Great" / "Perfect" / "Awesome"
+    if (lower.includes('good job') || lower.includes('great') || lower.includes('perfect') ||
+        lower.includes('awesome') || lower.includes('excellent') || lower.includes('nice')) {
+      speakFeedback(
+        "Thanks! I love your energy! Let's keep building!",
+        'enthusiastic'
+      );
+      return;
+    }
+
+    // "Stop" / "Pause" / "Wait"
+    if (lower === 'stop' || lower === 'pause' || lower === 'wait' || lower.includes('hold on')) {
+      voiceService.stop();
+      speakFeedback("Okay, I'll wait. Say 'continue' when you're ready!", 'friendly');
+      return;
+    }
+
+    // "Finish" / "Complete" / "Generate my app" - Skip to completion if we have enough info
+    if (lower.includes('finish now') || lower.includes('complete now') || lower.includes('generate my app') ||
+        lower.includes('create my app') || lower.includes("let's finish") || lower.includes('skip to end')) {
+      // Check if we have minimum required responses
+      const requiredQuestions = visibleQuestions.filter(q => q.required);
+      const answeredRequired = requiredQuestions.filter(q => responses[q.id]);
+
+      if (answeredRequired.length >= Math.ceil(requiredQuestions.length * 0.6)) {
+        speakFeedback(
+          "Great! You've answered enough questions. Let me generate your app blueprint now!",
+          'enthusiastic',
+          () => handleComplete()
+        );
+      } else {
+        speakFeedback(
+          "I need a few more answers to create a good blueprint. Let's finish the remaining questions quickly!",
+          'friendly'
+        );
+      }
+      return;
+    }
+
+    // "Start over" / "Reset"
+    if (lower.includes('start over') || lower.includes('reset') || lower.includes('begin again')) {
+      speakFeedback(
+        "No problem! Let's start fresh. I'll take you back to the first question.",
+        'friendly',
+        () => setCurrentIndex(0)
+      );
+      return;
+    }
+
+    // "How long will this take?"
+    if (lower.includes('how long') || lower.includes('how many questions')) {
+      const remaining = visibleQuestions.length - currentIndex;
+      speakFeedback(
+        `You're doing great! There are ${remaining} questions left. ` +
+        "Most people finish in about 2 to 3 minutes. Let's keep going!",
+        'friendly'
+      );
+      return;
+    }
+
+    // ========== NAVIGATION COMMANDS ==========
+
+    if (lower.includes('next') || lower.includes('continue') || lower.includes('proceed') || lower.includes('move on') || lower === 'ok' || lower === 'okay') {
+      goNext();
+      return;
+    }
+    if (lower.includes('back') || lower.includes('previous') || lower.includes('go back')) {
+      goPrevious();
+      return;
+    }
+    if (lower.includes('help') || lower.includes('what are my options') || lower.includes('options')) {
+      readHelp();
+      return;
+    }
+    if (lower.includes('skip') || lower.includes('skip this')) {
+      if (!currentQuestion.required) {
+        speakFeedback("Skipping this question!", 'enthusiastic', () => goNext());
+      } else {
+        speakFeedback("This question is required, but I can help! " + (currentQuestion.voiceHelp || "What would you like to answer?"), 'friendly');
+      }
+      return;
+    }
+    if (lower.includes('done') || lower.includes('that\'s all') || lower.includes('finished') || lower.includes("that's it")) {
+      if (currentQuestion.type === 'multiple') {
+        const selected = responses[currentQuestion.id] || [];
+        if (selected.length > 0) {
+          speakFeedback(`Perfect! You selected ${selected.length} options. Moving on!`, 'enthusiastic', () => goNext());
+        } else {
+          speakFeedback("You haven't selected anything yet. What would you like to choose?", 'friendly');
+        }
+      } else {
+        // Treat as "next" for non-multiple questions
+        goNext();
+      }
+      return;
+    }
+    if (lower.includes('repeat') || lower.includes('say again') || lower.includes('what was the question') || lower.includes('say that again')) {
+      askCurrentQuestion();
+      return;
+    }
+
+    // ========== NUMBER SELECTION (1, 2, 3, first, second, etc.) ==========
+    const numberWords: Record<string, number> = {
+      'one': 1, 'first': 1, '1': 1, 'option 1': 1, 'option one': 1, 'number 1': 1, 'number one': 1,
+      'two': 2, 'second': 2, '2': 2, 'option 2': 2, 'option two': 2, 'number 2': 2, 'number two': 2,
+      'three': 3, 'third': 3, '3': 3, 'option 3': 3, 'option three': 3, 'number 3': 3, 'number three': 3,
+      'four': 4, 'fourth': 4, '4': 4, 'option 4': 4, 'option four': 4, 'number 4': 4, 'number four': 4,
+      'five': 5, 'fifth': 5, '5': 5, 'option 5': 5, 'option five': 5, 'number 5': 5, 'number five': 5,
+      'six': 6, 'sixth': 6, '6': 6, 'option 6': 6, 'option six': 6, 'number 6': 6, 'number six': 6,
+    };
+
+    if (currentQuestion.options) {
+      for (const [word, num] of Object.entries(numberWords)) {
+        if (lower.includes(word) || lower === word) {
+          const optionIndex = num - 1;
+          if (optionIndex >= 0 && optionIndex < currentQuestion.options.length) {
+            const selectedOption = currentQuestion.options[optionIndex];
+            console.log('🎤 Selected option by number:', selectedOption.label);
+            if (currentQuestion.type === 'single') {
+              handleSingleSelect(selectedOption.value);
+              speakFeedback(`${selectedOption.label}! Got it! Moving on!`, 'enthusiastic', () => {
+                console.log('🎤 Auto-advancing to next question...');
+                goNext();
+              });
+            } else if (currentQuestion.type === 'multiple') {
+              const currentSelections = [...(responses[currentQuestion.id] || [])];
+              if (!currentSelections.includes(selectedOption.value)) {
+                currentSelections.push(selectedOption.value);
+                setResponses(prev => ({ ...prev, [currentQuestion.id]: currentSelections }));
+                speakFeedback(`${selectedOption.label} added! Say more or 'done'!`, 'enthusiastic');
+              } else {
+                speakFeedback(`Already selected. Say another or 'done'!`, 'friendly');
+              }
+            }
+            return;
+          }
+        }
+      }
+    }
+
+    // ========== ANSWER PROCESSING ==========
+
+    if (currentQuestion.type === 'single' && currentQuestion.options) {
+      // Try to match voice input to an option
+      for (const option of currentQuestion.options) {
+        const aliases = option.voiceAliases || [option.value, option.label.toLowerCase()];
+        for (const alias of aliases) {
+          if (lower.includes(alias.toLowerCase())) {
+            console.log('🎤 Selected option by name:', option.label);
+            handleSingleSelect(option.value);
+            // Auto-advance after selection with brief confirmation
+            speakFeedback(`${option.label}! Got it! Next question!`, 'enthusiastic', () => {
+              // Automatically go to next question after selection
+              console.log('🎤 Auto-advancing to next question...');
+              goNext();
+            });
+            return;
+          }
+        }
+      }
+      // No match found - be helpful
+      const safeOptions = currentQuestion.options || [];
+      const optionNames = safeOptions.slice(0, 3).map(o => o.label).join(', ') || 'the available options';
+      speakFeedback(
+        `Try saying: ${optionNames}, or say a number like 'one' or 'two'.`,
+        'friendly'
+      );
+    } else if (currentQuestion.type === 'multiple' && currentQuestion.options) {
+      let matched = false;
+      let matchedOptions: string[] = [];
+      const currentSelections = [...(responses[currentQuestion.id] || [])];
+
+      for (const option of currentQuestion.options) {
+        const aliases = option.voiceAliases || [option.value, option.label.toLowerCase()];
+        for (const alias of aliases) {
+          if (lower.includes(alias.toLowerCase())) {
+            if (!currentSelections.includes(option.value)) {
+              currentSelections.push(option.value);
+              matchedOptions.push(option.label);
+              matched = true;
+            }
+          }
+        }
+      }
+
+      if (matched) {
+        setResponses(prev => ({ ...prev, [currentQuestion.id]: currentSelections }));
+        const feedbackText = matchedOptions.length > 1
+          ? `Added ${matchedOptions.join(' and ')}!`
+          : `${matchedOptions[0]} added!`;
+        speakFeedback(feedbackText + " Say more options or 'done' when finished!", 'enthusiastic');
+      } else if (!lower.includes('done')) {
+        const safeMultiOptions = currentQuestion.options || [];
+        const optionNames = safeMultiOptions.slice(0, 3).map(o => o.label).join(', ') || 'the available options';
+        speakFeedback(
+          `Hmm, I didn't recognize that. Try saying: ${optionNames}. Or say 'help' for all options!`,
+          'friendly'
+        );
+      }
+    } else if (currentQuestion.type === 'text' || currentQuestion.type === 'textarea') {
+      // For text questions - clean up the transcript before saving
+      const cleanTranscript = transcript.trim();
+
+      // Check if user wants to finalize their answer
+      if (lower.includes("that's good") || lower.includes("that's fine") || lower.includes("sounds good") ||
+          lower.includes("that's perfect") || lower.includes("looks good") || lower.includes("that's correct")) {
+        speakFeedback("Perfect! Moving to the next question!", 'enthusiastic', () => {
+          setTimeout(() => goNext(), 500);
+        });
+        return;
+      }
+
+      if (cleanTranscript.length > 0) {
+        // Filter out command words from the transcript
+        const commandWords = ['next', 'continue', 'done', 'finish', 'that\'s it', 'that is it', 'ok', 'okay'];
+        let filteredTranscript = cleanTranscript;
+        for (const word of commandWords) {
+          filteredTranscript = filteredTranscript.replace(new RegExp(word, 'gi'), '').trim();
+        }
+
+        if (filteredTranscript.length > 3) {
+          const currentValue = responses[currentQuestion.id] || '';
+          const newValue = currentValue ? `${currentValue} ${filteredTranscript}` : filteredTranscript;
+          setResponses(prev => ({ ...prev, [currentQuestion.id]: newValue }));
+          speakFeedback("Got it! Keep talking to add more, or say 'next' when done!", 'enthusiastic');
+        }
+      }
+    }
+  }, [currentQuestion, responses, speakFeedback, askCurrentQuestion, readHelp, visibleQuestions.length, currentIndex, voiceService, goNext]);
+
+  // Auto-ask question when question changes (NOT when voice mode toggles - that's handled in toggleVoiceMode)
+  useEffect(() => {
+    // Only auto-ask if:
+    // 1. Voice mode is active and ready
+    // 2. We haven't just activated voice mode (that's handled in toggleVoiceMode)
+    // 3. We haven't already asked this question
+    if (voiceMode && voiceModeReady && currentQuestion && !hasAskedRef.current && !voiceModeJustActivated.current) {
+      console.log('🎤 Auto-asking question on question change, index:', currentIndex, 'of', visibleQuestions.length);
+      hasAskedRef.current = true;
+      // Small delay to let the page render
+      const timer = setTimeout(() => {
+        // Make sure we're still in voice mode and not already speaking
+        if (voiceMode && voiceModeReady && !isSpeakingRef.current) {
+          console.log('🎤 Calling askCurrentQuestion for index:', currentIndex);
+          askCurrentQuestion();
+        }
+      }, 600); // Slightly longer delay for smoother transitions
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, voiceModeReady, voiceMode, currentQuestion, askCurrentQuestion, visibleQuestions.length]);
+
+  // Reset the asked flag when question changes
+  useEffect(() => {
+    hasAskedRef.current = false;
+    voiceModeJustActivated.current = false; // Reset after first question change
+  }, [currentIndex]);
+
+  // State for microphone permission
+  const [micPermissionStatus, setMicPermissionStatus] = useState<'unknown' | 'granted' | 'denied' | 'prompt'>('unknown');
+  const [showMicPermissionDialog, setShowMicPermissionDialog] = useState(false);
+
+  // Request microphone permission with awesome UX
+  const requestMicrophonePermission = async (): Promise<boolean> => {
+    try {
+      console.log('🎤 Requesting microphone permission...');
+
+      // Check if speech recognition is supported
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        toast({
+          title: "Voice Not Supported",
+          description: "Your browser doesn't support voice recognition. Try Chrome, Edge, or Safari.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Check for HTTPS in production (speech recognition requires secure context)
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isHTTPS = window.location.protocol === 'https:';
+
+      if (!isLocalhost && !isHTTPS) {
+        toast({
+          title: "Secure Connection Required",
+          description: "Voice recognition requires HTTPS. Please access the site via https://",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Try to get microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Permission granted! Stop the stream since we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+
+      setMicPermissionStatus('granted');
+      console.log('🎤 Microphone permission granted!');
+      return true;
+    } catch (error: any) {
+      console.error('🎤 Microphone permission error:', error);
+
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        setMicPermissionStatus('denied');
+        toast({
+          title: "Microphone Access Needed",
+          description: "Please click the camera/microphone icon in your browser's address bar and select 'Allow' for microphone, then try again.",
+          variant: "destructive",
+          duration: 8000,
+        });
+
+        // Speak guidance for visually impaired users
+        voiceService.speak(
+          "I need microphone access to hear you. Please look for the microphone or lock icon in your browser's address bar, click it, and select Allow for microphone. Then try enabling voice mode again.",
+          { personality: 'friendly' }
+        );
+      } else if (error.name === 'NotFoundError') {
+        toast({
+          title: "No Microphone Found",
+          description: "Please connect a microphone and try again.",
+          variant: "destructive",
+        });
+        voiceService.speak("I couldn't find a microphone. Please connect one and try again.", { personality: 'friendly' });
+      }
+
+      return false;
+    }
+  };
+
+  // Toggle voice mode with permission check
+  const toggleVoiceMode = async () => {
+    if (!voiceMode) {
+      console.log('🎤 Activating voice mode...');
+
+      // FIRST: Request microphone permission
+      const hasPermission = await requestMicrophonePermission();
+
+      if (!hasPermission) {
+        console.log('🎤 Microphone permission denied, cannot activate voice mode');
+        return; // Don't activate voice mode without permission
+      }
+
+      // Permission granted! Now activate voice mode
+      setVoiceMode(true);
+      setVoiceModeReady(false);
+      voiceModeJustActivated.current = true;
+      hasAskedRef.current = false;
+
+      // Force initialize voice service (unlocks audio on user gesture)
+      voiceService.forceInit();
+
+      // Speak awesome activation message - shorter so we get to questions faster
+      const activationMessage = "Voice mode active! I'll read questions and listen to your answers. Let's go!";
+
+      console.log('🔊 Speaking activation message...');
+      voiceService.speak(activationMessage, {
+        personality: 'enthusiastic',
+        onStart: () => {
+          console.log('🔊 Activation speech started');
+        },
+        onEnd: () => {
+          console.log('🎤 Activation speech complete, starting voice recognition...');
+          setVoiceModeReady(true);
+          voiceModeJustActivated.current = false; // Reset so auto-ask works
+
+          // Start listening AFTER speech ends to avoid picking up BuilderIQ's voice
+          console.log('🎤 Starting voice recognition after speech...');
+          voice.startListening();
+
+          // Now ask the first question after a short delay
+          setTimeout(() => {
+            hasAskedRef.current = false; // Ensure we ask the question
+            askCurrentQuestion();
+          }, 300);
+        },
+        onError: (e) => {
+          console.log('🎤 Activation speech error:', e, '- trying to continue...');
+          setVoiceModeReady(true);
+          voiceModeJustActivated.current = false;
+
+          // Start listening even on error
+          voice.startListening();
+
+          // Try with fallback speech
+          setTimeout(() => {
+            hasAskedRef.current = false;
+            askCurrentQuestion();
+          }, 400);
+        }
+      });
+
+      // Show toast for visual confirmation
+      toast({
+        title: "Voice Mode Activated!",
+        description: "I'll read questions aloud and listen to your answers. Say 'help' anytime for guidance.",
+      });
+
+    } else {
+      console.log('🎤 Deactivating voice mode...');
+      setVoiceMode(false);
+      setVoiceModeReady(false);
+      voiceModeJustActivated.current = false;
+      hasAskedRef.current = false;
+
+      // Stop listening first
+      voice.stopListening();
+
+      // Cancel any ongoing speech
+      voiceService.stop();
+
+      // Say friendly goodbye
+      voiceService.speak(
+        "Voice mode deactivated. You can continue by typing your answers. " +
+        "Enable voice mode anytime to have me read questions and listen to you. Talk to you soon!",
+        { personality: 'friendly' }
+      );
+
+      toast({
+        title: "Voice Mode Off",
+        description: "You can type your answers or re-enable voice anytime.",
+      });
+    }
+  };
+
+  // Handle response changes
+  const handleSingleSelect = (value: string) => {
+    setResponses(prev => ({ ...prev, [currentQuestion.id]: value }));
+    // Play accessibility sound for selection confirmation
+    playAccessibilitySound('select');
+  };
+
+  const handleMultiSelect = (value: string, checked: boolean) => {
+    setResponses(prev => {
+      const current = prev[currentQuestion.id] || [];
+      if (checked) {
+        return { ...prev, [currentQuestion.id]: [...current, value] };
+      } else {
+        return { ...prev, [currentQuestion.id]: current.filter((v: string) => v !== value) };
+      }
+    });
+    // Play accessibility sound for selection/deselection
+    playAccessibilitySound(checked ? 'select' : 'deselect');
+  };
+
+  // Keyboard shortcuts for accessibility (works in voice and non-voice mode)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input/textarea fields
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        // Allow Enter to submit in text fields
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          goNext();
+        }
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 'r':
+          // Read question aloud
+          e.preventDefault();
+          askCurrentQuestion();
+          break;
+        case 'h':
+          // Read help
+          e.preventDefault();
+          readHelp();
+          break;
+        case 'n':
+        case 'arrowright':
+          // Next question
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            goNext();
+          }
+          break;
+        case 'p':
+        case 'arrowleft':
+          // Previous question
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            goPrevious();
+          }
+          break;
+        case 'v':
+          // Toggle voice mode
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            toggleVoiceMode();
+          }
+          break;
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+          // Select option by number
+          if (currentQuestion.options && !e.ctrlKey && !e.metaKey) {
+            const index = parseInt(e.key) - 1;
+            if (index >= 0 && index < currentQuestion.options.length) {
+              e.preventDefault();
+              const option = currentQuestion.options[index];
+              if (currentQuestion.type === 'single') {
+                handleSingleSelect(option.value);
+                // Announce selection for screen readers
+                if (voiceMode) {
+                  speakFeedback(`Selected ${option.label}. Moving to next question.`, 'enthusiastic', () => goNext());
+                } else {
+                  // Auto-advance for non-voice mode single select
+                  setTimeout(() => goNext(), 300);
+                }
+              } else if (currentQuestion.type === 'multiple') {
+                const currentSelections = responses[currentQuestion.id] || [];
+                const isSelected = currentSelections.includes(option.value);
+                handleMultiSelect(option.value, !isSelected);
+                if (voiceMode) {
+                  speakFeedback(`${isSelected ? 'Removed' : 'Added'} ${option.label}. Press more numbers or N for next.`, 'friendly');
+                }
+              }
+            }
+          }
+          break;
+        case 'escape':
+          // Stop speaking
+          voiceService.stop();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentQuestion, responses, voiceMode, askCurrentQuestion, readHelp, goNext, goPrevious, toggleVoiceMode, handleSingleSelect, handleMultiSelect, speakFeedback, voiceService]);
+
+  const handleTextChange = (value: string) => {
+    setResponses(prev => ({ ...prev, [currentQuestion.id]: value }));
   };
 
   // Get app type for audio recommendations - analyze responses to determine best category
@@ -1346,7 +1743,7 @@ Complexity level: ${responses.complexity || 'standard'}.`;
                 }`}
               >
                 <RadioGroupItem value={option.value} className="border-slate-500" />
-                <span className="text-sm text-gray-500 font-mono w-6">{index + 1}</span>
+                <span className="text-sm text-gray-300 font-mono w-6">{index + 1}</span>
                 {option.icon && (
                   <div className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-purple-400">
                     {option.icon}
@@ -1355,7 +1752,7 @@ Complexity level: ${responses.complexity || 'standard'}.`;
                 <div className="flex-1">
                   <div className="font-medium text-white">{option.label}</div>
                   {option.description && (
-                    <div className="text-sm text-gray-400">{option.description}</div>
+                    <div className="text-sm text-gray-300">{option.description}</div>
                   )}
                 </div>
                 {responses[currentQuestion.id] === option.value && (
@@ -1385,7 +1782,7 @@ Complexity level: ${responses.complexity || 'standard'}.`;
                     onCheckedChange={(checked) => handleMultiSelect(option.value, checked as boolean)}
                     className="border-slate-500"
                   />
-                  <span className="text-xs text-gray-500 font-mono w-4">{index + 1}</span>
+                  <span className="text-xs text-gray-300 font-mono w-4">{index + 1}</span>
                   {option.icon && (
                     <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center text-purple-400">
                       {option.icon}
@@ -1394,7 +1791,7 @@ Complexity level: ${responses.complexity || 'standard'}.`;
                   <div className="flex-1">
                     <div className="font-medium text-white">{option.label}</div>
                     {option.description && (
-                      <div className="text-sm text-gray-400">{option.description}</div>
+                      <div className="text-sm text-gray-300">{option.description}</div>
                     )}
                   </div>
                 </label>
@@ -1410,7 +1807,8 @@ Complexity level: ${responses.complexity || 'standard'}.`;
               value={responses[currentQuestion.id] || ''}
               onChange={(e) => handleTextChange(e.target.value)}
               placeholder={currentQuestion.placeholder}
-              className="py-6 bg-slate-800/50 border-slate-700 text-white placeholder:text-gray-500 text-lg pr-12"
+              className="py-6 bg-slate-800/50 border-slate-700 text-white placeholder:text-gray-400 text-lg pr-12"
+              aria-label={currentQuestion.title}
             />
             <button
               onClick={() => voiceMode ? voice.stopListening() : voice.startListening()}
@@ -1430,7 +1828,8 @@ Complexity level: ${responses.complexity || 'standard'}.`;
               value={responses[currentQuestion.id] || ''}
               onChange={(e) => handleTextChange(e.target.value)}
               placeholder={currentQuestion.placeholder}
-              className="min-h-[120px] bg-slate-800/50 border-slate-700 text-white placeholder:text-gray-500 pr-12"
+              className="min-h-[120px] bg-slate-800/50 border-slate-700 text-white placeholder:text-gray-400 pr-12"
+              aria-label={currentQuestion.title}
             />
             <button
               onClick={() => voiceMode ? voice.stopListening() : voice.startListening()}
@@ -1575,7 +1974,10 @@ Complexity level: ${responses.complexity || 'standard'}.`;
                       className="w-1.5 bg-blue-400 rounded-full transition-all"
                       style={{
                         height: `${12 + Math.sin((Date.now() / 200) + i) * 12}px`,
-                        animation: 'pulse 0.5s ease-in-out infinite',
+                        animationName: 'pulse',
+                        animationDuration: '0.5s',
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
                         animationDelay: `${i * 0.1}s`
                       }}
                     />
@@ -1648,64 +2050,149 @@ Complexity level: ${responses.complexity || 'standard'}.`;
           </div>
         )}
 
-        {/* Question Card */}
-        <Card className="bg-slate-800/50 border-slate-700 mb-8">
+        {/* Question Card - Enhanced with ARIA for accessibility */}
+        <Card
+          className="bg-slate-800/50 border-slate-700 mb-8"
+          role="region"
+          aria-labelledby={`question-title-${currentQuestion.id}`}
+          aria-describedby={currentQuestion.description ? `question-desc-${currentQuestion.id}` : undefined}
+        >
           <CardContent className="p-8">
+            {/* Screen reader announcement for question changes */}
+            <div
+              className="sr-only"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              Question {currentIndex + 1} of {visibleQuestions.length}: {currentQuestion.title}
+              {currentQuestion.required && ' - This question is required'}
+            </div>
+
             <div className="mb-8">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-white mb-2">
+                  <h2
+                    id={`question-title-${currentQuestion.id}`}
+                    className="text-2xl font-bold text-white mb-2"
+                  >
                     {currentQuestion.title}
+                    {currentQuestion.required && (
+                      <span className="text-red-400 ml-2" aria-hidden="true">*</span>
+                    )}
                   </h2>
                   {currentQuestion.subtitle && (
-                    <p className="text-gray-400">{currentQuestion.subtitle}</p>
+                    <p className="text-gray-400" aria-label={currentQuestion.subtitle}>
+                      {currentQuestion.subtitle}
+                    </p>
                   )}
                   {currentQuestion.description && (
-                    <p className="text-sm text-gray-500 mt-2">{currentQuestion.description}</p>
+                    <p
+                      id={`question-desc-${currentQuestion.id}`}
+                      className="text-sm text-gray-500 mt-2"
+                    >
+                      {currentQuestion.description}
+                    </p>
                   )}
                 </div>
 
-                {/* Read question aloud button */}
+                {/* Read question aloud button - Enhanced for accessibility */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={askCurrentQuestion}
-                  className="text-gray-400 hover:text-white"
-                  title="Read question aloud"
+                  className="text-gray-400 hover:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  title="Read question aloud (keyboard shortcut: R)"
+                  aria-label={`Read question ${currentIndex + 1} aloud`}
                 >
-                  <Volume2 className="w-5 h-5" />
+                  <Volume2 className="w-5 h-5" aria-hidden="true" />
+                  <span className="sr-only">Read question aloud</span>
                 </Button>
               </div>
             </div>
 
-            {renderQuestionContent()}
+            {/* Question content with proper ARIA */}
+            <div
+              role="group"
+              aria-labelledby={`question-title-${currentQuestion.id}`}
+              aria-required={currentQuestion.required}
+            >
+              {renderQuestionContent()}
+            </div>
 
-            {/* Help button */}
+            {/* Help button - Enhanced for accessibility */}
             {currentQuestion.voiceHelp && (
               <button
                 onClick={readHelp}
-                className="mt-4 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                className="mt-4 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-300 transition-colors focus:ring-2 focus:ring-purple-500 focus:outline-none rounded-lg px-2 py-1"
+                aria-label="Get help with this question - press H for keyboard shortcut"
               >
-                <HelpCircle className="w-4 h-4" />
+                <HelpCircle className="w-4 h-4" aria-hidden="true" />
                 Need help with this question?
               </button>
             )}
           </CardContent>
         </Card>
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between">
+        {/* Accessibility Keyboard Shortcuts Panel */}
+        <div className="mb-6 p-4 bg-slate-800/30 rounded-xl border border-slate-700/50">
+          <details className="group">
+            <summary className="flex items-center gap-2 cursor-pointer text-sm text-gray-400 hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded">
+              <span className="transform transition-transform group-open:rotate-90">▶</span>
+              <span>⌨️ Keyboard Shortcuts for Accessibility</span>
+            </summary>
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-gray-400">
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-slate-700 rounded border border-slate-600 font-mono">R</kbd>
+                <span>Read question aloud</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-slate-700 rounded border border-slate-600 font-mono">H</kbd>
+                <span>Get help</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-slate-700 rounded border border-slate-600 font-mono">V</kbd>
+                <span>Toggle voice mode</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-slate-700 rounded border border-slate-600 font-mono">N</kbd>
+                <span>Next question</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-slate-700 rounded border border-slate-600 font-mono">P</kbd>
+                <span>Previous question</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-slate-700 rounded border border-slate-600 font-mono">1-9</kbd>
+                <span>Select option by number</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-slate-700 rounded border border-slate-600 font-mono">Esc</kbd>
+                <span>Stop speaking</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 bg-slate-700 rounded border border-slate-600 font-mono">←/→</kbd>
+                <span>Navigate questions</span>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        {/* Navigation - Enhanced with ARIA */}
+        <nav className="flex items-center justify-between" aria-label="Question navigation">
           <Button
             variant="outline"
             onClick={goPrevious}
             disabled={currentIndex === 0}
-            className="border-slate-700 text-gray-300 hover:bg-slate-800"
+            className="border-slate-700 text-gray-300 hover:bg-slate-800 focus:ring-2 focus:ring-purple-500"
+            aria-label={`Go to previous question${currentIndex > 0 ? `, question ${currentIndex}` : ''}`}
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />
             Previous
           </Button>
 
-          <div className="flex items-center gap-2">
+          {/* Progress dots - Enhanced with ARIA */}
+          <div className="flex items-center gap-2" role="progressbar" aria-valuenow={currentIndex + 1} aria-valuemin={1} aria-valuemax={visibleQuestions.length} aria-label={`Question ${currentIndex + 1} of ${visibleQuestions.length}`}>
             {visibleQuestions.slice(
               Math.max(0, currentIndex - 3),
               Math.min(visibleQuestions.length, currentIndex + 4)
@@ -1715,13 +2202,15 @@ Complexity level: ${responses.complexity || 'standard'}.`;
                 <button
                   key={actualIndex}
                   onClick={() => setCurrentIndex(actualIndex)}
-                  className={`w-2 h-2 rounded-full transition-all ${
+                  className={`w-2 h-2 rounded-full transition-all focus:ring-2 focus:ring-purple-500 focus:outline-none ${
                     actualIndex === currentIndex
                       ? 'w-6 bg-purple-500'
                       : actualIndex < currentIndex
                       ? 'bg-purple-500/50'
                       : 'bg-slate-700'
                   }`}
+                  aria-label={`Go to question ${actualIndex + 1}${actualIndex === currentIndex ? ' (current)' : ''}`}
+                  aria-current={actualIndex === currentIndex ? 'step' : undefined}
                 />
               );
             })}
@@ -1730,67 +2219,70 @@ Complexity level: ${responses.complexity || 'standard'}.`;
           <Button
             onClick={goNext}
             disabled={!canGoNext()}
-            className="bg-purple-500 hover:bg-purple-600 text-white"
+            className="bg-purple-500 hover:bg-purple-600 text-white focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+            aria-label={currentIndex === visibleQuestions.length - 1
+              ? 'Generate your app blueprint'
+              : `Go to next question, question ${currentIndex + 2} of ${visibleQuestions.length}`}
           >
             {currentIndex === visibleQuestions.length - 1 ? (
               <>
                 Generate Blueprint
-                <Sparkles className="w-4 h-4 ml-2" />
+                <Sparkles className="w-4 h-4 ml-2" aria-hidden="true" />
               </>
             ) : (
               <>
                 Next
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
               </>
             )}
           </Button>
-        </div>
+        </nav>
 
-        {/* Voice commands hint - Enhanced */}
+        {/* Voice commands hint - Enhanced with better contrast for accessibility */}
         {voiceMode && (
-          <div className="mt-8 p-5 bg-gradient-to-br from-slate-800/70 to-slate-900/70 rounded-xl border border-slate-700">
+          <div className="mt-8 p-5 bg-gradient-to-br from-slate-800/70 to-slate-900/70 rounded-xl border border-slate-700" role="complementary" aria-label="Available voice commands">
             <h4 className="text-sm font-medium text-white mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-400" />
+              <Sparkles className="w-4 h-4 text-purple-400" aria-hidden="true" />
               Voice Commands Available
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-gray-300">"Next"</span>
-                <span className="text-gray-500">- Continue</span>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 rounded-full bg-green-500" aria-hidden="true"></div>
+                <span className="text-white font-medium">"Next"</span>
+                <span className="text-gray-300">- Continue</span>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                <span className="text-gray-300">"Back"</span>
-                <span className="text-gray-500">- Go back</span>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 rounded-full bg-yellow-500" aria-hidden="true"></div>
+                <span className="text-white font-medium">"Back"</span>
+                <span className="text-gray-300">- Go back</span>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                <span className="text-gray-300">"Help"</span>
-                <span className="text-gray-500">- Get help</span>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 rounded-full bg-blue-500" aria-hidden="true"></div>
+                <span className="text-white font-medium">"Help"</span>
+                <span className="text-gray-300">- Get help</span>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                <span className="text-gray-300">"Repeat"</span>
-                <span className="text-gray-500">- Hear again</span>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 rounded-full bg-purple-500" aria-hidden="true"></div>
+                <span className="text-white font-medium">"Repeat"</span>
+                <span className="text-gray-300">- Hear again</span>
               </div>
               {currentQuestion.type === 'multiple' && (
-                <div className="flex items-center gap-2 text-xs col-span-2">
-                  <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
-                  <span className="text-gray-300">"Done"</span>
-                  <span className="text-gray-500">- Finish selecting multiple options</span>
+                <div className="flex items-center gap-2 text-sm col-span-2">
+                  <div className="w-2 h-2 rounded-full bg-cyan-500" aria-hidden="true"></div>
+                  <span className="text-white font-medium">"Done"</span>
+                  <span className="text-gray-300">- Finish selecting multiple options</span>
                 </div>
               )}
               {!currentQuestion.required && (
-                <div className="flex items-center gap-2 text-xs">
-                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                  <span className="text-gray-300">"Skip"</span>
-                  <span className="text-gray-500">- Skip question</span>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-orange-500" aria-hidden="true"></div>
+                  <span className="text-white font-medium">"Skip"</span>
+                  <span className="text-gray-300">- Skip question</span>
                 </div>
               )}
             </div>
             <div className="mt-4 pt-3 border-t border-slate-700">
-              <p className="text-xs text-gray-400">
+              <p className="text-sm text-gray-200">
                 {currentQuestion.type === 'single' || currentQuestion.type === 'multiple'
                   ? '💡 Tip: Just say the option name to select it (e.g., "web app", "mobile")'
                   : '💡 Tip: Speak freely and your answer will be recorded'}

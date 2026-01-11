@@ -967,6 +967,22 @@ export default function Home() {
           <div className="footer-badge">25,000+ Users</div>
         </div>
         <p>Trusted by industry leaders and innovative companies worldwide</p>
+
+        {/* Legal Links */}
+        <div className="flex justify-center gap-6 mt-6 text-sm">
+          <a href="/privacy-policy" className="text-indigo-300 hover:text-white transition-colors">
+            Privacy Policy
+          </a>
+          <span className="text-gray-500">|</span>
+          <a href="/terms-of-service" className="text-indigo-300 hover:text-white transition-colors">
+            Terms of Service
+          </a>
+          <span className="text-gray-500">|</span>
+          <a href="/contact" className="text-indigo-300 hover:text-white transition-colors">
+            Contact Us
+          </a>
+        </div>
+
         <div className="text-xs opacity-60 mt-4" style={{ textAlign: 'center' }}>
           © 2025 SmartPromptIQ™ — The Intelligent Prompt Engineering Platform
         </div>

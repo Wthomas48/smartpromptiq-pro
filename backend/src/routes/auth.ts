@@ -182,6 +182,7 @@ router.post('/register', registerValidation, handleValidationErrors, async (req:
     });
 
     // ✅ FIXED: Ensure role is always properly set and validated for REGISTER
+    // Note: permissions and roles arrays don't exist in schema - use role string instead
     const userData = {
       id: user.id,
       email: user.email,
@@ -189,8 +190,10 @@ router.post('/register', registerValidation, handleValidationErrors, async (req:
       lastName: user.lastName,
       plan: user.plan || user.subscriptionTier || 'free',
       role: user.role || 'USER',
-      permissions: Array.isArray(user.permissions) ? user.permissions : [],
-      roles: Array.isArray(user.roles) ? user.roles : []
+      subscriptionTier: user.subscriptionTier || 'free',
+      tokenBalance: user.tokenBalance || 0,
+      permissions: [], // Empty array for compatibility
+      roles: [user.role || 'USER'] // Derive from role field
     };
 
     console.log('🔍 BACKEND REGISTER RESPONSE:', userData);
@@ -203,11 +206,33 @@ router.post('/register', registerValidation, handleValidationErrors, async (req:
         token
       }
     });
-  } catch (error) {
-    console.error('Register error:', error);
+  } catch (error: any) {
+    console.error('❌ Register error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error code:', error.code);
+
+    // Handle specific Prisma errors
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists',
+        error: 'USER_EXISTS'
+      });
+    }
+
+    // Handle database connection errors
+    if (error.code === 'P1001' || error.code === 'P1002') {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection error. Please try again later.',
+        error: 'DATABASE_ERROR'
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -268,6 +293,7 @@ router.post('/login', [
     const token = generateToken(user);
 
     // ✅ FIXED: Ensure role is always properly set and validated for LOGIN
+    // Note: permissions and roles arrays don't exist in schema - use role string instead
     const userData = {
       id: user.id,
       email: user.email,
@@ -275,8 +301,10 @@ router.post('/login', [
       lastName: user.lastName,
       plan: user.plan || user.subscriptionTier || 'free',
       role: user.role || 'USER',
-      permissions: Array.isArray(user.permissions) ? user.permissions : [],
-      roles: Array.isArray(user.roles) ? user.roles : []
+      subscriptionTier: user.subscriptionTier || 'free',
+      tokenBalance: user.tokenBalance || 0,
+      permissions: [], // Empty array for compatibility
+      roles: [user.role || 'USER'] // Derive from role field
     };
 
     console.log('🔍 BACKEND USER RESPONSE:', userData);
@@ -289,11 +317,25 @@ router.post('/login', [
         token
       }
     });
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (error: any) {
+    console.error('❌ Login error:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error code:', error.code);
+
+    // Handle database connection errors
+    if (error.code === 'P1001' || error.code === 'P1002') {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection error. Please try again later.',
+        error: 'DATABASE_ERROR'
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -323,15 +365,16 @@ router.get('/me', authenticate, async (req: AuthRequest, res: express.Response) 
     }
 
     // ✅ FIXED: Ensure role is always properly set and validated for /ME endpoint
+    // Note: permissions and roles arrays don't exist in schema - use role string instead
     const userData = {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role || 'USER',
-      plan: user.plan || user.subscriptionTier || 'free',
-      permissions: Array.isArray(user.permissions) ? user.permissions : [],
-      roles: Array.isArray(user.roles) ? user.roles : [],
+      plan: user.plan || 'free',
+      permissions: [], // Empty array for compatibility
+      roles: [user.role || 'USER'], // Derive from role field
       createdAt: user.createdAt,
       lastLogin: user.lastLogin
     };
@@ -342,11 +385,13 @@ router.get('/me', authenticate, async (req: AuthRequest, res: express.Response) 
       success: true,
       data: { user: userData }
     });
-  } catch (error) {
-    console.error('Get user error:', error);
+  } catch (error: any) {
+    console.error('❌ Get user error:', error);
+    console.error('❌ Error code:', error.code);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -622,6 +667,174 @@ router.post('/migrate', async (req: express.Request, res: express.Response) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN VERIFICATION ENDPOINT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/auth/verify-admin
+ * Server-side verification of admin role
+ *
+ * SECURITY: This endpoint verifies the user's role from the DATABASE, not from
+ * JWT claims or localStorage. This is the authoritative source for admin access.
+ */
+router.get('/verify-admin', authenticate, async (req: AuthRequest, res: express.Response) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        isAdmin: false,
+        message: 'Not authenticated'
+      });
+    }
+
+    // CRITICAL: Query the database directly for the authoritative role
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isActive: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        isAdmin: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if user is active
+    if (user.isActive === false) {
+      console.warn(`⚠️ Inactive user attempted admin access: ${user.email}`);
+      return res.status(403).json({
+        success: false,
+        isAdmin: false,
+        message: 'Account is deactivated'
+      });
+    }
+
+    // AUTHORITATIVE: Check database role, not JWT or localStorage
+    const isAdmin = user.role === 'ADMIN';
+
+    console.log(`🔐 Admin verification for ${user.email}: ${isAdmin ? '✅ ADMIN' : '❌ NOT ADMIN'}`);
+
+    return res.json({
+      success: true,
+      isAdmin,
+      role: user.role,
+      email: user.email
+    });
+  } catch (error: any) {
+    console.error('❌ Admin verification error:', error);
+    return res.status(500).json({
+      success: false,
+      isAdmin: false,
+      message: 'Verification failed'
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN SEED ENDPOINT (One-time setup)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/auth/seed-admin
+ * Creates or updates the admin user
+ * Protected by secret key
+ */
+router.post('/seed-admin', async (req: express.Request, res: express.Response) => {
+  try {
+    const { secret } = req.body;
+    const adminSeedSecret = process.env.ADMIN_SEED_SECRET || 'smartpromptiq-admin-seed-2024';
+
+    // Verify seed secret
+    if (secret !== adminSeedSecret) {
+      console.warn('⚠️ Admin seed attempt with invalid secret');
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid seed secret'
+      });
+    }
+
+    const adminEmail = 'admin@smartpromptiq.net';
+    const adminPassword = 'Admin123!';
+
+    // Check if admin exists
+    const existingAdmin = await prisma.user.findUnique({
+      where: { email: adminEmail }
+    });
+
+    const hashedPassword = await hashPassword(adminPassword);
+
+    if (existingAdmin) {
+      // Update existing admin
+      await prisma.user.update({
+        where: { email: adminEmail },
+        data: {
+          role: 'ADMIN',
+          password: hashedPassword
+        }
+      });
+
+      console.log('✅ Admin user updated:', adminEmail);
+
+      return res.json({
+        success: true,
+        message: 'Admin user updated successfully',
+        data: {
+          email: adminEmail,
+          role: 'ADMIN',
+          action: 'updated'
+        }
+      });
+    }
+
+    // Create new admin
+    const admin = await prisma.user.create({
+      data: {
+        email: adminEmail,
+        password: hashedPassword,
+        firstName: 'Admin',
+        lastName: 'User',
+        role: 'ADMIN',
+        plan: 'ENTERPRISE',
+        subscriptionTier: 'ENTERPRISE',
+        tokenBalance: 999999,
+        generationsUsed: 0,
+        generationsLimit: 999999,
+        isActive: true
+      }
+    });
+
+    console.log('✅ Admin user created:', adminEmail, admin.id);
+
+    res.json({
+      success: true,
+      message: 'Admin user created successfully',
+      data: {
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
+        action: 'created'
+      }
+    });
+  } catch (error: any) {
+    console.error('❌ Admin seed error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to seed admin user',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
