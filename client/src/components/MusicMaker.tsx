@@ -962,14 +962,14 @@ const MusicMaker: React.FC<MusicMakerProps> = ({
       {/* Header */}
       <div className="text-center">
         <Badge className="mb-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border-purple-500/30">
-          <Music className="w-3 h-3 mr-1" /> AI-Powered Music
+          <Music className="w-3 h-3 mr-1" /> Quick Audio Library
         </Badge>
         <h2 className="text-3xl font-bold text-white mb-4">
-          Music <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Maker</span>
+          Quick Audio & <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Sound Effects</span>
         </h2>
         <p className="text-gray-400 max-w-2xl mx-auto">
-          Add professional background music, jingles, and sound effects to your apps and content.
-          Browse our library or generate custom AI music.
+          Instant background music, jingles, and sound effects for your apps and content.
+          Browse our library or generate custom tracks - no API needed.
         </p>
       </div>
 

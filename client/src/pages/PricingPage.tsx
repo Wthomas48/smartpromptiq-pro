@@ -185,16 +185,21 @@ export default function PricingPage() {
   // Create subscription via Stripe Checkout using Stripe.js
   // This uses stripe.redirectToCheckout() for proper Stripe integration
   const createSubscription = useMutation({
-    mutationFn: async ({ tierId, billingCycle }: { tierId: string; billingCycle: string }) => {
-      // Log checkout attempt
-      console.log(`💳 Initiating Stripe Checkout for tier: ${tierId}, cycle: ${billingCycle}`);
+    mutationFn: async ({ tierId, billingCycle: cycle }: { tierId: string; billingCycle: 'monthly' | 'yearly' }) => {
+      // Log checkout attempt with clear billing cycle indication
+      console.log(`\n💳 ═══════════════════════════════════════════════════════════════`);
+      console.log(`💳 CHECKOUT REQUEST`);
+      console.log(`💳 ═══════════════════════════════════════════════════════════════`);
+      console.log(`💳 Tier: ${tierId}`);
+      console.log(`💳 Billing Cycle: ${cycle.toUpperCase()}`);
       console.log(`💳 Stripe Mode: ${stripeMode.toUpperCase()}`);
+      console.log(`💳 ═══════════════════════════════════════════════════════════════\n`);
 
       // Use Stripe.js redirectToCheckout - NO MOCK FALLBACKS
       // Token is fetched automatically from localStorage('token') by the stripe module
       await redirectToStripeCheckout({
         tierId,
-        billingCycle: billingCycle as 'monthly' | 'yearly',
+        billingCycle: cycle,
       });
 
       // If redirect succeeds, this won't be reached
@@ -210,6 +215,12 @@ export default function PricingPage() {
     },
   });
 
+  // Handle billing cycle change with visual feedback
+  const handleBillingCycleChange = (cycle: 'monthly' | 'yearly') => {
+    setBillingCycle(cycle);
+    console.log(`💳 Billing cycle changed to: ${cycle.toUpperCase()}`);
+  };
+
   const handleTierSelect = (tierId: string) => {
     if (!isAuthenticated) {
       toast({
@@ -218,6 +229,15 @@ export default function PricingPage() {
         variant: 'destructive',
       });
       return;
+    }
+
+    // Show confirmation of what will be charged
+    const tier = enhancedTiers.find(t => t.id === tierId);
+    if (tier && tier.price > 0) {
+      const displayPrice = billingCycle === 'yearly'
+        ? `$${(tier.price / 100).toFixed(0)}/year`
+        : `$${(tier.price / 100).toFixed(0)}/month`;
+      console.log(`💳 Proceeding to checkout: ${tier.name} - ${displayPrice} (${billingCycle})`);
     }
 
     createSubscription.mutate({ tierId, billingCycle });
@@ -284,27 +304,33 @@ export default function PricingPage() {
 
           {/* Billing Toggle */}
           <div className="flex justify-center mb-12">
-            <div className="bg-white dark:bg-slate-800 p-1 rounded-lg border dark:border-slate-700 shadow-sm">
+            <div className="bg-white dark:bg-slate-800 p-1.5 rounded-xl border dark:border-slate-700 shadow-lg">
               <button
-                onClick={() => setBillingCycle('monthly')}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                onClick={() => handleBillingCycleChange('monthly')}
+                className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   billingCycle === 'monthly'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 Monthly
               </button>
               <button
-                onClick={() => setBillingCycle('yearly')}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                onClick={() => handleBillingCycleChange('yearly')}
+                className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center ${
                   billingCycle === 'yearly'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 Yearly
-                <Badge className="ml-2 bg-green-100 text-green-800">2 Months Free</Badge>
+                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                  billingCycle === 'yearly'
+                    ? 'bg-white text-green-600'
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  SAVE 17%
+                </span>
               </button>
             </div>
           </div>
@@ -371,7 +397,7 @@ export default function PricingPage() {
                   </tr>
                   <tr className="border-b dark:border-slate-600">
                     <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">AI Prompts/Month</td>
-                    <td className="text-center p-3">5</td>
+                    <td className="text-center p-3">2</td>
                     <td className="text-center p-3">50</td>
                     <td className="text-center p-3">100</td>
                     <td className="text-center p-3 font-medium">200</td>
@@ -380,7 +406,7 @@ export default function PricingPage() {
                   </tr>
                   <tr className="border-b dark:border-slate-600">
                     <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Voice Generations</td>
-                    <td className="text-center p-3">5</td>
+                    <td className="text-center p-3">2</td>
                     <td className="text-center p-3">50</td>
                     <td className="text-center p-3">75</td>
                     <td className="text-center p-3 font-medium">200</td>
@@ -389,7 +415,7 @@ export default function PricingPage() {
                   </tr>
                   <tr className="border-b dark:border-slate-600">
                     <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Suno Music Tracks</td>
-                    <td className="text-center p-3">3</td>
+                    <td className="text-center p-3">1</td>
                     <td className="text-center p-3">10</td>
                     <td className="text-center p-3">20</td>
                     <td className="text-center p-3 font-medium">50</td>
@@ -398,7 +424,7 @@ export default function PricingPage() {
                   </tr>
                   <tr className="border-b dark:border-slate-600">
                     <td className="p-3 sticky left-0 bg-white dark:bg-slate-800">Image Generations</td>
-                    <td className="text-center p-3">5</td>
+                    <td className="text-center p-3">2</td>
                     <td className="text-center p-3">30</td>
                     <td className="text-center p-3">50</td>
                     <td className="text-center p-3 font-medium">100</td>
@@ -714,27 +740,33 @@ export default function PricingPage() {
 
                     {/* Billing Cycle Toggle */}
                     <div className="flex justify-center">
-                      <div className="bg-white dark:bg-slate-700 p-1 rounded-lg border dark:border-slate-600">
+                      <div className="bg-white dark:bg-slate-700 p-1.5 rounded-xl border dark:border-slate-600 shadow-md">
                         <button
-                          onClick={() => setBillingCycle('monthly')}
-                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          onClick={() => handleBillingCycleChange('monthly')}
+                          className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
                             billingCycle === 'monthly'
-                              ? 'bg-indigo-600 text-white'
-                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                              ? 'bg-indigo-600 text-white shadow-md'
+                              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600'
                           }`}
                         >
                           Monthly
                         </button>
                         <button
-                          onClick={() => setBillingCycle('yearly')}
-                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                          onClick={() => handleBillingCycleChange('yearly')}
+                          className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center ${
                             billingCycle === 'yearly'
-                              ? 'bg-indigo-600 text-white'
-                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                              ? 'bg-green-600 text-white shadow-md'
+                              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600'
                           }`}
                         >
                           Yearly
-                          <Badge className="ml-2 bg-green-100 text-green-800">2 Months Free</Badge>
+                          <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                            billingCycle === 'yearly'
+                              ? 'bg-white text-green-600'
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            SAVE 17%
+                          </span>
                         </button>
                       </div>
                     </div>

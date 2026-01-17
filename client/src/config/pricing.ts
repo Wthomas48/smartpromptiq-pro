@@ -105,38 +105,39 @@ export const STRIPE_PRICE_IDS = {
 
 export const PRICING_TIERS: PricingTier[] = [
   // ─────────────────────────────────────────────────────────────────────────────
-  // FREE TIER - Try before you buy
+  // FREE TIER - Try before you buy (Reduced limits to increase conversion)
   // ─────────────────────────────────────────────────────────────────────────────
   {
     id: 'free',
     name: 'Free',
-    description: 'Perfect for getting started',
+    description: 'Try our AI tools',
     monthlyPrice: 0,
     yearlyPrice: 0,
     features: [
       '3 Academy courses (basics)',
-      '5 AI prompts/month',
-      '5 voice generations/month',
-      '3 music tracks/month',
-      '5 image generations/month',
-      'Community support'
+      '2 AI prompts/month',
+      '2 voice generations/month',
+      '1 music track/month',
+      '2 image generations/month',
+      'Community support',
+      'Upgrade anytime for more'
     ],
     limits: {
-      tokensPerMonth: 5,
+      tokensPerMonth: 2,
       maxTokenRollover: 0,
       teamMembers: 1,
       apiCalls: 0,
-      playgroundTests: 5,
-      voiceGenerations: 5,
-      musicTracks: 3,
+      playgroundTests: 3,
+      voiceGenerations: 2,
+      musicTracks: 1,
       videoExports: 0,
-      imageGenerations: 5,
+      imageGenerations: 2,
       introOutros: 0,
       blueprints: 1
     },
     rateLimits: {
-      promptsPerDay: 5,
-      promptsPerHour: 2,
+      promptsPerDay: 2,
+      promptsPerHour: 1,
       apiCallsPerMinute: 0
     },
     support: 'community',
@@ -491,6 +492,133 @@ export const ADDON_PACKAGES: AddOnPackage[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// OVERAGE PRICING - Pay-as-you-go for users who exceed limits
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface OveragePricing {
+  feature: string;
+  unitName: string;
+  pricePerUnit: number;  // In cents
+  minPurchase: number;
+  description: string;
+}
+
+export const OVERAGE_PRICING: OveragePricing[] = [
+  {
+    feature: 'prompts',
+    unitName: 'prompt',
+    pricePerUnit: 25,        // $0.25 per prompt
+    minPurchase: 5,
+    description: 'Additional AI prompts beyond your plan limit'
+  },
+  {
+    feature: 'voices',
+    unitName: 'voice generation',
+    pricePerUnit: 15,        // $0.15 per voice
+    minPurchase: 10,
+    description: 'Additional ElevenLabs voice generations'
+  },
+  {
+    feature: 'music',
+    unitName: 'music track',
+    pricePerUnit: 75,        // $0.75 per track
+    minPurchase: 3,
+    description: 'Additional Suno AI music tracks'
+  },
+  {
+    feature: 'images',
+    unitName: 'image',
+    pricePerUnit: 10,        // $0.10 per image
+    minPurchase: 10,
+    description: 'Additional DALL-E 3 image generations'
+  },
+  {
+    feature: 'videos',
+    unitName: 'video export',
+    pricePerUnit: 150,       // $1.50 per video
+    minPurchase: 3,
+    description: 'Additional video exports'
+  },
+  {
+    feature: 'api_calls',
+    unitName: 'API call',
+    pricePerUnit: 5,         // $0.05 per API call
+    minPurchase: 50,
+    description: 'Additional API calls for developers'
+  }
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// API DEVELOPER TIER - Standalone API access for developers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface ApiTier {
+  id: string;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  apiCallsPerMonth: number;
+  rateLimit: number;  // Calls per minute
+  features: string[];
+}
+
+export const API_TIERS: ApiTier[] = [
+  {
+    id: 'api_starter',
+    name: 'API Starter',
+    description: 'For hobby projects and testing',
+    monthlyPrice: 2900,      // $29/month
+    yearlyPrice: 24000,      // $240/year
+    apiCallsPerMonth: 1000,
+    rateLimit: 10,
+    features: [
+      '1,000 API calls/month',
+      '10 calls/minute rate limit',
+      'All prompt endpoints',
+      'Voice generation API',
+      'Email support',
+      'API documentation access'
+    ]
+  },
+  {
+    id: 'api_pro',
+    name: 'API Pro',
+    description: 'For production applications',
+    monthlyPrice: 9900,      // $99/month
+    yearlyPrice: 82800,      // $828/year
+    apiCallsPerMonth: 10000,
+    rateLimit: 60,
+    features: [
+      '10,000 API calls/month',
+      '60 calls/minute rate limit',
+      'All API endpoints',
+      'Webhook support',
+      'Priority support',
+      'Usage analytics dashboard'
+    ]
+  },
+  {
+    id: 'api_enterprise',
+    name: 'API Enterprise',
+    description: 'For high-volume applications',
+    monthlyPrice: 29900,     // $299/month
+    yearlyPrice: 249900,     // $2,499/year
+    apiCallsPerMonth: 100000,
+    rateLimit: 300,
+    features: [
+      '100,000 API calls/month',
+      '300 calls/minute rate limit',
+      'All API endpoints',
+      'Dedicated infrastructure',
+      'SLA guarantee (99.9%)',
+      'Technical account manager',
+      'Custom integrations support'
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -537,10 +665,29 @@ export function isUnlimited(value: number): boolean {
   return value === -1;
 }
 
+// Get overage price for a feature
+export function getOveragePrice(feature: string): OveragePricing | undefined {
+  return OVERAGE_PRICING.find(o => o.feature === feature);
+}
+
+// Calculate overage cost
+export function calculateOverageCost(feature: string, quantity: number): number {
+  const overage = getOveragePrice(feature);
+  if (!overage) return 0;
+  return overage.pricePerUnit * quantity;
+}
+
+// Get API tier by ID
+export function getApiTierById(id: string): ApiTier | undefined {
+  return API_TIERS.find(tier => tier.id === id);
+}
+
 export default {
   PRICING_TIERS,
   TOKEN_PACKAGES,
   ADDON_PACKAGES,
+  OVERAGE_PRICING,
+  API_TIERS,
   STRIPE_PRICE_IDS,
   formatPrice,
   formatPriceShort,
@@ -549,5 +696,8 @@ export default {
   getPricingTierById,
   getStripePriceId,
   formatLimit,
-  isUnlimited
+  isUnlimited,
+  getOveragePrice,
+  calculateOverageCost,
+  getApiTierById
 };

@@ -49,3 +49,7 @@ Royalty-free-music.zip
 *.m4a
 *.webm
 
+
+# Claude temp files
+tmpclaude-*
+backend/tmpclaude-*

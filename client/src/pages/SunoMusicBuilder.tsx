@@ -607,11 +607,11 @@ ${theme ? (theme || '').charAt(0).toUpperCase() + (theme || '').slice(1) : 'Drea
               <Music2 className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-              Suno AI Music Builder
+              AI Song Studio
             </h1>
           </div>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Generate Suno-optimized prompts, create your song in Suno, then bring it back here for professional mixing and video export.
+            Create professional AI-powered songs with optimized prompts, then mix with voice, intro/outro and export as video.
           </p>
         </motion.div>
 

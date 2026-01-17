@@ -52,7 +52,7 @@ export default function Navigation() {
     { href: "/builderiq", label: "BuilderIQ", icon: ShoppingBag, badge: "NEW", builderSpecial: true },
     { href: "/voice-builder", label: "Voice", icon: Mic, badge: "AI", voiceSpecial: true },
     { href: "/intro-outro-builder", label: "Intro/Outro", icon: AudioWaveform, badge: "Video", introSpecial: true },
-    { href: "/suno-music-builder", label: "Suno Music", icon: Music2, badge: "AI", sunoSpecial: true },
+    { href: "/suno-music-builder", label: "AI Song Studio", icon: Music2, badge: "AI", sunoSpecial: true },
     { href: "/design-studio", label: "Design", icon: Palette, badge: "Print", designSpecial: true },
     { href: "/app-builders", label: "App Market", icon: Store, badge: "100+", marketSpecial: true },
     { href: "/teams", label: "Teams", icon: Users, badge: null },

@@ -13,6 +13,56 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// RATE LIMITING - Protect against brute force attacks
+// ═══════════════════════════════════════════════════════════════════════════════
+const authRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+const authRateLimiter = (req: any, res: any, next: any) => {
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const maxAttempts = 10; // Max 10 attempts per window
+
+  const record = authRateLimitStore.get(ip);
+
+  if (record) {
+    if (now > record.resetTime) {
+      // Window expired, reset
+      authRateLimitStore.set(ip, { count: 1, resetTime: now + windowMs });
+    } else if (record.count >= maxAttempts) {
+      // Too many attempts
+      console.warn(`⚠️ Rate limit exceeded for IP: ${ip}`);
+      return res.status(429).json({
+        success: false,
+        message: 'Too many login attempts. Please try again in 15 minutes.',
+        retryAfter: Math.ceil((record.resetTime - now) / 1000)
+      });
+    } else {
+      // Increment counter
+      record.count++;
+      authRateLimitStore.set(ip, record);
+    }
+  } else {
+    // First attempt
+    authRateLimitStore.set(ip, { count: 1, resetTime: now + windowMs });
+  }
+
+  next();
+};
+
+// Clean up old rate limit entries every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of authRateLimitStore.entries()) {
+    if (now > record.resetTime) {
+      authRateLimitStore.delete(ip);
+    }
+  }
+}, 30 * 60 * 1000);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
 // Serve static files from the React app build directory
 const clientDistPath = path.join(__dirname, '..', '..', 'client', 'dist');
 console.log('🔍 Looking for frontend build at:', clientDistPath);
@@ -60,39 +110,11 @@ app.get('/api/health', (req, res) => {
 // app.use('/api/auth', authRoutes);
 // app.use('/api/billing', billingRoutes);
 
-// Mock user database
-const users = [
-  {
-    id: '1',
-    email: 'admin@example.com',
-    password: 'Admin123!',
-    firstName: 'Admin',
-    lastName: 'User',
-    role: 'ADMIN',
-    subscriptionTier: 'enterprise',
-    tokenBalance: 10000
-  },
-  {
-    id: '2',
-    email: 'admin@smartpromptiq.com',
-    password: 'Admin123!',
-    firstName: 'SmartPromptIQ',
-    lastName: 'Admin',
-    role: 'ADMIN',
-    subscriptionTier: 'enterprise',
-    tokenBalance: 10000
-  },
-  {
-    id: '3',
-    email: 'test@smartpromptiq.com',
-    password: 'Test123!',
-    firstName: 'Alex',
-    lastName: 'Johnson',
-    role: 'USER',
-    subscriptionTier: 'free',
-    tokenBalance: 10
-  }
-];
+// ⚠️ DEPRECATED: Mock user database - DO NOT USE IN PRODUCTION
+// All authentication should use the Prisma database via /api/auth endpoints
+// This mock data is kept only for legacy endpoint compatibility
+const users: any[] = [];
+// NOTE: Real users are stored in PostgreSQL via Prisma - see prisma.user queries below
 
 // Enhanced auth endpoints with real database persistence
 import bcrypt from 'bcryptjs';
@@ -101,7 +123,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Register endpoint with real database persistence
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authRateLimiter, async (req, res) => {
   try {
     const { email, password, firstName, lastName } = req.body;
 
@@ -132,7 +154,30 @@ app.post('/api/auth/register', async (req, res) => {
       }
     });
 
-    const token = 'jwt-token-' + Date.now() + '-' + user.id;
+    // Generate real JWT token
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
+
+    if (!JWT_SECRET) {
+      console.error('❌ JWT_SECRET not configured - cannot generate token');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role || 'USER',
+        plan: user.plan || 'free',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
+      },
+      JWT_SECRET,
+      { algorithm: 'HS256' }
+    );
 
     console.log('✅ Real user created in database:', user.id);
 
@@ -161,7 +206,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Login endpoint with real database verification
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -197,7 +242,30 @@ app.post('/api/auth/login', async (req, res) => {
       data: { lastLogin: new Date() }
     });
 
-    const token = 'jwt-token-' + Date.now() + '-' + user.id;
+    // Generate real JWT token
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
+
+    if (!JWT_SECRET) {
+      console.error('❌ JWT_SECRET not configured');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role || 'USER',
+        plan: user.plan || 'free',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days
+      },
+      JWT_SECRET,
+      { algorithm: 'HS256' }
+    );
 
     console.log('✅ Real user login successful:', user.id);
 
@@ -225,26 +293,69 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Get current user endpoint
-app.get('/api/auth/me', async (req, res) => {
+// Get current user endpoint - requires valid JWT token
+app.get('/api/auth/me', async (req: any, res) => {
   try {
-    // For demo purposes, just return a mock admin user
-    // In production, this would validate the JWT token
-    const adminUser = {
-      id: 'admin-user-id',
-      email: 'admin@smartpromptiq.com',
-      firstName: 'Admin',
-      lastName: 'User',
-      role: 'ADMIN',
-      plan: 'BUSINESS',
-      avatar: null,
-      createdAt: new Date(),
-      lastLogin: new Date()
-    };
+    // Extract JWT token from Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'No authorization token provided'
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
+
+    if (!JWT_SECRET) {
+      console.error('❌ JWT_SECRET not configured');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
+    // Verify and decode the token
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (jwtError: any) {
+      console.warn('⚠️ Invalid token:', jwtError.message);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
+    // Fetch user from database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.sub },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        plan: true,
+        avatar: true,
+        createdAt: true,
+        lastLogin: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
     res.json({
       success: true,
-      data: { user: adminUser }
+      data: { user }
     });
   } catch (error) {
     console.error('❌ Get user error:', error);
@@ -471,10 +582,44 @@ app.get('/api/billing/info', (req, res) => {
   });
 });
 
-// Admin API endpoints
+// Admin API endpoints - SECURE IMPLEMENTATION
 function isAdminUser(req: any): boolean {
-  // PERMANENTLY ALLOW ALL ADMIN ACCESS - NO AUTHENTICATION REQUIRED
-  return true;
+  // Extract and verify JWT token from Authorization header
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.warn('⚠️ Admin access denied: No authorization header');
+    return false;
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    // Verify JWT token
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
+
+    if (!JWT_SECRET) {
+      console.error('❌ JWT_SECRET not configured');
+      return false;
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+    // Check if user has admin role
+    if (decoded.role !== 'ADMIN' && decoded.role !== 'admin') {
+      console.warn(`⚠️ Admin access denied: User ${decoded.email} is not admin (role: ${decoded.role})`);
+      return false;
+    }
+
+    // Attach user info to request for audit logging
+    req.adminUser = decoded;
+    console.log(`✅ Admin access granted: ${decoded.email}`);
+    return true;
+  } catch (error: any) {
+    console.error('❌ Admin auth failed:', error.message);
+    return false;
+  }
 }
 
 // Admin stats endpoint

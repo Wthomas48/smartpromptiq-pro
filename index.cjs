@@ -12,6 +12,63 @@ const shotstackRoutes = require('./routes/shotstack.cjs');
 const musicRoutes = require('./routes/music.cjs');
 const { generalLimiter } = require('./middleware/rateLimiter.cjs');
 
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║  CRITICAL: STRIPE KEY SANITIZATION - MUST RUN BEFORE STRIPE INITIALIZATION    ║
+// ║  Fixes ERR_INVALID_CHAR caused by newlines/quotes in environment variables    ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
+(function sanitizeStripeKeysOnStartup() {
+  console.log('\n🔐 ════════════════════════════════════════════════════════════');
+  console.log('🔐 STRIPE KEY VALIDATION (index.cjs)');
+  console.log('🔐 ════════════════════════════════════════════════════════════');
+
+  const rawKey = process.env.STRIPE_SECRET_KEY;
+  if (rawKey) {
+    // Check for problems
+    const hasNewline = rawKey.includes('\n') || rawKey.includes('\r');
+    const hasQuotes = /^["'`]|["'`]$/.test(rawKey);
+    const hasSpaces = rawKey.startsWith(' ') || rawKey.endsWith(' ');
+    const hasProblems = hasNewline || hasQuotes || hasSpaces;
+
+    console.log('📊 STRIPE_SECRET_KEY Analysis:');
+    console.log(`   Length: ${rawKey.length}`);
+    console.log(`   Prefix: ${rawKey.substring(0, 8)}`);
+    console.log(`   Has newline: ${hasNewline ? 'YES ❌' : 'NO ✅'}`);
+    console.log(`   Has quotes: ${hasQuotes ? 'YES ❌' : 'NO ✅'}`);
+    console.log(`   Has leading/trailing spaces: ${hasSpaces ? 'YES ❌' : 'NO ✅'}`);
+
+    if (hasProblems) {
+      console.warn('⚠️ STRIPE_SECRET_KEY contains invalid characters - SANITIZING...');
+      const sanitized = rawKey
+        .replace(/[\r\n\t]/g, '')
+        .replace(/^["'`]+|["'`]+$/g, '')
+        .trim();
+      process.env.STRIPE_SECRET_KEY = sanitized;
+      console.log(`✅ Sanitized: ${rawKey.length} → ${sanitized.length} chars (removed ${rawKey.length - sanitized.length})`);
+    } else {
+      console.log('✅ STRIPE_SECRET_KEY format is clean');
+    }
+    console.log(`   Mode: ${process.env.STRIPE_SECRET_KEY.startsWith('sk_live_') ? 'LIVE 🔴' : 'TEST 🟡'}`);
+  } else {
+    console.warn('⚠️ STRIPE_SECRET_KEY not set');
+  }
+
+  // Also sanitize webhook secret
+  const rawWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (rawWebhookSecret) {
+    const hasProblems = /[\r\n\t]|^["'`]|["'`]$/.test(rawWebhookSecret);
+    if (hasProblems) {
+      console.warn('⚠️ STRIPE_WEBHOOK_SECRET contains invalid characters - SANITIZING...');
+      process.env.STRIPE_WEBHOOK_SECRET = rawWebhookSecret
+        .replace(/[\r\n\t]/g, '')
+        .replace(/^["'`]+|["'`]+$/g, '')
+        .trim();
+      console.log('✅ STRIPE_WEBHOOK_SECRET sanitized');
+    }
+  }
+
+  console.log('🔐 ════════════════════════════════════════════════════════════\n');
+})();
+
 const app = express();
 
 // ---- Database Setup (Prisma) - with fallback ----
