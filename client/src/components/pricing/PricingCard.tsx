@@ -168,20 +168,30 @@ export default function PricingCard({ tier, onSelect, loading = false, showUpgra
         <div className="pt-4">
           {price === 0 ? (
             <div className="text-3xl font-bold">Free</div>
-          ) : (
+          ) : billingCycle === 'yearly' ? (
+            // Yearly billing - show monthly equivalent prominently
             <>
-              <div className="text-4xl font-bold">
-                ${(price / 100).toFixed(0)}
+              <div className="text-4xl font-bold text-green-600">
+                ${((price / 100) / 12).toFixed(0)}
                 <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
-                  /{billingCycle === 'yearly' ? 'year' : 'month'}
+                  /month
                 </span>
               </div>
-              {billingCycle === 'yearly' && (
-                <div className="text-sm text-green-600 font-medium">
-                  ${((price / 100) / 12).toFixed(0)}/month when billed yearly
-                </div>
-              )}
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Billed as ${(price / 100).toFixed(0)}/year
+              </div>
+              <div className="text-xs text-green-600 font-semibold mt-1">
+                Save 2 months!
+              </div>
             </>
+          ) : (
+            // Monthly billing
+            <div className="text-4xl font-bold">
+              ${(price / 100).toFixed(0)}
+              <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
+                /month
+              </span>
+            </div>
           )}
         </div>
       </CardHeader>

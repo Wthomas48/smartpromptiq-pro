@@ -28,23 +28,33 @@ export default function ChromeExtension() {
   const features = [
     {
       icon: <MousePointer2 className="w-6 h-6" />,
-      title: 'Right-Click Prompt Generation',
-      description: 'Highlight any text on a webpage, right-click, and instantly send it to SmartPromptIQ for AI-powered enhancement.'
+      title: 'Right-Click Context Menu',
+      description: 'Select any text on the web, right-click, and choose from Improve, Explain, Summarize, or Generate Prompt actions.'
     },
     {
       icon: <Keyboard className="w-6 h-6" />,
-      title: 'Keyboard Shortcuts',
-      description: 'Use Ctrl+Shift+P to open the popup or Ctrl+Shift+G for quick generation. Speed up your workflow.'
+      title: 'Lightning-Fast Shortcuts',
+      description: 'Ctrl+Shift+P opens the popup instantly. Ctrl+Shift+G toggles the floating panel on AI chat pages.'
     },
     {
       icon: <Zap className="w-6 h-6" />,
-      title: 'Works on AI Platforms',
-      description: 'Seamlessly integrates with ChatGPT, Claude, Gemini, Bing Chat, and Poe. Insert prompts with one click.'
+      title: '10+ AI Platforms Supported',
+      description: 'Works on ChatGPT, Claude, Gemini, Copilot, Poe, Perplexity, You.com and more. Auto-detects the platform and inserts prompts directly.'
     },
     {
       icon: <Sparkles className="w-6 h-6" />,
-      title: 'Quick Actions',
-      description: 'Improve text, explain concepts, summarize content, or get code help - all from the floating panel.'
+      title: 'Smart Quick Actions',
+      description: 'One-click actions to improve text, explain concepts, summarize content, or get code help - contextually aware of your selection.'
+    },
+    {
+      icon: <MessageSquare className="w-6 h-6" />,
+      title: 'Auto-Sync Authentication',
+      description: 'Sign in once on smartpromptiq.com and the extension automatically syncs. Your prompts, tokens, and settings sync everywhere.'
+    },
+    {
+      icon: <Code className="w-6 h-6" />,
+      title: 'Offline Demo Mode',
+      description: 'Even without internet, the extension provides demo prompts so you can keep working. Full features when connected.'
     }
   ];
 
@@ -58,23 +68,23 @@ export default function ChromeExtension() {
   const steps = [
     {
       step: 1,
-      title: 'Download Extension',
-      description: 'Click the download button to get the extension files (coming to Chrome Web Store soon)'
+      title: 'Download the Extension',
+      description: 'Click the download button below to get the SmartPromptIQ Chrome Extension package'
     },
     {
       step: 2,
       title: 'Install in Chrome',
-      description: 'Go to chrome://extensions, enable Developer Mode, and load the unpacked extension'
+      description: 'Open chrome://extensions in Chrome, enable "Developer Mode" in the top right, click "Load unpacked" and select the extracted folder'
     },
     {
       step: 3,
-      title: 'Sign In',
-      description: 'Click the extension icon and sign in with your SmartPromptIQ account'
+      title: 'Auto-Connect Your Account',
+      description: 'Sign in on smartpromptiq.com - the extension automatically syncs your authentication. No manual login needed!'
     },
     {
       step: 4,
-      title: 'Start Generating',
-      description: 'Highlight text, use keyboard shortcuts, or click the floating button on AI platforms'
+      title: 'Start Generating Everywhere',
+      description: 'Visit ChatGPT, Claude, Gemini or any supported platform. Use keyboard shortcuts, right-click context menu, or the floating button to generate prompts!'
     }
   ];
 
@@ -100,8 +110,9 @@ export default function ChromeExtension() {
               <span className="text-gray-600">/</span>
               <span className="text-white font-medium">Chrome Extension</span>
             </div>
-            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
-              v1.0.0
+            <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 flex items-center gap-1">
+              <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+              v1.1.0
             </Badge>
           </div>
         </div>
@@ -150,9 +161,15 @@ export default function ChromeExtension() {
             </Button>
           </div>
 
-          <p className="text-sm text-gray-500 mt-4">
-            Coming to Chrome Web Store soon
-          </p>
+          <div className="flex items-center justify-center gap-4 mt-4 text-sm text-gray-400">
+            <span className="flex items-center gap-1">
+              <span className="text-yellow-400">★★★★★</span> 5.0 Rating
+            </span>
+            <span>|</span>
+            <span>Manifest V3</span>
+            <span>|</span>
+            <span className="text-green-400">Free Forever</span>
+          </div>
         </div>
       </section>
 
@@ -262,19 +279,15 @@ export default function ChromeExtension() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
-              <Card key={index} className="bg-slate-900/50 border-white/10 hover:border-purple-500/50 transition-all">
+              <Card key={index} className="bg-slate-900/50 border-white/10 hover:border-purple-500/50 transition-all hover:transform hover:-translate-y-1">
                 <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-br from-purple-500/20 to-cyan-500/20 rounded-xl text-purple-400">
-                      {feature.icon}
-                    </div>
-                    <div>
-                      <h3 className="text-white font-semibold text-lg mb-2">{feature.title}</h3>
-                      <p className="text-gray-400">{feature.description}</p>
-                    </div>
+                  <div className="p-3 bg-gradient-to-br from-purple-500/20 to-cyan-500/20 rounded-xl text-purple-400 w-fit mb-4">
+                    {feature.icon}
                   </div>
+                  <h3 className="text-white font-semibold text-lg mb-2">{feature.title}</h3>
+                  <p className="text-gray-400 text-sm">{feature.description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -359,24 +372,29 @@ export default function ChromeExtension() {
 
       {/* Supported Platforms */}
       <section className="py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-white mb-8">Works With Your Favorite AI Platforms</h2>
+        <div className="max-w-5xl mx-auto text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Works With All Major AI Platforms</h2>
+          <p className="text-gray-400 mb-8">One extension for all your AI conversations</p>
           <div className="flex flex-wrap justify-center gap-4">
             {[
-              { name: 'ChatGPT', color: 'from-green-500 to-emerald-600' },
-              { name: 'Claude', color: 'from-orange-500 to-amber-600' },
-              { name: 'Gemini', color: 'from-blue-500 to-indigo-600' },
-              { name: 'Bing Chat', color: 'from-cyan-500 to-blue-600' },
-              { name: 'Poe', color: 'from-purple-500 to-violet-600' }
+              { name: 'ChatGPT', icon: '🤖', color: 'from-green-500 to-emerald-600' },
+              { name: 'Claude', icon: '🟠', color: 'from-orange-500 to-amber-600' },
+              { name: 'Gemini', icon: '✨', color: 'from-blue-500 to-indigo-600' },
+              { name: 'Microsoft Copilot', icon: '🔵', color: 'from-cyan-500 to-blue-600' },
+              { name: 'Poe', icon: '💬', color: 'from-purple-500 to-violet-600' },
+              { name: 'Perplexity', icon: '🔍', color: 'from-teal-500 to-cyan-600' },
+              { name: 'You.com', icon: '🌐', color: 'from-pink-500 to-rose-600' }
             ].map((platform, index) => (
               <div
                 key={index}
-                className={`px-6 py-3 bg-gradient-to-r ${platform.color} rounded-full text-white font-semibold`}
+                className={`px-5 py-3 bg-gradient-to-r ${platform.color} rounded-full text-white font-semibold flex items-center gap-2 shadow-lg`}
               >
+                <span>{platform.icon}</span>
                 {platform.name}
               </div>
             ))}
           </div>
+          <p className="text-gray-500 text-sm mt-6">...and more platforms coming soon!</p>
         </div>
       </section>
 

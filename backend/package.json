@@ -13,6 +13,7 @@
     "postinstall": "prisma generate --schema=./prisma/schema.prisma || echo 'Prisma generate skipped'",
     "studio": "prisma studio",
     "seed": "ts-node prisma/seed.ts",
+    "seed:admin": "ts-node scripts/seed-admin.ts",
     "create-admin": "node create-admin.js"
   },
   "dependencies": {

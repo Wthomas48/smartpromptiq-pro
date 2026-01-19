@@ -295,6 +295,29 @@ model TokenPurchase {
   @@map("token_purchases")
 }
 
+// Stripe Webhook Event tracking for idempotency
+// Prevents duplicate processing when Stripe retries webhooks
+model WebhookEvent {
+  id            String   @id // Stripe event ID (evt_xxx)
+  type          String   // Event type (e.g., customer.subscription.updated)
+  processed     Boolean  @default(true)
+  processedAt   DateTime @default(now())
+
+  // Optional: store payload hash for debugging
+  payloadHash   String?
+
+  // Error tracking for failed processing
+  errorMessage  String?
+  retryCount    Int      @default(0)
+
+  createdAt     DateTime @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([processed])
+  @@map("webhook_events")
+}
+
 model UsageLog {
   id     String @id @default(cuid())
   userId String

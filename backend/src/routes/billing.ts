@@ -16,47 +16,219 @@ import {
 const router = express.Router();
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE SECRET KEY VALIDATION & SANITIZATION
+// ═══════════════════════════════════════════════════════════════════════════════
+// CRITICAL: Environment variables from .env files or Railway may contain quotes,
+// newlines, or whitespace that cause ERR_INVALID_CHAR errors in HTTP headers.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Validate Stripe key with detailed diagnostics
+ * HARD FAILS if key contains invalid characters - do not silently sanitize
+ * This ensures deployment issues are caught immediately at startup
+ */
+const validateStripeKey = (key: string | undefined): string => {
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY is missing. Set it in your environment variables.');
+  }
+
+  // Diagnostic checks - DO NOT log the actual key value
+  const hasNewline = /[\r\n]/.test(key);
+  const hasQuotes = /^["'].*["']$/.test(key);
+  const hasSpace = /\s/.test(key); // catches tabs/spaces too
+  const startsCorrectly = key.startsWith('sk_live_') || key.startsWith('sk_test_');
+
+  console.log('💳 Stripe key diagnostics:', {
+    length: key.length,
+    startsWith: key.slice(0, 8), // e.g. "sk_live_" or "sk_test_"
+    startsCorrectly,
+    hasNewline,
+    hasQuotes,
+    hasSpace,
+  });
+
+  // HARD FAIL if key contains invalid characters
+  // Do not silently sanitize - this indicates a deployment configuration issue
+  if (hasNewline) {
+    throw new Error(
+      'STRIPE_SECRET_KEY contains newline characters. ' +
+      'Fix your Railway/environment variable - do not copy-paste with line breaks.'
+    );
+  }
+
+  if (hasQuotes) {
+    throw new Error(
+      'STRIPE_SECRET_KEY is wrapped in quotes. ' +
+      'Remove the quotes from your Railway/environment variable. ' +
+      'Use: sk_live_xxx NOT "sk_live_xxx"'
+    );
+  }
+
+  if (!startsCorrectly) {
+    throw new Error(
+      'STRIPE_SECRET_KEY must start with sk_live_ or sk_test_. ' +
+      `Got: ${key.slice(0, 10)}...`
+    );
+  }
+
+  // Warn about spaces but allow (will be trimmed)
+  if (hasSpace) {
+    console.warn('⚠️ STRIPE_SECRET_KEY contains whitespace - trimming');
+  }
+
+  return key.trim();
+};
+
+/**
+ * Validate webhook secret with similar checks
+ */
+const validateWebhookSecretKey = (secret: string | undefined): string | null => {
+  if (!secret) {
+    console.warn('⚠️ STRIPE_WEBHOOK_SECRET is not configured - webhooks will fail');
+    return null;
+  }
+
+  const hasNewline = /[\r\n]/.test(secret);
+  const hasQuotes = /^["'].*["']$/.test(secret);
+
+  console.log('💳 Webhook secret diagnostics:', {
+    length: secret.length,
+    startsWith: secret.slice(0, 6), // "whsec_"
+    startsCorrectly: secret.startsWith('whsec_'),
+    hasNewline,
+    hasQuotes,
+  });
+
+  if (hasNewline || hasQuotes) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET contains invalid characters (newline/quotes)');
+    console.error('❌ Fix your Railway/environment variable');
+    return null;
+  }
+
+  if (!secret.startsWith('whsec_')) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET must start with whsec_');
+    return null;
+  }
+
+  return secret.trim();
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VALIDATE KEYS AT STARTUP - Will throw and crash if invalid
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let VALIDATED_STRIPE_KEY: string | null = null;
+let VALIDATED_WEBHOOK_SECRET: string | null = null;
+let stripeKeyError: string | null = null;
+
+try {
+  VALIDATED_STRIPE_KEY = validateStripeKey(process.env.STRIPE_SECRET_KEY);
+  console.log('✅ STRIPE_SECRET_KEY validated successfully');
+} catch (error: any) {
+  stripeKeyError = error.message;
+  console.error('❌ ═══════════════════════════════════════════════════════════════');
+  console.error('❌ STRIPE KEY VALIDATION FAILED');
+  console.error('❌ ═══════════════════════════════════════════════════════════════');
+  console.error(`❌ ${error.message}`);
+  console.error('❌ Stripe checkout will NOT work until this is fixed.');
+  console.error('❌ ═══════════════════════════════════════════════════════════════');
+}
+
+VALIDATED_WEBHOOK_SECRET = validateWebhookSecretKey(process.env.STRIPE_WEBHOOK_SECRET);
+
+// Legacy aliases for backward compatibility with existing code
+const SANITIZED_STRIPE_KEY = VALIDATED_STRIPE_KEY;
+const SANITIZED_WEBHOOK_SECRET = VALIDATED_WEBHOOK_SECRET;
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // STRIPE CONFIGURATION VALIDATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const validateStripeConfig = () => {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  const isProduction = process.env.NODE_ENV === 'production';
+  const frontendUrl = process.env.FRONTEND_URL || process.env.RENDER_EXTERNAL_URL || '';
 
-  if (!secretKey) {
-    return { valid: false, error: 'STRIPE_SECRET_KEY is not set' };
+  // Detect production by NODE_ENV, live keys, or production URLs
+  const isProductionEnv = process.env.NODE_ENV === 'production';
+  const isProductionUrl = frontendUrl.includes('smartpromptiq.com') ||
+                          frontendUrl.includes('.render.com') ||
+                          frontendUrl.includes('.railway.app') ||
+                          frontendUrl.includes('.vercel.app');
+  const isProduction = isProductionEnv || isProductionUrl;
+
+  // Check if key validation failed during startup
+  if (!VALIDATED_STRIPE_KEY) {
+    return {
+      valid: false,
+      error: stripeKeyError || 'STRIPE_SECRET_KEY validation failed',
+      isProduction,
+      sanitizedKey: null
+    };
   }
 
-  const isLiveKey = secretKey.startsWith('sk_live_');
-  const isTestKey = secretKey.startsWith('sk_test_');
+  const isLiveKey = VALIDATED_STRIPE_KEY.startsWith('sk_live_');
+  const isTestKey = VALIDATED_STRIPE_KEY.startsWith('sk_test_');
 
+  // This should not happen since validateStripeKey already checks this
   if (!isLiveKey && !isTestKey) {
-    return { valid: false, error: 'STRIPE_SECRET_KEY must start with sk_live_ or sk_test_' };
+    return { valid: false, error: 'STRIPE_SECRET_KEY must start with sk_live_ or sk_test_', isProduction, sanitizedKey: null };
   }
 
-  // In production, require live keys
+  // Warn if using test keys in production-like environment
   if (isProduction && !isLiveKey) {
-    return { valid: false, error: 'Production requires STRIPE_SECRET_KEY starting with sk_live_' };
+    console.warn('⚠️ WARNING: Using test Stripe key in production-like environment');
+    console.warn(`   Frontend URL: ${frontendUrl}`);
+    console.warn('   Set NODE_ENV=production and use sk_live_ keys for production');
+  }
+
+  // Warn if using live keys in development
+  if (!isProduction && isLiveKey) {
+    console.warn('⚠️ WARNING: Using LIVE Stripe key in development environment');
+    console.warn('   This will process REAL payments! Consider using sk_test_ for development');
   }
 
   return {
     valid: true,
     mode: isLiveKey ? 'live' : 'test',
-    keyPrefix: secretKey.substring(0, 12) + '...'
+    keyPrefix: VALIDATED_STRIPE_KEY.substring(0, 12) + '...',
+    isProduction,
+    sanitizedKey: VALIDATED_STRIPE_KEY
   };
 };
 
 const stripeConfig = validateStripeConfig();
-console.log(`💳 Stripe Configuration: ${stripeConfig.valid ? '✅ Valid' : '❌ Invalid'}`);
-console.log(`💳 Stripe Mode: ${stripeConfig.mode || 'N/A'}`);
+console.log(`\n💳 ═══════════════════════════════════════════════════════════════`);
+console.log(`💳 Stripe Configuration Status`);
+console.log(`💳 ═══════════════════════════════════════════════════════════════`);
+console.log(`💳 Configuration: ${stripeConfig.valid ? '✅ Valid' : '❌ Invalid - ' + stripeConfig.error}`);
+console.log(`💳 Stripe Mode: ${stripeConfig.mode || 'N/A'} ${stripeConfig.mode === 'live' ? '(REAL PAYMENTS)' : '(Test Mode)'}`);
 console.log(`💳 Key Prefix: ${stripeConfig.keyPrefix || 'Not configured'}`);
+console.log(`💳 Environment: ${stripeConfig.isProduction ? 'PRODUCTION' : 'Development'}`);
+console.log(`💳 Key Validated: ${VALIDATED_STRIPE_KEY ? '✅ Yes' : '❌ No - ' + (stripeKeyError || 'Unknown error')}`);
+console.log(`💳 Webhook Secret: ${VALIDATED_WEBHOOK_SECRET ? '✅ Configured' : '❌ Not configured'}`);
+console.log(`💳 ═══════════════════════════════════════════════════════════════\n`);
 
-// Initialize Stripe only if valid
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE CLIENT INITIALIZATION - Uses VALIDATED key only
+// ═══════════════════════════════════════════════════════════════════════════════
+
 let stripe: Stripe | null = null;
-if (stripeConfig.valid && process.env.STRIPE_SECRET_KEY) {
-  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2023-10-16'
-  });
+if (stripeConfig.valid && VALIDATED_STRIPE_KEY) {
+  try {
+    stripe = new Stripe(VALIDATED_STRIPE_KEY, {
+      apiVersion: '2023-10-16',
+      timeout: 30000,
+      maxNetworkRetries: 3,
+      telemetry: false,
+      // IMPORTANT: Do not pass any custom httpAgent or headers
+      // The Stripe SDK handles Authorization header internally
+    });
+    console.log('✅ Stripe client initialized with validated key (30s timeout, 3 retries)');
+  } catch (initError: any) {
+    console.error('❌ Failed to initialize Stripe client:', initError.message);
+    stripe = null;
+  }
+} else if (stripeKeyError) {
+  console.error('❌ Stripe client NOT initialized due to key validation failure');
 }
 
 // Helper to get Stripe instance or throw
@@ -82,6 +254,115 @@ const getStripeOrFail = (res: express.Response, correlationId?: string): Stripe 
   return stripe;
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE CUSTOMER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Validate if a Stripe customer ID is valid (not empty, correct format)
+ */
+const isValidStripeCustomerId = (customerId: string | null | undefined): customerId is string => {
+  if (!customerId) return false;
+  if (typeof customerId !== 'string') return false;
+  // Stripe customer IDs start with 'cus_'
+  if (!customerId.startsWith('cus_')) return false;
+  // Must have content after prefix
+  if (customerId.length < 10) return false;
+  return true;
+};
+
+/**
+ * Get existing Stripe customer or create a new one
+ * Handles the common case where stripeCustomerId is empty string or invalid
+ *
+ * @param stripeClient - Initialized Stripe client
+ * @param user - User object from database
+ * @param correlationId - Request correlation ID for logging
+ * @returns Stripe customer ID (guaranteed valid)
+ */
+const getOrCreateStripeCustomer = async (
+  stripeClient: Stripe,
+  user: { id: string; email: string; firstName?: string | null; lastName?: string | null; stripeCustomerId?: string | null },
+  correlationId?: string
+): Promise<string> => {
+  const logPrefix = correlationId ? `[${correlationId}] ` : '';
+
+  // Check if user has a valid existing Stripe customer ID
+  if (isValidStripeCustomerId(user.stripeCustomerId)) {
+    try {
+      // Verify the customer still exists in Stripe
+      const existingCustomer = await stripeClient.customers.retrieve(user.stripeCustomerId);
+
+      // Check if customer was deleted in Stripe
+      if ((existingCustomer as any).deleted) {
+        console.log(`💳 ${logPrefix}Stripe customer ${user.stripeCustomerId} was deleted, creating new one`);
+      } else {
+        console.log(`💳 ${logPrefix}Using existing Stripe customer: ${user.stripeCustomerId}`);
+        return user.stripeCustomerId;
+      }
+    } catch (retrieveError: any) {
+      // Customer doesn't exist in Stripe (404) or other error
+      console.log(`💳 ${logPrefix}Could not retrieve customer ${user.stripeCustomerId}: ${retrieveError.message}`);
+      console.log(`💳 ${logPrefix}Creating new Stripe customer...`);
+    }
+  } else {
+    console.log(`💳 ${logPrefix}No valid Stripe customer ID (value: "${user.stripeCustomerId || 'null'}"), creating new one`);
+  }
+
+  // Create new Stripe customer
+  const customerName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+
+  const newCustomer = await stripeClient.customers.create({
+    email: user.email,
+    name: customerName || undefined,
+    metadata: {
+      userId: user.id,
+      createdAt: new Date().toISOString(),
+      source: 'smartpromptiq'
+    }
+  });
+
+  console.log(`💳 ${logPrefix}Created new Stripe customer: ${newCustomer.id}`);
+
+  // Persist the new customer ID to database
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { stripeCustomerId: newCustomer.id }
+  });
+
+  console.log(`💳 ${logPrefix}Persisted Stripe customer ID to database`);
+
+  return newCustomer.id;
+};
+
+/**
+ * Normalize subscription status for checkout
+ * Free users should have status "none" not "active"
+ */
+const normalizeSubscriptionStatusForCheckout = async (userId: string): Promise<void> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, subscriptionStatus: true, subscriptionTier: true }
+  });
+
+  if (!user) return;
+
+  // If user is on free tier but has "active" status, normalize to "none"
+  const isFreeUser = !user.plan ||
+                     user.plan === 'FREE' ||
+                     user.plan === 'free' ||
+                     user.subscriptionTier === 'free' ||
+                     !user.subscriptionTier;
+
+  if (isFreeUser && user.subscriptionStatus === 'active') {
+    console.log(`💳 Normalizing subscription status for free user ${userId}: active → none`);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { subscriptionStatus: 'none' }
+    });
+  }
+};
+
 // Log pricing configuration status on startup
 const pricingValidation = validatePricingConfiguration();
 if (!pricingValidation.valid) {
@@ -90,25 +371,18 @@ if (!pricingValidation.valid) {
   console.log('✅ All Stripe Price IDs configured');
 }
 
-// Validate webhook secret at startup
-const validateWebhookSecret = () => {
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  if (!webhookSecret) {
-    console.warn('⚠️ STRIPE_WEBHOOK_SECRET not configured - webhooks will fail');
-    return { valid: false, error: 'Webhook secret not set' };
-  }
-
-  if (!webhookSecret.startsWith('whsec_')) {
-    console.warn('⚠️ STRIPE_WEBHOOK_SECRET has invalid format (should start with whsec_)');
-    return { valid: false, error: 'Invalid webhook secret format' };
-  }
-
-  console.log('✅ Stripe webhook secret configured');
-  return { valid: true };
+// Webhook config is already validated at startup via validateWebhookSecretKey
+const webhookConfig = {
+  valid: !!VALIDATED_WEBHOOK_SECRET,
+  secret: VALIDATED_WEBHOOK_SECRET,
+  error: VALIDATED_WEBHOOK_SECRET ? null : 'Webhook secret not configured or invalid'
 };
 
-const webhookConfig = validateWebhookSecret();
+if (webhookConfig.valid) {
+  console.log('✅ Stripe webhook secret validated and ready');
+} else {
+  console.warn('⚠️ Stripe webhooks will fail - webhook secret not properly configured');
+}
 
 // Create Stripe customer and subscription
 router.post('/subscribe', authenticate, async (req, res) => {
@@ -117,25 +391,37 @@ router.post('/subscribe', authenticate, async (req, res) => {
     if (!stripeClient) return;
 
     const { priceId } = req.body;
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id }
-    });
 
-    let customerId = user!.stripeCustomerId;
-
-    // Create customer if doesn't exist
-    if (!customerId) {
-      const customer = await stripeClient.customers.create({
-        email: user!.email,
-        metadata: { userId: user!.id }
-      });
-      customerId = customer.id;
-
-      await prisma.user.update({
-        where: { id: user!.id },
-        data: { stripeCustomerId: customerId }
+    if (!priceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Price ID is required'
       });
     }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        stripeCustomerId: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Normalize subscription status before subscribing
+    await normalizeSubscriptionStatusForCheckout(user.id);
+
+    // Use robust customer helper (handles empty strings, deleted customers, etc.)
+    const customerId = await getOrCreateStripeCustomer(stripeClient, user);
 
     // Create subscription
     const subscription = await stripeClient.subscriptions.create({
@@ -169,9 +455,32 @@ router.post('/purchase-tokens', authenticate, async (req, res) => {
     if (!stripeClient) return;
 
     const { packageKey, paymentMethodId } = req.body;
+
+    if (!packageKey || !paymentMethodId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Package key and payment method ID are required'
+      });
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: req.user!.id }
+      where: { id: req.user!.id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        stripeCustomerId: true,
+        tokenBalance: true
+      }
     });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
     // Get token packages from centralized pricing config
     const tokenPackagesArray = getTokenPackages();
@@ -198,21 +507,8 @@ router.post('/purchase-tokens', authenticate, async (req, res) => {
       });
     }
 
-    let customerId = user!.stripeCustomerId;
-
-    // Create customer if doesn't exist
-    if (!customerId) {
-      const customer = await stripeClient.customers.create({
-        email: user!.email,
-        metadata: { userId: user!.id }
-      });
-      customerId = customer.id;
-
-      await prisma.user.update({
-        where: { id: user!.id },
-        data: { stripeCustomerId: customerId }
-      });
-    }
+    // Use robust customer helper (handles empty strings, deleted customers, etc.)
+    const customerId = await getOrCreateStripeCustomer(stripeClient, user);
 
     // Create payment intent for one-time token purchase
     const paymentIntent = await stripeClient.paymentIntents.create({
@@ -392,11 +688,14 @@ const generateCorrelationId = () => `req_${Date.now()}_${Math.random().toString(
  * Accepts either priceId directly OR tierId + billingCycle to look up the price
  *
  * PRODUCTION ONLY - NO MOCK FALLBACKS
- * Uses optionalAuth to support both authenticated users and guest checkout
+ *
+ * Authentication:
+ * - Subscription mode: REQUIRES authentication (no guest checkout for subscriptions)
+ * - Payment mode: Allows guest checkout with optionalAuth
  */
 router.post('/create-checkout-session', optionalAuth, async (req, res) => {
   const correlationId = generateCorrelationId();
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = stripeConfig.isProduction || false;
   const startTime = Date.now();
 
   console.log(`\n💳 ═══════════════════════════════════════════════════════════════`);
@@ -424,10 +723,48 @@ router.post('/create-checkout-session', optionalAuth, async (req, res) => {
     console.log(`💳 [${correlationId}] Request Details:`, {
       tierId,
       billingCycle,
+      mode,
       priceId: priceId || 'not provided',
       userId: req.user?.id || 'guest',
+      hasValidUser: !!req.user?.id && !!req.user?.email,
       environment: isProduction ? 'PRODUCTION' : 'development'
     });
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // AUTHENTICATION VALIDATION
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // For subscription mode, REQUIRE valid authentication
+    if (mode === 'subscription') {
+      if (!req.user?.id || !req.user?.email) {
+        console.error(`❌ [${correlationId}] Subscription checkout requires authentication`);
+        return res.status(401).json({
+          success: false,
+          error: 'AUTH_REQUIRED',
+          message: 'Please log in to subscribe. Subscription checkout requires a valid account.',
+          correlationId
+        });
+      }
+
+      // Validate the user actually exists in database
+      const userExists = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { id: true, email: true }
+      });
+
+      if (!userExists) {
+        console.error(`❌ [${correlationId}] User ${req.user.id} not found in database`);
+        return res.status(401).json({
+          success: false,
+          error: 'USER_NOT_FOUND',
+          message: 'Your account could not be verified. Please log in again.',
+          correlationId
+        });
+      }
+
+      // Normalize subscription status for free users before checkout
+      await normalizeSubscriptionStatusForCheckout(req.user.id);
+    }
 
     // ══════════════════════════════════════════════════════════════════════════
     // STRICT VALIDATION: No mock fallbacks allowed
@@ -550,41 +887,59 @@ router.post('/create-checkout-session', optionalAuth, async (req, res) => {
       }
     };
 
-    // Handle authenticated users - use existing customer or create new one
+    // ══════════════════════════════════════════════════════════════════════════
+    // CUSTOMER HANDLING - Use robust getOrCreateStripeCustomer helper
+    // ══════════════════════════════════════════════════════════════════════════
     if (req.user?.id) {
       const user = await prisma.user.findUnique({
-        where: { id: req.user.id }
+        where: { id: req.user.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          stripeCustomerId: true
+        }
       });
 
       if (user) {
-        if (user.stripeCustomerId) {
-          // Use existing customer
-          sessionConfig.customer = user.stripeCustomerId;
-          console.log(`💳 [${correlationId}] Existing Stripe customer: ${user.stripeCustomerId}`);
-        } else {
-          // Create new customer
-          const customer = await stripeClient.customers.create({
-            email: user.email,
-            name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined,
-            metadata: { userId: user.id }
-          });
-
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { stripeCustomerId: customer.id }
-          });
-
-          sessionConfig.customer = customer.id;
-          console.log(`💳 [${correlationId}] Created new Stripe customer: ${customer.id}`);
-        }
+        // Use the robust helper that handles empty strings, deleted customers, etc.
+        const customerId = await getOrCreateStripeCustomer(stripeClient, user, correlationId);
+        sessionConfig.customer = customerId;
       } else {
-        // User in JWT but not in DB - use email for guest checkout
-        sessionConfig.customer_email = req.user.email;
-        console.log(`💳 [${correlationId}] User not in DB, using guest checkout with email: ${req.user.email}`);
+        // For subscription mode, we already validated user exists above
+        // This branch only applies to payment mode with invalid auth token
+        if (mode === 'subscription') {
+          console.error(`❌ [${correlationId}] User not found for subscription checkout`);
+          return res.status(401).json({
+            success: false,
+            error: 'USER_NOT_FOUND',
+            message: 'Your account could not be found. Please log in again.',
+            correlationId
+          });
+        }
+
+        // For payment mode, fall back to email-based checkout
+        if (req.user.email) {
+          sessionConfig.customer_email = req.user.email;
+          console.log(`💳 [${correlationId}] User not in DB, using email for checkout: ${req.user.email}`);
+        } else {
+          console.log(`💳 [${correlationId}] No user found, no email - Stripe will collect`);
+        }
       }
     } else {
-      // Guest checkout - Stripe will collect email
-      console.log(`💳 [${correlationId}] Guest checkout - no customer pre-set`);
+      // Guest checkout - only allowed for payment mode (subscription mode was rejected above)
+      if (mode === 'subscription') {
+        // This should never happen due to validation above, but just in case
+        console.error(`❌ [${correlationId}] Guest checkout not allowed for subscriptions`);
+        return res.status(401).json({
+          success: false,
+          error: 'AUTH_REQUIRED',
+          message: 'Please log in to subscribe.',
+          correlationId
+        });
+      }
+      console.log(`💳 [${correlationId}] Guest checkout - Stripe will collect email`);
     }
 
     // Add subscription-specific options
@@ -648,39 +1003,72 @@ router.post('/create-checkout-session', optionalAuth, async (req, res) => {
 
   } catch (error: any) {
     // ══════════════════════════════════════════════════════════════════════════
-    // ERROR HANDLING: NO FALLBACK TO MOCK - Return proper error
+    // ERROR HANDLING: Enhanced error classification and user-friendly messages
     // ══════════════════════════════════════════════════════════════════════════
+    const elapsed = Date.now() - startTime;
     console.error(`\n❌ ═══════════════════════════════════════════════════════════════`);
     console.error(`❌ [${correlationId}] STRIPE CHECKOUT SESSION FAILED`);
     console.error(`❌ ═══════════════════════════════════════════════════════════════`);
     console.error(`❌ [${correlationId}] Error Type: ${error.type || 'Unknown'}`);
     console.error(`❌ [${correlationId}] Error Code: ${error.code || 'Unknown'}`);
     console.error(`❌ [${correlationId}] Error Message: ${error.message}`);
+    console.error(`❌ [${correlationId}] Elapsed Time: ${elapsed}ms`);
     console.error(`❌ [${correlationId}] Full Error:`, error);
     console.error(`❌ ═══════════════════════════════════════════════════════════════\n`);
 
-    // Determine appropriate status code
+    // Determine appropriate status code and user-friendly message
     let statusCode = 500;
     let errorCode = 'STRIPE_ERROR';
+    let userMessage = 'Failed to create checkout session. Please try again.';
 
-    if (error.type === 'StripeInvalidRequestError') {
+    // Network/connection errors
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
+      statusCode = 503;
+      errorCode = 'STRIPE_CONNECTION_ERROR';
+      userMessage = 'Unable to connect to payment service. Please try again in a few moments.';
+      console.error(`❌ [${correlationId}] NETWORK ERROR: ${error.code} - Check server connectivity to Stripe`);
+    } else if (error.message?.includes('connect') || error.message?.includes('network') || error.message?.includes('timeout')) {
+      statusCode = 503;
+      errorCode = 'STRIPE_NETWORK_ERROR';
+      userMessage = 'Payment service temporarily unavailable. Please try again shortly.';
+    } else if (error.type === 'StripeConnectionError') {
+      statusCode = 503;
+      errorCode = 'STRIPE_CONNECTION_ERROR';
+      userMessage = 'Unable to reach payment service. Please check your internet connection and try again.';
+    } else if (error.type === 'StripeInvalidRequestError') {
       statusCode = 400;
       errorCode = 'STRIPE_INVALID_REQUEST';
+      userMessage = error.message || 'Invalid payment request. Please contact support.';
     } else if (error.type === 'StripeAuthenticationError') {
-      statusCode = 401;
-      errorCode = 'STRIPE_AUTH_ERROR';
+      statusCode = 500; // Don't expose auth issues to users
+      errorCode = 'STRIPE_CONFIG_ERROR';
+      userMessage = 'Payment configuration error. Please contact support.';
+      console.error(`❌ [${correlationId}] CRITICAL: Stripe authentication failed - check API keys`);
     } else if (error.type === 'StripeRateLimitError') {
       statusCode = 429;
       errorCode = 'STRIPE_RATE_LIMIT';
+      userMessage = 'Too many payment requests. Please wait a moment and try again.';
+    } else if (error.type === 'StripeAPIError') {
+      statusCode = 502;
+      errorCode = 'STRIPE_API_ERROR';
+      userMessage = 'Payment service error. Please try again in a few moments.';
     }
 
-    // Return error response - NO MOCK FALLBACK
+    // Return error response with user-friendly message
     res.status(statusCode).json({
       success: false,
       error: errorCode,
-      message: error.message || 'Failed to create checkout session',
+      message: userMessage,
       correlationId,
-      stripeErrorCode: error.code || null
+      stripeErrorCode: error.code || null,
+      // Include technical details only in development
+      ...(process.env.NODE_ENV !== 'production' && {
+        technicalDetails: {
+          type: error.type,
+          rawMessage: error.message,
+          elapsed: `${elapsed}ms`
+        }
+      })
     });
   }
 });
@@ -696,6 +1084,13 @@ router.post('/create-token-checkout', authenticate, async (req, res) => {
 
     const { packageKey } = req.body;
 
+    if (!packageKey) {
+      return res.status(400).json({
+        success: false,
+        message: 'Package key is required'
+      });
+    }
+
     // Get token packages
     const tokenPackagesArray = getTokenPackages();
     const tokenPackage = tokenPackagesArray.find(p => p.key === packageKey);
@@ -708,7 +1103,14 @@ router.post('/create-token-checkout', authenticate, async (req, res) => {
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: req.user!.id }
+      where: { id: req.user!.id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        stripeCustomerId: true
+      }
     });
 
     if (!user) {
@@ -718,22 +1120,8 @@ router.post('/create-token-checkout', authenticate, async (req, res) => {
       });
     }
 
-    let customerId = user.stripeCustomerId;
-
-    // Create Stripe customer if doesn't exist
-    if (!customerId) {
-      const customer = await stripeClient.customers.create({
-        email: user.email,
-        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined,
-        metadata: { userId: user.id }
-      });
-      customerId = customer.id;
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { stripeCustomerId: customerId }
-      });
-    }
+    // Use robust customer helper (handles empty strings, deleted customers, etc.)
+    const customerId = await getOrCreateStripeCustomer(stripeClient, user);
 
     const baseUrl = process.env.FRONTEND_URL ||
                     process.env.RENDER_EXTERNAL_URL ||
@@ -898,6 +1286,62 @@ router.get('/verify-prices', async (req, res) => {
 });
 
 /**
+ * GET /api/billing/health
+ * Health check endpoint to verify Stripe connectivity
+ * Useful for diagnosing connection issues
+ */
+router.get('/health', async (req, res) => {
+  const startTime = Date.now();
+  const healthStatus: {
+    stripe: { connected: boolean; mode: string | undefined; latency?: number; error?: string };
+    config: { valid: boolean; pricesConfigured: boolean; webhookConfigured: boolean };
+    environment: string;
+  } = {
+    stripe: { connected: false, mode: stripeConfig.mode },
+    config: {
+      valid: stripeConfig.valid,
+      pricesConfigured: false,
+      webhookConfigured: !!SANITIZED_WEBHOOK_SECRET
+    },
+    environment: process.env.NODE_ENV || 'development'
+  };
+
+  // Check if prices are configured
+  const priceValidation = validatePricingConfiguration();
+  healthStatus.config.pricesConfigured = priceValidation.valid;
+
+  // Test Stripe connectivity by making a simple API call
+  if (stripe && stripeConfig.valid) {
+    try {
+      // Use balance.retrieve() as a lightweight connectivity test
+      await stripe.balance.retrieve();
+      healthStatus.stripe.connected = true;
+      healthStatus.stripe.latency = Date.now() - startTime;
+    } catch (error: any) {
+      healthStatus.stripe.connected = false;
+      healthStatus.stripe.error = error.type || error.code || error.message || 'Unknown error';
+      healthStatus.stripe.latency = Date.now() - startTime;
+      console.error('❌ Stripe health check failed:', error.message);
+    }
+  } else {
+    healthStatus.stripe.error = stripeConfig.error || 'Stripe not initialized';
+  }
+
+  const isHealthy = healthStatus.stripe.connected && healthStatus.config.valid;
+
+  res.status(isHealthy ? 200 : 503).json({
+    success: isHealthy,
+    status: isHealthy ? 'healthy' : 'degraded',
+    timestamp: new Date().toISOString(),
+    ...healthStatus,
+    // Only show missing prices in development
+    ...(process.env.NODE_ENV !== 'production' && !priceValidation.valid && {
+      missingPrices: priceValidation.missing
+    })
+  });
+});
+
+/**
  * GET /api/billing/checkout-session/:sessionId
  * Retrieves checkout session details (for success page)
  */
@@ -935,20 +1379,91 @@ router.get('/checkout-session/:sessionId', authenticate, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// WEBHOOK IDEMPOTENCY - Track processed events to prevent duplicates
+// WEBHOOK IDEMPOTENCY - Database-backed tracking to survive server restarts
 // ═══════════════════════════════════════════════════════════════════════════════
-const processedWebhookEvents = new Map<string, number>();
-const WEBHOOK_EVENT_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-// Cleanup old events periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [eventId, timestamp] of processedWebhookEvents.entries()) {
-    if (now - timestamp > WEBHOOK_EVENT_TTL) {
-      processedWebhookEvents.delete(eventId);
-    }
+/**
+ * Check if a webhook event has already been processed
+ * Uses database for persistence across server restarts
+ */
+async function isWebhookEventProcessed(eventId: string): Promise<boolean> {
+  try {
+    const existingEvent = await prisma.webhookEvent.findUnique({
+      where: { id: eventId }
+    });
+    return existingEvent !== null && existingEvent.processed;
+  } catch (error) {
+    // If table doesn't exist yet, fall back to allowing processing
+    console.warn(`⚠️ Could not check webhook event ${eventId}:`, error);
+    return false;
   }
-}, 60 * 60 * 1000); // Cleanup every hour
+}
+
+/**
+ * Mark a webhook event as processed in the database
+ */
+async function markWebhookEventProcessed(
+  eventId: string,
+  eventType: string,
+  errorMessage?: string
+): Promise<void> {
+  try {
+    await prisma.webhookEvent.upsert({
+      where: { id: eventId },
+      create: {
+        id: eventId,
+        type: eventType,
+        processed: !errorMessage,
+        errorMessage: errorMessage || null,
+        processedAt: new Date()
+      },
+      update: {
+        processed: !errorMessage,
+        errorMessage: errorMessage || null,
+        processedAt: new Date(),
+        retryCount: { increment: errorMessage ? 1 : 0 }
+      }
+    });
+  } catch (error) {
+    // Log but don't fail - idempotency is best-effort
+    console.error(`⚠️ Could not mark webhook event ${eventId} as processed:`, error);
+  }
+}
+
+/**
+ * Cleanup old webhook events (call periodically via cron or startup)
+ * Removes events older than 7 days to keep table size manageable
+ */
+async function cleanupOldWebhookEvents(): Promise<number> {
+  const RETENTION_DAYS = 7;
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+
+  try {
+    const result = await prisma.webhookEvent.deleteMany({
+      where: {
+        createdAt: { lt: cutoffDate }
+      }
+    });
+    if (result.count > 0) {
+      console.log(`🧹 Cleaned up ${result.count} old webhook events`);
+    }
+    return result.count;
+  } catch (error) {
+    console.error('⚠️ Could not cleanup old webhook events:', error);
+    return 0;
+  }
+}
+
+// Schedule cleanup every 6 hours (won't lose data on restart since it's in DB)
+setInterval(() => {
+  cleanupOldWebhookEvents().catch(console.error);
+}, 6 * 60 * 60 * 1000);
+
+// Run cleanup on startup (delayed to allow DB connection)
+setTimeout(() => {
+  cleanupOldWebhookEvents().catch(console.error);
+}, 30000);
 
 /**
  * POST /api/billing/webhook
@@ -970,25 +1485,26 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     return res.status(400).json({ error: 'Missing stripe-signature header' });
   }
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!webhookSecret) {
-    console.error('❌ STRIPE_WEBHOOK_SECRET not configured');
+  // Use the sanitized webhook secret (validated at module load)
+  if (!SANITIZED_WEBHOOK_SECRET) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET not configured or contains invalid characters');
     return res.status(503).json({ error: 'Webhook secret not configured' });
   }
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(req.body, sig, SANITIZED_WEBHOOK_SECRET);
   } catch (err: any) {
     console.error('❌ Webhook signature verification failed:', err.message);
     return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // IDEMPOTENCY: Check if we've already processed this event
+  // IDEMPOTENCY: Check if we've already processed this event (database-backed)
   // ═══════════════════════════════════════════════════════════════════════════
-  if (processedWebhookEvents.has(event.id)) {
+  const alreadyProcessed = await isWebhookEventProcessed(event.id);
+  if (alreadyProcessed) {
     console.log(`⚠️ Webhook event ${event.id} already processed, skipping`);
     return res.json({ received: true, duplicate: true });
   }
@@ -1067,14 +1583,18 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         console.log(`ℹ️ Unhandled webhook event type: ${event.type}`);
     }
 
-    // Mark event as processed
-    processedWebhookEvents.set(event.id, Date.now());
+    // Mark event as processed in database (persists across restarts)
+    await markWebhookEventProcessed(event.id, event.type);
 
     console.log(`✅ Webhook ${event.type} processed successfully`);
     res.json({ received: true });
 
   } catch (error: any) {
     console.error(`❌ Webhook handler error for ${event.type}:`, error);
+
+    // Mark event as failed with error message (for debugging and retry tracking)
+    await markWebhookEventProcessed(event.id, event.type, error.message);
+
     // Return 500 so Stripe will retry
     res.status(500).json({ error: 'Webhook handler failed', message: error.message });
   }
@@ -1204,11 +1724,24 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription)
       }
     });
 
-    await tx.academySubscription.update({
+    // Use upsert to handle case where AcademySubscription doesn't exist yet
+    // This can happen if user subscribed via legacy flow or direct Stripe
+    await tx.academySubscription.upsert({
       where: { userId: user.id },
-      data: {
+      create: {
+        userId: user.id,
         tier: 'free',
-        status: 'canceled'
+        status: 'canceled',
+        billingCycle: 'monthly',
+        priceInCents: 0,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(),
+        cancelAtPeriodEnd: false
+      },
+      update: {
+        tier: 'free',
+        status: 'canceled',
+        cancelAtPeriodEnd: false
       }
     });
   });
@@ -1561,6 +2094,165 @@ router.post('/upgrade-subscription', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/billing/preview-upgrade
+ * Preview the cost of upgrading/downgrading subscription (proration preview)
+ * Shows what the user will be charged/credited for the plan change
+ */
+router.get('/preview-upgrade', authenticate, async (req, res) => {
+  try {
+    const stripeClient = getStripeOrFail(res);
+    if (!stripeClient) return;
+
+    const { newPriceId, newTierId, billingCycle } = req.query;
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (!user.stripeSubscriptionId || !user.stripeCustomerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active subscription found. Please subscribe first.'
+      });
+    }
+
+    // Determine the new price ID
+    let targetPriceId = newPriceId as string;
+
+    if (!targetPriceId && newTierId) {
+      // Map tier to price ID
+      const stripePriceIds = getStripePriceIds();
+      const normalizedTier = (newTierId as string).toLowerCase().replace(/-/g, '_').replace(/ /g, '_');
+      const normalizedCycle = ((billingCycle as string) || user.billingCycle || 'monthly').toLowerCase();
+
+      const tierPriceMap: Record<string, string | undefined> = {
+        'starter': normalizedCycle === 'yearly' ? stripePriceIds.STARTER_YEARLY : stripePriceIds.STARTER_MONTHLY,
+        'academy': normalizedCycle === 'yearly' ? stripePriceIds.ACADEMY_PLUS_YEARLY : stripePriceIds.ACADEMY_PLUS_MONTHLY,
+        'academy_plus': normalizedCycle === 'yearly' ? stripePriceIds.ACADEMY_PLUS_YEARLY : stripePriceIds.ACADEMY_PLUS_MONTHLY,
+        'pro': normalizedCycle === 'yearly' ? stripePriceIds.PRO_YEARLY : stripePriceIds.PRO_MONTHLY,
+        'team': normalizedCycle === 'yearly' ? stripePriceIds.TEAM_PRO_YEARLY : stripePriceIds.TEAM_PRO_MONTHLY,
+        'team_pro': normalizedCycle === 'yearly' ? stripePriceIds.TEAM_PRO_YEARLY : stripePriceIds.TEAM_PRO_MONTHLY,
+        'enterprise': normalizedCycle === 'yearly' ? stripePriceIds.ENTERPRISE_YEARLY : stripePriceIds.ENTERPRISE_MONTHLY,
+      };
+
+      targetPriceId = tierPriceMap[normalizedTier] || '';
+    }
+
+    if (!targetPriceId || !targetPriceId.startsWith('price_')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid tier or price ID. Please specify a valid newPriceId or newTierId.'
+      });
+    }
+
+    // Get current subscription to find the subscription item ID
+    const currentSubscription = await stripeClient.subscriptions.retrieve(user.stripeSubscriptionId);
+    const currentItemId = currentSubscription.items.data[0]?.id;
+
+    if (!currentItemId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid subscription state - no items found'
+      });
+    }
+
+    // Check if trying to switch to same price
+    const currentPriceId = currentSubscription.items.data[0]?.price?.id;
+    if (currentPriceId === targetPriceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already on this plan',
+        error: 'SAME_PLAN'
+      });
+    }
+
+    // Get proration preview from Stripe
+    const upcomingInvoice = await stripeClient.invoices.retrieveUpcoming({
+      customer: user.stripeCustomerId,
+      subscription: user.stripeSubscriptionId,
+      subscription_items: [{
+        id: currentItemId,
+        price: targetPriceId
+      }],
+      subscription_proration_behavior: 'create_prorations'
+    });
+
+    // Get the new price details
+    const newPrice = await stripeClient.prices.retrieve(targetPriceId);
+    const newPlan = getPlanFromPriceId(targetPriceId);
+
+    // Calculate proration breakdown
+    const prorationItems = upcomingInvoice.lines.data.filter(
+      line => line.proration
+    );
+    const prorationCredit = prorationItems
+      .filter(line => line.amount < 0)
+      .reduce((sum, line) => sum + line.amount, 0);
+    const prorationCharge = prorationItems
+      .filter(line => line.amount > 0)
+      .reduce((sum, line) => sum + line.amount, 0);
+
+    res.json({
+      success: true,
+      data: {
+        currentPlan: {
+          tier: user.subscriptionTier,
+          priceId: currentPriceId
+        },
+        newPlan: {
+          tier: newPlan.toLowerCase(),
+          priceId: targetPriceId,
+          unitAmount: newPrice.unit_amount,
+          interval: newPrice.recurring?.interval
+        },
+        proration: {
+          total: upcomingInvoice.total, // Net amount due (can be negative for credit)
+          credit: prorationCredit,      // Unused time credit (negative)
+          charge: prorationCharge,      // New plan charge (positive)
+          currency: upcomingInvoice.currency
+        },
+        billing: {
+          immediateCharge: upcomingInvoice.total > 0 ? upcomingInvoice.total : 0,
+          immediateCredit: upcomingInvoice.total < 0 ? Math.abs(upcomingInvoice.total) : 0,
+          nextInvoiceAmount: newPrice.unit_amount,
+          periodStart: new Date((upcomingInvoice as any).period_start * 1000),
+          periodEnd: new Date((upcomingInvoice as any).period_end * 1000)
+        },
+        message: upcomingInvoice.total > 0
+          ? `You will be charged $${(upcomingInvoice.total / 100).toFixed(2)} today for the upgrade.`
+          : upcomingInvoice.total < 0
+            ? `You will receive a $${(Math.abs(upcomingInvoice.total) / 100).toFixed(2)} credit applied to future invoices.`
+            : 'No charge for this plan change.'
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Preview upgrade error:', error);
+
+    // Handle specific Stripe errors
+    if (error.type === 'StripeInvalidRequestError') {
+      return res.status(400).json({
+        success: false,
+        message: error.message || 'Invalid subscription or price',
+        stripeError: error.code
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to preview subscription change'
+    });
+  }
+});
+
+/**
  * POST /api/billing/cancel-subscription
  * Cancel subscription at period end (user keeps access until then)
  */
@@ -1617,9 +2309,20 @@ router.post('/cancel-subscription', authenticate, async (req, res) => {
         }
       });
 
-      await tx.academySubscription.update({
+      // Use upsert to handle case where AcademySubscription doesn't exist
+      await tx.academySubscription.upsert({
         where: { userId: user.id },
-        data: {
+        create: {
+          userId: user.id,
+          tier: user.subscriptionTier || 'free',
+          status: immediate ? 'canceled' : 'active',
+          billingCycle: 'monthly',
+          priceInCents: 0,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(canceledSubscription.current_period_end * 1000),
+          cancelAtPeriodEnd: !immediate
+        },
+        update: {
           cancelAtPeriodEnd: !immediate,
           status: immediate ? 'canceled' : 'active'
         }
@@ -1690,10 +2393,24 @@ router.post('/reactivate-subscription', authenticate, async (req, res) => {
       { cancel_at_period_end: false }
     );
 
-    // Update local records
-    await prisma.academySubscription.update({
+    // Update local records - use upsert to handle missing AcademySubscription
+    await prisma.academySubscription.upsert({
       where: { userId: user.id },
-      data: { cancelAtPeriodEnd: false }
+      create: {
+        userId: user.id,
+        tier: user.subscriptionTier || 'free',
+        status: 'active',
+        billingCycle: 'monthly',
+        priceInCents: 0,
+        currentPeriodStart: new Date(reactivatedSubscription.current_period_start * 1000),
+        currentPeriodEnd: new Date(reactivatedSubscription.current_period_end * 1000),
+        cancelAtPeriodEnd: false,
+        stripeSubscriptionId: reactivatedSubscription.id
+      },
+      update: {
+        cancelAtPeriodEnd: false,
+        status: 'active'
+      }
     });
 
     console.log(`✅ Subscription reactivated for user ${user.id}`);
@@ -1766,6 +2483,115 @@ router.get('/subscription-status', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to get subscription status'
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN ENDPOINTS - Webhook Event Monitoring
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/billing/admin/webhook-events
+ * Get recent webhook events for debugging (admin only)
+ */
+router.get('/admin/webhook-events', authenticate, async (req, res) => {
+  try {
+    // Verify admin access
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id }
+    });
+
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
+    const { limit = 50, type, failed } = req.query;
+
+    // Build query filters
+    const whereClause: any = {};
+    if (type) {
+      whereClause.type = type as string;
+    }
+    if (failed === 'true') {
+      whereClause.errorMessage = { not: null };
+    }
+
+    const [events, stats] = await Promise.all([
+      prisma.webhookEvent.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        take: Math.min(parseInt(limit as string) || 50, 100)
+      }),
+      prisma.webhookEvent.groupBy({
+        by: ['type', 'processed'],
+        _count: { id: true },
+        where: {
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        }
+      })
+    ]);
+
+    // Calculate summary stats
+    const last24Hours = {
+      total: stats.reduce((sum, s) => sum + s._count.id, 0),
+      successful: stats.filter(s => s.processed).reduce((sum, s) => sum + s._count.id, 0),
+      failed: stats.filter(s => !s.processed).reduce((sum, s) => sum + s._count.id, 0),
+      byType: stats.reduce((acc, s) => {
+        acc[s.type] = (acc[s.type] || 0) + s._count.id;
+        return acc;
+      }, {} as Record<string, number>)
+    };
+
+    res.json({
+      success: true,
+      data: {
+        events,
+        stats: last24Hours
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Webhook events fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch webhook events'
+    });
+  }
+});
+
+/**
+ * POST /api/billing/admin/cleanup-webhook-events
+ * Manually trigger webhook event cleanup (admin only)
+ */
+router.post('/admin/cleanup-webhook-events', authenticate, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id }
+    });
+
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
+    const deletedCount = await cleanupOldWebhookEvents();
+
+    res.json({
+      success: true,
+      message: `Cleaned up ${deletedCount} old webhook events`
+    });
+
+  } catch (error: any) {
+    console.error('Webhook cleanup error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to cleanup webhook events'
     });
   }
 });

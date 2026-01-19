@@ -13,7 +13,8 @@ const dotenv = require('dotenv');
 // Import route modules
 const authRoutes = require('./routes/auth');
 const billingRoutes = require('./routes/billing');
-const subscriptionRoutes = require('./routes/subscriptions');
+// DEPRECATED: subscriptionRoutes - Use billingRoutes instead
+// const subscriptionRoutes = require('./routes/subscriptions');
 const usageRoutes = require('./routes/usage');
 const adminRoutes = require('./routes/admin');
 const demoRoutes = require('./routes/demo');
@@ -50,9 +51,27 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS configuration
+// CORS configuration - support multiple origins for production
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://smartpromptiq.com',
+  'https://www.smartpromptiq.com',
+  'http://localhost:5173',
+  'http://localhost:3000'
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.some(allowed => origin === allowed || origin.endsWith('.smartpromptiq.com'))) {
+      return callback(null, true);
+    }
+
+    console.warn(`⚠️ CORS blocked origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-client-type']
@@ -124,9 +143,50 @@ app.use('/api/auth/register', registrationLimiter);
 app.use('/api/auth/forgot-password', passwordResetLimiter);
 app.use('/api/auth', authRoutes);
 
-// Billing and subscription routes
+// Billing routes (primary subscription management)
 app.use('/api/billing', billingRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DEPRECATED: /api/subscriptions routes
+// All subscription functionality has been consolidated into /api/billing
+// These redirects provide backward compatibility during migration
+// ═══════════════════════════════════════════════════════════════════════════════
+app.use('/api/subscriptions', (req, res, next) => {
+  // Add deprecation warning header
+  res.set('X-Deprecated', 'true');
+  res.set('X-Deprecated-Message', 'Use /api/billing endpoints instead');
+
+  // Map old endpoints to new billing endpoints
+  const redirectMap = {
+    'GET /tiers': '/api/billing/pricing',
+    'GET /current': '/api/billing/subscription-status',
+    'POST /create': '/api/billing/create-checkout-session',
+    'PUT /change': '/api/billing/upgrade-subscription',
+    'POST /cancel': '/api/billing/cancel-subscription',
+    'POST /reactivate': '/api/billing/reactivate-subscription',
+    'GET /preview-change': '/api/billing/preview-upgrade'
+  };
+
+  const key = `${req.method} ${req.path}`;
+  const newEndpoint = redirectMap[key];
+
+  if (newEndpoint) {
+    console.warn(`⚠️ DEPRECATED: ${req.method} /api/subscriptions${req.path} → ${newEndpoint}`);
+    return res.status(301).json({
+      success: false,
+      deprecated: true,
+      message: `This endpoint is deprecated. Please use ${newEndpoint} instead.`,
+      redirect: newEndpoint
+    });
+  }
+
+  // Unknown subscription endpoint
+  res.status(404).json({
+    success: false,
+    deprecated: true,
+    message: 'Endpoint not found. Subscription management has moved to /api/billing/*'
+  });
+});
 
 // Usage and analytics routes (authenticated)
 app.use('/api/usage', authenticateWithSubscription, trackApiUsage, usageRoutes);
@@ -400,13 +460,16 @@ process.on('SIGTERM', () => {
 const { demoQueue } = require('./services/queueService');
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  console.log('\n🚀 ═══════════════════════════════════════════════════════════════');
   console.log('🚀 SmartPromptIQ Pro Backend Started!');
+  console.log('🚀 ═══════════════════════════════════════════════════════════════');
   console.log(`📦 Version: 2.0.0`);
   console.log(`🌐 Port: ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
   console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+  console.log(`💳 Billing Health: http://localhost:${PORT}/api/billing/health`);
   console.log(`📊 API Info: http://localhost:${PORT}/api`);
   console.log('✨ Features: Token-based pricing, Cost protection, Advanced analytics, Demo Queue');
   console.log('📋 Demo Queue: Processing jobs with Bull and Redis');
@@ -414,6 +477,31 @@ app.listen(PORT, () => {
   if (process.env.NODE_ENV === 'development') {
     console.log('🔧 Development mode - Detailed error messages enabled');
   }
+
+  // Test Stripe connectivity at startup (non-blocking)
+  if (process.env.STRIPE_SECRET_KEY) {
+    try {
+      const Stripe = require('stripe');
+      const stripeTest = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: '2023-10-16',
+        timeout: 10000
+      });
+      await stripeTest.balance.retrieve();
+      console.log('✅ Stripe connectivity verified at startup');
+    } catch (stripeError) {
+      console.error('❌ ═══════════════════════════════════════════════════════════════');
+      console.error('❌ WARNING: Stripe connectivity test FAILED at startup!');
+      console.error('❌ ═══════════════════════════════════════════════════════════════');
+      console.error(`❌ Error: ${stripeError.message}`);
+      console.error('❌ Checkout and billing features may not work properly.');
+      console.error('❌ Check: Network connectivity, Firewall rules, API key validity');
+      console.error('❌ ═══════════════════════════════════════════════════════════════');
+    }
+  } else {
+    console.warn('⚠️ STRIPE_SECRET_KEY not configured - payment features disabled');
+  }
+
+  console.log('🚀 ═══════════════════════════════════════════════════════════════\n');
 });
 
 module.exports = app;

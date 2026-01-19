@@ -1,6 +1,33 @@
 /**
- * Subscriptions API Routes - Handle subscription management
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * DEPRECATED: Subscriptions API Routes
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ THIS FILE IS DEPRECATED - DO NOT USE FOR NEW DEVELOPMENT ⚠️
+ *
+ * All subscription management has been consolidated into:
+ *   → backend/src/routes/billing.ts
+ *
+ * Endpoint Migration Map:
+ *   GET  /api/subscriptions/tiers          → GET  /api/billing/pricing
+ *   GET  /api/subscriptions/current        → GET  /api/billing/subscription-status
+ *   POST /api/subscriptions/create         → POST /api/billing/create-checkout-session
+ *   PUT  /api/subscriptions/change         → POST /api/billing/upgrade-subscription
+ *   POST /api/subscriptions/cancel         → POST /api/billing/cancel-subscription
+ *   POST /api/subscriptions/reactivate     → POST /api/billing/reactivate-subscription
+ *   GET  /api/subscriptions/preview-change → GET  /api/billing/preview-upgrade
+ *
+ * Reasons for Deprecation:
+ *   1. Dual systems caused state drift between User and Subscription models
+ *   2. This file uses Promise.all without transactions (race conditions)
+ *   3. billing.ts has proper idempotency, transactions, and webhook handling
+ *   4. Frontend exclusively uses /api/billing/* endpoints
+ *
+ * This file is kept for reference only. It is no longer mounted in server.js.
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
+
+console.warn('⚠️ DEPRECATED: subscriptions.js loaded - this module should not be used');
 
 const express = require('express');
 const Stripe = require('stripe');
@@ -12,6 +39,14 @@ const prisma = require('../config/database');
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Add deprecation middleware to all routes
+router.use((req, res, next) => {
+  console.warn(`⚠️ DEPRECATED endpoint called: ${req.method} /api/subscriptions${req.path}`);
+  res.set('X-Deprecated', 'true');
+  res.set('X-Deprecated-Message', 'Use /api/billing/* endpoints instead');
+  next();
+});
 
 /**
  * GET /api/subscriptions/tiers - Get all available subscription tiers

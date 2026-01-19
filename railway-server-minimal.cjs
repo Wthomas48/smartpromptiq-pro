@@ -2,6 +2,138 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║  CRITICAL: STRIPE KEY VALIDATION - RUNS BEFORE ANYTHING ELSE                  ║
+// ║  This MUST be at the top of the file to catch ERR_INVALID_CHAR early          ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
+
+(function validateStripeKeyOnStartup() {
+  const rawKey = process.env.STRIPE_SECRET_KEY;
+
+  console.log('\n🔐 ════════════════════════════════════════════════════════════');
+  console.log('🔐 STRIPE KEY VALIDATION (Startup Check)');
+  console.log('🔐 ════════════════════════════════════════════════════════════');
+
+  if (!rawKey) {
+    console.error('❌ STRIPE_SECRET_KEY is not set!');
+    console.error('💡 Add it in Railway Dashboard → Variables');
+    console.log('🔐 ════════════════════════════════════════════════════════════\n');
+    return; // Don't crash - allow server to start for other features
+  }
+
+  // Detect specific problems
+  const problems = [];
+
+  // Check for newlines (most common problem)
+  if (rawKey.includes('\n')) {
+    problems.push('Contains NEWLINE (\\n) character');
+  }
+  if (rawKey.includes('\r')) {
+    problems.push('Contains CARRIAGE RETURN (\\r) character');
+  }
+
+  // Check for quotes (copy-paste error)
+  if (rawKey.startsWith('"') || rawKey.startsWith("'") || rawKey.startsWith('`')) {
+    problems.push('Starts with a QUOTE character');
+  }
+  if (rawKey.endsWith('"') || rawKey.endsWith("'") || rawKey.endsWith('`')) {
+    problems.push('Ends with a QUOTE character');
+  }
+
+  // Check for spaces
+  if (rawKey.startsWith(' ') || rawKey.endsWith(' ')) {
+    problems.push('Has LEADING or TRAILING SPACES');
+  }
+  if (rawKey.includes(' ')) {
+    problems.push('Contains SPACE characters');
+  }
+
+  // Check for tabs
+  if (rawKey.includes('\t')) {
+    problems.push('Contains TAB character');
+  }
+
+  // Check for non-ASCII characters
+  if (/[^\x20-\x7E]/.test(rawKey)) {
+    problems.push('Contains NON-PRINTABLE or NON-ASCII characters');
+  }
+
+  // Check format
+  if (!rawKey.startsWith('sk_live_') && !rawKey.startsWith('sk_test_')) {
+    problems.push('Does NOT start with sk_live_ or sk_test_');
+  }
+
+  // Report findings
+  console.log('📊 Key Analysis:');
+  console.log(`   Length: ${rawKey.length} characters`);
+  console.log(`   First 8 chars: "${rawKey.substring(0, 8)}"`);
+  console.log(`   Last 4 chars: "...${rawKey.substring(rawKey.length - 4)}"`);
+  console.log(`   Has newline: ${rawKey.includes('\n') ? 'YES ❌' : 'NO ✅'}`);
+  console.log(`   Has carriage return: ${rawKey.includes('\r') ? 'YES ❌' : 'NO ✅'}`);
+  console.log(`   Has quotes: ${/["'`]/.test(rawKey) ? 'YES ❌' : 'NO ✅'}`);
+  console.log(`   Has spaces: ${/ /.test(rawKey) ? 'YES ❌' : 'NO ✅'}`);
+
+  if (problems.length > 0) {
+    console.error('\n❌ ════════════════════════════════════════════════════════════');
+    console.error('❌ STRIPE KEY HAS INVALID CHARACTERS!');
+    console.error('❌ ════════════════════════════════════════════════════════════');
+    console.error('Problems found:');
+    problems.forEach((p, i) => console.error(`   ${i + 1}. ${p}`));
+    console.error('\n💡 HOW TO FIX:');
+    console.error('   1. Go to Railway Dashboard → Your Project → Variables');
+    console.error('   2. DELETE the STRIPE_SECRET_KEY variable completely');
+    console.error('   3. Go to https://dashboard.stripe.com/apikeys');
+    console.error('   4. Click "Reveal live key" or "Reveal test key"');
+    console.error('   5. Click the COPY BUTTON (do NOT select and Ctrl+C)');
+    console.error('   6. In Railway, click "New Variable"');
+    console.error('   7. Type: STRIPE_SECRET_KEY (no quotes)');
+    console.error('   8. Paste the key (Ctrl+V) - do NOT add quotes');
+    console.error('   9. Click Save and Redeploy');
+    console.error('❌ ════════════════════════════════════════════════════════════');
+
+    // ATTEMPT TO FIX IT
+    const sanitized = rawKey
+      .replace(/[\r\n\t]/g, '')      // Remove newlines and tabs
+      .replace(/^["'`]+|["'`]+$/g, '') // Remove surrounding quotes
+      .replace(/^\s+|\s+$/g, '')     // Trim whitespace
+      .trim();
+
+    if (sanitized.startsWith('sk_live_') || sanitized.startsWith('sk_test_')) {
+      console.log('\n🔧 AUTO-FIX: Sanitized key will be used');
+      console.log(`   Original length: ${rawKey.length}`);
+      console.log(`   Sanitized length: ${sanitized.length}`);
+      console.log(`   Removed ${rawKey.length - sanitized.length} invalid characters`);
+
+      // OVERRIDE the environment variable with sanitized version
+      process.env.STRIPE_SECRET_KEY = sanitized;
+      console.log('✅ Environment variable has been sanitized');
+    } else {
+      console.error('\n💀 FATAL: Cannot auto-fix - key format is invalid');
+      console.error('   The key must start with sk_live_ or sk_test_');
+      console.error('   Server will start but Stripe calls WILL FAIL');
+    }
+  } else {
+    console.log('\n✅ Stripe key format is VALID');
+    console.log(`   Mode: ${rawKey.startsWith('sk_live_') ? 'LIVE 🔴' : 'TEST 🟡'}`);
+  }
+
+  console.log('🔐 ════════════════════════════════════════════════════════════\n');
+
+  // Also validate webhook secret
+  const rawWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (rawWebhookSecret) {
+    const hasIssues = /[\r\n\t]|^["'`]|["'`]$|^\s|\s$/.test(rawWebhookSecret);
+    if (hasIssues) {
+      console.warn('⚠️ STRIPE_WEBHOOK_SECRET has invalid characters - sanitizing...');
+      process.env.STRIPE_WEBHOOK_SECRET = rawWebhookSecret
+        .replace(/[\r\n\t]/g, '')
+        .replace(/^["'`]+|["'`]+$/g, '')
+        .trim();
+      console.log('✅ Webhook secret sanitized');
+    }
+  }
+})();
+
 // Import rate limiter middleware
 // TEMPORARILY DISABLED - Importing this module causes X-Forwarded-For validation errors
 // The rate limiters are instantiated at module load time, before trust proxy is set
@@ -32,7 +164,200 @@ app.set('trust proxy', true);
 console.log('🔗 Trust proxy enabled for Railway');
 
 // Minimal essential middleware
+// CRITICAL: Stripe webhook needs raw body BEFORE json parsing for signature verification
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' })); // Alias for backward compatibility
 app.use(express.json({ limit: '1mb' }));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE CONFIGURATION - Singleton with strict key validation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Sanitize and validate Stripe secret key
+ * Removes invalid characters that cause ERR_INVALID_CHAR in Authorization headers
+ */
+const sanitizeStripeKey = (key) => {
+  if (!key) return null;
+
+  // Remove ALL potentially problematic characters
+  let sanitized = key
+    .replace(/[\r\n\t]/g, '')     // Remove newlines and tabs
+    .replace(/^["'`]+|["'`]+$/g, '') // Remove surrounding quotes
+    .replace(/\s+/g, '')           // Remove ALL whitespace
+    .trim();
+
+  // Diagnostic logging (never log the actual key)
+  const diagnostics = {
+    originalLength: key.length,
+    sanitizedLength: sanitized.length,
+    hadNewlines: /[\r\n]/.test(key),
+    hadQuotes: /^["'`]/.test(key) || /["'`]$/.test(key),
+    hadWhitespace: /\s/.test(key),
+    startsCorrectly: sanitized.startsWith('sk_live_') || sanitized.startsWith('sk_test_'),
+    prefix: sanitized.substring(0, 8)
+  };
+
+  console.log('💳 Stripe Key Diagnostics:', diagnostics);
+
+  if (diagnostics.hadNewlines || diagnostics.hadQuotes || diagnostics.hadWhitespace) {
+    console.warn('⚠️ STRIPE_SECRET_KEY contained invalid characters - sanitized');
+  }
+
+  // Validate format
+  if (!sanitized.startsWith('sk_live_') && !sanitized.startsWith('sk_test_')) {
+    console.error('❌ STRIPE_SECRET_KEY must start with sk_live_ or sk_test_');
+    return null;
+  }
+
+  // Validate no remaining invalid HTTP header characters
+  if (/[^\x20-\x7E]/.test(sanitized)) {
+    console.error('❌ STRIPE_SECRET_KEY contains non-printable ASCII characters');
+    return null;
+  }
+
+  return sanitized;
+};
+
+// Initialize Stripe singleton at startup
+let stripeInstance = null;
+let stripeKeyValid = false;
+let stripeMode = 'unknown';
+
+const initializeStripe = () => {
+  const sanitizedKey = sanitizeStripeKey(process.env.STRIPE_SECRET_KEY);
+
+  if (!sanitizedKey) {
+    console.error('❌ ═══════════════════════════════════════════════════════════════');
+    console.error('❌ STRIPE INITIALIZATION FAILED - Invalid or missing secret key');
+    console.error('❌ Checkout and billing features will NOT work');
+    console.error('❌ ═══════════════════════════════════════════════════════════════');
+    return null;
+  }
+
+  try {
+    const Stripe = require('stripe');
+    stripeInstance = new Stripe(sanitizedKey, {
+      apiVersion: '2023-10-16',
+      maxNetworkRetries: 2,
+      timeout: 30000
+    });
+    stripeKeyValid = true;
+    stripeMode = sanitizedKey.startsWith('sk_live_') ? 'live' : 'test';
+
+    console.log('✅ ═══════════════════════════════════════════════════════════════');
+    console.log(`✅ Stripe initialized successfully in ${stripeMode.toUpperCase()} mode`);
+    console.log('✅ ═══════════════════════════════════════════════════════════════');
+
+    return stripeInstance;
+  } catch (error) {
+    console.error('❌ Stripe initialization error:', error.message);
+    return null;
+  }
+};
+
+// Initialize at startup
+const stripe = initializeStripe();
+
+/**
+ * Get Stripe instance (throws if not initialized)
+ */
+const getStripe = () => {
+  if (!stripe || !stripeKeyValid) {
+    throw new Error('Stripe not initialized. Check STRIPE_SECRET_KEY configuration.');
+  }
+  return stripe;
+};
+
+/**
+ * Get or create Stripe customer for a user
+ * @param {Object} user - User object with id, email, firstName, lastName
+ * @param {Object} prisma - Prisma client instance
+ * @returns {Promise<string>} Stripe customer ID
+ */
+const getOrCreateStripeCustomer = async (user, prisma) => {
+  if (!user || !user.id) {
+    throw new Error('User object with id is required');
+  }
+
+  const stripeClient = getStripe();
+
+  // Check if user already has a Stripe customer ID
+  if (user.stripeCustomerId && user.stripeCustomerId.startsWith('cus_')) {
+    console.log(`✅ Using existing Stripe customer: ${user.stripeCustomerId}`);
+
+    // Verify customer still exists in Stripe
+    try {
+      await stripeClient.customers.retrieve(user.stripeCustomerId);
+      return user.stripeCustomerId;
+    } catch (error) {
+      if (error.code === 'resource_missing') {
+        console.warn(`⚠️ Stripe customer ${user.stripeCustomerId} no longer exists, creating new one`);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // Create new Stripe customer
+  console.log(`📝 Creating new Stripe customer for user: ${user.id}`);
+
+  const customerData = {
+    email: user.email,
+    name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email,
+    metadata: {
+      userId: user.id,
+      createdAt: new Date().toISOString()
+    }
+  };
+
+  const customer = await stripeClient.customers.create(customerData);
+  console.log(`✅ Created Stripe customer: ${customer.id}`);
+
+  // Persist customer ID to database
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { stripeCustomerId: customer.id }
+  });
+
+  console.log(`✅ Saved Stripe customer ID to user record`);
+
+  return customer.id;
+};
+
+/**
+ * Normalize subscription status
+ * Converts various status values to consistent format
+ */
+const normalizeSubscriptionStatus = (status, hasStripeSubscription) => {
+  if (!status || status === '' || status === 'none') {
+    return hasStripeSubscription ? 'active' : 'none';
+  }
+
+  const validStatuses = ['none', 'pending', 'active', 'past_due', 'canceled', 'incomplete'];
+  const normalized = status.toLowerCase().trim();
+
+  if (validStatuses.includes(normalized)) {
+    return normalized;
+  }
+
+  // Map legacy/incorrect values
+  const statusMap = {
+    'free': 'none',
+    'trial': 'active',
+    'trialing': 'active',
+    'paused': 'past_due'
+  };
+
+  return statusMap[normalized] || 'none';
+};
+
+// Export for use in other modules
+module.exports = { getStripe, getOrCreateStripeCustomer, normalizeSubscriptionStatus, stripeMode };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// END STRIPE CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════════
 
 // CORS headers - Allow specific origins when credentials are included
 app.use((req, res, next) => {
@@ -3694,12 +4019,11 @@ app.get('/api/billing/token-packages', (req, res) => {
 // Create Stripe Checkout Session - PRODUCTION ONLY (NO MOCK FALLBACKS)
 app.post('/api/billing/create-checkout-session', async (req, res) => {
   const correlationId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const isProduction = process.env.NODE_ENV === 'production';
 
   try {
-    const { tierId, billingCycle = 'monthly', priceId, successUrl, cancelUrl } = req.body;
+    const { tierId, billingCycle = 'monthly', priceId, successUrl, cancelUrl, userId, userEmail } = req.body;
 
-    console.log(`💳 [${correlationId}] Create checkout session request:`, { tierId, billingCycle, priceId });
+    console.log(`💳 [${correlationId}] Create checkout session request:`, { tierId, billingCycle, priceId, userId: userId ? 'provided' : 'missing' });
 
     const baseUrl = process.env.FRONTEND_URL || 'https://smartpromptiq.com';
 
@@ -3708,66 +4032,43 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'FREE_TIER_NO_CHECKOUT',
-        message: 'Free tier does not require payment.'
+        message: 'Free tier does not require payment.',
+        correlationId
       });
     }
 
-    // CRITICAL: Validate Stripe secret key
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey) {
-      console.error(`❌ [${correlationId}] STRIPE_SECRET_KEY not configured`);
+    // Get sanitized Stripe instance (throws if not initialized)
+    let stripeClient;
+    try {
+      stripeClient = getStripe();
+    } catch (stripeError) {
+      console.error(`❌ [${correlationId}] Stripe not initialized:`, stripeError.message);
       return res.status(503).json({
         success: false,
         error: 'STRIPE_NOT_CONFIGURED',
-        message: 'Payment service is not configured. Please contact support.',
+        message: 'Payment service is not available. Please try again later.',
         correlationId
       });
     }
 
-    // Validate key format
-    const isLiveKey = secretKey.startsWith('sk_live_');
-    const isTestKey = secretKey.startsWith('sk_test_');
-    if (!isLiveKey && !isTestKey) {
-      console.error(`❌ [${correlationId}] Invalid STRIPE_SECRET_KEY format`);
-      return res.status(503).json({
-        success: false,
-        error: 'STRIPE_INVALID_KEY',
-        message: 'Invalid payment configuration. Please contact support.',
-        correlationId
-      });
-    }
+    console.log(`💳 [${correlationId}] Using Stripe in ${stripeMode.toUpperCase()} mode`);
 
-    // In production, require live keys
-    if (isProduction && !isLiveKey) {
-      console.error(`❌ [${correlationId}] Production requires live Stripe keys`);
-      return res.status(503).json({
-        success: false,
-        error: 'STRIPE_TEST_KEY_IN_PRODUCTION',
-        message: 'Payment configuration error. Please contact support.',
-        correlationId
-      });
-    }
-
-    const stripeMode = isLiveKey ? 'live' : 'test';
-    console.log(`💳 [${correlationId}] Stripe Mode: ${stripeMode.toUpperCase()}`);
-
-    // Load Stripe
-    const Stripe = require('stripe');
-    const stripe = new Stripe(secretKey);
-
-    // Get Stripe price IDs from environment
+    // Get Stripe price IDs from environment (supports both naming conventions)
     const STRIPE_PRICE_IDS = {
       ACADEMY_MONTHLY: process.env.STRIPE_PRICE_ACADEMY_MONTHLY,
       ACADEMY_YEARLY: process.env.STRIPE_PRICE_ACADEMY_YEARLY,
       PRO_MONTHLY: process.env.STRIPE_PRICE_PRO_MONTHLY,
       PRO_YEARLY: process.env.STRIPE_PRICE_PRO_YEARLY,
-      STARTER_MONTHLY: process.env.STRIPE_PRICE_STARTER_MONTHLY,
-      STARTER_YEARLY: process.env.STRIPE_PRICE_STARTER_YEARLY,
-      TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_MONTHLY,
-      TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_YEARLY,
+      STARTER_MONTHLY: process.env.STRIPE_STARTER_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_STARTER_MONTHLY,
+      STARTER_YEARLY: process.env.STRIPE_STARTER_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_STARTER_YEARLY,
+      TEAM_PRO_MONTHLY: process.env.STRIPE_PRICE_TEAM_PRO_MONTHLY || process.env.STRIPE_PRICE_TEAM_MONTHLY,
+      TEAM_PRO_YEARLY: process.env.STRIPE_PRICE_TEAM_PRO_YEARLY || process.env.STRIPE_PRICE_TEAM_YEARLY,
       ENTERPRISE_MONTHLY: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
       ENTERPRISE_YEARLY: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY,
     };
+
+    // Log available price IDs for debugging
+    console.log(`💳 [${correlationId}] Available Price IDs:`, Object.entries(STRIPE_PRICE_IDS).map(([k, v]) => `${k}: ${v ? '✓' : '✗'}`).join(', '));
 
     // Map tier to Stripe price ID
     let stripePriceId = priceId;
@@ -3779,6 +4080,8 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
       const tierMapping = {
         'ACADEMY_MONTHLY': STRIPE_PRICE_IDS.ACADEMY_MONTHLY,
         'ACADEMY_YEARLY': STRIPE_PRICE_IDS.ACADEMY_YEARLY,
+        'ACADEMY_ONLY_MONTHLY': STRIPE_PRICE_IDS.ACADEMY_MONTHLY,
+        'ACADEMY_ONLY_YEARLY': STRIPE_PRICE_IDS.ACADEMY_YEARLY,
         'PRO_MONTHLY': STRIPE_PRICE_IDS.PRO_MONTHLY,
         'PRO_YEARLY': STRIPE_PRICE_IDS.PRO_YEARLY,
         'STARTER_MONTHLY': STRIPE_PRICE_IDS.STARTER_MONTHLY,
@@ -3795,7 +4098,7 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
       console.log(`💳 [${correlationId}] Mapped tier:`, { lookupKey, stripePriceId: stripePriceId || 'NOT FOUND' });
     }
 
-    // CRITICAL: Validate price ID
+    // Validate price ID
     if (!stripePriceId) {
       console.error(`❌ [${correlationId}] No Stripe price ID found for:`, { tierId, billingCycle });
       return res.status(400).json({
@@ -3818,8 +4121,8 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
 
     console.log(`💳 [${correlationId}] Using priceId: ${stripePriceId}`);
 
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Build checkout session parameters
+    const sessionParams = {
       payment_method_types: ['card'],
       line_items: [{ price: stripePriceId, quantity: 1 }],
       mode: 'subscription',
@@ -3828,21 +4131,46 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
       metadata: { correlationId, tierId, billingCycle }
-    });
+    };
 
-    // Validate session ID format
-    const expectedPrefix = stripeMode === 'live' ? 'cs_live_' : 'cs_test_';
-    if (!session.id.startsWith(expectedPrefix)) {
-      console.error(`❌ [${correlationId}] Session ID mismatch! Expected ${expectedPrefix}, got ${session.id.substring(0, 10)}`);
-      if (isProduction && stripeMode === 'live') {
-        return res.status(500).json({
-          success: false,
-          error: 'SESSION_ID_MISMATCH',
-          message: 'Payment configuration error. Please contact support.',
-          correlationId
+    // If we have a userId, try to get/create Stripe customer
+    if (userId) {
+      try {
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, email: true, firstName: true, lastName: true, stripeCustomerId: true }
         });
+
+        if (user) {
+          const customerId = await getOrCreateStripeCustomer(user, prisma);
+          sessionParams.customer = customerId;
+          sessionParams.metadata.userId = userId;
+          console.log(`💳 [${correlationId}] Using Stripe customer: ${customerId}`);
+
+          // Update user's subscription status to pending
+          await prisma.user.update({
+            where: { id: userId },
+            data: { subscriptionStatus: 'pending' }
+          });
+        }
+
+        await prisma.$disconnect();
+      } catch (customerError) {
+        console.warn(`⚠️ [${correlationId}] Could not get/create customer, proceeding without:`, customerError.message);
+        // Continue without customer - Stripe will create one
       }
+    } else if (userEmail) {
+      // If only email provided, set it for the session
+      sessionParams.customer_email = userEmail;
+      sessionParams.metadata.userEmail = userEmail;
     }
+
+    // Create Stripe checkout session using SDK only (no manual headers)
+    console.log(`💳 [${correlationId}] Creating checkout session...`);
+    const session = await stripeClient.checkout.sessions.create(sessionParams);
 
     console.log(`✅ [${correlationId}] Checkout session created: ${session.id}`);
     console.log(`💳 [${correlationId}] Stripe Mode: ${stripeMode.toUpperCase()}`);
@@ -3856,24 +4184,40 @@ app.post('/api/billing/create-checkout-session', async (req, res) => {
     });
 
   } catch (error) {
-    console.error(`❌ [${correlationId}] Checkout session error:`, error);
+    console.error(`❌ [${correlationId}] Checkout session error:`, {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode
+    });
 
-    // Return error - NO MOCK FALLBACK
+    // Determine error response
     let statusCode = 500;
     let errorCode = 'STRIPE_ERROR';
+    let userMessage = 'Failed to create checkout session. Please try again.';
 
     if (error.type === 'StripeInvalidRequestError') {
       statusCode = 400;
       errorCode = 'STRIPE_INVALID_REQUEST';
+      userMessage = error.message;
     } else if (error.type === 'StripeAuthenticationError') {
-      statusCode = 401;
+      statusCode = 503;
       errorCode = 'STRIPE_AUTH_ERROR';
+      userMessage = 'Payment service configuration error. Please contact support.';
+    } else if (error.type === 'StripeConnectionError') {
+      statusCode = 503;
+      errorCode = 'STRIPE_CONNECTION_ERROR';
+      userMessage = 'Could not connect to payment service. Please try again.';
+    } else if (error.type === 'StripeAPIError') {
+      statusCode = 503;
+      errorCode = 'STRIPE_API_ERROR';
+      userMessage = 'Payment service error. Please try again later.';
     }
 
     res.status(statusCode).json({
       success: false,
       error: errorCode,
-      message: error.message || 'Failed to create checkout session',
+      message: userMessage,
       correlationId
     });
   }
@@ -4086,19 +4430,193 @@ app.post('/api/billing/update-payment-method', (req, res) => {
   }
 });
 
-// Payment webhook (mock)
-app.post('/api/billing/webhook', (req, res) => {
-  try {
-    console.log('🔔 Payment webhook received:', req.body);
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE WEBHOOK HANDLER - Production Implementation
+// ═══════════════════════════════════════════════════════════════════════════════
+const stripeWebhookHandler = async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    // In production, verify webhook signature and process events
+  // Validate Stripe is initialized
+  let stripeClient;
+  try {
+    stripeClient = getStripe();
+  } catch (err) {
+    console.error('❌ STRIPE not initialized for webhook');
+    return res.status(503).json({ error: 'Payment service not configured' });
+  }
+
+  if (!sig) {
+    console.error('❌ Webhook received without stripe-signature header');
+    return res.status(400).json({ error: 'Missing stripe-signature header' });
+  }
+
+  if (!webhookSecret) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET not configured');
+    return res.status(503).json({ error: 'Webhook secret not configured' });
+  }
+
+  // Validate and sanitize webhook secret
+  const sanitizedWebhookSecret = webhookSecret.replace(/[\r\n\t\s"'`]/g, '').trim();
+  if (!sanitizedWebhookSecret.startsWith('whsec_')) {
+    console.error('❌ STRIPE_WEBHOOK_SECRET invalid format (must start with whsec_)');
+    return res.status(503).json({ error: 'Webhook secret invalid format' });
+  }
+
+  let event;
+
+  try {
+    // req.body is raw Buffer because of express.raw() middleware
+    event = stripeClient.webhooks.constructEvent(req.body, sig, sanitizedWebhookSecret);
+  } catch (err) {
+    console.error('❌ Webhook signature verification failed:', err.message);
+    return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
+  }
+
+  console.log(`\n📨 ═══════════════════════════════════════════════════════════════`);
+  console.log(`📨 Stripe Webhook Event: ${event.type}`);
+  console.log(`📨 Event ID: ${event.id}`);
+  console.log(`📨 ═══════════════════════════════════════════════════════════════`);
+
+  try {
+    // Import Prisma for database operations
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        console.log(`✅ Checkout completed for customer: ${session.customer}`);
+
+        // Update user subscription in database
+        if (session.customer && session.subscription) {
+          const user = await prisma.user.findFirst({
+            where: { stripeCustomerId: session.customer }
+          });
+
+          if (user) {
+            // Get subscription details from Stripe
+            const subscription = await stripeClient.subscriptions.retrieve(session.subscription);
+            const priceId = subscription.items.data[0]?.price?.id;
+
+            // Map price ID to plan
+            const planMap = {
+              [process.env.STRIPE_STARTER_MONTHLY_PRICE_ID]: 'starter',
+              [process.env.STRIPE_STARTER_YEARLY_PRICE_ID]: 'starter',
+              [process.env.STRIPE_PRICE_ACADEMY_MONTHLY]: 'academy',
+              [process.env.STRIPE_PRICE_ACADEMY_YEARLY]: 'academy',
+              [process.env.STRIPE_PRICE_PRO_MONTHLY]: 'pro',
+              [process.env.STRIPE_PRICE_PRO_YEARLY]: 'pro',
+              [process.env.STRIPE_PRICE_TEAM_PRO_MONTHLY]: 'team_pro',
+              [process.env.STRIPE_PRICE_TEAM_PRO_YEARLY]: 'team_pro',
+              [process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY]: 'enterprise',
+              [process.env.STRIPE_PRICE_ENTERPRISE_YEARLY]: 'enterprise',
+            };
+
+            const plan = planMap[priceId] || 'pro';
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                plan: plan,
+                subscriptionTier: plan,
+                stripeSubscriptionId: session.subscription,
+                subscriptionStatus: subscription.status,
+                subscriptionEndDate: new Date(subscription.current_period_end * 1000)
+              }
+            });
+            console.log(`✅ Updated user ${user.id} to plan: ${plan}`);
+          }
+        }
+        break;
+      }
+
+      case 'customer.subscription.updated':
+      case 'customer.subscription.created': {
+        const subscription = event.data.object;
+        console.log(`📊 Subscription ${event.type}: ${subscription.id}, status: ${subscription.status}`);
+
+        const user = await prisma.user.findFirst({
+          where: { stripeCustomerId: subscription.customer }
+        });
+
+        if (user) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              subscriptionStatus: subscription.status,
+              subscriptionEndDate: new Date(subscription.current_period_end * 1000)
+            }
+          });
+          console.log(`✅ Updated subscription status for user ${user.id}`);
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        console.log(`🚫 Subscription canceled: ${subscription.id}`);
+
+        const user = await prisma.user.findFirst({
+          where: { stripeCustomerId: subscription.customer }
+        });
+
+        if (user) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              plan: 'free',
+              subscriptionTier: 'free',
+              subscriptionStatus: 'canceled',
+              stripeSubscriptionId: null
+            }
+          });
+          console.log(`✅ Downgraded user ${user.id} to free plan`);
+        }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
+        console.log(`💰 Invoice paid: ${invoice.id}, amount: ${invoice.amount_paid / 100}`);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        console.error(`❌ Invoice payment failed: ${invoice.id}`);
+
+        const user = await prisma.user.findFirst({
+          where: { stripeCustomerId: invoice.customer }
+        });
+
+        if (user) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { subscriptionStatus: 'past_due' }
+          });
+          console.log(`⚠️ Marked user ${user.id} subscription as past_due`);
+        }
+        break;
+      }
+
+      default:
+        console.log(`ℹ️ Unhandled webhook event type: ${event.type}`);
+    }
+
+    await prisma.$disconnect();
+    console.log(`✅ Webhook ${event.type} processed successfully`);
     res.json({ received: true });
 
   } catch (error) {
-    console.error('❌ Webhook handler error:', error);
-    res.status(500).json({ error: 'Webhook handler failed' });
+    console.error(`❌ Webhook handler error for ${event.type}:`, error);
+    res.status(500).json({ error: 'Webhook handler failed', message: error.message });
   }
-});
+};
+
+// Register webhook handlers for both paths
+app.post('/api/billing/webhook', stripeWebhookHandler);
+app.post('/api/stripe/webhook', stripeWebhookHandler); // Alias for backward compatibility
 
 // Subscription upgrade endpoint - Creates Stripe Checkout Session
 app.post('/api/billing/upgrade', async (req, res) => {
@@ -4107,30 +4625,42 @@ app.post('/api/billing/upgrade', async (req, res) => {
     const { tierId, planId, billingCycle } = req.body;
     const tier = tierId || planId; // Support both field names
 
-    // Initialize Stripe
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    // Use sanitized Stripe singleton
+    let stripeClient;
+    try {
+      stripeClient = getStripe();
+    } catch (err) {
+      console.error('❌ Stripe not initialized for upgrade');
+      return res.status(503).json({
+        success: false,
+        message: 'Payment service not available'
+      });
+    }
 
     // Price mapping for Stripe
     const priceMap = {
-      'starter_monthly': process.env.STRIPE_STARTER_MONTHLY_PRICE_ID || 'price_starter_monthly',
-      'starter_yearly': process.env.STRIPE_STARTER_YEARLY_PRICE_ID || 'price_starter_yearly',
-      'professional_monthly': process.env.STRIPE_PRO_MONTHLY_PRICE_ID || 'price_pro_monthly',
-      'professional_yearly': process.env.STRIPE_PRO_YEARLY_PRICE_ID || 'price_pro_yearly',
-      'enterprise_monthly': process.env.STRIPE_ENTERPRISE_MONTHLY_PRICE_ID || 'price_enterprise_monthly',
-      'enterprise_yearly': process.env.STRIPE_ENTERPRISE_YEARLY_PRICE_ID || 'price_enterprise_yearly'
+      'starter_monthly': process.env.STRIPE_STARTER_MONTHLY_PRICE_ID || process.env.STRIPE_PRICE_STARTER_MONTHLY,
+      'starter_yearly': process.env.STRIPE_STARTER_YEARLY_PRICE_ID || process.env.STRIPE_PRICE_STARTER_YEARLY,
+      'professional_monthly': process.env.STRIPE_PRICE_PRO_MONTHLY,
+      'professional_yearly': process.env.STRIPE_PRICE_PRO_YEARLY,
+      'pro_monthly': process.env.STRIPE_PRICE_PRO_MONTHLY,
+      'pro_yearly': process.env.STRIPE_PRICE_PRO_YEARLY,
+      'enterprise_monthly': process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY,
+      'enterprise_yearly': process.env.STRIPE_PRICE_ENTERPRISE_YEARLY
     };
 
     const priceId = priceMap[`${tier}_${billingCycle}`];
 
-    if (!priceId) {
+    if (!priceId || !priceId.startsWith('price_')) {
+      console.error('❌ Invalid price mapping:', { tier, billingCycle, priceId });
       return res.status(400).json({
         success: false,
         message: 'Invalid plan or billing cycle'
       });
     }
 
-    // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
+    // Create Stripe Checkout Session using SDK
+    const session = await stripeClient.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
       line_items: [{

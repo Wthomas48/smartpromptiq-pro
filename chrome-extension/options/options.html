@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPromptIQ - Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-section">
+        <div class="logo">🧠</div>
+        <div class="brand">
+          <h1>SmartPromptIQ</h1>
+          <span class="version">Chrome Extension v1.1.0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Account Section -->
+      <section class="settings-section">
+        <div class="section-header">
+          <h2>👤 Account</h2>
+        </div>
+        <div class="section-content">
+          <!-- Not Logged In State -->
+          <div id="notLoggedIn" class="auth-state">
+            <div class="auth-card">
+              <div class="auth-icon">🔐</div>
+              <h3>Sign In to Your Account</h3>
+              <p>Connect your SmartPromptIQ account to sync prompts, access templates, and use AI generation features.</p>
+              <button class="btn btn-primary" id="signInBtn">Sign In to SmartPromptIQ</button>
+              <p class="auth-footer">
+                Don't have an account? <a href="#" id="signUpLink">Sign up free</a>
+              </p>
+            </div>
+          </div>
+
+          <!-- Logged In State -->
+          <div id="loggedIn" class="auth-state" style="display: none;">
+            <div class="user-card">
+              <div class="user-avatar" id="userAvatar">👤</div>
+              <div class="user-info">
+                <h3 id="userName">User Name</h3>
+                <p id="userEmail">user@example.com</p>
+                <span class="user-plan" id="userPlan">Free Plan</span>
+              </div>
+            </div>
+            <div class="account-stats">
+              <div class="stat-item">
+                <span class="stat-value" id="tokensLeft">0</span>
+                <span class="stat-label">Tokens Left</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value" id="promptsGenerated">0</span>
+                <span class="stat-label">Prompts Generated</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value" id="promptsSaved">0</span>
+                <span class="stat-label">Prompts Saved</span>
+              </div>
+            </div>
+            <div class="account-actions">
+              <button class="btn btn-secondary" id="openDashboardBtn">Open Dashboard</button>
+              <button class="btn btn-secondary" id="upgradePlanBtn">Upgrade Plan</button>
+              <button class="btn btn-danger" id="signOutBtn">Sign Out</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- General Settings -->
+      <section class="settings-section">
+        <div class="section-header">
+          <h2>⚙️ General Settings</h2>
+        </div>
+        <div class="section-content">
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Dark Mode</label>
+              <p>Use dark theme for the extension popup and panels</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="darkMode" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Show Notifications</label>
+              <p>Display toast notifications for actions like copy, save, etc.</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="showNotifications" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Default Category</label>
+              <p>Pre-select this category when generating prompts</p>
+            </div>
+            <select id="defaultCategory">
+              <option value="marketing">📣 Marketing</option>
+              <option value="development">💻 Development</option>
+              <option value="writing">✍️ Writing</option>
+              <option value="business">💼 Business</option>
+              <option value="education">🎓 Education</option>
+              <option value="creative">🎨 Creative</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Chat Integration -->
+      <section class="settings-section">
+        <div class="section-header">
+          <h2>🤖 AI Chat Integration</h2>
+        </div>
+        <div class="section-content">
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Show Floating Button</label>
+              <p>Display the SmartPromptIQ button on supported AI chat pages</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="showFloatingButton" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Auto-Insert Prompts</label>
+              <p>Automatically insert generated prompts into the chat input</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="autoInsert" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Enable Keyboard Shortcuts</label>
+              <p>Use Ctrl+Shift+P to open popup, Ctrl+Shift+G for quick generate</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="keyboardShortcuts" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Supported Platforms -->
+      <section class="settings-section">
+        <div class="section-header">
+          <h2>🌐 Supported AI Platforms</h2>
+        </div>
+        <div class="section-content">
+          <div class="platforms-grid">
+            <div class="platform-item">
+              <img src="https://chat.openai.com/favicon.ico" alt="ChatGPT" onerror="this.style.display='none'">
+              <span>ChatGPT</span>
+            </div>
+            <div class="platform-item">
+              <img src="https://claude.ai/favicon.ico" alt="Claude" onerror="this.style.display='none'">
+              <span>Claude AI</span>
+            </div>
+            <div class="platform-item">
+              <img src="https://www.gstatic.com/lamda/images/gemini_favicon_f069958c85030456e93de685481c559f160ea06b.png" alt="Gemini" onerror="this.style.display='none'">
+              <span>Google Gemini</span>
+            </div>
+            <div class="platform-item">
+              <img src="https://copilot.microsoft.com/favicon.ico" alt="Copilot" onerror="this.style.display='none'">
+              <span>Microsoft Copilot</span>
+            </div>
+            <div class="platform-item">
+              <img src="https://poe.com/favicon.ico" alt="Poe" onerror="this.style.display='none'">
+              <span>Poe.com</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Data & Privacy -->
+      <section class="settings-section">
+        <div class="section-header">
+          <h2>🔒 Data & Privacy</h2>
+        </div>
+        <div class="section-content">
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Clear Local Cache</label>
+              <p>Remove cached prompts and templates (does not affect your account)</p>
+            </div>
+            <button class="btn btn-secondary" id="clearCacheBtn">Clear Cache</button>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Clear Recent Prompts</label>
+              <p>Remove locally stored recent prompt history</p>
+            </div>
+            <button class="btn btn-secondary" id="clearRecentBtn">Clear History</button>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Export Settings</label>
+              <p>Download your settings and recent prompts as a JSON file</p>
+            </div>
+            <button class="btn btn-secondary" id="exportBtn">Export</button>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Import Settings</label>
+              <p>Restore settings from a previously exported file</p>
+            </div>
+            <input type="file" id="importFile" accept=".json" style="display: none;">
+            <button class="btn btn-secondary" id="importBtn">Import</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Developer Options -->
+      <section class="settings-section collapsible">
+        <div class="section-header" id="devOptionsToggle">
+          <h2>🛠️ Developer Options</h2>
+          <span class="collapse-icon">▼</span>
+        </div>
+        <div class="section-content" id="devOptionsContent" style="display: none;">
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Environment</label>
+              <p>Switch between development and production API</p>
+            </div>
+            <select id="environment">
+              <option value="production">Production (smartpromptiq.com)</option>
+              <option value="development">Development (localhost:5001)</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Current API URL</label>
+              <p id="currentApiUrl">https://smartpromptiq.com</p>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label>Debug Mode</label>
+              <p>Enable verbose logging in the browser console</p>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="debugMode">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- About -->
+      <section class="settings-section">
+        <div class="section-header">
+          <h2>ℹ️ About</h2>
+        </div>
+        <div class="section-content">
+          <div class="about-content">
+            <p><strong>SmartPromptIQ Chrome Extension</strong></p>
+            <p>Version 1.1.0</p>
+            <p>Generate powerful AI prompts anywhere you work.</p>
+            <div class="about-links">
+              <a href="https://smartpromptiq.com" target="_blank">Website</a>
+              <a href="https://smartpromptiq.com/privacy" target="_blank">Privacy Policy</a>
+              <a href="https://smartpromptiq.com/terms" target="_blank">Terms of Service</a>
+              <a href="mailto:support@smartpromptiq.com">Support</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>© 2024 SmartPromptIQ. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toastIcon">✓</span>
+    <span class="toast-message" id="toastMessage">Settings saved!</span>
+  </div>
+
+  <script src="../utils/config.js"></script>
+  <script src="../utils/storage.js"></script>
+  <script src="../utils/api.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

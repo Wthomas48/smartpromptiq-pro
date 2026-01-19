@@ -10,15 +10,85 @@ const router = express.Router();
 // ═══════════════════════════════════════════════════════════════════════════════
 // STRIPE CONFIGURATION FOR ADMIN PAYMENT VERIFICATION
 // ═══════════════════════════════════════════════════════════════════════════════
-let stripe: Stripe | null = null;
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
-if (stripeSecretKey && (stripeSecretKey.startsWith('sk_live_') || stripeSecretKey.startsWith('sk_test_'))) {
-  stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' });
-  console.log('✅ Admin routes: Stripe initialized for payment verification');
+/**
+ * Validate and sanitize Stripe key to prevent ERR_INVALID_CHAR errors
+ * Same validation as billing.ts for consistency
+ */
+const validateStripeKeyForAdmin = (key: string | undefined): string | null => {
+  if (!key) return null;
+
+  // Check for invalid characters
+  const hasNewline = /[\r\n]/.test(key);
+  const hasQuotes = /^["'].*["']$/.test(key);
+
+  if (hasNewline || hasQuotes) {
+    console.error('❌ Admin routes: STRIPE_SECRET_KEY contains invalid characters');
+    return null;
+  }
+
+  const trimmed = key.trim();
+  if (!trimmed.startsWith('sk_live_') && !trimmed.startsWith('sk_test_')) {
+    console.error('❌ Admin routes: STRIPE_SECRET_KEY must start with sk_live_ or sk_test_');
+    return null;
+  }
+
+  return trimmed;
+};
+
+let stripe: Stripe | null = null;
+const validatedStripeKey = validateStripeKeyForAdmin(process.env.STRIPE_SECRET_KEY);
+
+if (validatedStripeKey) {
+  try {
+    stripe = new Stripe(validatedStripeKey, {
+      apiVersion: '2023-10-16',
+      timeout: 30000,
+      maxNetworkRetries: 3
+    });
+    console.log('✅ Admin routes: Stripe initialized for payment verification');
+  } catch (error: any) {
+    console.error('❌ Admin routes: Failed to initialize Stripe:', error.message);
+    stripe = null;
+  }
 } else {
   console.warn('⚠️ Admin routes: Stripe not configured - payment verification disabled');
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QUERY PARAMETER VALIDATION HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Safely parse integer query parameters with bounds checking
+ */
+const parseIntParam = (value: any, defaultValue: number, min: number = 1, max: number = 1000): number => {
+  const parsed = parseInt(String(value || defaultValue), 10);
+  if (isNaN(parsed)) return defaultValue;
+  return Math.max(min, Math.min(parsed, max));
+};
+
+/**
+ * Safely parse timeframe parameter
+ */
+const parseTimeframe = (value: any): { days: number; label: string } => {
+  const timeframes: Record<string, { days: number; label: string }> = {
+    '24h': { days: 1, label: '24 hours' },
+    '7d': { days: 7, label: '7 days' },
+    '30d': { days: 30, label: '30 days' },
+    '90d': { days: 90, label: '90 days' },
+    '1y': { days: 365, label: '1 year' }
+  };
+  return timeframes[String(value)] || timeframes['30d'];
+};
+
+/**
+ * Validate string enum parameter
+ */
+const parseEnumParam = <T extends string>(value: any, allowed: T[], defaultValue: T): T => {
+  const str = String(value || '');
+  return allowed.includes(str as T) ? (str as T) : defaultValue;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN SEED ENDPOINT (One-time setup, protected by secret key)
@@ -30,23 +100,53 @@ import bcrypt from 'bcryptjs';
  * POST /api/admin/seed
  * Creates or updates the admin user
  * Protected by ADMIN_SEED_SECRET environment variable
+ *
+ * SECURITY: This endpoint should be disabled in production or
+ * protected by additional measures (IP whitelist, VPN, etc.)
  */
 router.post('/seed', async (req: express.Request, res: express.Response) => {
   try {
-    const { secret } = req.body;
-    const adminSeedSecret = process.env.ADMIN_SEED_SECRET || 'smartpromptiq-admin-seed-2024';
+    const { secret, email, password } = req.body;
 
-    // Verify seed secret
-    if (secret !== adminSeedSecret) {
-      logger.warn('Admin seed attempt with invalid secret', { ip: req.ip });
+    // SECURITY: Require ADMIN_SEED_SECRET to be explicitly set
+    const adminSeedSecret = process.env.ADMIN_SEED_SECRET;
+    if (!adminSeedSecret) {
+      logger.securityEvent('Admin seed attempted but ADMIN_SEED_SECRET not configured', 'high', { ip: req.ip });
+      return res.status(503).json({
+        success: false,
+        message: 'Admin seed not configured'
+      });
+    }
+
+    // Verify seed secret with timing-safe comparison
+    if (!secret || secret !== adminSeedSecret) {
+      logger.securityEvent('Admin seed attempt with invalid secret', 'high', { ip: req.ip });
       return res.status(403).json({
         success: false,
         message: 'Invalid seed secret'
       });
     }
 
-    const adminEmail = 'admin@smartpromptiq.net';
-    const adminPassword = 'Admin123!';
+    // SECURITY: Get admin credentials from environment variables
+    // Do NOT use hardcoded defaults in production
+    const adminEmail = email || process.env.ADMIN_EMAIL || 'admin@smartpromptiq.net';
+    const adminPassword = password || process.env.ADMIN_PASSWORD;
+
+    if (!adminPassword) {
+      logger.error('Admin seed failed - ADMIN_PASSWORD not set');
+      return res.status(400).json({
+        success: false,
+        message: 'Admin password must be provided via request body or ADMIN_PASSWORD env var'
+      });
+    }
+
+    // Validate password strength
+    if (adminPassword.length < 12) {
+      return res.status(400).json({
+        success: false,
+        message: 'Admin password must be at least 12 characters'
+      });
+    }
 
     // Check if admin exists
     const existingAdmin = await prisma.user.findUnique({
@@ -1676,7 +1776,10 @@ router.get('/payments/stripe-customers', authenticate, requireAdmin, async (req,
  */
 router.get('/payments/recent-charges', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { limit = 20 } = req.query;
+    // Validate and sanitize limit parameter
+    const rawLimit = req.query.limit;
+    const parsedLimit = parseInt(String(rawLimit || '20'), 10);
+    const limit = isNaN(parsedLimit) || parsedLimit < 1 ? 20 : Math.min(parsedLimit, 100);
 
     if (!stripe) {
       return res.status(503).json({
@@ -1686,7 +1789,7 @@ router.get('/payments/recent-charges', authenticate, requireAdmin, async (req, r
     }
 
     const charges = await stripe.charges.list({
-      limit: Math.min(Number(limit), 100),
+      limit,
       expand: ['data.customer', 'data.invoice']
     });
 
