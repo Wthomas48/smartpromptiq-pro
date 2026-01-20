@@ -282,7 +282,22 @@
       "Bash(start \"\" \"https://railway.com/project/4fcbcfbf-5848-4ee6-a7d9-a893ef96c454\")",
       "Bash(start:*)",
       "Bash(wc:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres.ycpvdoktcoejmywqfwwy:hZZojvPQRVSiKTyr@aws-0-us-east-2.pooler.supabase.com:6543/postgres\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:ntBM4ljEnOrU4tUY@db.ycpvdoktcoejmywqfwwy.supabase.co:5432/postgres\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres.ycpvdoktcoejmywqfwwy:ntBM4ljEnOrU4tUY@aws-0-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:%5BntBM4ljEnOrU4tUY%5D@db.ycpvdoktcoejmywqfwwy.supabase.co:5432/postgres\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:twfblttaMJsL54@db.ycpvdoktcoejmywqfwwy.supabase.co:5432/postgres\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres.ycpvdoktcoejmywqfwwy:twfblttaMJsL54@aws-0-us-east-2.pooler.supabase.com:6543/postgres\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:YkfdlJIvr22TsRRB@db.ycpvdoktcoejmywqfwwy.supabase.co:5432/postgres\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgres://postgres.ycpvdoktcoejmywqfwwy:YkfdlJIvr22TsRRB@aws-0-us-east-2.pooler.supabase.com:5432/postgres\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgres://postgres.ycpvdoktcoejmywqfwwy:YkfdlJIvr22TsRRB@aws-0-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true\" npx prisma db push:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres.ycpvdoktcoejmywqfwwy:YkfdlJIvr22TsRRB@aws-1-us-east-2.pooler.supabase.com:5432/postgres\" npx prisma db push:*)",
+      "Bash(stripe prices create:*)",
+      "WebFetch(domain:api.smartpromptiq.com)",
+      "WebFetch(domain:smartpromptiq-pro.up.railway.app)",
+      "WebFetch(domain:smartpromptiq.up.railway.app)",
+      "WebFetch(domain:smartpromptiq-pro-production.up.railway.app)"
     ],
     "deny": [],
     "ask": []

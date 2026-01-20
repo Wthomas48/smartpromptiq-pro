@@ -18,6 +18,7 @@ const billingRoutes = require('./routes/billing');
 const usageRoutes = require('./routes/usage');
 const adminRoutes = require('./routes/admin');
 const demoRoutes = require('./routes/demo');
+const discordRoutes = require('./routes/discord');
 
 // Import rate limiting middleware
 const { 
@@ -196,6 +197,9 @@ app.use('/api/demo', demoRoutes);
 
 // Admin routes (require admin authentication)
 app.use('/api/admin', adminRoutes);
+
+// Discord integration
+app.use('/api/discord', discordRoutes);
 
 // Admin routes (require admin authentication)
 app.get('/api/admin/cost-dashboard', 
