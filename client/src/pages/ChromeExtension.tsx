@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Chrome,
-  Download,
   Zap,
   MousePointer2,
   Keyboard,
@@ -68,13 +67,13 @@ export default function ChromeExtension() {
   const steps = [
     {
       step: 1,
-      title: 'Download the Extension',
-      description: 'Click the download button below to get the SmartPromptIQ Chrome Extension package'
+      title: 'Get Notified',
+      description: 'Sign up to be notified when the extension is approved and available on the Chrome Web Store'
     },
     {
       step: 2,
-      title: 'Install in Chrome',
-      description: 'Open chrome://extensions in Chrome, enable "Developer Mode" in the top right, click "Load unpacked" and select the extracted folder'
+      title: 'One-Click Install',
+      description: 'Once available, simply click "Add to Chrome" on the Chrome Web Store to install instantly'
     },
     {
       step: 3,
@@ -110,9 +109,9 @@ export default function ChromeExtension() {
               <span className="text-gray-600">/</span>
               <span className="text-white font-medium">Chrome Extension</span>
             </div>
-            <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 flex items-center gap-1">
+            <Badge className="bg-gradient-to-r from-purple-500 to-cyan-500 text-white border-0 flex items-center gap-1">
               <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-              v1.1.0
+              Coming Soon
             </Badge>
           </div>
         </div>
@@ -124,9 +123,9 @@ export default function ChromeExtension() {
           <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600/20 to-cyan-600/20 border border-purple-500/30 rounded-full px-6 py-3 mb-8">
             <Chrome className="w-8 h-8 text-purple-400" />
             <span className="text-xl font-bold text-white">SmartPromptIQ Extension</span>
-            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">
               <CheckCircle className="w-3 h-3 mr-1" />
-              Active
+              In Review
             </Badge>
           </div>
 
@@ -148,8 +147,8 @@ export default function ChromeExtension() {
               size="lg"
               className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white px-8 py-6 text-lg"
             >
-              <Download className="w-5 h-5 mr-2" />
-              Download Extension
+              <Sparkles className="w-5 h-5 mr-2" />
+              Get Notified When Available
             </Button>
             <Button
               size="lg"
@@ -163,7 +162,7 @@ export default function ChromeExtension() {
 
           <div className="flex items-center justify-center gap-4 mt-4 text-sm text-gray-400">
             <span className="flex items-center gap-1">
-              <span className="text-yellow-400">★★★★★</span> 5.0 Rating
+              <span className="text-purple-400">Under Chrome Web Store Review</span>
             </span>
             <span>|</span>
             <span>Manifest V3</span>

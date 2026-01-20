@@ -249,12 +249,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Chrome Extension Section - NOW AVAILABLE */}
+        {/* Chrome Extension Section - COMING SOON */}
         <section className="py-20 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <div className="inline-block px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full mb-4 border border-green-500/30 animate-pulse">
-                <span className="text-sm font-semibold text-green-300">🎉 CHROME EXTENSION — NOW AVAILABLE!</span>
+              <div className="inline-block px-4 py-2 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 rounded-full mb-4 border border-purple-500/30 animate-pulse">
+                <span className="text-sm font-semibold text-purple-300">🚀 CHROME EXTENSION — COMING SOON!</span>
               </div>
               <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
                 SmartPromptIQ <span className="bg-gradient-to-r from-orange-400 to-yellow-400 bg-clip-text text-transparent">Everywhere You Work</span>
@@ -292,7 +292,7 @@ export default function Home() {
                     <div>
                       <h3 className="text-xl font-bold text-white flex items-center gap-2">
                         SmartPromptIQ
-                        <span className="px-2 py-0.5 text-[10px] font-bold bg-green-500 text-white rounded-full">CONNECTED</span>
+                        <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-500 text-white rounded-full">PREVIEW</span>
                       </h3>
                       <p className="text-gray-400 text-sm">v1.1.0 • Chrome Extension</p>
                     </div>
@@ -346,9 +346,9 @@ export default function Home() {
                 </div>
 
                 {/* Badge */}
-                <div className="absolute -top-4 -right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-1">
+                <div className="absolute -top-4 -right-4 bg-gradient-to-r from-purple-500 to-cyan-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-1">
                   <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                  NEW
+                  SOON
                 </div>
               </div>
 
@@ -439,13 +439,10 @@ export default function Home() {
                       🧠
                     </div>
                     <div>
-                      <h4 className="text-2xl font-bold text-white mb-1">Get the Chrome Extension</h4>
-                      <p className="text-gray-300">Free for all SmartPromptIQ users • Works with your existing account</p>
+                      <h4 className="text-2xl font-bold text-white mb-1">Chrome Extension Coming Soon</h4>
+                      <p className="text-gray-300">Free for all SmartPromptIQ users • Currently in review</p>
                       <div className="flex items-center gap-4 mt-2">
-                        <div className="flex items-center gap-1">
-                          <span className="text-yellow-400">★★★★★</span>
-                          <span className="text-gray-400 text-sm">5.0</span>
-                        </div>
+                        <span className="text-purple-400 text-sm">Under Chrome Web Store Review</span>
                         <span className="text-gray-500">|</span>
                         <span className="text-gray-400 text-sm">v1.1.0</span>
                         <span className="text-gray-500">|</span>
@@ -456,12 +453,12 @@ export default function Home() {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={() => setLocation('/chrome-extension')}
-                      className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-orange-600 hover:to-yellow-600 transition-all duration-200 shadow-lg flex items-center gap-2"
+                      className="bg-gradient-to-r from-purple-500 to-cyan-500 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-purple-600 hover:to-cyan-600 transition-all duration-200 shadow-lg flex items-center gap-2"
                     >
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-3.952 6.848a12.014 12.014 0 0 0 9.296-9.559zM12 8.182a3.818 3.818 0 1 0 0 7.636 3.818 3.818 0 0 0 0-7.636z"/>
                       </svg>
-                      Install Extension
+                      Get Notified
                     </button>
                     <button
                       onClick={() => setLocation('/chrome-extension')}
