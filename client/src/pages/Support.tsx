@@ -49,17 +49,23 @@ export default function Support() {
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs text-cyan-400 font-semibold">24/7 for Business</span>
             </div>
-            <button className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all">
+            <a
+              href="mailto:support@smartpromptiq.com?subject=Live%20Chat%20Request"
+              className="block w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all text-center"
+            >
               Start Chat
-            </button>
+            </a>
           </div>
 
           {/* Email Support */}
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition-all">
             <div className="text-4xl mb-4">📧</div>
             <h3 className="text-xl font-bold text-white mb-2">Email Support</h3>
-            <p className="text-gray-300 text-sm mb-4">
+            <p className="text-gray-300 text-sm mb-2">
               Detailed help for all users
+            </p>
+            <p className="text-purple-400 font-semibold text-sm mb-4">
+              support@smartpromptiq.com
             </p>
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs text-cyan-400 font-semibold">24-48 hour response</span>
@@ -89,7 +95,25 @@ export default function Support() {
               href="tel:+17273045812"
               className="block w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold rounded-xl transition-all text-center"
             >
-              Call Now
+              Call Now: 727-304-5812
+            </a>
+          </div>
+
+          {/* Schedule a Call */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition-all">
+            <div className="text-4xl mb-4">📅</div>
+            <h3 className="text-xl font-bold text-white mb-2">Schedule a Call</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              Book a time that works for you
+            </p>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs text-cyan-400 font-semibold">Business hours</span>
+            </div>
+            <a
+              href="mailto:support@smartpromptiq.com?subject=Schedule%20a%20Call%20Request&body=Hi%2C%20I%20would%20like%20to%20schedule%20a%20call.%0A%0APreferred%20Date%3A%20%0APreferred%20Time%3A%20%0APhone%20Number%3A%20%0ATopic%3A%20"
+              className="block w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all text-center"
+            >
+              Schedule Call
             </a>
           </div>
 
@@ -103,9 +127,14 @@ export default function Support() {
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs text-green-400 font-semibold">Always open</span>
             </div>
-            <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all border border-white/20">
-              Join Forum
-            </button>
+            <a
+              href="https://discord.gg/smartpromptiq"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 bg-[#5865F2] hover:bg-[#4752C4] text-white font-semibold rounded-xl transition-all text-center"
+            >
+              Join Discord Community
+            </a>
           </div>
 
           {/* Knowledge Base */}
@@ -120,25 +149,69 @@ export default function Support() {
             </div>
             <Link
               href="/documentation"
-              className="block w-full py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all border border-white/20 text-center"
+              className="block w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all text-center"
             >
               Browse Articles
             </Link>
           </div>
 
-          {/* Video Tutorials */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition-all">
+          {/* Video Tutorials - YouTube */}
+          <div className="bg-gradient-to-br from-red-500/20 to-red-600/20 backdrop-blur-lg rounded-2xl p-6 border border-red-500/30 hover:border-red-400 transition-all">
             <div className="text-4xl mb-4">🎥</div>
             <h3 className="text-xl font-bold text-white mb-2">Video Tutorials</h3>
             <p className="text-gray-300 text-sm mb-4">
-              Step-by-step visual guides
+              Step-by-step visual guides on YouTube
             </p>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs text-green-400 font-semibold">On-demand</span>
+              <span className="text-xs text-red-400 font-semibold">On-demand</span>
             </div>
-            <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all border border-white/20">
-              Watch Videos
-            </button>
+            <a
+              href="https://www.youtube.com/@SmartPromptIQ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 bg-[#FF0000] hover:bg-[#CC0000] text-white font-semibold rounded-xl transition-all text-center flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              Watch on YouTube
+            </a>
+          </div>
+
+          {/* Academy FAQ */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition-all">
+            <div className="text-4xl mb-4">❓</div>
+            <h3 className="text-xl font-bold text-white mb-2">FAQ</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              Answers to common questions
+            </p>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs text-green-400 font-semibold">Always available</span>
+            </div>
+            <Link
+              href="/academy/faq"
+              className="block w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all text-center"
+            >
+              View FAQ
+            </Link>
+          </div>
+
+          {/* Contact Page */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition-all">
+            <div className="text-4xl mb-4">✉️</div>
+            <h3 className="text-xl font-bold text-white mb-2">Contact Form</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              Send us a detailed message
+            </p>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs text-cyan-400 font-semibold">24-48 hour response</span>
+            </div>
+            <Link
+              href="/contact"
+              className="block w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all text-center"
+            >
+              Open Contact Form
+            </Link>
           </div>
         </div>
 
@@ -168,10 +241,10 @@ export default function Support() {
                 <span className="text-orange-400 font-semibold">9 AM - 6 PM EST</span>
               </div>
               <div className="mt-4 p-4 bg-orange-500/10 rounded-xl border border-orange-500/30">
-                <p className="text-orange-300 font-semibold flex items-center gap-2">
+                <a href="tel:+17273045812" className="text-orange-300 font-semibold flex items-center gap-2 hover:text-orange-200 transition-colors">
                   <span>📞</span>
                   Call us: 727-304-5812
-                </p>
+                </a>
               </div>
             </div>
           </div>
@@ -229,15 +302,53 @@ export default function Support() {
                 href="tel:+17273045812"
                 className="px-8 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold rounded-xl transition-all text-center"
               >
-                📞 727-304-5812
+                📞 Call: 727-304-5812
               </a>
               <a
-                href="mailto:enterprise@smartpromptiq.com"
+                href="mailto:enterprise@smartpromptiq.com?subject=Enterprise%20Support%20Inquiry"
                 className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all text-center border border-white/20"
               >
-                Contact Enterprise Sales
+                ✉️ enterprise@smartpromptiq.com
               </a>
             </div>
+          </div>
+        </div>
+
+        {/* Quick Contact Bar */}
+        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 mb-12 border border-white/10">
+          <div className="flex flex-wrap justify-center items-center gap-6">
+            <a
+              href="tel:+17273045812"
+              className="flex items-center gap-2 px-6 py-3 bg-orange-500/20 hover:bg-orange-500/30 rounded-xl text-orange-400 font-semibold transition-all border border-orange-500/30"
+            >
+              <span>📞</span>
+              727-304-5812
+            </a>
+            <a
+              href="mailto:support@smartpromptiq.com"
+              className="flex items-center gap-2 px-6 py-3 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl text-purple-400 font-semibold transition-all border border-purple-500/30"
+            >
+              <span>✉️</span>
+              support@smartpromptiq.com
+            </a>
+            <a
+              href="https://www.youtube.com/@SmartPromptIQ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-6 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-xl text-red-400 font-semibold transition-all border border-red-500/30"
+            >
+              <span>🎥</span>
+              YouTube Tutorials
+            </a>
+            <a
+              href="https://discord.gg/smartpromptiq"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-6 py-3 bg-[#5865F2]/20 hover:bg-[#5865F2]/30 rounded-xl text-[#5865F2] font-semibold transition-all border border-[#5865F2]/30"
+            >
+              <span>💬</span>
+              Discord Community
+            </a>
           </div>
         </div>
 
@@ -292,7 +403,7 @@ export default function Support() {
                 We've received your message and will respond within 24-48 hours.
               </p>
               <p className="text-orange-400 font-semibold mb-6">
-                Need immediate help? Call us at 727-304-5812
+                Need immediate help? Call us at <a href="tel:+17273045812" className="underline">727-304-5812</a>
               </p>
               <button
                 onClick={() => {
