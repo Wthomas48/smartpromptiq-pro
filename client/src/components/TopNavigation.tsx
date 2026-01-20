@@ -29,6 +29,19 @@ export default function TopNavigation({ onGetStarted, onSignIn }: TopNavigationP
 
         {/* Desktop Navigation */}
         <div className={`nav-buttons ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+          <a
+            href="tel:+17273045812"
+            className="nav-btn nav-btn-ghost"
+            style={{ color: '#f97316', fontWeight: 600 }}
+          >
+            📞 727-304-5812
+          </a>
+          <button
+            onClick={() => setLocation('/contact')}
+            className="nav-btn nav-btn-ghost"
+          >
+            Contact
+          </button>
           <ThemeToggle />
           <button
             onClick={onSignIn}
