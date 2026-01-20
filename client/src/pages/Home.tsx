@@ -62,9 +62,8 @@ export default function Home() {
           
           <div className="hero-content">
             <div className="hero-logo-section">
-              <div className="flex items-center justify-center space-x-4 mb-4">
-                <BrainLogo size={100} animate={true} variant="filled" className="hero-brain-logo" />
-                <BrainLogo size={100} animate={true} variant="outline" className="hero-brain-logo-outline" />
+              <div className="flex items-center justify-center mb-4">
+                <BrainLogo size={120} animate={true} variant="filled" className="hero-brain-logo" />
               </div>
               <div className="hero-badge">The Complete AI Prompt Engineering & App Creation Platform</div>
             </div>
