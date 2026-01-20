@@ -2,7 +2,7 @@ interface BrainLogoProps {
   size?: number;
   className?: string;
   animate?: boolean;
-  variant?: 'filled' | 'outline' | 'minimal';
+  variant?: 'filled' | 'outline' | 'gradient';
   showText?: boolean;
 }
 
@@ -10,351 +10,255 @@ export default function BrainLogo({
   size = 32,
   className = '',
   animate = false,
-  variant = 'filled',
+  variant = 'gradient',
   showText = false
 }: BrainLogoProps) {
+  const uniqueId = `brain-${Math.random().toString(36).substr(2, 9)}`;
+
   return (
     <div
-      className={`inline-flex items-center justify-center ${className}`}
+      className={`inline-flex items-center ${className}`}
       style={{ width: showText ? 'auto' : size, height: size }}
     >
       <svg
         width={size}
         height={size}
-        viewBox="0 0 100 100"
+        viewBox="0 0 64 64"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className={animate ? 'brain-logo-animate' : ''}
+        className={animate ? 'brain-animate' : ''}
+        style={{ display: 'block' }}
       >
-        {/* Background glow circle */}
-        {variant === 'filled' && (
-          <circle
-            cx="50"
-            cy="50"
-            r="46"
-            fill="url(#bgGlow)"
-            opacity="0.15"
-          />
-        )}
+        {/* Transparent background - no fill */}
 
-        {/* Main brain shape - cleaner, more iconic */}
-        <g className="brain-main-group">
+        {/* Brain silhouette - clean recognizable shape */}
+        <g className="brain-shape">
           {/* Left hemisphere */}
           <path
-            d="M50 20
-               C35 20, 22 28, 20 42
-               C18 52, 22 62, 28 70
-               C32 76, 40 80, 50 80"
-            fill={variant === 'filled' ? "url(#leftHemisphere)" : "none"}
-            stroke={variant !== 'filled' ? "url(#strokeGradient)" : "none"}
-            strokeWidth={variant !== 'filled' ? "2.5" : "0"}
+            d="M32 8
+               C24 8, 18 10, 14 16
+               C10 22, 8 28, 10 34
+               C8 36, 6 40, 8 44
+               C10 48, 12 50, 16 52
+               C18 56, 24 58, 32 58"
+            fill={variant === 'outline' ? 'none' : `url(#${uniqueId}-leftGrad)`}
+            stroke={variant === 'outline' ? `url(#${uniqueId}-strokeGrad)` : 'none'}
+            strokeWidth="2"
             className="hemisphere-left"
           />
 
           {/* Right hemisphere */}
           <path
-            d="M50 20
-               C65 20, 78 28, 80 42
-               C82 52, 78 62, 72 70
-               C68 76, 60 80, 50 80"
-            fill={variant === 'filled' ? "url(#rightHemisphere)" : "none"}
-            stroke={variant !== 'filled' ? "url(#strokeGradient)" : "none"}
-            strokeWidth={variant !== 'filled' ? "2.5" : "0"}
+            d="M32 8
+               C40 8, 46 10, 50 16
+               C54 22, 56 28, 54 34
+               C56 36, 58 40, 56 44
+               C54 48, 52 50, 48 52
+               C46 56, 40 58, 32 58"
+            fill={variant === 'outline' ? 'none' : `url(#${uniqueId}-rightGrad)`}
+            stroke={variant === 'outline' ? `url(#${uniqueId}-strokeGrad)` : 'none'}
+            strokeWidth="2"
             className="hemisphere-right"
           />
 
-          {/* Brain folds - left */}
+          {/* Brain stem */}
           <path
-            d="M28 38 Q38 32, 48 38"
-            stroke="url(#foldStroke1)"
+            d="M28 54 Q32 60, 36 54"
+            fill={variant === 'outline' ? 'none' : `url(#${uniqueId}-stemGrad)`}
+            stroke={variant === 'outline' ? `url(#${uniqueId}-strokeGrad)` : 'none'}
             strokeWidth="2"
-            strokeLinecap="round"
-            fill="none"
-            opacity="0.8"
-            className="brain-fold"
-          />
-          <path
-            d="M24 50 Q36 44, 48 50"
-            stroke="url(#foldStroke1)"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            fill="none"
-            opacity="0.7"
-            className="brain-fold"
-          />
-          <path
-            d="M28 62 Q38 56, 48 62"
-            stroke="url(#foldStroke1)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            fill="none"
-            opacity="0.6"
-            className="brain-fold"
-          />
-
-          {/* Brain folds - right */}
-          <path
-            d="M52 38 Q62 32, 72 38"
-            stroke="url(#foldStroke2)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            fill="none"
-            opacity="0.8"
-            className="brain-fold"
-          />
-          <path
-            d="M52 50 Q64 44, 76 50"
-            stroke="url(#foldStroke2)"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            fill="none"
-            opacity="0.7"
-            className="brain-fold"
-          />
-          <path
-            d="M52 62 Q62 56, 72 62"
-            stroke="url(#foldStroke2)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            fill="none"
-            opacity="0.6"
-            className="brain-fold"
-          />
-
-          {/* Center line */}
-          <path
-            d="M50 22 L50 78"
-            stroke="url(#centerLine)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            opacity="0.5"
-            className="center-line"
           />
         </g>
 
-        {/* Neural network nodes - the "IQ" intelligence element */}
-        <g className="neural-nodes">
-          {/* Left side nodes */}
-          <circle cx="30" cy="35" r="3" fill="url(#nodeGradient1)" className="node node-1">
-            <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite" begin="0s"/>
-          </circle>
-          <circle cx="25" cy="50" r="2.5" fill="url(#nodeGradient2)" className="node node-2">
-            <animate attributeName="opacity" values="0.5;0.9;0.5" dur="2.5s" repeatCount="indefinite" begin="0.3s"/>
-          </circle>
-          <circle cx="32" cy="65" r="2" fill="url(#nodeGradient1)" className="node node-3">
-            <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2.2s" repeatCount="indefinite" begin="0.6s"/>
-          </circle>
+        {/* Brain folds/gyri - left side */}
+        <g className="brain-folds" opacity="0.9">
+          <path
+            d="M14 24 Q22 20, 30 24"
+            stroke={variant === 'outline' ? `url(#${uniqueId}-foldGrad1)` : 'rgba(255,255,255,0.5)'}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M12 34 Q20 30, 30 34"
+            stroke={variant === 'outline' ? `url(#${uniqueId}-foldGrad1)` : 'rgba(255,255,255,0.4)'}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M14 44 Q22 40, 30 44"
+            stroke={variant === 'outline' ? `url(#${uniqueId}-foldGrad1)` : 'rgba(255,255,255,0.35)'}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+          />
 
-          {/* Right side nodes */}
-          <circle cx="70" cy="35" r="3" fill="url(#nodeGradient2)" className="node node-4">
-            <animate attributeName="opacity" values="0.6;1;0.6" dur="2.3s" repeatCount="indefinite" begin="0.2s"/>
-          </circle>
-          <circle cx="75" cy="50" r="2.5" fill="url(#nodeGradient1)" className="node node-5">
-            <animate attributeName="opacity" values="0.5;0.9;0.5" dur="2.1s" repeatCount="indefinite" begin="0.5s"/>
-          </circle>
-          <circle cx="68" cy="65" r="2" fill="url(#nodeGradient2)" className="node node-6">
-            <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2.4s" repeatCount="indefinite" begin="0.8s"/>
-          </circle>
-
-          {/* Center "spark" - represents intelligence/IQ */}
-          <circle cx="50" cy="50" r="4" fill="url(#centerSpark)" className="center-spark">
-            <animate attributeName="r" values="3;5;3" dur="1.5s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.8;1;0.8" dur="1.5s" repeatCount="indefinite"/>
-          </circle>
+          {/* Brain folds - right side */}
+          <path
+            d="M34 24 Q42 20, 50 24"
+            stroke={variant === 'outline' ? `url(#${uniqueId}-foldGrad2)` : 'rgba(255,255,255,0.5)'}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M34 34 Q44 30, 52 34"
+            stroke={variant === 'outline' ? `url(#${uniqueId}-foldGrad2)` : 'rgba(255,255,255,0.4)'}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M34 44 Q42 40, 50 44"
+            stroke={variant === 'outline' ? `url(#${uniqueId}-foldGrad2)` : 'rgba(255,255,255,0.35)'}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+          />
         </g>
 
-        {/* Connection lines between nodes */}
-        <g className="connections" opacity="0.4">
-          <line x1="30" y1="35" x2="50" y2="50" stroke="url(#connectionGradient)" strokeWidth="0.8" className="connection">
-            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite"/>
-          </line>
-          <line x1="25" y1="50" x2="50" y2="50" stroke="url(#connectionGradient)" strokeWidth="0.8" className="connection">
-            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.2s" repeatCount="indefinite" begin="0.3s"/>
-          </line>
-          <line x1="32" y1="65" x2="50" y2="50" stroke="url(#connectionGradient)" strokeWidth="0.8" className="connection">
-            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.4s" repeatCount="indefinite" begin="0.6s"/>
-          </line>
-          <line x1="70" y1="35" x2="50" y2="50" stroke="url(#connectionGradient)" strokeWidth="0.8" className="connection">
-            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.1s" repeatCount="indefinite" begin="0.2s"/>
-          </line>
-          <line x1="75" y1="50" x2="50" y2="50" stroke="url(#connectionGradient)" strokeWidth="0.8" className="connection">
-            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.3s" repeatCount="indefinite" begin="0.5s"/>
-          </line>
-          <line x1="68" y1="65" x2="50" y2="50" stroke="url(#connectionGradient)" strokeWidth="0.8" className="connection">
-            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.5s" repeatCount="indefinite" begin="0.8s"/>
-          </line>
-        </g>
+        {/* Center divider line */}
+        <path
+          d="M32 10 L32 56"
+          stroke={variant === 'outline' ? `url(#${uniqueId}-centerGrad)` : 'rgba(255,255,255,0.25)'}
+          strokeWidth="1"
+          strokeDasharray="2,2"
+          className="center-line"
+        />
 
-        {/* Outer glow ring for premium feel */}
-        {variant === 'filled' && (
+        {/* IQ Spark - the intelligence indicator */}
+        <g className="iq-spark">
           <circle
-            cx="50"
-            cy="50"
-            r="44"
-            fill="none"
-            stroke="url(#outerRing)"
-            strokeWidth="1"
-            opacity="0.3"
-            className="outer-ring"
-          />
-        )}
+            cx="32"
+            cy="32"
+            r="5"
+            fill={`url(#${uniqueId}-sparkGrad)`}
+            className="spark-core"
+          >
+            {animate && (
+              <>
+                <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+              </>
+            )}
+          </circle>
 
-        {/* Gradient Definitions */}
+          {/* Spark glow */}
+          <circle
+            cx="32"
+            cy="32"
+            r="8"
+            fill={`url(#${uniqueId}-glowGrad)`}
+            opacity="0.4"
+            className="spark-glow"
+          >
+            {animate && (
+              <animate attributeName="r" values="7;10;7" dur="2s" repeatCount="indefinite"/>
+            )}
+          </circle>
+        </g>
+
+        {/* Neural dots for "smart" effect */}
+        <g className="neural-dots">
+          <circle cx="20" cy="20" r="2" fill="#a855f7" opacity="0.8">
+            {animate && <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" begin="0s"/>}
+          </circle>
+          <circle cx="44" cy="20" r="2" fill="#0ea5e9" opacity="0.8">
+            {animate && <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" begin="0.3s"/>}
+          </circle>
+          <circle cx="18" cy="38" r="1.5" fill="#c084fc" opacity="0.7">
+            {animate && <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.8s" repeatCount="indefinite" begin="0.5s"/>}
+          </circle>
+          <circle cx="46" cy="38" r="1.5" fill="#22d3ee" opacity="0.7">
+            {animate && <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.8s" repeatCount="indefinite" begin="0.8s"/>}
+          </circle>
+        </g>
+
+        {/* Gradient definitions */}
         <defs>
-          {/* Background glow */}
-          <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4"/>
-            <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0"/>
-          </radialGradient>
-
-          {/* Left hemisphere - purple dominant */}
-          <linearGradient id="leftHemisphere" x1="0%" y1="0%" x2="100%" y2="100%">
+          {/* Left hemisphere gradient - purple */}
+          <linearGradient id={`${uniqueId}-leftGrad`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#a855f7"/>
             <stop offset="50%" stopColor="#8b5cf6"/>
             <stop offset="100%" stopColor="#7c3aed"/>
           </linearGradient>
 
-          {/* Right hemisphere - cyan accent */}
-          <linearGradient id="rightHemisphere" x1="100%" y1="0%" x2="0%" y2="100%">
+          {/* Right hemisphere gradient - cyan to purple */}
+          <linearGradient id={`${uniqueId}-rightGrad`} x1="100%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#06b6d4"/>
             <stop offset="50%" stopColor="#0ea5e9"/>
             <stop offset="100%" stopColor="#8b5cf6"/>
           </linearGradient>
 
-          {/* Stroke gradient for outline variant */}
-          <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          {/* Brain stem gradient */}
+          <linearGradient id={`${uniqueId}-stemGrad`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#7c3aed"/>
+            <stop offset="100%" stopColor="#0ea5e9"/>
+          </linearGradient>
+
+          {/* Outline stroke gradient */}
+          <linearGradient id={`${uniqueId}-strokeGrad`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#a855f7"/>
             <stop offset="50%" stopColor="#8b5cf6"/>
             <stop offset="100%" stopColor="#0ea5e9"/>
           </linearGradient>
 
-          {/* Brain fold strokes */}
-          <linearGradient id="foldStroke1" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#c4b5fd" stopOpacity="0.3"/>
-            <stop offset="50%" stopColor="#e9d5ff" stopOpacity="0.6"/>
-            <stop offset="100%" stopColor="#c4b5fd" stopOpacity="0.3"/>
-          </linearGradient>
-          <linearGradient id="foldStroke2" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#a5f3fc" stopOpacity="0.3"/>
-            <stop offset="50%" stopColor="#e0f2fe" stopOpacity="0.6"/>
-            <stop offset="100%" stopColor="#a5f3fc" stopOpacity="0.3"/>
-          </linearGradient>
-
-          {/* Center line */}
-          <linearGradient id="centerLine" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#c4b5fd" stopOpacity="0.2"/>
-            <stop offset="50%" stopColor="#e9d5ff" stopOpacity="0.5"/>
-            <stop offset="100%" stopColor="#c4b5fd" stopOpacity="0.2"/>
-          </linearGradient>
-
-          {/* Neural node gradients */}
-          <radialGradient id="nodeGradient1" cx="30%" cy="30%" r="70%">
-            <stop offset="0%" stopColor="#e9d5ff"/>
+          {/* Fold gradients */}
+          <linearGradient id={`${uniqueId}-foldGrad1`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#c084fc"/>
             <stop offset="100%" stopColor="#a855f7"/>
-          </radialGradient>
-          <radialGradient id="nodeGradient2" cx="30%" cy="30%" r="70%">
-            <stop offset="0%" stopColor="#a5f3fc"/>
-            <stop offset="100%" stopColor="#0ea5e9"/>
-          </radialGradient>
+          </linearGradient>
+          <linearGradient id={`${uniqueId}-foldGrad2`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#0ea5e9"/>
+            <stop offset="100%" stopColor="#22d3ee"/>
+          </linearGradient>
 
-          {/* Center spark - the "IQ" intelligence indicator */}
-          <radialGradient id="centerSpark" cx="30%" cy="30%" r="70%">
-            <stop offset="0%" stopColor="#ffffff"/>
-            <stop offset="30%" stopColor="#fef08a"/>
+          {/* Center line gradient */}
+          <linearGradient id={`${uniqueId}-centerGrad`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#c084fc" stopOpacity="0.3"/>
+            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.5"/>
+            <stop offset="100%" stopColor="#22d3ee" stopOpacity="0.3"/>
+          </linearGradient>
+
+          {/* Spark gradient - golden/yellow for "intelligence" */}
+          <radialGradient id={`${uniqueId}-sparkGrad`} cx="30%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#fef08a"/>
+            <stop offset="50%" stopColor="#fbbf24"/>
             <stop offset="100%" stopColor="#f59e0b"/>
           </radialGradient>
 
-          {/* Connection lines */}
-          <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#8b5cf6"/>
-            <stop offset="100%" stopColor="#0ea5e9"/>
-          </linearGradient>
-
-          {/* Outer ring */}
-          <linearGradient id="outerRing" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#a855f7"/>
-            <stop offset="50%" stopColor="#0ea5e9"/>
-            <stop offset="100%" stopColor="#a855f7"/>
-          </linearGradient>
+          {/* Spark glow */}
+          <radialGradient id={`${uniqueId}-glowGrad`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fef08a" stopOpacity="0.6"/>
+            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/>
+          </radialGradient>
         </defs>
 
         <style>
           {`
-            .brain-logo-animate .brain-main-group {
-              transform-origin: 50px 50px;
-              animation: brainBreath 4s ease-in-out infinite;
+            .brain-animate .brain-shape {
+              animation: brainPulse 3s ease-in-out infinite;
+              transform-origin: 32px 32px;
             }
 
-            .brain-logo-animate .hemisphere-left {
-              animation: leftPulse 3s ease-in-out infinite;
+            .brain-animate .spark-core {
+              filter: drop-shadow(0 0 4px #fbbf24);
             }
 
-            .brain-logo-animate .hemisphere-right {
-              animation: rightPulse 3s ease-in-out infinite 0.5s;
-            }
-
-            .brain-logo-animate .center-spark {
-              filter: drop-shadow(0 0 3px #f59e0b);
-            }
-
-            .brain-logo-animate .outer-ring {
-              animation: ringPulse 2s ease-in-out infinite;
-            }
-
-            @keyframes brainBreath {
-              0%, 100% {
-                transform: scale(1);
-              }
-              50% {
-                transform: scale(1.03);
-              }
-            }
-
-            @keyframes leftPulse {
-              0%, 100% {
-                opacity: 1;
-              }
-              50% {
-                opacity: 0.9;
-                filter: brightness(1.1);
-              }
-            }
-
-            @keyframes rightPulse {
-              0%, 100% {
-                opacity: 1;
-              }
-              50% {
-                opacity: 0.9;
-                filter: brightness(1.1);
-              }
-            }
-
-            @keyframes ringPulse {
-              0%, 100% {
-                opacity: 0.3;
-                stroke-width: 1;
-              }
-              50% {
-                opacity: 0.5;
-                stroke-width: 1.5;
-              }
-            }
-
-            /* Hover effects */
-            svg:hover .brain-main-group {
-              animation-duration: 2s;
-            }
-
-            svg:hover .center-spark {
-              filter: drop-shadow(0 0 6px #f59e0b);
+            @keyframes brainPulse {
+              0%, 100% { transform: scale(1); }
+              50% { transform: scale(1.02); }
             }
           `}
         </style>
       </svg>
 
       {showText && (
-        <span className="ml-2 font-bold text-xl bg-gradient-to-r from-purple-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
+        <span
+          className="ml-3 font-bold bg-gradient-to-r from-purple-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent"
+          style={{ fontSize: size * 0.4 }}
+        >
           SmartPromptIQ
         </span>
       )}
