@@ -1094,19 +1094,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Contact Info */}
-        <div className="flex flex-wrap justify-center items-center gap-6 mb-6 text-sm">
-          <a href="tel:+17273045812" className="flex items-center gap-2 text-orange-400 hover:text-orange-300 transition-colors">
-            <span>📞</span>
-            <span className="font-semibold">727-304-5812</span>
-          </a>
-          <span className="text-gray-500 hidden sm:inline">|</span>
-          <a href="mailto:support@smartpromptiq.com" className="flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors">
-            <span>✉️</span>
-            <span>support@smartpromptiq.com</span>
-          </a>
-        </div>
-
         <div className="footer-badges">
           <div className="footer-badge">Enterprise Security</div>
           <div className="footer-badge">GDPR Compliant</div>
