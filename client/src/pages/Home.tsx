@@ -1056,8 +1056,8 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="footer">
-        {/* Chrome Extension Available */}
-        <div className="mb-8 p-6 bg-gradient-to-r from-purple-900/50 to-cyan-900/50 rounded-2xl border border-green-500/30 max-w-2xl mx-auto">
+        {/* Chrome Extension Coming Soon */}
+        <div className="mb-8 p-6 bg-gradient-to-r from-purple-900/50 to-cyan-900/50 rounded-2xl border border-purple-500/30 max-w-2xl mx-auto">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-2xl shadow-lg">
@@ -1066,9 +1066,9 @@ export default function Home() {
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   Chrome Extension
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full flex items-center gap-1">
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-full flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-                    AVAILABLE
+                    COMING SOON
                   </span>
                 </h3>
                 <p className="text-sm text-gray-300">
@@ -1078,12 +1078,12 @@ export default function Home() {
             </div>
             <button
               onClick={() => setLocation('/chrome-extension')}
-              className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-6 py-3 rounded-xl font-bold hover:from-orange-600 hover:to-yellow-600 transition-all duration-200 shadow-lg flex items-center gap-2"
+              className="bg-gradient-to-r from-purple-500 to-cyan-500 text-white px-6 py-3 rounded-xl font-bold hover:from-purple-600 hover:to-cyan-600 transition-all duration-200 shadow-lg flex items-center gap-2"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-3.952 6.848a12.014 12.014 0 0 0 9.296-9.559zM12 8.182a3.818 3.818 0 1 0 0 7.636 3.818 3.818 0 0 0 0-7.636z"/>
               </svg>
-              Get Extension
+              Get Notified
             </button>
           </div>
           <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-300 mt-4 pt-4 border-t border-white/10">
@@ -1092,6 +1092,19 @@ export default function Home() {
             <span className="px-3 py-1 bg-white/5 rounded-full">🔄 Auto-Sync</span>
             <span className="px-3 py-1 bg-white/5 rounded-full">🚀 One-Click Insert</span>
           </div>
+        </div>
+
+        {/* Contact Info */}
+        <div className="flex flex-wrap justify-center items-center gap-6 mb-6 text-sm">
+          <a href="tel:+17273045812" className="flex items-center gap-2 text-orange-400 hover:text-orange-300 transition-colors">
+            <span>📞</span>
+            <span className="font-semibold">(727) 304-5812</span>
+          </a>
+          <span className="text-gray-500 hidden sm:inline">|</span>
+          <a href="mailto:support@smartpromptiq.com" className="flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors">
+            <span>✉️</span>
+            <span>support@smartpromptiq.com</span>
+          </a>
         </div>
 
         <div className="footer-badges">

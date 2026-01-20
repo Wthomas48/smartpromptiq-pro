@@ -85,6 +85,22 @@ const Contact: React.FC = () => {
                 </h3>
 
                 <div className="space-y-4">
+                  {/* Phone Support */}
+                  <a
+                    href="tel:+17273045812"
+                    className="block p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl hover:shadow-md transition-all border-2 border-orange-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
+                        <i className="fas fa-phone text-white"></i>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 font-medium">Call Us</p>
+                        <p className="text-orange-600 font-bold">(727) 304-5812</p>
+                      </div>
+                    </div>
+                  </a>
+
                   {/* Email Support */}
                   <a
                     href="mailto:support@smartpromptiq.com"
