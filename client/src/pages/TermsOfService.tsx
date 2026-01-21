@@ -105,11 +105,28 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-white mb-4">12. Contact</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">12. Browser Extension Usage</h2>
+            <div className="p-6 bg-gradient-to-r from-purple-900/30 to-indigo-900/30 rounded-xl border border-purple-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">🧩</span>
+                <h3 className="text-xl font-semibold text-purple-300">SmartPromptIQ Browser Extension</h3>
+              </div>
+              <p className="leading-relaxed">
+                Use of the SmartPromptIQ Browser Extension is subject to these Terms of Service and our{' '}
+                <Link href="/privacy-policy" className="text-purple-300 hover:text-purple-200 underline transition-colors">
+                  Privacy Policy
+                </Link>
+                . By installing and using the extension, you agree to both.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-white mb-4">13. Contact</h2>
             <div className="p-6 bg-white/5 rounded-xl space-y-3">
               <p className="flex items-center gap-3">
                 <span className="text-2xl">📧</span>
-                <a href="mailto:support@smartpromptiq.com" className="text-purple-300 hover:text-purple-200 transition-colors">
+                <a href="mailto:support@smartpromptiq.com" target="_blank" rel="noopener noreferrer" className="text-purple-300 hover:text-purple-200 transition-colors">
                   support@smartpromptiq.com
                 </a>
               </p>
