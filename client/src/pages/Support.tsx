@@ -51,18 +51,43 @@ export default function Support() {
             </div>
             <a
               href="mailto:support@smartpromptiq.com?subject=Live%20Chat%20Request"
+              target="_blank"
+              rel="noopener noreferrer"
               className="block w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all text-center"
             >
               Start Chat
             </a>
           </div>
 
+          {/* General Info Email */}
+          <div className="bg-gradient-to-br from-teal-500/20 to-cyan-500/20 backdrop-blur-lg rounded-2xl p-6 border-2 border-teal-500/50 hover:border-teal-400 transition-all">
+            <div className="text-4xl mb-4">📬</div>
+            <h3 className="text-xl font-bold text-white mb-2">General Inquiries</h3>
+            <p className="text-gray-300 text-sm mb-2">
+              Questions, feedback, or general info
+            </p>
+            <p className="text-xl font-bold text-teal-400 mb-4">
+              info@smartdealsiq.com
+            </p>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs text-teal-300 font-semibold">24-48 hour response</span>
+            </div>
+            <a
+              href="mailto:info@smartdealsiq.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-semibold rounded-xl transition-all text-center"
+            >
+              Email: info@smartdealsiq.com
+            </a>
+          </div>
+
           {/* Email Support */}
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/10 hover:border-purple-500/50 transition-all">
             <div className="text-4xl mb-4">📧</div>
-            <h3 className="text-xl font-bold text-white mb-2">Email Support</h3>
+            <h3 className="text-xl font-bold text-white mb-2">Technical Support</h3>
             <p className="text-gray-300 text-sm mb-2">
-              Detailed help for all users
+              Technical help for all users
             </p>
             <p className="text-purple-400 font-semibold text-sm mb-4">
               support@smartpromptiq.com
@@ -72,6 +97,8 @@ export default function Support() {
             </div>
             <a
               href="mailto:support@smartpromptiq.com"
+              target="_blank"
+              rel="noopener noreferrer"
               className="block w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all text-center"
             >
               Send Email
@@ -111,6 +138,8 @@ export default function Support() {
             </div>
             <a
               href="mailto:support@smartpromptiq.com?subject=Schedule%20a%20Call%20Request&body=Hi%2C%20I%20would%20like%20to%20schedule%20a%20call.%0A%0APreferred%20Date%3A%20%0APreferred%20Time%3A%20%0APhone%20Number%3A%20%0ATopic%3A%20"
+              target="_blank"
+              rel="noopener noreferrer"
               className="block w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all text-center"
             >
               Schedule Call
@@ -306,6 +335,8 @@ export default function Support() {
               </a>
               <a
                 href="mailto:enterprise@smartpromptiq.com?subject=Enterprise%20Support%20Inquiry"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all text-center border border-white/20"
               >
                 ✉️ enterprise@smartpromptiq.com
@@ -325,7 +356,18 @@ export default function Support() {
               727-304-5812
             </a>
             <a
+              href="mailto:info@smartdealsiq.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-6 py-3 bg-teal-500/20 hover:bg-teal-500/30 rounded-xl text-teal-400 font-semibold transition-all border border-teal-500/30"
+            >
+              <span>📬</span>
+              info@smartdealsiq.com
+            </a>
+            <a
               href="mailto:support@smartpromptiq.com"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-2 px-6 py-3 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl text-purple-400 font-semibold transition-all border border-purple-500/30"
             >
               <span>✉️</span>

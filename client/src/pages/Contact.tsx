@@ -54,7 +54,7 @@ const Contact: React.FC = () => {
       }
     } catch (err) {
       console.error('Contact form error:', err);
-      setError('An error occurred. Please try emailing us directly at support@smartpromptiq.com');
+      setError('An error occurred. Please try emailing us directly at info@smartdealsiq.com');
     } finally {
       setIsSubmitting(false);
     }
@@ -101,9 +101,29 @@ const Contact: React.FC = () => {
                     </div>
                   </a>
 
+                  {/* General Info Email */}
+                  <a
+                    href="mailto:info@smartdealsiq.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl hover:shadow-md transition-all border-2 border-teal-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center">
+                        <i className="fas fa-info-circle text-white"></i>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600 font-medium">General Inquiries</p>
+                        <p className="text-teal-600 font-bold">info@smartdealsiq.com</p>
+                      </div>
+                    </div>
+                  </a>
+
                   {/* Email Support */}
                   <a
                     href="mailto:support@smartpromptiq.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="block p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl hover:shadow-md transition-all border-2 border-purple-200"
                   >
                     <div className="flex items-center gap-3">
@@ -120,6 +140,8 @@ const Contact: React.FC = () => {
                   {/* Academy Email */}
                   <a
                     href="mailto:academy@smartpromptiq.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="block p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl hover:shadow-md transition-all border-2 border-blue-200"
                   >
                     <div className="flex items-center gap-3">
@@ -136,6 +158,8 @@ const Contact: React.FC = () => {
                   {/* Sales/Partnership */}
                   <a
                     href="mailto:sales@smartpromptiq.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="block p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl hover:shadow-md transition-all border-2 border-green-200"
                   >
                     <div className="flex items-center gap-3">
