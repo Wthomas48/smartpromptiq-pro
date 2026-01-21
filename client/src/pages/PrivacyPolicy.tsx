@@ -133,11 +133,37 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold text-white mb-4">12. Contact Us</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">12. Chrome Extension Data Handling</h2>
+            <div className="p-6 bg-gradient-to-r from-purple-900/30 to-indigo-900/30 rounded-xl border border-purple-500/30 mb-4">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-3xl">🧩</span>
+                <h3 className="text-xl font-semibold text-purple-300">SmartPromptIQ Browser Extension</h3>
+              </div>
+              <div className="space-y-4">
+                <p className="leading-relaxed">
+                  The SmartPromptIQ Browser Extension does <strong className="text-white">not</strong> collect, store, or transmit any personal information outside the user's browser. All processing of highlighted text occurs locally, and no data is sent to our servers unless the user explicitly chooses to paste or send it to a service.
+                </p>
+                <p className="leading-relaxed font-semibold text-green-400">
+                  This extension does not use analytics or tracking technologies.
+                </p>
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <p className="text-sm text-gray-300">
+                    For extension support or questions: {' '}
+                    <a href="mailto:support@smartpromptiq.com" className="text-purple-300 hover:text-purple-200 transition-colors">
+                      support@smartpromptiq.com
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-white mb-4">13. Contact Us</h2>
             <div className="p-6 bg-white/5 rounded-xl space-y-3">
               <p className="flex items-center gap-3">
                 <span className="text-2xl">📧</span>
-                <a href="mailto:support@smartpromptiq.com" className="text-purple-300 hover:text-purple-200 transition-colors">
+                <a href="mailto:support@smartpromptiq.com" target="_blank" rel="noopener noreferrer" className="text-purple-300 hover:text-purple-200 transition-colors">
                   support@smartpromptiq.com
                 </a>
               </p>

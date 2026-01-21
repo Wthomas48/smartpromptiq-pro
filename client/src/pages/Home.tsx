@@ -1105,15 +1105,15 @@ export default function Home() {
 
         {/* Legal Links */}
         <div className="flex justify-center gap-6 mt-6 text-sm">
-          <a href="/privacy-policy" className="text-indigo-300 hover:text-white transition-colors">
+          <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-white transition-colors">
             Privacy Policy
           </a>
           <span className="text-gray-500">|</span>
-          <a href="/terms-of-service" className="text-indigo-300 hover:text-white transition-colors">
+          <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-white transition-colors">
             Terms of Service
           </a>
           <span className="text-gray-500">|</span>
-          <a href="/contact" className="text-indigo-300 hover:text-white transition-colors">
+          <a href="/contact" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-white transition-colors">
             Contact Us
           </a>
         </div>

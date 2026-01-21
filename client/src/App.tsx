@@ -130,6 +130,11 @@ function Router() {
   // BuilderIQ should show navigation like other pages
   const isBuilderIQRoute = false; // BuilderIQ is now part of main app flow with navigation
 
+  // Check if current route is a standalone legal/info page (no navigation)
+  const isStandalonePage = location === '/privacy-policy' || location === '/privacy' ||
+                           location === '/terms-of-service' || location === '/terms' ||
+                           location === '/contact' || location === '/support';
+
   // Show loading state while checking authentication (with timeout)
   if (isLoading && !forceLoad) {
     return (
@@ -153,7 +158,7 @@ function Router() {
       <div className="min-h-screen bg-gray-50">
         {/* Show appropriate navigation based on route */}
         <header role="banner">
-          {!isAdminRoute && !isAcademyRoute && !isBuilderIQRoute && <Navigation />}
+          {!isAdminRoute && !isAcademyRoute && !isBuilderIQRoute && !isStandalonePage && <Navigation />}
           {isAcademyRoute && <AcademyNavigation />}
         </header>
 
