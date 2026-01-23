@@ -20,16 +20,16 @@ interface AcademyLearningIndicatorProps {
 
 // Mapping of topics to Academy courses
 const topicToCourse: Record<string, { title: string; slug: string; duration: string; level: string }> = {
-  'app-types': { title: 'Understanding App Types', slug: 'app-development-basics', duration: '15 min', level: 'Beginner' },
-  'ai-agents': { title: 'AI Agents Masterclass', slug: 'ai-agents-fundamentals', duration: '30 min', level: 'Intermediate' },
-  'prompts': { title: 'Prompt Engineering 101', slug: 'prompt-writing-101', duration: '25 min', level: 'Beginner' },
-  'blueprints': { title: 'App Blueprints Guide', slug: 'blueprints-deep-dive', duration: '20 min', level: 'Beginner' },
-  'authentication': { title: 'Auth & Security Basics', slug: 'authentication-security', duration: '35 min', level: 'Intermediate' },
-  'payments': { title: 'Payment Integration', slug: 'payment-systems', duration: '40 min', level: 'Advanced' },
-  'voice': { title: 'Voice-Enabled Apps', slug: 'voice-integration', duration: '25 min', level: 'Intermediate' },
-  'templates': { title: 'Using Templates Effectively', slug: 'template-mastery', duration: '20 min', level: 'Beginner' },
-  'deployment': { title: 'Deploying Your App', slug: 'deployment-guide', duration: '45 min', level: 'Advanced' },
-  'general': { title: 'BuilderIQ Quick Start', slug: 'builderiq-quickstart', duration: '10 min', level: 'Beginner' },
+  'app-types': { title: 'SmartPromptIQ Product Tour', slug: 'smartpromptiq-product-tour', duration: '1.5 hrs', level: 'Beginner' },
+  'ai-agents': { title: 'AI Agents Masterclass', slug: 'ai-agents-masterclass', duration: '30 min', level: 'Intermediate' },
+  'prompts': { title: 'Prompt Writing 101', slug: 'prompt-writing-101', duration: '3 hrs', level: 'Beginner' },
+  'blueprints': { title: 'SmartPromptIQ Basics', slug: 'smartpromptiq-basics', duration: '4 hrs', level: 'Beginner' },
+  'authentication': { title: 'Prompt Security & Safety', slug: 'prompt-security-safety', duration: '5 hrs', level: 'Intermediate' },
+  'payments': { title: 'SmartPromptIQ Basics', slug: 'smartpromptiq-basics', duration: '4 hrs', level: 'Beginner' },
+  'voice': { title: 'SmartPromptIQ Product Tour', slug: 'smartpromptiq-product-tour', duration: '1.5 hrs', level: 'Beginner' },
+  'templates': { title: 'Prompt Writing 101', slug: 'prompt-writing-101', duration: '3 hrs', level: 'Beginner' },
+  'deployment': { title: 'DevOps Automation with AI', slug: 'devops-automation-ai', duration: '10 hrs', level: 'Intermediate' },
+  'general': { title: 'SmartPromptIQ Product Tour', slug: 'smartpromptiq-product-tour', duration: '1.5 hrs', level: 'Beginner' },
 };
 
 const AcademyLearningIndicator: React.FC<AcademyLearningIndicatorProps> = ({
