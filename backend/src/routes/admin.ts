@@ -217,6 +217,136 @@ router.post('/seed', async (req: express.Request, res: express.Response) => {
   }
 });
 
+/**
+ * POST /api/admin/seed-academy
+ * Seeds the academy courses - protected by ADMIN_SEED_SECRET
+ */
+router.post('/seed-academy', async (req: express.Request, res: express.Response) => {
+  try {
+    const { secret } = req.body;
+
+    const adminSeedSecret = process.env.ADMIN_SEED_SECRET;
+    if (!adminSeedSecret || secret !== adminSeedSecret) {
+      return res.status(403).json({ success: false, message: 'Invalid seed secret' });
+    }
+
+    // Clear existing academy data (FK-safe order)
+    await prisma.courseReview.deleteMany();
+    await prisma.lessonProgress.deleteMany();
+    await prisma.enrollment.deleteMany();
+    await prisma.lesson.deleteMany();
+    await prisma.course.deleteMany();
+
+    // Seed courses inline (simplified version)
+    const courses = [
+      {
+        title: 'Prompt Writing 101',
+        slug: 'prompt-writing-101',
+        description: 'Master the fundamentals of prompt engineering.',
+        category: 'prompt-engineering',
+        difficulty: 'beginner',
+        duration: 180,
+        accessTier: 'free',
+        priceUSD: 0,
+        isPublished: true,
+        order: 1,
+        instructor: 'Dr. Sarah Chen',
+        tags: 'fundamentals,beginner,free',
+        averageRating: 4.9,
+        reviewCount: 1234,
+      },
+      {
+        title: 'AI Agents Fundamentals',
+        slug: 'ai-agents-fundamentals',
+        description: 'Understand the core concepts of AI agents.',
+        category: 'smartpromptiq',
+        difficulty: 'beginner',
+        duration: 25,
+        accessTier: 'free',
+        priceUSD: 0,
+        isPublished: true,
+        order: 2,
+        instructor: 'Alex Thompson',
+        tags: 'agents,fundamentals,beginner,free',
+        averageRating: 4.8,
+        reviewCount: 1523,
+        enrollmentCount: 3200,
+      },
+      {
+        title: 'AI Agents Masterclass',
+        slug: 'ai-agents-masterclass',
+        description: 'Learn to build, deploy, and monetize AI chatbots for any website.',
+        category: 'smartpromptiq',
+        difficulty: 'intermediate',
+        duration: 30,
+        accessTier: 'free',
+        priceUSD: 0,
+        isPublished: true,
+        order: 3,
+        instructor: 'Alex Thompson',
+        tags: 'agents,chatbots,automation,free,featured',
+        averageRating: 4.9,
+        reviewCount: 2847,
+        enrollmentCount: 2847,
+      },
+      {
+        title: 'SmartPromptIQ Product Tour',
+        slug: 'smartpromptiq-product-tour',
+        description: 'Complete walkthrough of SmartPromptIQ platform features.',
+        category: 'smartpromptiq',
+        difficulty: 'beginner',
+        duration: 90,
+        accessTier: 'free',
+        priceUSD: 0,
+        isPublished: true,
+        order: 4,
+        instructor: 'Emma Rodriguez',
+        tags: 'platform,tutorial,free',
+        averageRating: 4.9,
+        reviewCount: 567,
+      },
+    ];
+
+    for (const course of courses) {
+      await prisma.course.create({ data: course });
+    }
+
+    // Add lessons for AI Agents Masterclass
+    const masterclass = await prisma.course.findUnique({ where: { slug: 'ai-agents-masterclass' } });
+    if (masterclass) {
+      const lessons = [
+        { title: 'Welcome to AI Agents', description: 'Introduction to AI agents', duration: 5, order: 1, isFree: true },
+        { title: 'Creating Your First AI Agent', description: 'Step-by-step guide', duration: 6, order: 2, isFree: true },
+        { title: 'Writing Effective System Prompts', description: 'Master the CRISP framework', duration: 7, order: 3, isFree: true },
+        { title: 'Embedding Agents on Your Website', description: 'Technical implementation', duration: 5, order: 4, isFree: true },
+        { title: 'Advanced Features', description: 'Voice, analytics, customization', duration: 4, order: 5, isFree: true },
+        { title: 'Monetization Strategies', description: 'Turn agents into revenue', duration: 3, order: 6, isFree: true },
+      ];
+
+      for (const lesson of lessons) {
+        await prisma.lesson.create({
+          data: {
+            courseId: masterclass.id,
+            title: lesson.title,
+            description: lesson.description,
+            content: `# ${lesson.title}\n\n${lesson.description}`,
+            duration: lesson.duration,
+            order: lesson.order,
+            isFree: lesson.isFree,
+            isPublished: true,
+          },
+        });
+      }
+    }
+
+    const count = await prisma.course.count();
+    res.json({ success: true, message: `Academy seeded with ${count} courses` });
+  } catch (error: any) {
+    console.error('Academy seed error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Admin authentication middleware
 const requireAdmin = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   try {
