@@ -13,6 +13,7 @@
     "postinstall": "prisma generate --schema=./prisma/schema.prisma || echo 'Prisma generate skipped'",
     "studio": "prisma studio",
     "seed": "ts-node prisma/seed.ts",
+    "seed:academy": "ts-node --require dotenv/config prisma/seed-academy.ts",
     "seed:admin": "ts-node scripts/seed-admin.ts",
     "create-admin": "node create-admin.js"
   },
@@ -52,7 +53,8 @@
     "@types/morgan": "^1.9.9",
     "@types/nodemailer": "^6.4.14",
     "@types/uuid": "^10.0.0",
-    "ts-node-dev": "^2.0.0"
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.21.0"
   },
   "type": "commonjs",
   "engines": {
