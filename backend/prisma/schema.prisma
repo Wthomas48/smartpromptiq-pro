@@ -74,6 +74,8 @@ model User {
   certificates           Certificate[]
   courseReviews          CourseReview[]
   academySubscription    AcademySubscription?
+  agents                 Agent[]
+  apiKeys                ApiKey[]
 
   @@map("users")
 }
@@ -1412,4 +1414,183 @@ model SunoSong {
   @@index([genre])
   @@index([status])
   @@map("suno_songs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EMBEDDABLE WIDGET SYSTEM - Agent Chat Platform
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model Agent {
+  id     String @id @default(cuid())
+  userId String // Owner of the agent
+
+  // Agent identity
+  name        String
+  slug        String  @unique // URL-friendly identifier (e.g., "grant-writer")
+  description String?
+  avatar      String? // URL to agent avatar image
+
+  // AI configuration
+  provider    String  @default("anthropic") // anthropic, openai
+  model       String  @default("claude-3-haiku-20240307") // Model to use
+  systemPrompt String // The agent's personality and instructions
+  temperature Float   @default(0.7)
+  maxTokens   Int     @default(1024)
+
+  // Behavior settings
+  welcomeMessage  String? // Initial message when chat opens
+  suggestedQueries String? // JSON array of suggested questions
+  allowedDomains  String? // JSON array of domains where widget can be embedded (null = any)
+
+  // Voice settings (for voice-first)
+  voiceEnabled    Boolean @default(false)
+  voiceId         String? // ElevenLabs voice ID
+  speechToText    Boolean @default(false)
+
+  // Styling
+  primaryColor    String  @default("#6366f1") // Brand color
+  position        String  @default("bottom-right") // bottom-right, bottom-left
+  theme           String  @default("light") // light, dark, auto
+
+  // Access control
+  isPublic        Boolean @default(false) // Listed in marketplace
+  isActive        Boolean @default(true)
+
+  // Usage limits
+  dailyMessageLimit Int? // null = unlimited
+  monthlyMessageLimit Int?
+
+  // Stats
+  totalConversations Int @default(0)
+  totalMessages      Int @default(0)
+  averageRating      Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKeys       ApiKey[]
+  conversations Conversation[]
+
+  @@index([userId])
+  @@index([slug])
+  @@index([isPublic])
+  @@index([isActive])
+  @@map("agents")
+}
+
+model ApiKey {
+  id      String @id @default(cuid())
+  userId  String // Owner
+  agentId String // Associated agent
+
+  // Key details
+  name        String // Human-readable name (e.g., "Production Widget")
+  keyHash     String @unique // Hashed API key (store hash, not plaintext)
+  keyPrefix   String // First 8 chars for identification (e.g., "spiq_abc1")
+
+  // Permissions
+  permissions String @default("chat") // JSON array: ["chat", "history", "feedback"]
+
+  // Rate limiting
+  rateLimitPerMinute Int @default(60)
+  rateLimitPerDay    Int @default(10000)
+
+  // Domain restrictions (CORS)
+  allowedOrigins String? // JSON array of allowed origins (null = any)
+
+  // Status
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  usageCount  Int       @default(0)
+
+  // Expiration
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([agentId])
+  @@index([keyPrefix])
+  @@index([isActive])
+  @@map("api_keys")
+}
+
+model Conversation {
+  id        String  @id @default(cuid())
+  agentId   String
+  sessionId String  // Client-generated session ID for anonymous users
+  userId    String? // Optional: if user is authenticated
+
+  // Metadata
+  title       String? // Auto-generated from first message
+  source      String  @default("widget") // widget, api, dashboard
+  sourceUrl   String? // URL where widget was embedded
+  userAgent   String?
+  ipAddress   String?
+
+  // Context (passed by embedding site)
+  context     String? // JSON object with page context
+
+  // Status
+  status      String @default("active") // active, archived, flagged
+
+  // Feedback
+  rating      Int?    // 1-5 stars
+  feedback    String? // User feedback text
+
+  // Stats
+  messageCount Int @default(0)
+  tokenCount   Int @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastMessageAt DateTime?
+
+  agent    Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([agentId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String @id @default(cuid())
+  conversationId String
+
+  // Message content
+  role    String // user, assistant, system
+  content String
+
+  // Token usage
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+
+  // Cost tracking
+  costInCents Int?
+
+  // Performance
+  latencyMs Int? // Response time in milliseconds
+
+  // Metadata
+  metadata String? // JSON: tool calls, citations, etc.
+
+  createdAt DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([role])
+  @@index([createdAt])
+  @@map("messages")
 }
