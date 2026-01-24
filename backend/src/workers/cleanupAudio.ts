@@ -10,12 +10,24 @@
  * - Simple setInterval job
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+let supabase: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient | null {
+  if (supabase) return supabase;
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    console.warn("⚠️ Supabase not configured - audio cleanup disabled");
+    return null;
+  }
+
+  supabase = createClient(url, key);
+  return supabase;
+}
 
 const BUCKETS = ["voice-output", "music-output"];
 const MAX_AGE_DAYS = 7;
@@ -28,6 +40,16 @@ export async function cleanupOldFiles(): Promise<{
   deleted: number;
   errors: string[];
 }> {
+  const client = getSupabaseClient();
+
+  if (!client) {
+    return {
+      success: false,
+      deleted: 0,
+      errors: ["Supabase not configured - skipping cleanup"],
+    };
+  }
+
   const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
   let deleted = 0;
   const errors: string[] = [];
@@ -36,7 +58,7 @@ export async function cleanupOldFiles(): Promise<{
 
   for (const bucket of BUCKETS) {
     try {
-      const { data: files, error } = await supabase.storage
+      const { data: files, error } = await client.storage
         .from(bucket)
         .list("", { limit: 1000 });
 
@@ -49,13 +71,13 @@ export async function cleanupOldFiles(): Promise<{
         // Skip folders (they have null id)
         if (file.id === null) {
           // List folder contents
-          const { data: folderFiles } = await supabase.storage
+          const { data: folderFiles } = await client.storage
             .from(bucket)
             .list(file.name, { limit: 1000 });
 
           for (const f of folderFiles || []) {
             if (f.created_at && new Date(f.created_at).getTime() < cutoff) {
-              const { error: delError } = await supabase.storage
+              const { error: delError } = await client.storage
                 .from(bucket)
                 .remove([`${file.name}/${f.name}`]);
 
@@ -67,7 +89,7 @@ export async function cleanupOldFiles(): Promise<{
 
         // Direct file
         if (file.created_at && new Date(file.created_at).getTime() < cutoff) {
-          const { error: delError } = await supabase.storage
+          const { error: delError } = await client.storage
             .from(bucket)
             .remove([file.name]);
 
