@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="50%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded background -->
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+
+  <!-- Brain icon centered -->
+  <g transform="translate(80, 120)">
+    <!-- Left hemisphere -->
+    <ellipse cx="100" cy="150" rx="80" ry="100" fill="white" opacity="0.95"/>
+    <ellipse cx="85" cy="130" rx="25" ry="35" fill="#7c3aed" opacity="0.2"/>
+
+    <!-- Right hemisphere -->
+    <ellipse cx="252" cy="150" rx="80" ry="100" fill="white" opacity="0.95"/>
+    <ellipse cx="267" cy="130" rx="25" ry="35" fill="#0ea5e9" opacity="0.2"/>
+
+    <!-- Center bridge -->
+    <rect x="130" y="100" width="92" height="60" rx="15" fill="white" opacity="0.9"/>
+
+    <!-- Neural dots -->
+    <circle cx="70" cy="120" r="12" fill="#0ea5e9" opacity="0.8"/>
+    <circle cx="90" cy="180" r="8" fill="#06b6d4" opacity="0.7"/>
+    <circle cx="282" cy="120" r="12" fill="#7c3aed" opacity="0.8"/>
+    <circle cx="262" cy="180" r="8" fill="#8b5cf6" opacity="0.7"/>
+    <circle cx="176" cy="130" r="15" fill="#f0f9ff" opacity="0.95"/>
+
+    <!-- IQ spark -->
+    <path d="M176 85 L186 105 L206 105 L190 118 L196 140 L176 125 L156 140 L162 118 L146 105 L166 105 Z"
+          fill="#fbbf24" opacity="0.9"/>
+  </g>
+</svg>

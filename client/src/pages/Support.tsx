@@ -157,7 +157,7 @@ export default function Support() {
               <span className="text-xs text-green-400 font-semibold">Always open</span>
             </div>
             <a
-              href="https://discord.com/invite/smartpromptiq"
+              href="https://discord.gg/smartpromptiq"
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full py-3 bg-[#5865F2] hover:bg-[#4752C4] text-white font-semibold rounded-xl transition-all text-center"
@@ -383,7 +383,7 @@ export default function Support() {
               YouTube Tutorials
             </a>
             <a
-              href="https://discord.com/invite/smartpromptiq"
+              href="https://discord.gg/smartpromptiq"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-6 py-3 bg-[#5865F2]/20 hover:bg-[#5865F2]/30 rounded-xl text-[#5865F2] font-semibold transition-all border border-[#5865F2]/30"
