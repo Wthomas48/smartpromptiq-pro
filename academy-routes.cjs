@@ -22,6 +22,79 @@ module.exports = function(app) {
   console.log('📚 Registering Academy API routes (using direct PostgreSQL)...');
 
   /**
+   * POST /api/academy/seed-courses
+   * Seeds academy courses - protected by secret
+   */
+  app.post('/api/academy/seed-courses', async (req, res) => {
+    try {
+      const { secret } = req.body;
+      const seedSecret = process.env.ADMIN_SEED_SECRET || process.env.JWT_SECRET;
+
+      if (!secret || secret !== seedSecret) {
+        return res.status(403).json({ success: false, message: 'Invalid secret' });
+      }
+
+      console.log('🌱 Seeding academy courses...');
+      const pool = getPool();
+
+      // Clear existing data
+      await pool.query('DELETE FROM academy_course_reviews');
+      await pool.query('DELETE FROM academy_lesson_progress');
+      await pool.query('DELETE FROM academy_enrollments');
+      await pool.query('DELETE FROM academy_lessons');
+      await pool.query('DELETE FROM academy_courses');
+
+      // Insert courses
+      const courses = [
+        { title: 'Prompt Writing 101', slug: 'prompt-writing-101', description: 'Master the fundamentals of prompt engineering.', category: 'prompt-engineering', difficulty: 'beginner', duration: 180, accessTier: 'free', priceUSD: 0, order: 1, instructor: 'Dr. Sarah Chen', tags: 'fundamentals,beginner,free', averageRating: 4.9, reviewCount: 1234 },
+        { title: 'Introduction to AI Prompting', slug: 'introduction-to-ai-prompting', description: 'Understand how AI language models work.', category: 'prompt-engineering', difficulty: 'beginner', duration: 120, accessTier: 'free', priceUSD: 0, order: 2, instructor: 'Prof. Michael Zhang', tags: 'ai-basics,beginner,free', averageRating: 4.8, reviewCount: 892 },
+        { title: 'AI Agents Fundamentals', slug: 'ai-agents-fundamentals', description: 'Core concepts of AI agents and automation.', category: 'smartpromptiq', difficulty: 'beginner', duration: 25, accessTier: 'free', priceUSD: 0, order: 3, instructor: 'Alex Thompson', tags: 'agents,fundamentals,free', averageRating: 4.8, reviewCount: 1523, enrollmentCount: 3200 },
+        { title: 'AI Agents Masterclass', slug: 'ai-agents-masterclass', description: 'Learn to build, deploy, and monetize AI chatbots for any website. From basics to advanced automation.', category: 'smartpromptiq', difficulty: 'intermediate', duration: 30, accessTier: 'free', priceUSD: 0, order: 4, instructor: 'Alex Thompson', tags: 'agents,chatbots,automation,free,featured', averageRating: 4.9, reviewCount: 2847, enrollmentCount: 2847 },
+        { title: 'SmartPromptIQ Product Tour', slug: 'smartpromptiq-product-tour', description: 'Complete walkthrough of SmartPromptIQ platform features.', category: 'smartpromptiq', difficulty: 'beginner', duration: 90, accessTier: 'free', priceUSD: 0, order: 5, instructor: 'Emma Rodriguez', tags: 'platform,tutorial,free', averageRating: 4.9, reviewCount: 567 },
+        { title: 'SmartPromptIQ Basics', slug: 'smartpromptiq-basics', description: 'Getting the most from your SmartPromptIQ subscription.', category: 'smartpromptiq', difficulty: 'beginner', duration: 240, accessTier: 'smartpromptiq_included', priceUSD: 0, order: 6, instructor: 'David Kim', tags: 'platform,basics,included', averageRating: 4.9, reviewCount: 445 },
+        { title: 'Advanced Prompt Patterns', slug: 'advanced-prompt-patterns', description: 'Master sophisticated prompt design patterns.', category: 'prompt-engineering', difficulty: 'advanced', duration: 480, accessTier: 'pro', priceUSD: 0, order: 10, instructor: 'Dr. James Wilson', tags: 'advanced,patterns,pro', averageRating: 4.9, reviewCount: 723 },
+        { title: 'Certified Prompt Engineer (CPE)', slug: 'certified-prompt-engineer-cpe', description: 'Complete certification program with exam.', category: 'certification', difficulty: 'advanced', duration: 2400, accessTier: 'certification', priceUSD: 29900, order: 20, instructor: 'Multiple Experts', tags: 'certification,professional,exam', averageRating: 4.9, reviewCount: 1567 },
+      ];
+
+      for (const c of courses) {
+        await pool.query(`
+          INSERT INTO academy_courses (id, title, slug, description, category, difficulty, duration, "accessTier", "priceUSD", "isPublished", "order", instructor, tags, "averageRating", "reviewCount", "enrollmentCount", "createdAt", "updatedAt")
+          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, true, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+        `, [c.title, c.slug, c.description, c.category, c.difficulty, c.duration, c.accessTier, c.priceUSD, c.order, c.instructor, c.tags, c.averageRating, c.reviewCount, c.enrollmentCount || 0]);
+      }
+
+      // Get AI Agents Masterclass ID for lessons
+      const mcResult = await pool.query("SELECT id FROM academy_courses WHERE slug = 'ai-agents-masterclass'");
+      if (mcResult.rows.length > 0) {
+        const mcId = mcResult.rows[0].id;
+        const lessons = [
+          { title: 'Welcome to AI Agents', description: 'Introduction to AI agents', content: '# Welcome!\n\nLearn to build AI chat agents.', duration: 5, order: 1 },
+          { title: 'Creating Your First AI Agent', description: 'Step-by-step guide', content: '# Create Your First Agent\n\n1. Go to AI Agents\n2. Click Create\n3. Configure', duration: 6, order: 2 },
+          { title: 'Writing Effective System Prompts', description: 'The CRISP framework', content: '# System Prompts\n\nUse CRISP: Context, Role, Instructions, Scope, Personality', duration: 7, order: 3 },
+          { title: 'Embedding Agents on Your Website', description: 'Technical implementation', content: '# Embedding\n\nAdd script tag to your site.', duration: 5, order: 4 },
+          { title: 'Advanced Features', description: 'Voice and analytics', content: '# Advanced\n\nEnable voice, view analytics.', duration: 4, order: 5 },
+          { title: 'Monetization Strategies', description: 'Turn agents into revenue', content: '# Monetization\n\nSell as service, lead gen, support savings.', duration: 3, order: 6 },
+        ];
+        for (const l of lessons) {
+          await pool.query(`
+            INSERT INTO academy_lessons (id, "courseId", title, description, content, duration, "order", "isFree", "isPublished", "createdAt", "updatedAt")
+            VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, true, true, NOW(), NOW())
+          `, [mcId, l.title, l.description, l.content, l.duration, l.order]);
+        }
+      }
+
+      const countResult = await pool.query('SELECT COUNT(*) FROM academy_courses');
+      const count = parseInt(countResult.rows[0].count);
+
+      console.log(`✅ Seeded ${count} courses`);
+      res.json({ success: true, message: `Seeded ${count} courses`, count });
+    } catch (error) {
+      console.error('❌ Seed error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  /**
    * GET /api/academy/courses
    * Get all published courses (public course catalog)
    */
