@@ -6,6 +6,63 @@ import { authenticate } from '../middleware/auth';
 const router = Router();
 const prisma = new PrismaClient();
 
+/**
+ * POST /api/academy/seed-courses
+ * Seeds academy courses - protected by secret
+ */
+router.post('/seed-courses', async (req: Request, res: Response) => {
+  try {
+    const { secret } = req.body;
+    const seedSecret = process.env.ADMIN_SEED_SECRET || process.env.JWT_SECRET;
+
+    if (!secret || secret !== seedSecret) {
+      return res.status(403).json({ success: false, message: 'Invalid secret' });
+    }
+
+    // Clear and reseed
+    await prisma.courseReview.deleteMany();
+    await prisma.lessonProgress.deleteMany();
+    await prisma.enrollment.deleteMany();
+    await prisma.lesson.deleteMany();
+    await prisma.course.deleteMany();
+
+    const courses = [
+      { title: 'Prompt Writing 101', slug: 'prompt-writing-101', description: 'Master the fundamentals of prompt engineering.', category: 'prompt-engineering', difficulty: 'beginner', duration: 180, accessTier: 'free', priceUSD: 0, isPublished: true, order: 1, instructor: 'Dr. Sarah Chen', tags: 'fundamentals,beginner,free', averageRating: 4.9, reviewCount: 1234 },
+      { title: 'Introduction to AI Prompting', slug: 'introduction-to-ai-prompting', description: 'Understand how AI language models work.', category: 'prompt-engineering', difficulty: 'beginner', duration: 120, accessTier: 'free', priceUSD: 0, isPublished: true, order: 2, instructor: 'Prof. Michael Zhang', tags: 'ai-basics,beginner,free', averageRating: 4.8, reviewCount: 892 },
+      { title: 'AI Agents Fundamentals', slug: 'ai-agents-fundamentals', description: 'Core concepts of AI agents and automation.', category: 'smartpromptiq', difficulty: 'beginner', duration: 25, accessTier: 'free', priceUSD: 0, isPublished: true, order: 3, instructor: 'Alex Thompson', tags: 'agents,fundamentals,free', averageRating: 4.8, reviewCount: 1523, enrollmentCount: 3200 },
+      { title: 'AI Agents Masterclass', slug: 'ai-agents-masterclass', description: 'Learn to build, deploy, and monetize AI chatbots for any website. From basics to advanced automation.', category: 'smartpromptiq', difficulty: 'intermediate', duration: 30, accessTier: 'free', priceUSD: 0, isPublished: true, order: 4, instructor: 'Alex Thompson', tags: 'agents,chatbots,automation,free,featured', averageRating: 4.9, reviewCount: 2847, enrollmentCount: 2847 },
+      { title: 'SmartPromptIQ Product Tour', slug: 'smartpromptiq-product-tour', description: 'Complete walkthrough of SmartPromptIQ platform features.', category: 'smartpromptiq', difficulty: 'beginner', duration: 90, accessTier: 'free', priceUSD: 0, isPublished: true, order: 5, instructor: 'Emma Rodriguez', tags: 'platform,tutorial,free', averageRating: 4.9, reviewCount: 567 },
+      { title: 'SmartPromptIQ Basics', slug: 'smartpromptiq-basics', description: 'Getting the most from your SmartPromptIQ subscription.', category: 'smartpromptiq', difficulty: 'beginner', duration: 240, accessTier: 'smartpromptiq_included', priceUSD: 0, isPublished: true, order: 6, instructor: 'David Kim', tags: 'platform,basics,included', averageRating: 4.9, reviewCount: 445 },
+      { title: 'Advanced Prompt Patterns', slug: 'advanced-prompt-patterns', description: 'Master sophisticated prompt design patterns.', category: 'prompt-engineering', difficulty: 'advanced', duration: 480, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 10, instructor: 'Dr. James Wilson', tags: 'advanced,patterns,pro', averageRating: 4.9, reviewCount: 723 },
+      { title: 'Certified Prompt Engineer (CPE)', slug: 'certified-prompt-engineer-cpe', description: 'Complete certification program with exam.', category: 'certification', difficulty: 'advanced', duration: 2400, accessTier: 'certification', priceUSD: 29900, isPublished: true, order: 20, instructor: 'Multiple Experts', tags: 'certification,professional,exam', averageRating: 4.9, reviewCount: 1567 },
+    ];
+
+    for (const c of courses) { await prisma.course.create({ data: c }); }
+
+    // Add lessons for AI Agents Masterclass
+    const mc = await prisma.course.findUnique({ where: { slug: 'ai-agents-masterclass' } });
+    if (mc) {
+      const lessons = [
+        { title: 'Welcome to AI Agents', description: 'Introduction to AI agents and what you will learn', content: '# Welcome to AI Agents Masterclass!\n\nIn this course you will learn to build, deploy, and monetize AI chat agents.', duration: 5, order: 1, isFree: true },
+        { title: 'Creating Your First AI Agent', description: 'Step-by-step guide to creating your first agent', content: '# Creating Your First AI Agent\n\n1. Go to AI Agents section\n2. Click Create Agent\n3. Fill in the details\n4. Get your API key', duration: 6, order: 2, isFree: true },
+        { title: 'Writing Effective System Prompts', description: 'Master the CRISP framework for system prompts', content: '# Writing Effective System Prompts\n\n## The CRISP Framework\n\n- **C**ontext\n- **R**ole\n- **I**nstructions\n- **S**cope\n- **P**ersonality', duration: 7, order: 3, isFree: true },
+        { title: 'Embedding Agents on Your Website', description: 'Technical guide to adding agents to any site', content: '# Embedding Agents\n\nAdd this script to your website:\n\n```html\n<script src="https://smartpromptiq.com/widget.js" data-agent="your-slug"></script>\n```', duration: 5, order: 4, isFree: true },
+        { title: 'Advanced Features', description: 'Voice, analytics, and customization', content: '# Advanced Features\n\n- Voice capabilities\n- Analytics dashboard\n- Custom styling\n- Rate limiting', duration: 4, order: 5, isFree: true },
+        { title: 'Monetization Strategies', description: 'Turn your agents into revenue', content: '# Monetization Strategies\n\n1. Sell as a service\n2. Lead generation\n3. Customer support savings\n4. Premium chat tiers', duration: 3, order: 6, isFree: true },
+      ];
+      for (const l of lessons) {
+        await prisma.lesson.create({ data: { courseId: mc.id, ...l, isPublished: true } });
+      }
+    }
+
+    const count = await prisma.course.count();
+    res.json({ success: true, message: `Seeded ${count} courses`, count });
+  } catch (error: any) {
+    console.error('Seed error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ============================================
 // PUBLIC ROUTES (No auth required)
 // ============================================
