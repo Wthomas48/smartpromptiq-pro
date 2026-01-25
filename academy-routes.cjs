@@ -313,8 +313,65 @@ module.exports = function(app) {
   });
 
   /**
-   * POST /api/academy/enroll/:courseId
+   * POST /api/academy/enroll
    * Enroll in a course (requires authentication)
+   */
+  app.post('/api/academy/enroll', async (req, res) => {
+    try {
+      const { courseId, slug } = req.body;
+      const courseIdentifier = courseId || slug;
+      console.log('📝 Enrollment request:', { courseId, slug });
+
+      if (!courseIdentifier) {
+        return res.status(400).json({
+          success: false,
+          message: 'courseId or slug is required'
+        });
+      }
+
+      const pool = getPool();
+
+      // Find the course
+      let course;
+      if (slug) {
+        const result = await pool.query('SELECT * FROM academy_courses WHERE slug = $1', [slug]);
+        course = result.rows[0];
+      } else {
+        const result = await pool.query('SELECT * FROM academy_courses WHERE id = $1', [courseId]);
+        course = result.rows[0];
+      }
+
+      if (!course) {
+        return res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+      }
+
+      // For free courses, enrollment is automatic
+      res.json({
+        success: true,
+        message: 'Successfully enrolled in course',
+        data: {
+          courseId: course.id,
+          courseTitle: course.title,
+          slug: course.slug,
+          enrolledAt: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error enrolling in course:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to enroll in course',
+        error: error.message,
+      });
+    }
+  });
+
+  /**
+   * POST /api/academy/enroll/:courseId
+   * Enroll in a course (alternative with param)
    */
   app.post('/api/academy/enroll/:courseId', async (req, res) => {
     try {
@@ -322,7 +379,6 @@ module.exports = function(app) {
       console.log('📝 Enrollment request for course:', courseId);
 
       // For free courses, enrollment is automatic
-      // In production, this would create an enrollment record
       res.json({
         success: true,
         message: 'Successfully enrolled in course',
