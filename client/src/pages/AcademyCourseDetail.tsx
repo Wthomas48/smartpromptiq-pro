@@ -645,6 +645,178 @@ const AcademyCourseDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* FAQ Section - Optimized for Google "People Also Ask" */}
+      <section className="bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <h2 className="text-3xl font-extrabold text-gray-900 mb-8 text-center">
+            <i className="fas fa-question-circle text-purple-600 mr-3"></i>
+            Frequently Asked Questions
+          </h2>
+
+          <div className="space-y-4" itemScope itemType="https://schema.org/FAQPage">
+            {/* FAQ 1 */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-100" itemScope itemProp="mainEntity" itemType="https://schema.org/Question">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-start" itemProp="name">
+                <span className="w-8 h-8 bg-purple-600 text-white rounded-lg flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">Q</span>
+                What is SmartPromptIQ Academy?
+              </h3>
+              <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                <p className="text-gray-700 leading-relaxed ml-11" itemProp="text">
+                  SmartPromptIQ Academy is a comprehensive online learning platform dedicated to AI and prompt engineering education. We offer {course.lessons?.length || 0}+ structured courses taught by industry experts, covering everything from beginner fundamentals to advanced certification programs. Our curriculum is designed for professionals who want to master AI tools and increase their productivity.
+                </p>
+              </div>
+            </div>
+
+            {/* FAQ 2 */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-purple-200 transition-colors" itemScope itemProp="mainEntity" itemType="https://schema.org/Question">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-start" itemProp="name">
+                <span className="w-8 h-8 bg-purple-600 text-white rounded-lg flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">Q</span>
+                Who is this {course.title} course for?
+              </h3>
+              <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                <p className="text-gray-700 leading-relaxed ml-11" itemProp="text">
+                  This {course.difficulty}-level course is designed for {course.difficulty === 'beginner' ? 'anyone new to AI and prompt engineering, including students, professionals looking to upskill, and entrepreneurs wanting to leverage AI' : course.difficulty === 'intermediate' ? 'professionals with basic AI knowledge who want to deepen their expertise and learn advanced techniques' : 'experienced practitioners seeking expert-level skills, industry certifications, and leadership capabilities in AI'}. With {course.enrollmentCount.toLocaleString()}+ students already enrolled, our community spans marketers, developers, writers, and business leaders.
+                </p>
+              </div>
+            </div>
+
+            {/* FAQ 3 */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-100" itemScope itemProp="mainEntity" itemType="https://schema.org/Question">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-start" itemProp="name">
+                <span className="w-8 h-8 bg-purple-600 text-white rounded-lg flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">Q</span>
+                Do I need technical skills or coding experience?
+              </h3>
+              <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                <p className="text-gray-700 leading-relaxed ml-11" itemProp="text">
+                  {course.difficulty === 'beginner' ? 'No technical skills or coding experience required! This course is specifically designed for beginners. We start with the fundamentals and use plain language to explain concepts. All you need is curiosity and a willingness to learn.' : course.difficulty === 'intermediate' ? 'Basic familiarity with AI tools like ChatGPT or Claude is helpful but not required. We provide foundational context before diving into advanced topics. No programming knowledge is necessary unless specifically noted.' : 'Some prior experience with AI tools is recommended for advanced courses. While coding isn\'t always required, familiarity with concepts like APIs, data structures, or basic programming can enhance your learning experience.'}
+                </p>
+              </div>
+            </div>
+
+            {/* FAQ 4 */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-purple-200 transition-colors" itemScope itemProp="mainEntity" itemType="https://schema.org/Question">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-start" itemProp="name">
+                <span className="w-8 h-8 bg-purple-600 text-white rounded-lg flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">Q</span>
+                How is SmartPromptIQ different from other AI courses?
+              </h3>
+              <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                <p className="text-gray-700 leading-relaxed ml-11" itemProp="text">
+                  Unlike generic AI courses, SmartPromptIQ Academy focuses exclusively on practical prompt engineering skills you can use immediately. Our courses feature real-world workflows, hands-on exercises, and templates you can apply to your work today. We also provide lifetime access, regular content updates, a supportive community of {course.enrollmentCount.toLocaleString()}+ learners, and certificates of completion recognized by employers.
+                </p>
+              </div>
+            </div>
+
+            {/* FAQ 5 */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-100" itemScope itemProp="mainEntity" itemType="https://schema.org/Question">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-start" itemProp="name">
+                <span className="w-8 h-8 bg-purple-600 text-white rounded-lg flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">Q</span>
+                Can complete beginners succeed with this course?
+              </h3>
+              <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                <p className="text-gray-700 leading-relaxed ml-11" itemProp="text">
+                  Absolutely! {course.difficulty === 'beginner' ? 'This course was built specifically for beginners with zero prior experience.' : 'While this is a ' + course.difficulty + ' course, we provide prerequisite guidance and foundational resources.'} Our {course.lessons?.length || 0} lessons progress logically from basics to advanced concepts. With our step-by-step approach, {course.averageRating ? course.averageRating.toFixed(1) + '-star rating from ' + course.reviewCount + ' reviews shows' : 'student feedback confirms'} that learners of all backgrounds successfully complete our courses and apply their new skills.
+                </p>
+              </div>
+            </div>
+
+            {/* FAQ 6 */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-purple-200 transition-colors" itemScope itemProp="mainEntity" itemType="https://schema.org/Question">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-start" itemProp="name">
+                <span className="w-8 h-8 bg-purple-600 text-white rounded-lg flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0">Q</span>
+                What do I get when I enroll in {course.title}?
+              </h3>
+              <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                <p className="text-gray-700 leading-relaxed ml-11" itemProp="text">
+                  When you enroll, you get lifetime access to all {course.lessons?.length || 0} lessons ({Math.floor(course.duration / 60)} hours of content), downloadable resources and templates, hands-on exercises with real-world examples, a certificate of completion, access to our student community, and all future course updates at no extra cost. {course.accessTier === 'free' ? 'Best of all, this course is completely free!' : 'Your investment includes everything you need to master ' + course.category.replace('-', ' ') + '.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA after FAQs */}
+          <div className="mt-12 text-center">
+            <p className="text-gray-600 mb-6">Ready to start your AI learning journey?</p>
+            <button
+              onClick={isEnrolled ? () => window.location.href = '/academy/dashboard' : handleEnroll}
+              className="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold text-lg hover:scale-105 transition-all shadow-lg"
+            >
+              {isEnrolled ? (
+                <>
+                  <i className="fas fa-play mr-2"></i>
+                  Continue Learning
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-graduation-cap mr-2"></i>
+                  Enroll Now - {course.accessTier === 'free' ? "It's Free!" : 'Get Started'}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Schema.org Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is SmartPromptIQ Academy?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "SmartPromptIQ Academy is a comprehensive online learning platform dedicated to AI and prompt engineering education. We offer structured courses taught by industry experts, covering everything from beginner fundamentals to advanced certification programs."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": `Who is the ${course.title} course for?`,
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": `This ${course.difficulty}-level course is designed for ${course.difficulty === 'beginner' ? 'anyone new to AI and prompt engineering' : course.difficulty === 'intermediate' ? 'professionals with basic AI knowledge' : 'experienced practitioners seeking expert-level skills'}. Our community spans marketers, developers, writers, and business leaders.`
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Do I need technical skills or coding experience?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": course.difficulty === 'beginner' ? "No technical skills or coding experience required! This course is specifically designed for beginners." : "Basic familiarity with AI tools is helpful but not required. No programming knowledge is necessary unless specifically noted."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How is SmartPromptIQ different from other AI courses?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Unlike generic AI courses, SmartPromptIQ Academy focuses exclusively on practical prompt engineering skills you can use immediately. Our courses feature real-world workflows, hands-on exercises, and templates you can apply to your work today."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can complete beginners succeed with this course?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Absolutely! Our lessons progress logically from basics to advanced concepts. With our step-by-step approach, learners of all backgrounds successfully complete our courses and apply their new skills."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": `What do I get when I enroll in ${course.title}?`,
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": `You get lifetime access to all ${course.lessons?.length || 0} lessons, downloadable resources, hands-on exercises, a certificate of completion, community access, and all future updates at no extra cost.`
+                }
+              }
+            ]
+          })
+        }}
+      />
+
       {/* Success Modal */}
       {showEnrollModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
