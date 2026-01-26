@@ -8,6 +8,7 @@ import HandsOnExercise from '@/components/HandsOnExercise';
 import LessonAudioPlayer from '@/components/LessonAudioPlayer';
 import LessonRatingFeedback from '@/components/LessonRatingFeedback';
 import CertificateShareModal from '@/components/CertificateShareModal';
+import AcademyFeatureLinks from '@/components/AcademyFeatureLinks';
 
 interface Lesson {
   id: string;
@@ -354,6 +355,9 @@ const AcademyLessonViewer: React.FC = () => {
                   </a>
                 </div>
               )}
+
+              {/* Apply What You've Learned - Links to Platform Features */}
+              <AcademyFeatureLinks />
             </div>
 
             {/* Interactive Playground */}

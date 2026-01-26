@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import RequestCustomCategory from '@/components/RequestCustomCategory';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import CategorySEOSection, { categoryContent } from '@/components/CategorySEOSection';
+import EducationalHeader, { educationalContent } from '@/components/EducationalHeader';
 import { 
   Briefcase, 
   Zap, 
@@ -635,6 +637,25 @@ export default function Categories() {
             </Button>
           </div>
         )}
+
+        {/* SEO-Optimized Category Deep Dives */}
+        <div className="mt-20 pt-12 border-t border-gray-200">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Explore AI Categories In-Depth
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Learn how AI prompts can transform your workflow in each category. Each section includes
+              templates, academy courses, and practical examples.
+            </p>
+          </div>
+
+          <div className="space-y-16">
+            {Object.keys(categoryContent).map((categoryId) => (
+              <CategorySEOSection key={categoryId} categoryId={categoryId} showFull={true} />
+            ))}
+          </div>
+        </div>
 
         {/* Request Custom Category */}
         <div className="mt-16">

@@ -23,6 +23,7 @@ import PremiumMusicLibrary from '@/components/PremiumMusicLibrary';
 import { useAudioStoreSafe } from '@/contexts/AudioStoreContext';
 import { getApiBaseUrl } from '@/config/api';
 import SectionLanding from '@/components/SectionLanding';
+import EducationalHeader, { educationalContent } from '@/components/EducationalHeader';
 import {
   Mic, MicOff, Volume2, VolumeX, Play, Pause, Square,
   Download, Share2, Save, Sparkles, Wand2, Copy, Check,
@@ -867,6 +868,16 @@ const VoiceBuilder: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Educational Context Header */}
+      <EducationalHeader
+        title={educationalContent.voiceAI.title}
+        definition={educationalContent.voiceAI.definition}
+        icon={<Volume2 className="w-5 h-5" />}
+        academyLink={educationalContent.voiceAI.academyLink}
+        relatedLinks={educationalContent.voiceAI.relatedLinks}
+        gradient={educationalContent.voiceAI.gradient}
+      />
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
@@ -877,12 +888,12 @@ const VoiceBuilder: React.FC = () => {
               <Volume2 className="w-3 h-3 mr-1" /> Part of SmartPromptIQ™ Platform
             </Badge>
 
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">
+            <h2 className="text-4xl md:text-6xl font-bold text-white mb-4">
               <span className="text-white">SmartPromptIQ™</span>
               <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 {' '}Voice Builder
               </span>
-            </h1>
+            </h2>
 
             <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-6">
               Transform your text into professional AI voiceovers. Create narrations for app pitches,

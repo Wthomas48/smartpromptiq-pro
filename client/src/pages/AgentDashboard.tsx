@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getApiBaseUrl } from '@/config/api';
 import BackButton from '@/components/BackButton';
 import SectionLanding from '@/components/SectionLanding';
+import EducationalHeader, { educationalContent } from '@/components/EducationalHeader';
 import {
   Bot, Plus, Settings, Key, Code, BarChart3, Trash2, Edit,
   Copy, Check, Eye, EyeOff, RefreshCw, MessageSquare, Users,
@@ -353,20 +354,31 @@ const AgentDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <BackButton />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Educational Context Header */}
+      <EducationalHeader
+        title={educationalContent.aiAgents.title}
+        definition={educationalContent.aiAgents.definition}
+        icon={<Bot className="w-5 h-5" />}
+        academyLink={educationalContent.aiAgents.academyLink}
+        relatedLinks={educationalContent.aiAgents.relatedLinks}
+        gradient={educationalContent.aiAgents.gradient}
+      />
 
-          <div className="mt-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                <Bot className="w-8 h-8 text-purple-400" />
-                My AI Agents
-              </h1>
-              <p className="text-gray-400 mt-1">Create and manage embeddable AI chat agents for your websites</p>
-            </div>
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          {/* Header */}
+          <div className="mb-8">
+            <BackButton />
+
+            <div className="mt-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+                  <Bot className="w-8 h-8 text-purple-400" />
+                  My AI Agents
+                </h2>
+                <p className="text-gray-400 mt-1">Create and manage embeddable AI chat agents for your websites</p>
+              </div>
             <Button
               onClick={() => setShowCreateModal(true)}
               className="bg-purple-600 hover:bg-purple-700"
@@ -1109,6 +1121,7 @@ const AgentDashboard: React.FC = () => {
               View Documentation
             </Button>
           </div>
+        </div>
         </div>
       </div>
     </div>

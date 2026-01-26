@@ -15,12 +15,13 @@ import AnimatedCounter from "@/components/AnimatedCounter";
 import BackButton from "@/components/BackButton";
 import TokenBalance from "@/components/TokenBalance";
 import SectionLanding from "@/components/SectionLanding";
+import EducationalHeader, { educationalContent } from "@/components/EducationalHeader";
 import {
   Search, Grid, List, Star, TrendingUp, Crown, Heart, Clock, Users,
   AlertCircle, CheckCircle, Settings, Zap, Eye, RefreshCw, Play,
   Briefcase, TrendingDown, DollarSign, GraduationCap, Target, Lightbulb,
   PenTool, MessageSquare, BarChart3, Rocket, Brain, Sparkles, Lock, Shield,
-  FileText
+  FileText, Layers
 } from "lucide-react";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import TierIndicator from "@/components/TierIndicator";
@@ -867,6 +868,16 @@ export default function Templates() {
   // Authenticated users see the full template experience
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-cyan-50">
+      {/* Educational Context Header */}
+      <EducationalHeader
+        title={educationalContent.templates.title}
+        definition={educationalContent.templates.definition}
+        icon={<Layers className="w-5 h-5" />}
+        academyLink={educationalContent.templates.academyLink}
+        relatedLinks={educationalContent.templates.relatedLinks}
+        gradient={educationalContent.templates.gradient}
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         <div className="flex items-center justify-between mb-4">
           <BackButton />

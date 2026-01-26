@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGamification } from '@/contexts/GamificationContext';
 import { useToast } from '@/hooks/use-toast';
 import SectionLanding from '@/components/SectionLanding';
+import EducationalHeader, { educationalContent } from '@/components/EducationalHeader';
 import {
   Search, Filter, Star, Download, Heart, Share2,
   ShoppingCart, Tag, TrendingUp, Clock, User,
@@ -572,21 +573,32 @@ const Marketplace: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <BackButton />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Educational Context Header */}
+      <EducationalHeader
+        title={educationalContent.marketplace.title}
+        definition={educationalContent.marketplace.definition}
+        icon={<Store className="w-5 h-5" />}
+        academyLink={educationalContent.marketplace.academyLink}
+        relatedLinks={educationalContent.marketplace.relatedLinks}
+        gradient={educationalContent.marketplace.gradient}
+      />
 
-          <div className="mt-6 text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <ShoppingCart className="w-8 h-8 text-white" />
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          {/* Header */}
+          <div className="mb-8">
+            <BackButton />
+
+            <div className="mt-6 text-center">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <ShoppingCart className="w-8 h-8 text-white" />
+                </div>
               </div>
-            </div>
-            <h1 className="text-4xl font-bold text-white mb-2">
-              Prompt Marketplace
-            </h1>
+              <h2 className="text-4xl font-bold text-white mb-2">
+                Prompt Marketplace
+              </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
               Discover and share premium prompts created by the community.
               Buy, sell, and earn from your best work.
@@ -925,6 +937,7 @@ const Marketplace: React.FC = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

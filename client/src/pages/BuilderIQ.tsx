@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceActivation } from '@/hooks/useVoiceActivation';
 import { apiRequest } from '@/lib/queryClient';
 import SectionLanding from '@/components/SectionLanding';
+import EducationalHeader, { educationalContent } from '@/components/EducationalHeader';
 import {
   Mic, MicOff, Sparkles, Zap, BookOpen, Layout,
   MessageSquare, Palette, Code, Rocket, ArrowRight,
@@ -521,6 +522,16 @@ const BuilderIQ: React.FC = () => {
   // Authenticated users see the full BuilderIQ experience
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Educational Context Header */}
+      <EducationalHeader
+        title={educationalContent.builderIQ.title}
+        definition={educationalContent.builderIQ.definition}
+        icon={<Hammer className="w-5 h-5" />}
+        academyLink={educationalContent.builderIQ.academyLink}
+        relatedLinks={educationalContent.builderIQ.relatedLinks}
+        gradient={educationalContent.builderIQ.gradient}
+      />
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         {/* Animated background */}
