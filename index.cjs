@@ -1918,6 +1918,74 @@ app.post('/api/admin/payments/:id/refund', adminAuth, async (req, res) => {
 });
 
 // ========================================
+// Database Migration Endpoint
+// ========================================
+app.post('/api/admin/run-migrations', async (req, res) => {
+  try {
+    const { adminSecret } = req.body;
+
+    // Validate admin secret
+    const expectedSecret = process.env.ADMIN_SEED_SECRET || 'smartpromptiq-admin-2024';
+    if (adminSecret !== expectedSecret) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid admin secret'
+      });
+    }
+
+    const migrations = [];
+
+    // Migration 1: Add discordId column if it doesn't exist
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS "discordId" VARCHAR(255) UNIQUE
+      `);
+      migrations.push({ name: 'Add discordId column', success: true });
+    } catch (error) {
+      if (error.message?.includes('already exists')) {
+        migrations.push({ name: 'Add discordId column', success: true, error: 'Column already exists' });
+      } else {
+        migrations.push({ name: 'Add discordId column', success: false, error: error.message });
+      }
+    }
+
+    // Migration 2: Add discordUsername column if it doesn't exist
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS "discordUsername" VARCHAR(255)
+      `);
+      migrations.push({ name: 'Add discordUsername column', success: true });
+    } catch (error) {
+      if (error.message?.includes('already exists')) {
+        migrations.push({ name: 'Add discordUsername column', success: true, error: 'Column already exists' });
+      } else {
+        migrations.push({ name: 'Add discordUsername column', success: false, error: error.message });
+      }
+    }
+
+    // Check if all migrations succeeded
+    const allSucceeded = migrations.every(m => m.success);
+
+    res.json({
+      success: allSucceeded,
+      message: allSucceeded ? 'All migrations completed successfully' : 'Some migrations failed',
+      migrations,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Migration failed',
+      error: error.message
+    });
+  }
+});
+
+// ========================================
 // Stripe Billing API Routes
 // ========================================
 // Note: Stripe is initialized at the top of the file (before express.json middleware)
