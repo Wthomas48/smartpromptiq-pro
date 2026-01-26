@@ -29,7 +29,35 @@ interface Course {
   enrollmentCount: number;
   lessons: Lesson[];
   tags: string;
+  seoDescription?: string;
 }
+
+// Generate SEO-optimized definition for Google AI Overview
+const generateSEODefinition = (course: Course): string => {
+  const categoryDescriptions: { [key: string]: string } = {
+    'prompt-engineering': 'Prompt engineering is the process of designing structured instructions that guide AI systems to produce accurate, consistent, and useful outputs.',
+    'smartpromptiq': 'SmartPromptIQ platform mastery enables professionals to leverage AI-powered prompt optimization, intelligent routing, and workflow automation.',
+    'devops': 'DevOps with AI combines continuous integration, deployment automation, and AI-assisted infrastructure management for efficient software delivery.',
+    'design': 'AI-powered design transforms creative workflows through automated asset generation, intelligent prototyping, and data-driven design decisions.',
+    'finance': 'AI in finance enables algorithmic trading, risk analysis, portfolio optimization, and automated financial modeling with machine learning.',
+    'marketing': 'AI marketing leverages machine learning for content creation, audience targeting, campaign optimization, and predictive analytics.',
+    'data': 'AI-driven data analysis combines statistical methods with machine learning for insights extraction, visualization, and decision support.',
+    'development': 'AI-assisted development accelerates coding through intelligent code generation, automated testing, debugging, and documentation.',
+    'business': 'AI for business automates workflows, enhances customer experiences, and provides data-driven insights for strategic decisions.',
+    'healthcare': 'AI in healthcare supports clinical decision-making, medical research, patient care optimization, and health data analysis.',
+    'education': 'AI in education personalizes learning experiences, automates assessment, and creates adaptive educational content.',
+    'certification': 'Professional AI certification validates expertise in prompt engineering, demonstrating competency to employers and clients.',
+    'research': 'AI research methods accelerate scientific discovery through automated literature review, hypothesis generation, and data analysis.',
+    'creative': 'Creative AI empowers writers, artists, and storytellers with intelligent content generation and narrative assistance.',
+    'events': 'Live AI workshops provide hands-on training, real-time Q&A, and collaborative learning with industry experts.',
+    'resources': 'AI learning resources include templates, tools, and reference materials for continuous skill development.',
+  };
+
+  const baseDescription = categoryDescriptions[course.category] ||
+    `${course.title} provides comprehensive training in AI and prompt engineering techniques.`;
+
+  return `${baseDescription} SmartPromptIQ Academy's "${course.title}" course teaches these skills through ${course.lessons?.length || 0} practical lessons designed for ${course.difficulty}-level learners.`;
+};
 
 const AcademyCourseDetail: React.FC = () => {
   const [, params] = useRoute('/academy/course/:slug');
@@ -205,8 +233,24 @@ const AcademyCourseDetail: React.FC = () => {
     );
   }
 
+  // Set document title and meta for SEO
+  useEffect(() => {
+    if (course) {
+      document.title = `${course.title} | SmartPromptIQ Academy - Learn AI & Prompt Engineering`;
+
+      // Update meta description
+      let metaDescription = document.querySelector('meta[name="description"]');
+      if (!metaDescription) {
+        metaDescription = document.createElement('meta');
+        metaDescription.setAttribute('name', 'description');
+        document.head.appendChild(metaDescription);
+      }
+      metaDescription.setAttribute('content', generateSEODefinition(course));
+    }
+  }, [course]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-indigo-50" itemScope itemType="https://schema.org/Course">
       <AcademyNavigation />
 
       {/* Hero Section - EPIC! */}
@@ -233,12 +277,12 @@ const AcademyCourseDetail: React.FC = () => {
             {/* Left: Course Info */}
             <div className="lg:col-span-2">
               {/* Title */}
-              <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
+              <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight" itemProp="name">
                 {course.title}
               </h1>
 
               {/* Description */}
-              <p className="text-2xl text-white/90 mb-8 leading-relaxed">
+              <p className="text-2xl text-white/90 mb-8 leading-relaxed" itemProp="abstract">
                 {course.description}
               </p>
 
@@ -392,15 +436,15 @@ const AcademyCourseDetail: React.FC = () => {
 
                 {/* Instructor Card */}
                 {course.instructor && (
-                  <div className="mt-6 bg-white rounded-2xl shadow-lg p-6">
+                  <div className="mt-6 bg-white rounded-2xl shadow-lg p-6" itemProp="instructor" itemScope itemType="https://schema.org/Person">
                     <p className="text-sm text-gray-500 mb-3 font-medium">Instructor</p>
                     <div className="flex items-center space-x-4">
                       <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
                         {course.instructor.charAt(0)}
                       </div>
                       <div>
-                        <h4 className="font-bold text-gray-900 text-lg">{course.instructor}</h4>
-                        <p className="text-sm text-gray-600">Expert Instructor</p>
+                        <h4 className="font-bold text-gray-900 text-lg" itemProp="name">{course.instructor}</h4>
+                        <p className="text-sm text-gray-600" itemProp="jobTitle">Expert Instructor</p>
                       </div>
                     </div>
                   </div>
@@ -410,6 +454,99 @@ const AcademyCourseDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* SEO Featured Snippet - Google AI Overview Target */}
+      <section className="bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Definition Box - Optimized for Featured Snippets */}
+          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-100">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <i className="fas fa-lightbulb text-white text-xl"></i>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 mb-2">
+                  What is {course.title}?
+                </h2>
+                <p className="text-gray-700 leading-relaxed" itemProp="description">
+                  {generateSEODefinition(course)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Facts - Structured for Google */}
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
+              <div className="text-2xl font-bold text-purple-600">{course.lessons?.length || 0}</div>
+              <div className="text-sm text-gray-600">Lessons</div>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
+              <div className="text-2xl font-bold text-purple-600">{Math.floor(course.duration / 60)}h {course.duration % 60}m</div>
+              <div className="text-sm text-gray-600">Duration</div>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
+              <div className="text-2xl font-bold text-purple-600 capitalize">{course.difficulty}</div>
+              <div className="text-sm text-gray-600">Level</div>
+            </div>
+            <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
+              <div className="text-2xl font-bold text-purple-600">{course.enrollmentCount.toLocaleString()}+</div>
+              <div className="text-sm text-gray-600">Students</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Schema.org Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Course",
+            "name": course.title,
+            "description": generateSEODefinition(course),
+            "provider": {
+              "@type": "Organization",
+              "name": "SmartPromptIQ Academy",
+              "sameAs": "https://smartpromptiq.com"
+            },
+            "instructor": {
+              "@type": "Person",
+              "name": course.instructor
+            },
+            "educationalLevel": course.difficulty,
+            "numberOfLessons": course.lessons?.length || 0,
+            "timeRequired": `PT${Math.floor(course.duration / 60)}H${course.duration % 60}M`,
+            "aggregateRating": course.averageRating ? {
+              "@type": "AggregateRating",
+              "ratingValue": course.averageRating,
+              "reviewCount": course.reviewCount,
+              "bestRating": 5
+            } : undefined,
+            "offers": {
+              "@type": "Offer",
+              "price": course.accessTier === 'free' ? 0 : (course.priceUSD / 100),
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/InStock"
+            },
+            "hasCourseInstance": {
+              "@type": "CourseInstance",
+              "courseMode": "online",
+              "courseWorkload": `PT${Math.floor(course.duration / 60)}H${course.duration % 60}M`
+            },
+            "about": [
+              course.category.replace('-', ' '),
+              "AI",
+              "prompt engineering",
+              "artificial intelligence"
+            ],
+            "teaches": course.tags?.split(',').map(t => t.trim()) || []
+          })
+        }}
+      />
 
       {/* Course Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
