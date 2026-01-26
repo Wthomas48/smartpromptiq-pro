@@ -10,14 +10,78 @@ import BackButton from '@/components/BackButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGamification } from '@/contexts/GamificationContext';
 import { useToast } from '@/hooks/use-toast';
+import SectionLanding from '@/components/SectionLanding';
 import {
   Search, Filter, Star, Download, Heart, Share2,
   ShoppingCart, Tag, TrendingUp, Clock, User,
   Crown, Zap, Eye, MessageSquare, DollarSign,
   Plus, Grid, List, Sparkles, Award, Copy,
-  Check, ExternalLink, Bookmark, BookmarkCheck
+  Check, ExternalLink, Bookmark, BookmarkCheck, Store
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// SEO-optimized content for public landing
+const marketplaceLandingContent = {
+  title: 'Prompt Marketplace',
+  definition: 'The SmartPromptIQ Marketplace is where prompt engineers buy and sell professional-grade AI prompts. Access battle-tested templates for marketing, sales, development, and creative work—or monetize your own expertise by selling prompts you\'ve crafted and optimized.',
+  whatItsFor: 'The Marketplace connects prompt creators with professionals who need proven AI instructions. Buyers get instant access to expert-crafted prompts that save hours of trial and error. Sellers earn passive income by sharing their expertise. Every prompt is rated, reviewed, and optimized for results.',
+  whoItsFor: [
+    'Professionals seeking proven, high-quality prompts without DIY experimentation',
+    'Expert prompt engineers looking to monetize their skills and templates',
+    'Agencies needing reliable prompts for client deliverables',
+    'Businesses scaling AI adoption across teams with vetted resources',
+    'Freelancers building prompt libraries for various client needs',
+    'AI enthusiasts exploring what expert prompts look like'
+  ],
+  howItHelps: [
+    'Access thousands of professional prompts across 10+ categories',
+    'Filter by ratings, downloads, and verified seller status',
+    'Preview outputs before purchasing to ensure fit for your needs',
+    'Sell your own prompts and earn passive income',
+    'Build a library of favorites for quick access',
+    'Get detailed usage guides and customization tips with each purchase'
+  ],
+  internalLinks: [
+    { label: 'Academy', href: '/academy', description: 'Learn to create sellable prompts' },
+    { label: 'Templates', href: '/templates', description: 'Free prompt templates to get started' },
+    { label: 'BuilderIQ', href: '/builderiq', description: 'Build apps with prompts' },
+    { label: 'AI Agents', href: '/agents', description: 'Deploy prompts as chatbots' },
+    { label: 'Voice AI', href: '/voice', description: 'Turn prompt outputs into audio' },
+    { label: 'Pricing', href: '/pricing', description: 'View seller and buyer benefits' }
+  ],
+  stats: [
+    { label: 'Prompts Available', value: '5,000+' },
+    { label: 'Active Sellers', value: '500+' },
+    { label: 'Categories', value: '10+' },
+    { label: 'Total Downloads', value: '100K+' }
+  ],
+  faqs: [
+    {
+      question: 'What is the SmartPromptIQ Marketplace?',
+      answer: 'The Marketplace is a platform where prompt engineers sell their battle-tested AI prompts and templates. Buyers get instant access to professional-grade prompts with ratings, reviews, and usage guides. It\'s like an app store, but for AI prompts.'
+    },
+    {
+      question: 'How do I know if a prompt is good before buying?',
+      answer: 'Every prompt shows ratings, review counts, download numbers, and preview outputs. You can see exactly what the prompt produces before purchasing. Verified sellers have been vetted for quality. All purchases include a satisfaction guarantee.'
+    },
+    {
+      question: 'Can I sell my own prompts on the Marketplace?',
+      answer: 'Yes! Anyone can apply to become a seller. You set your own prices, keep the majority of each sale, and build your reputation through ratings. Top sellers earn thousands monthly from their prompt libraries. Apply through your account dashboard.'
+    },
+    {
+      question: 'What categories of prompts are available?',
+      answer: 'The Marketplace covers Marketing & Sales (email sequences, ad copy), Technical (code review, documentation), Content Creation (blogs, social media), Business Strategy (analysis, planning), Customer Service (response templates), and more.'
+    },
+    {
+      question: 'How are payments handled?',
+      answer: 'Purchases are made using SmartPromptIQ tokens or direct USD payment. Tokens can be purchased in bundles for discounts. Sellers receive payouts monthly via PayPal or Stripe. There are no hidden fees beyond the platform commission.'
+    },
+    {
+      question: 'Can I request custom prompts?',
+      answer: 'Yes! Pro and Business subscribers can post custom prompt requests. Verified sellers can then bid on your project. It\'s a great way to get exactly what you need when you can\'t find it in the marketplace.'
+    }
+  ]
+};
 
 // Types
 interface MarketplacePrompt {
@@ -239,6 +303,28 @@ const Marketplace: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { awardXP, checkAndAwardBadge } = useGamification();
   const { toast } = useToast();
+
+  // Show SEO-optimized public landing for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <SectionLanding
+        title={marketplaceLandingContent.title}
+        definition={marketplaceLandingContent.definition}
+        whatItsFor={marketplaceLandingContent.whatItsFor}
+        whoItsFor={marketplaceLandingContent.whoItsFor}
+        howItHelps={marketplaceLandingContent.howItHelps}
+        internalLinks={marketplaceLandingContent.internalLinks}
+        heroGradient="from-green-600 via-emerald-600 to-teal-600"
+        ctaText="Browse Marketplace"
+        ctaHref="/signup"
+        secondaryCtaText="Become a Seller"
+        secondaryCtaHref="/signup"
+        stats={marketplaceLandingContent.stats}
+        faqs={marketplaceLandingContent.faqs}
+        icon={<Store className="w-8 h-8 text-white" />}
+      />
+    );
+  }
 
   // State
   const [searchQuery, setSearchQuery] = useState('');

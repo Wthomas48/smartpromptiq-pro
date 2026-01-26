@@ -1,8 +1,107 @@
 import React from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import AcademyNavigation from '@/components/AcademyNavigation';
+import SectionLanding from '@/components/SectionLanding';
+import { useAuth } from '@/contexts/AuthContext';
+import { GraduationCap } from 'lucide-react';
+
+// SEO-optimized content for public landing
+const academyLandingContent = {
+  title: 'SmartPromptIQ Academy',
+  definition: 'SmartPromptIQ Academy is a comprehensive online learning platform for AI prompt engineering, offering 50+ expert-led courses, hands-on projects, and industry-recognized certifications. Master the art of writing effective AI prompts to boost productivity, automate workflows, and build AI-powered applications.',
+  whatItsFor: 'SmartPromptIQ Academy is designed to teach you how to communicate effectively with AI systems like ChatGPT, Claude, and Gemini. Our structured curriculum covers everything from basic prompt writing to advanced techniques like chain-of-thought prompting, few-shot learning, and building custom AI agents. Whether you want to enhance your career, start a business, or simply become more productive, our courses provide the practical skills you need.',
+  whoItsFor: [
+    'Marketers and content creators seeking to leverage AI for faster, better content production',
+    'Developers and engineers wanting to build AI-powered applications and automate workflows',
+    'Business professionals looking to increase productivity with AI tools and automation',
+    'Students and career changers entering the growing field of AI and prompt engineering',
+    'Entrepreneurs building AI-driven products and services',
+    'Anyone curious about harnessing AI to accomplish more with less effort'
+  ],
+  howItHelps: [
+    'Learn prompt engineering from industry experts with real-world experience',
+    'Practice with interactive exercises and get AI-powered feedback on your prompts',
+    'Earn recognized certifications to showcase your AI skills to employers',
+    'Access 50+ courses covering marketing, development, business, and creative applications',
+    'Join a community of 10,000+ learners sharing knowledge and best practices',
+    'Build a portfolio of AI projects to demonstrate your capabilities'
+  ],
+  internalLinks: [
+    { label: 'Browse All Courses', href: '/academy/courses', description: 'Explore our full catalog of 50+ prompt engineering courses' },
+    { label: 'Learning Paths', href: '/academy/paths', description: 'Follow structured paths from beginner to expert' },
+    { label: 'Prompt Templates', href: '/templates', description: 'Access 100+ ready-to-use prompt templates' },
+    { label: 'BuilderIQ App Builder', href: '/builderiq', description: 'Build AI-powered apps with our no-code platform' },
+    { label: 'AI Agents', href: '/agents', description: 'Create custom AI chatbots for your website' },
+    { label: 'Marketplace', href: '/marketplace', description: 'Buy and sell professional prompt templates' }
+  ],
+  stats: [
+    { label: 'Active Students', value: '10,000+' },
+    { label: 'Expert Courses', value: '50+' },
+    { label: 'Average Rating', value: '4.9/5' },
+    { label: 'Certified Graduates', value: '5,000+' }
+  ],
+  faqs: [
+    {
+      question: 'What is prompt engineering and why should I learn it?',
+      answer: 'Prompt engineering is the skill of crafting effective instructions for AI systems to get optimal results. As AI becomes integral to business operations, professionals who can effectively communicate with AI tools like ChatGPT have a significant competitive advantage. Studies show prompt engineers can increase productivity by 40-60%.'
+    },
+    {
+      question: 'Do I need coding experience to take these courses?',
+      answer: 'No coding experience is required for most courses. SmartPromptIQ Academy is designed for beginners and professionals alike. Our courses range from basic prompt writing to advanced technical implementations, with clear prerequisites listed for each course.'
+    },
+    {
+      question: 'Are the certifications recognized by employers?',
+      answer: 'Yes, SmartPromptIQ certifications are recognized across the industry. Our curriculum is developed with input from AI professionals at leading tech companies. Many of our certified graduates have successfully used their credentials to advance their careers or land new positions.'
+    },
+    {
+      question: 'How long does it take to complete a certification?',
+      answer: 'Most certification paths take 4-8 weeks to complete when studying 5-10 hours per week. Self-paced learning allows you to go faster or slower based on your schedule. Each course includes practical exercises that reinforce learning through hands-on practice.'
+    },
+    {
+      question: 'Can I try courses for free before subscribing?',
+      answer: 'Yes! We offer several free courses including "SmartPromptIQ Basics" and "Introduction to AI Prompting" that you can start immediately. These courses give you a taste of our teaching methodology and help you decide if our platform is right for you.'
+    },
+    {
+      question: 'What makes SmartPromptIQ Academy different from other AI courses?',
+      answer: 'Unlike generic AI courses, SmartPromptIQ Academy focuses specifically on practical prompt engineering with hands-on exercises. Our interactive Prompt Lab lets you test prompts in real-time with AI-powered feedback. Plus, our courses are constantly updated to reflect the latest AI capabilities and best practices.'
+    }
+  ]
+};
 
 const Academy: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
+
+  // If user is authenticated, redirect to academy dashboard
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate('/academy/dashboard');
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // Show SEO-optimized public landing for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <SectionLanding
+        title={academyLandingContent.title}
+        definition={academyLandingContent.definition}
+        whatItsFor={academyLandingContent.whatItsFor}
+        whoItsFor={academyLandingContent.whoItsFor}
+        howItHelps={academyLandingContent.howItHelps}
+        internalLinks={academyLandingContent.internalLinks}
+        heroGradient="from-purple-600 via-indigo-600 to-purple-700"
+        ctaText="Start Learning Free"
+        ctaHref="/academy/signup"
+        secondaryCtaText="Browse Courses"
+        secondaryCtaHref="/academy/courses"
+        stats={academyLandingContent.stats}
+        faqs={academyLandingContent.faqs}
+        icon={<GraduationCap className="w-8 h-8 text-white" />}
+      />
+    );
+  }
+
+  // Authenticated users see the original academy experience
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Academy Navigation */}

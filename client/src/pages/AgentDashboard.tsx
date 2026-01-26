@@ -10,8 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { getApiBaseUrl } from '@/config/api';
 import BackButton from '@/components/BackButton';
+import SectionLanding from '@/components/SectionLanding';
 import {
   Bot, Plus, Settings, Key, Code, BarChart3, Trash2, Edit,
   Copy, Check, Eye, EyeOff, RefreshCw, MessageSquare, Users,
@@ -19,6 +21,69 @@ import {
   ExternalLink, Download, Play, Loader2, AlertCircle, Sparkles,
   GraduationCap, BookOpen, Trophy, Star, ChevronRight, Rocket
 } from 'lucide-react';
+
+// SEO-optimized content for public landing
+const agentsLandingContent = {
+  title: 'AI Agents - Custom Chatbots',
+  definition: 'AI Agents are custom-built chatbots powered by advanced language models like Claude and GPT-4 that you can embed on any website. SmartPromptIQ lets you create, configure, and deploy intelligent conversational agents with custom personalities, knowledge bases, and behaviors—no coding required.',
+  whatItsFor: 'AI Agents transform how businesses interact with customers, automate support, and generate leads. Using our visual builder, you can create chatbots with custom system prompts that define their personality, expertise, and conversation style. Each agent gets a unique API key for secure deployment and analytics tracking.',
+  whoItsFor: [
+    'Business owners wanting 24/7 automated customer support without hiring staff',
+    'Agencies creating white-label chatbot solutions for clients',
+    'SaaS companies needing in-app assistants for user onboarding',
+    'E-commerce sites looking to automate product recommendations and FAQs',
+    'Content creators building interactive experiences for their audience',
+    'Developers wanting pre-built agent templates to accelerate projects'
+  ],
+  howItHelps: [
+    'Create unlimited custom chatbots with unique personalities and expertise',
+    'Embed agents on any website with a single script tag',
+    'Track conversations, messages, and engagement analytics in real-time',
+    'Choose between Claude, GPT-4, and other models based on your needs',
+    'Customize appearance, colors, and positioning to match your brand',
+    'Manage multiple API keys for different websites and use cases'
+  ],
+  internalLinks: [
+    { label: 'Academy', href: '/academy', description: 'Learn to build better AI agents' },
+    { label: 'AI Agents Course', href: '/academy/course/ai-agents-masterclass', description: 'Free masterclass on building chatbots' },
+    { label: 'BuilderIQ', href: '/builderiq', description: 'Browse pre-built agent templates' },
+    { label: 'Templates', href: '/templates', description: 'Access system prompt templates' },
+    { label: 'Voice AI', href: '/voice', description: 'Add voice capabilities to your agents' },
+    { label: 'Pricing', href: '/pricing', description: 'View agent limits and pricing' }
+  ],
+  stats: [
+    { label: 'Active Agents', value: '10K+' },
+    { label: 'Messages/Month', value: '1M+' },
+    { label: 'Avg Response Time', value: '<2s' },
+    { label: 'Satisfaction Rate', value: '98%' }
+  ],
+  faqs: [
+    {
+      question: 'What is an AI Agent and how does it differ from a regular chatbot?',
+      answer: 'AI Agents are powered by advanced language models (LLMs) like Claude and GPT-4, giving them true conversational understanding unlike rule-based chatbots. They can handle complex queries, maintain context across conversations, and provide intelligent responses without predefined scripts.'
+    },
+    {
+      question: 'How do I embed an AI Agent on my website?',
+      answer: 'After creating your agent, you\'ll receive a simple JavaScript snippet to copy-paste before your closing </body> tag. The agent automatically appears as a chat widget. You can customize position (bottom-left or bottom-right), colors, and theme to match your site.'
+    },
+    {
+      question: 'Can I train the agent on my own data or knowledge base?',
+      answer: 'Yes! Each agent has a system prompt where you can provide detailed instructions, product information, FAQs, and guidelines. The agent uses this context to provide accurate, brand-specific responses. Enterprise plans also support document uploads.'
+    },
+    {
+      question: 'What AI models can I use for my agents?',
+      answer: 'SmartPromptIQ supports multiple models including Claude 3 Haiku (fast, cost-effective), Claude 3 Sonnet (balanced), Claude 3 Opus (powerful), GPT-3.5 Turbo, GPT-4, and GPT-4 Turbo. Choose based on your complexity needs and budget.'
+    },
+    {
+      question: 'How is agent usage billed?',
+      answer: 'Agents are billed based on the number of messages processed. Free plans include limited messages per month. Pro and Business plans include higher limits and multiple agents. All plans include API keys and analytics.'
+    },
+    {
+      question: 'Can I add voice capabilities to my AI Agent?',
+      answer: 'Yes! You can enable voice input and output for your agents using our Voice AI integration. This allows users to speak to your chatbot and receive spoken responses, perfect for accessibility and hands-free use cases.'
+    }
+  ]
+};
 
 interface Agent {
   id: string;
@@ -61,6 +126,29 @@ interface AgentDetails extends Agent {
 const AgentDashboard: React.FC = () => {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
+
+  // Show SEO-optimized public landing for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <SectionLanding
+        title={agentsLandingContent.title}
+        definition={agentsLandingContent.definition}
+        whatItsFor={agentsLandingContent.whatItsFor}
+        whoItsFor={agentsLandingContent.whoItsFor}
+        howItHelps={agentsLandingContent.howItHelps}
+        internalLinks={agentsLandingContent.internalLinks}
+        heroGradient="from-purple-600 via-violet-600 to-indigo-600"
+        ctaText="Create Your First Agent"
+        ctaHref="/signup"
+        secondaryCtaText="Watch Tutorial"
+        secondaryCtaHref="/academy/course/ai-agents-masterclass"
+        stats={agentsLandingContent.stats}
+        faqs={agentsLandingContent.faqs}
+        icon={<Bot className="w-8 h-8 text-white" />}
+      />
+    );
+  }
 
   // State
   const [agents, setAgents] = useState<Agent[]>([]);

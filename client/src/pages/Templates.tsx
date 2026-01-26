@@ -14,15 +14,80 @@ import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import BackButton from "@/components/BackButton";
 import TokenBalance from "@/components/TokenBalance";
+import SectionLanding from "@/components/SectionLanding";
 import {
   Search, Grid, List, Star, TrendingUp, Crown, Heart, Clock, Users,
   AlertCircle, CheckCircle, Settings, Zap, Eye, RefreshCw, Play,
   Briefcase, TrendingDown, DollarSign, GraduationCap, Target, Lightbulb,
-  PenTool, MessageSquare, BarChart3, Rocket, Brain, Sparkles, Lock, Shield
+  PenTool, MessageSquare, BarChart3, Rocket, Brain, Sparkles, Lock, Shield,
+  FileText
 } from "lucide-react";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import TierIndicator from "@/components/TierIndicator";
 import UpgradePrompt from "@/components/UpgradePrompt";
+
+// SEO-optimized content for public landing
+const templatesLandingContent = {
+  title: 'AI Prompt Templates',
+  definition: 'AI Prompt Templates are pre-written, professionally crafted instructions designed to get optimal results from AI tools like ChatGPT, Claude, and Gemini. SmartPromptIQ offers 100+ battle-tested templates for marketing, sales, development, content creation, and business strategy that you can customize and use immediately.',
+  whatItsFor: 'Our prompt template library saves you hours of trial and error by providing ready-to-use prompts that have been tested and optimized by AI experts. Each template includes clear instructions, customizable variables, and example outputs. Whether you need to write compelling sales emails, create viral social media content, or analyze business data, our templates give you a professional starting point.',
+  whoItsFor: [
+    'Marketers needing high-converting copy for ads, emails, and social media campaigns',
+    'Sales professionals looking for effective outreach and follow-up templates',
+    'Content creators seeking viral scripts for YouTube, TikTok, and Instagram',
+    'Business owners wanting strategic frameworks for planning and analysis',
+    'Developers who need code review, documentation, and technical writing templates',
+    'Entrepreneurs building pitches, business plans, and investor presentations'
+  ],
+  howItHelps: [
+    'Skip months of trial and error with proven, tested prompt formulas',
+    'Customize templates with your specific variables and brand voice',
+    'Access premium templates used by top agencies and Fortune 500 companies',
+    'Filter by category, difficulty, and use case to find exactly what you need',
+    'Preview outputs before using to ensure the template fits your needs',
+    'Save favorites and build your personal prompt library'
+  ],
+  internalLinks: [
+    { label: 'Academy Courses', href: '/academy', description: 'Learn prompt engineering from expert instructors' },
+    { label: 'BuilderIQ', href: '/builderiq', description: 'Build complete apps using AI-powered blueprints' },
+    { label: 'AI Agents', href: '/agents', description: 'Create custom chatbots for your website' },
+    { label: 'Voice AI', href: '/voice', description: 'Generate professional voiceovers with AI' },
+    { label: 'Marketplace', href: '/marketplace', description: 'Buy and sell professional prompts' },
+    { label: 'Pricing', href: '/pricing', description: 'View plans and unlock premium templates' }
+  ],
+  stats: [
+    { label: 'Premium Templates', value: '100+' },
+    { label: 'Categories', value: '6' },
+    { label: 'Average Rating', value: '4.8/5' },
+    { label: 'Active Users', value: '10K+' }
+  ],
+  faqs: [
+    {
+      question: 'What are AI prompt templates and how do they work?',
+      answer: 'AI prompt templates are pre-written instructions designed to get specific, high-quality results from AI models. Each template includes placeholders (like [TOPIC] or [AUDIENCE]) that you fill in with your specifics. The AI then generates customized output based on the proven prompt structure.'
+    },
+    {
+      question: 'Can I customize the templates for my brand?',
+      answer: 'Absolutely! Every template is fully customizable. You can adjust the tone, add specific requirements, include brand guidelines, and modify any part of the prompt. We also provide customization tips and examples for each template.'
+    },
+    {
+      question: 'What categories of templates do you offer?',
+      answer: 'We offer templates across 6 main categories: Business Strategy (pitch decks, market analysis), Marketing & Sales (email sequences, ad copy), Content Creation (blog posts, video scripts), Personal Development (goal planning, productivity), Social Media (viral content, posting calendars), and Technical (code review, documentation).'
+    },
+    {
+      question: 'Are there free templates available?',
+      answer: 'Yes! We offer many free templates across all categories. Premium templates are available with our Starter, Pro, and Business plans, which unlock advanced templates with higher complexity and proven higher performance metrics.'
+    },
+    {
+      question: 'How do I know which template to use?',
+      answer: 'Each template includes a clear description, pain point it solves, expected outcome, difficulty level, and estimated time to complete. You can filter by category, difficulty, trending status, and user ratings to find the perfect template for your needs.'
+    },
+    {
+      question: 'Can I request new templates or custom prompts?',
+      answer: 'Yes! Pro and Business subscribers can request custom templates. We also take community suggestions and regularly add new templates based on user feedback and emerging AI capabilities.'
+    }
+  ]
+};
 
 export default function Templates() {
   const [, setLocation] = useLocation();
@@ -777,6 +842,29 @@ export default function Templates() {
     }
   };
 
+  // Show SEO-optimized public landing for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <SectionLanding
+        title={templatesLandingContent.title}
+        definition={templatesLandingContent.definition}
+        whatItsFor={templatesLandingContent.whatItsFor}
+        whoItsFor={templatesLandingContent.whoItsFor}
+        howItHelps={templatesLandingContent.howItHelps}
+        internalLinks={templatesLandingContent.internalLinks}
+        heroGradient="from-indigo-600 via-purple-600 to-cyan-600"
+        ctaText="Get Started Free"
+        ctaHref="/signup"
+        secondaryCtaText="View Academy"
+        secondaryCtaHref="/academy"
+        stats={templatesLandingContent.stats}
+        faqs={templatesLandingContent.faqs}
+        icon={<FileText className="w-8 h-8 text-white" />}
+      />
+    );
+  }
+
+  // Authenticated users see the full template experience
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-cyan-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">

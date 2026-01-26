@@ -22,6 +22,7 @@ import VoiceToSong from '@/components/VoiceToSong';
 import PremiumMusicLibrary from '@/components/PremiumMusicLibrary';
 import { useAudioStoreSafe } from '@/contexts/AudioStoreContext';
 import { getApiBaseUrl } from '@/config/api';
+import SectionLanding from '@/components/SectionLanding';
 import {
   Mic, MicOff, Volume2, VolumeX, Play, Pause, Square,
   Download, Share2, Save, Sparkles, Wand2, Copy, Check,
@@ -34,6 +35,69 @@ import {
   Headphones, FileText, Layers, Rocket,
   Bot, Send, Phone, Sliders, Music2
 } from 'lucide-react';
+
+// SEO-optimized content for public landing
+const voiceLandingContent = {
+  title: 'Voice AI - Text to Speech',
+  definition: 'Voice AI is SmartPromptIQ\'s professional text-to-speech platform that transforms your scripts into natural-sounding voiceovers. Powered by ElevenLabs and OpenAI, create studio-quality audio for podcasts, videos, ads, e-learning, and apps in seconds with 20+ premium AI voices.',
+  whatItsFor: 'Voice AI eliminates the need for expensive recording studios, voice actors, and audio editors. Simply paste your script, choose from 20+ premium AI voices, adjust settings like speed and emotion, and download broadcast-ready audio. Perfect for content creators, marketers, educators, and developers who need professional voiceovers at scale.',
+  whoItsFor: [
+    'YouTubers and content creators needing consistent, professional narration',
+    'Marketers creating video ads, radio spots, and social media content',
+    'E-learning creators and educators producing course audio at scale',
+    'Podcast producers generating intros, outros, and supplementary content',
+    'App developers adding voice interfaces and accessibility features',
+    'Businesses creating IVR systems, presentations, and training materials'
+  ],
+  howItHelps: [
+    'Generate professional voiceovers in seconds, not hours or days',
+    'Choose from 20+ premium voices across different styles and emotions',
+    'Adjust speed, pitch, and emphasis for perfect delivery',
+    'Create story mode content with AI-generated narratives',
+    'Mix voice with background music using our audio mixer',
+    'Download in MP3 format for use anywhere'
+  ],
+  internalLinks: [
+    { label: 'Academy', href: '/academy', description: 'Learn AI content creation skills' },
+    { label: 'Voice AI Course', href: '/academy/course/voice-ai-fundamentals', description: 'Master AI voice generation' },
+    { label: 'AI Agents', href: '/agents', description: 'Add voice to your chatbots' },
+    { label: 'BuilderIQ', href: '/builderiq', description: 'Build voice-enabled apps' },
+    { label: 'Templates', href: '/templates', description: 'Script templates for voiceovers' },
+    { label: 'Pricing', href: '/pricing', description: 'View voice generation limits' }
+  ],
+  stats: [
+    { label: 'Premium Voices', value: '20+' },
+    { label: 'Languages', value: '10+' },
+    { label: 'Audio Generated', value: '100K+' },
+    { label: 'Avg Generation', value: '<10s' }
+  ],
+  faqs: [
+    {
+      question: 'What is Voice AI and how does it work?',
+      answer: 'Voice AI uses advanced neural networks from ElevenLabs and OpenAI to convert text into natural-sounding speech. Unlike robotic text-to-speech, our AI voices understand context, emotion, and natural speech patterns to deliver human-quality voiceovers.'
+    },
+    {
+      question: 'What types of content can I create with Voice AI?',
+      answer: 'Voice AI supports any audio content: YouTube narration, podcast intros/outros, video ads, radio commercials, e-learning courses, audiobooks, app voice interfaces, IVR phone systems, presentations, and more. Our templates help you get started with each use case.'
+    },
+    {
+      question: 'How many voices are available and what styles?',
+      answer: 'We offer 20+ premium voices across categories including professional/corporate, friendly/casual, energetic/marketing, calm/meditation, storytelling/dramatic, and more. Each voice has different characteristics for gender, accent, and emotional range.'
+    },
+    {
+      question: 'Can I customize voice settings like speed and emotion?',
+      answer: 'Yes! You can adjust speaking speed, stability (consistency), and clarity. ElevenLabs voices also support emotion adjustments. Premium plans unlock additional fine-tuning options and voice cloning capabilities.'
+    },
+    {
+      question: 'What audio formats can I download?',
+      answer: 'Voice AI exports audio in high-quality MP3 format, compatible with all video editors, podcast platforms, and audio software. Premium plans support additional formats like WAV for professional production workflows.'
+    },
+    {
+      question: 'Is there a limit to how much audio I can generate?',
+      answer: 'Free accounts include limited characters per month. Starter, Pro, and Business plans include progressively more generation capacity. All generated audio is yours to use commercially without restrictions.'
+    }
+  ]
+};
 
 // Voice categories with use cases
 const voiceCategories = [
@@ -280,6 +344,28 @@ const VoiceBuilder: React.FC = () => {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
+
+  // Show SEO-optimized public landing for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <SectionLanding
+        title={voiceLandingContent.title}
+        definition={voiceLandingContent.definition}
+        whatItsFor={voiceLandingContent.whatItsFor}
+        whoItsFor={voiceLandingContent.whoItsFor}
+        howItHelps={voiceLandingContent.howItHelps}
+        internalLinks={voiceLandingContent.internalLinks}
+        heroGradient="from-orange-600 via-red-600 to-pink-600"
+        ctaText="Try Voice AI Free"
+        ctaHref="/signup"
+        secondaryCtaText="Voice AI Course"
+        secondaryCtaHref="/academy/course/voice-ai-fundamentals"
+        stats={voiceLandingContent.stats}
+        faqs={voiceLandingContent.faqs}
+        icon={<Volume2 className="w-8 h-8 text-white" />}
+      />
+    );
+  }
 
   // ElevenLabs context
   const voiceContext = useElevenLabsVoiceSafe();

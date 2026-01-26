@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceActivation } from '@/hooks/useVoiceActivation';
 import { apiRequest } from '@/lib/queryClient';
+import SectionLanding from '@/components/SectionLanding';
 import {
   Mic, MicOff, Sparkles, Zap, BookOpen, Layout,
   MessageSquare, Palette, Code, Rocket, ArrowRight,
@@ -18,8 +19,71 @@ import {
   Dumbbell, UtensilsCrossed, Users, TrendingUp,
   ChevronRight, Play, Search, Star, Clock, Bot,
   Brain, Volume2, Check, Download, DollarSign, Crown, Lock, Gift, Percent, Rocket as RocketIcon,
-  ExternalLink, Trash2, Eye, Calendar, Loader2
+  ExternalLink, Trash2, Eye, Calendar, Loader2, Hammer
 } from 'lucide-react';
+
+// SEO-optimized content for public landing
+const builderIQLandingContent = {
+  title: 'BuilderIQ - AI App Builder',
+  definition: 'BuilderIQ is SmartPromptIQ\'s AI-powered app builder that transforms your ideas into complete application blueprints. Using intelligent questionnaires and industry-specific templates, BuilderIQ generates detailed specifications, wireframes, and tech stack recommendations for any type of app—no coding required.',
+  whatItsFor: 'BuilderIQ helps entrepreneurs, product managers, and developers go from concept to comprehensive app blueprint in minutes instead of weeks. Simply describe your app idea through our smart questionnaire or tell your story in natural language, and our AI analyzes your requirements to generate a professional-grade application specification complete with features, user flows, database schemas, and deployment recommendations.',
+  whoItsFor: [
+    'Entrepreneurs and startups wanting to validate and spec out app ideas quickly',
+    'Product managers needing to create detailed PRDs and feature specifications',
+    'Freelance developers looking to impress clients with professional blueprints',
+    'Non-technical founders who want to communicate their vision to development teams',
+    'Agencies creating proposals and estimates for client projects',
+    'Students and learners exploring how to structure modern applications'
+  ],
+  howItHelps: [
+    'Generate complete app specifications from a simple idea or story description',
+    'Choose from 100+ industry-specific templates covering 12 verticals',
+    'Get AI-recommended tech stacks based on your requirements and scale',
+    'Export blueprints to use with any AI coding assistant or development team',
+    'Access pre-built AI agent templates for customer service, sales, and more',
+    'Save and iterate on multiple app concepts with version history'
+  ],
+  internalLinks: [
+    { label: 'Academy', href: '/academy', description: 'Learn AI and prompt engineering from experts' },
+    { label: 'AI Agents', href: '/agents', description: 'Build and deploy custom AI chatbots' },
+    { label: 'Templates', href: '/templates', description: 'Access 100+ prompt templates' },
+    { label: 'Voice AI', href: '/voice', description: 'Generate professional AI voiceovers' },
+    { label: 'Marketplace', href: '/marketplace', description: 'Buy and sell prompts and templates' },
+    { label: 'Pricing', href: '/pricing', description: 'View plans and features' }
+  ],
+  stats: [
+    { label: 'App Templates', value: '100+' },
+    { label: 'Industries Covered', value: '12' },
+    { label: 'AI Agents', value: '50+' },
+    { label: 'Apps Created', value: '5K+' }
+  ],
+  faqs: [
+    {
+      question: 'What is BuilderIQ and how does it work?',
+      answer: 'BuilderIQ is an AI-powered app specification generator. You describe your app idea through our guided questionnaire or natural language story mode, and our AI creates a comprehensive blueprint including features, user flows, database schemas, API specifications, and tech stack recommendations.'
+    },
+    {
+      question: 'Do I need coding experience to use BuilderIQ?',
+      answer: 'No coding experience required! BuilderIQ is designed for non-technical users who have app ideas but don\'t know how to specify them technically. The generated blueprints can be handed off to developers or used with AI coding assistants like Cursor or GitHub Copilot.'
+    },
+    {
+      question: 'What types of apps can I build with BuilderIQ?',
+      answer: 'BuilderIQ supports 12 industries including Healthcare, E-Commerce, Education, Finance, Real Estate, Entertainment, and more. You can create blueprints for web apps, mobile apps, SaaS platforms, marketplaces, dashboards, and custom business applications.'
+    },
+    {
+      question: 'What\'s included in a BuilderIQ app blueprint?',
+      answer: 'Each blueprint includes: feature specifications, user stories, wireframe concepts, database schema, API endpoints, recommended tech stack, deployment guide, cost estimates, and timeline projections. Premium plans include export to various formats.'
+    },
+    {
+      question: 'Can I export and use the blueprints with other tools?',
+      answer: 'Yes! BuilderIQ blueprints can be exported as markdown, JSON, or PDF. Many users take their blueprints to AI coding tools like Cursor, Replit, or GitHub Copilot to generate actual code, or share them with freelance developers and agencies.'
+    },
+    {
+      question: 'What are BuilderIQ AI Agents?',
+      answer: 'AI Agents are pre-configured chatbot templates for specific use cases like customer support, sales qualification, or content creation. Each agent comes with optimized system prompts, example conversations, and integration guides so you can deploy them on your website.'
+    }
+  ]
+};
 
 // Type for saved apps
 interface SavedApp {
@@ -432,6 +496,29 @@ const BuilderIQ: React.FC = () => {
     });
   };
 
+  // Show SEO-optimized public landing for non-authenticated users
+  if (!isAuthenticated) {
+    return (
+      <SectionLanding
+        title={builderIQLandingContent.title}
+        definition={builderIQLandingContent.definition}
+        whatItsFor={builderIQLandingContent.whatItsFor}
+        whoItsFor={builderIQLandingContent.whoItsFor}
+        howItHelps={builderIQLandingContent.howItHelps}
+        internalLinks={builderIQLandingContent.internalLinks}
+        heroGradient="from-purple-600 via-pink-600 to-cyan-600"
+        ctaText="Start Building Free"
+        ctaHref="/signup"
+        secondaryCtaText="Browse Templates"
+        secondaryCtaHref="/templates"
+        stats={builderIQLandingContent.stats}
+        faqs={builderIQLandingContent.faqs}
+        icon={<Hammer className="w-8 h-8 text-white" />}
+      />
+    );
+  }
+
+  // Authenticated users see the full BuilderIQ experience
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Hero Section */}
