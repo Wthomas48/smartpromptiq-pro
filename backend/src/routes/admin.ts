@@ -5683,4 +5683,79 @@ router.post('/cleanup/purge-deleted', authenticate, requireAdmin, async (req, re
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATABASE MIGRATION ENDPOINT - Add missing columns
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/admin/run-migrations
+ * Run database migrations to add missing columns
+ * Protected by admin secret key
+ */
+router.post('/run-migrations', async (req, res) => {
+  try {
+    const { adminSecret } = req.body;
+
+    // Validate admin secret
+    const expectedSecret = process.env.ADMIN_SEED_SECRET || 'smartpromptiq-admin-2024';
+    if (adminSecret !== expectedSecret) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid admin secret'
+      });
+    }
+
+    const migrations: { name: string; success: boolean; error?: string }[] = [];
+
+    // Migration 1: Add discordId column if it doesn't exist
+    try {
+      await prisma.$executeRaw`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS "discordId" VARCHAR(255) UNIQUE
+      `;
+      migrations.push({ name: 'Add discordId column', success: true });
+    } catch (error: any) {
+      // Column might already exist or other error
+      if (error.message?.includes('already exists')) {
+        migrations.push({ name: 'Add discordId column', success: true, error: 'Column already exists' });
+      } else {
+        migrations.push({ name: 'Add discordId column', success: false, error: error.message });
+      }
+    }
+
+    // Migration 2: Add discordUsername column if it doesn't exist
+    try {
+      await prisma.$executeRaw`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS "discordUsername" VARCHAR(255)
+      `;
+      migrations.push({ name: 'Add discordUsername column', success: true });
+    } catch (error: any) {
+      if (error.message?.includes('already exists')) {
+        migrations.push({ name: 'Add discordUsername column', success: true, error: 'Column already exists' });
+      } else {
+        migrations.push({ name: 'Add discordUsername column', success: false, error: error.message });
+      }
+    }
+
+    // Check if all migrations succeeded
+    const allSucceeded = migrations.every(m => m.success);
+
+    res.json({
+      success: allSucceeded,
+      message: allSucceeded ? 'All migrations completed successfully' : 'Some migrations failed',
+      migrations,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error: any) {
+    console.error('Migration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Migration failed',
+      error: error.message
+    });
+  }
+});
+
 export default router;
