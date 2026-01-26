@@ -315,10 +315,10 @@ const PromptVoiceReader: React.FC<PromptVoiceReaderProps> = ({
     );
   }
 
-  // Floating variant
+  // Floating variant - positioned lower to avoid overlap with GlobalVoiceWidget
   if (variant === 'floating') {
     return (
-      <div className={`fixed bottom-4 right-4 z-50 ${className}`}>
+      <div className={`fixed bottom-4 right-4 z-40 ${className}`}>
         <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-900 rounded-full shadow-lg border border-gray-200 dark:border-gray-700">
           <button
             onClick={audioUrl ? toggleAudioPlayback : generateAIVoice}

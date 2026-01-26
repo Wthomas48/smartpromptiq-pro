@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import TutorialSectionAudio from "@/components/TutorialSectionAudio";
 import {
   Play,
   Clock,
@@ -19,13 +20,15 @@ import {
   Lightbulb,
   Settings,
   Star,
-  TrendingUp
+  TrendingUp,
+  Volume2
 } from "lucide-react";
 
 interface TutorialVideo {
   id: string;
   title: string;
   description: string;
+  audioDescription?: string;
   thumbnail: string;
   videoUrl: string;
   duration: string;
@@ -54,6 +57,7 @@ const mockVideos: TutorialVideo[] = [
     id: '1',
     title: 'Getting Started with SmartPromptIQ Pro',
     description: 'Learn the basics of using SmartPromptIQ Pro to create amazing prompts for AI models.',
+    audioDescription: 'This beginner tutorial covers the fundamentals of SmartPromptIQ Pro. You will learn to navigate the interface, understand key features, and create your first AI prompts that get great results.',
     thumbnail: '/api/placeholder/400/225',
     videoUrl: '/videos/getting-started.mp4',
     duration: '5:23',
@@ -70,6 +74,7 @@ const mockVideos: TutorialVideo[] = [
     id: '2',
     title: 'Advanced Prompt Engineering Techniques',
     description: 'Master advanced techniques for creating highly effective AI prompts that get better results.',
+    audioDescription: 'Level up your prompt engineering with advanced techniques including chain-of-thought prompting, few-shot learning, and systematic optimization strategies for consistently better AI responses.',
     thumbnail: '/api/placeholder/400/225',
     videoUrl: '/videos/advanced-techniques.mp4',
     duration: '12:45',
@@ -85,6 +90,7 @@ const mockVideos: TutorialVideo[] = [
     id: '3',
     title: 'Marketing Campaign Prompts',
     description: 'Create compelling marketing content using AI-powered prompt templates.',
+    audioDescription: 'Learn to create powerful marketing content with AI. This tutorial covers ad copy, social media posts, email campaigns, and brand messaging using SmartPromptIQ Pro templates.',
     thumbnail: '/api/placeholder/400/225',
     videoUrl: '/videos/marketing-prompts.mp4',
     duration: '8:17',
@@ -99,6 +105,7 @@ const mockVideos: TutorialVideo[] = [
     id: '4',
     title: 'Educational Content Generation',
     description: 'Use AI prompts to create educational materials, lesson plans, and learning content.',
+    audioDescription: 'Perfect for educators and trainers. Learn to generate lesson plans, quizzes, study guides, and educational materials tailored to different learning levels and subjects.',
     thumbnail: '/api/placeholder/400/225',
     videoUrl: '/videos/education-prompts.mp4',
     duration: '10:30',
@@ -113,6 +120,7 @@ const mockVideos: TutorialVideo[] = [
     id: '5',
     title: 'Prompt Analytics and Optimization',
     description: 'Learn how to analyze prompt performance and optimize for better results.',
+    audioDescription: 'Discover how to measure and improve your prompts. This tutorial covers analytics dashboards, A/B testing prompts, and systematic optimization techniques for maximum efficiency.',
     thumbnail: '/api/placeholder/400/225',
     videoUrl: '/videos/analytics.mp4',
     duration: '7:55',
@@ -127,6 +135,7 @@ const mockVideos: TutorialVideo[] = [
     id: '6',
     title: 'Team Collaboration Features',
     description: 'Discover how to collaborate with your team using SmartPromptIQ Pro\'s sharing features.',
+    audioDescription: 'Maximize team productivity with collaboration features. Learn to share prompts, manage team libraries, set permissions, and work together on prompt collections.',
     thumbnail: '/api/placeholder/400/225',
     videoUrl: '/videos/collaboration.mp4',
     duration: '6:42',
@@ -372,14 +381,25 @@ export default function TutorialVideoGallery({
                 )}
               </div>
 
-              <Button
-                onClick={() => onVideoSelect(video)}
-                className="w-full mt-3"
-                size="sm"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Watch Tutorial
-              </Button>
+              <div className="flex gap-2 mt-3">
+                <Button
+                  onClick={() => onVideoSelect(video)}
+                  className="flex-1"
+                  size="sm"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  Watch
+                </Button>
+                {(video.audioDescription || video.description) && (
+                  <div className="flex items-center">
+                    <TutorialSectionAudio
+                      title={video.title}
+                      content={video.audioDescription || video.description}
+                      variant="compact"
+                    />
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}

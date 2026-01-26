@@ -53,6 +53,8 @@ import elevenlabsRoutes from './routes/elevenlabs';
 import costsRoutes from './routes/costs';
 import audioRoutes from './routes/audio';
 import shotstackRoutes from './routes/shotstack';
+import chatRoutes from './routes/chat'; // Embeddable Widget Chat API
+import agentsRoutes from './routes/agents'; // Agent Management API
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECURE ENVIRONMENT LOADING
@@ -157,7 +159,7 @@ console.log('   RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME);
 console.log('   RAILWAY_SERVICE_NAME:', process.env.RAILWAY_SERVICE_NAME);
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 console.log('📡 Server will start on PORT:', PORT);
 console.log('🔄 Admin routes updated - force restart');
@@ -356,6 +358,7 @@ app.use(cors({
   allowedHeaders: [
     'Content-Type',
     'Authorization',
+    'X-API-Key',
     'X-Requested-With',
     'X-Device-Fingerprint',
     'X-Timestamp',
@@ -524,6 +527,8 @@ app.use('/api/elevenlabs', elevenlabsRoutes); // ElevenLabs Premium Voice - Ultr
 app.use('/api/costs', costsRoutes); // Cost Management - Usage tracking, limits, and admin dashboard
 app.use('/api/audio', audioRoutes); // Unified Audio Pipeline - Speech/Music generation with Supabase storage
 app.use('/api/shotstack', shotstackRoutes); // Shotstack Video API - Short video creation with voice + music
+app.use('/api/chat', chatRoutes); // Embeddable Widget Chat API - Public API for widget communication
+app.use('/api/agents', agentsRoutes); // Agent Management API - Create and manage chat agents
 app.use('/api', generateRoutes);
 app.use('/api/personal', categoryRoutes);
 app.use('/api/product', categoryRoutes);
@@ -531,6 +536,41 @@ app.use('/api/marketing', categoryRoutes);
 app.use('/api/education', categoryRoutes);
 app.use('/api/finance', categoryRoutes);
 app.use('/api/business', categoryRoutes);
+
+// ============================================
+// WIDGET.JS - EMBEDDABLE SCRIPT FOR ANY WEBSITE
+// ============================================
+// This endpoint serves the widget.js with permissive CORS
+// so it can be embedded on ANY external website.
+app.get('/widget.js', (req, res) => {
+  // Set CORS headers for any origin
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Set caching headers for performance (cache for 1 hour, revalidate)
+  res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+
+  // Serve from client dist or public folder
+  const clientDistPath = path.join(__dirname, '../../client/dist');
+  const clientPublicPath = path.join(__dirname, '../../client/public');
+
+  // Try dist first (production), then public (development)
+  const widgetDistPath = path.join(clientDistPath, 'widget.js');
+  const widgetPublicPath = path.join(clientPublicPath, 'widget.js');
+
+  const fs = require('fs');
+  if (fs.existsSync(widgetDistPath)) {
+    res.sendFile(widgetDistPath);
+  } else if (fs.existsSync(widgetPublicPath)) {
+    res.sendFile(widgetPublicPath);
+  } else {
+    res.status(404).send('// Widget not found');
+  }
+});
+
+console.log('📦 Widget.js endpoint configured at /widget.js');
 
 // Serve static files from client build
 const clientDistPath = path.join(__dirname, '../../client/dist');

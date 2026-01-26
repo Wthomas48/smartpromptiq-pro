@@ -2,13 +2,13 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useElevenLabsVoiceSafe } from '@/contexts/ElevenLabsVoiceContext';
-import { ELEVENLABS_VOICES, VOICE_CATEGORIES } from '@/config/voices';
+import { ELEVENLABS_VOICES } from '@/config/voices';
 import {
-  Volume2, VolumeX, Play, Pause, Square, Download, Settings,
-  ChevronUp, ChevronDown, Mic, Sparkles, X, Loader2,
-  SkipBack, SkipForward, AudioWaveform, Zap, Crown,
-  Filter, Search, Heart, Star, Users, Briefcase, Gamepad2,
-  BookOpen, Radio, Tv, Music, Palette, Globe
+  Volume2, Play, Pause, Square, Download,
+  ChevronUp, ChevronDown, Sparkles, X, Loader2,
+  AudioWaveform, Zap, Crown,
+  Search, Heart, Users, Briefcase, Gamepad2,
+  BookOpen, Tv, Globe
 } from 'lucide-react';
 
 interface GlobalVoiceWidgetProps {
@@ -65,20 +65,13 @@ const GlobalVoiceWidget: React.FC<GlobalVoiceWidgetProps> = ({
     localStorage.setItem('favoriteVoices', JSON.stringify(favoriteVoices));
   }, [favoriteVoices]);
 
-  // If context not available, show simplified widget
+  // If context not available, show simplified loading widget
   if (!voiceContext) {
     return (
-      <div className={`fixed ${getPositionClasses(position)} z-50`}>
-        <div className="relative group">
-          {/* Animated glow effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-cyan-500 to-purple-600 rounded-full blur-lg opacity-50 animate-pulse" />
-          <div className="relative bg-gradient-to-r from-purple-600 to-cyan-500 text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-3">
-            <div className="relative">
-              <AudioWaveform className="w-6 h-6 animate-pulse" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-ping" />
-            </div>
-            <span className="text-sm font-medium">Voice loading...</span>
-          </div>
+      <div className={`fixed ${getPositionClasses(position)} z-40`}>
+        <div className="bg-gradient-to-r from-purple-600 to-cyan-500 text-white px-5 py-3 rounded-full shadow-lg flex items-center gap-3">
+          <AudioWaveform className="w-6 h-6 animate-pulse" />
+          <span className="text-sm font-medium">Voice loading...</span>
         </div>
       </div>
     );
@@ -168,52 +161,41 @@ const GlobalVoiceWidget: React.FC<GlobalVoiceWidgetProps> = ({
 
   // Preview voice with sample line
   const previewVoice = useCallback((voice: typeof voiceOptions[0]) => {
-    speak(voice.sampleLine, voice.key);
+    speak(voice.sampleLine, { voice: voice.key });
   }, [speak]);
 
   // Get selected voice info
   const currentVoice = voiceOptions.find(v => v.key === selectedVoice) || voiceOptions[0];
 
-  // Position classes
+  // Position classes - ElevenLabs widget positioned higher to avoid overlap with other widgets
   function getPositionClasses(pos: string) {
     switch (pos) {
-      case 'bottom-right': return 'bottom-4 right-4';
-      case 'bottom-left': return 'bottom-4 left-4';
+      case 'bottom-right': return 'bottom-24 right-4';
+      case 'bottom-left': return 'bottom-24 left-4';
       case 'top-right': return 'top-20 right-4';
       case 'top-left': return 'top-20 left-4';
-      default: return 'bottom-4 right-4';
+      default: return 'bottom-24 right-4';
     }
   }
 
   // Unique categories from voices
   const categories = Array.from(new Set(voiceOptions.map(v => v.category).filter(Boolean)));
 
-  // Minimized state - premium floating pill
+  // Minimized state - single floating pill button
   if (isMinimized) {
     return (
-      <div
-        className={`fixed ${getPositionClasses(position)} z-50`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* Animated glow background */}
-        <div className={`absolute inset-0 rounded-full transition-all duration-500 ${
-          isPlaying
-            ? 'bg-gradient-to-r from-purple-600 via-cyan-500 to-purple-600 blur-xl opacity-70 animate-pulse scale-110'
-            : isHovered
-            ? 'bg-gradient-to-r from-purple-600 to-cyan-500 blur-lg opacity-50 scale-105'
-            : 'opacity-0'
-        }`} />
-
+      <div className={`fixed ${getPositionClasses(position)} z-40`}>
         <button
           onClick={() => setIsMinimized(false)}
-          className={`relative group flex items-center gap-3 px-5 py-3 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 ${
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 ${
             isPlaying
-              ? 'bg-gradient-to-r from-purple-600 via-fuchsia-500 to-cyan-500 animate-gradient-x'
+              ? 'bg-gradient-to-r from-purple-600 via-fuchsia-500 to-cyan-500'
               : isLoading
               ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-              : 'bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 hover:from-purple-600 hover:via-fuchsia-500 hover:to-cyan-500'
-          } text-white border border-white/20 backdrop-blur-sm`}
+              : 'bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400'
+          } text-white border border-white/20 shadow-lg shadow-purple-500/25`}
         >
           {isLoading ? (
             <>
@@ -270,7 +252,7 @@ const GlobalVoiceWidget: React.FC<GlobalVoiceWidgetProps> = ({
 
   // Expanded widget - Premium full experience
   return (
-    <div className={`fixed ${getPositionClasses(position)} z-50`}>
+    <div className={`fixed ${getPositionClasses(position)} z-40`}>
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden w-96 backdrop-blur-xl">
         {/* Premium Header */}
         <div className="relative overflow-hidden">

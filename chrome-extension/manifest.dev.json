@@ -1,0 +1,118 @@
+{
+  "manifest_version": 3,
+  "name": "SmartPromptIQ - AI Prompt Generator (DEV)",
+  "short_name": "SmartPromptIQ DEV",
+  "version": "1.1.0",
+  "description": "DEVELOPMENT BUILD - Generate AI prompts anywhere. Access your prompt library, templates & AI-powered generation in your browser.",
+  "author": "SmartPromptIQ",
+  "homepage_url": "https://smartpromptiq.com",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "SmartPromptIQ - Generate AI Prompts (DEV)"
+  },
+
+  "options_page": "options/options.html",
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "contextMenus",
+    "clipboardWrite",
+    "alarms",
+    "notifications",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "https://smartpromptiq.com/*",
+    "http://localhost:3000/*",
+    "http://localhost:5000/*",
+    "http://localhost:5001/*",
+    "http://localhost:5173/*",
+    "http://localhost:8080/*",
+    "http://127.0.0.1:*/*",
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://www.bing.com/chat/*",
+    "https://copilot.microsoft.com/*",
+    "https://poe.com/*",
+    "https://bard.google.com/*",
+    "https://you.com/*",
+    "https://perplexity.ai/*"
+  ],
+
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://www.bing.com/chat/*",
+        "https://copilot.microsoft.com/*",
+        "https://poe.com/*",
+        "https://bard.google.com/*",
+        "https://you.com/*",
+        "https://perplexity.ai/*"
+      ],
+      "js": ["content/content.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://smartpromptiq.com/*",
+        "http://localhost:5173/*",
+        "http://localhost:3000/*"
+      ],
+      "js": ["content/auth-listener.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*", "popup/*", "utils/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "Open SmartPromptIQ popup"
+    },
+    "quick-generate": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+G",
+        "mac": "Command+Shift+G"
+      },
+      "description": "Quick generate prompt"
+    }
+  }
+}

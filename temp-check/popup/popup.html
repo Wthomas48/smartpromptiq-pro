@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPromptIQ</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-section">
+        <div class="logo">🧠</div>
+        <div class="brand">
+          <h1>SmartPromptIQ</h1>
+          <span class="status" id="connectionStatus">
+            <span class="status-dot"></span>
+            <span class="status-text">Connected</span>
+          </span>
+        </div>
+      </div>
+      <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+    </header>
+
+    <!-- Auth Section (shown when not logged in) -->
+    <section class="auth-section" id="authSection" style="display: none;">
+      <div class="auth-card">
+        <div class="auth-icon">🔐</div>
+        <h2>Sign In to Continue</h2>
+        <p>Connect your SmartPromptIQ account to access your prompts and generate new ones</p>
+        <button class="btn btn-primary btn-full" id="signInBtn">
+          Sign In to SmartPromptIQ
+        </button>
+        <p class="auth-footer">
+          Don't have an account? <a href="#" id="signUpLink">Sign up free</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- Main Content (shown when logged in) -->
+    <main class="main-content" id="mainContent">
+      <!-- Quick Actions -->
+      <section class="quick-actions">
+        <button class="action-btn primary" id="generateBtn">
+          <span class="action-icon">✨</span>
+          <span class="action-text">Generate Prompt</span>
+        </button>
+        <button class="action-btn secondary" id="libraryBtn">
+          <span class="action-icon">📚</span>
+          <span class="action-text">My Library</span>
+        </button>
+      </section>
+
+      <!-- Category Selector -->
+      <section class="category-section">
+        <label class="section-label">Choose Category</label>
+        <div class="category-grid" id="categoryGrid">
+          <button class="category-btn active" data-category="marketing">
+            <span>📣</span> Marketing
+          </button>
+          <button class="category-btn" data-category="development">
+            <span>💻</span> Development
+          </button>
+          <button class="category-btn" data-category="writing">
+            <span>✍️</span> Writing
+          </button>
+          <button class="category-btn" data-category="business">
+            <span>💼</span> Business
+          </button>
+          <button class="category-btn" data-category="education">
+            <span>🎓</span> Education
+          </button>
+          <button class="category-btn" data-category="creative">
+            <span>🎨</span> Creative
+          </button>
+        </div>
+      </section>
+
+      <!-- Context Input -->
+      <section class="context-section">
+        <label class="section-label">What do you need?</label>
+        <div class="input-wrapper">
+          <textarea
+            id="contextInput"
+            placeholder="Describe what you want to create... e.g., 'A landing page for a SaaS product' or 'Email sequence for product launch'"
+            rows="3"
+          ></textarea>
+          <button class="context-action" id="usePageContext" title="Use current page context">
+            🔍
+          </button>
+        </div>
+      </section>
+
+      <!-- Generate Button -->
+      <button class="generate-btn" id="generatePromptBtn">
+        <span class="generate-icon">🚀</span>
+        <span>Generate AI Prompt</span>
+      </button>
+
+      <!-- Recent Prompts -->
+      <section class="recent-section">
+        <div class="section-header">
+          <label class="section-label">Recent Prompts</label>
+          <a href="#" class="view-all" id="viewAllBtn">View All</a>
+        </div>
+        <div class="recent-list" id="recentList">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Result Section (hidden by default) -->
+      <section class="result-section" id="resultSection" style="display: none;">
+        <div class="result-header">
+          <h3>Generated Prompt</h3>
+          <div class="result-actions">
+            <button class="icon-btn" id="copyBtn" title="Copy to clipboard">📋</button>
+            <button class="icon-btn" id="insertBtn" title="Insert into page">📥</button>
+            <button class="icon-btn" id="saveBtn" title="Save to library">💾</button>
+            <button class="icon-btn" id="regenerateBtn" title="Regenerate">🔄</button>
+          </div>
+        </div>
+        <div class="result-content" id="resultContent">
+          <!-- Generated prompt appears here -->
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-stats">
+        <span class="stat">
+          <strong id="promptCount">0</strong> prompts generated
+        </span>
+        <span class="divider">•</span>
+        <span class="stat">
+          <strong id="creditsLeft">10</strong> credits left
+        </span>
+      </div>
+      <a href="#" class="upgrade-link" id="upgradeBtn">Upgrade to Pro</a>
+    </footer>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settingsPanel" style="display: none;">
+    <div class="settings-header">
+      <h2>Settings</h2>
+      <button class="close-btn" id="closeSettings">✕</button>
+    </div>
+    <div class="settings-content">
+      <div class="setting-item">
+        <label>Auto-insert prompts</label>
+        <input type="checkbox" id="autoInsert" checked>
+      </div>
+      <div class="setting-item">
+        <label>Show notifications</label>
+        <input type="checkbox" id="showNotifications" checked>
+      </div>
+      <div class="setting-item">
+        <label>Dark mode</label>
+        <input type="checkbox" id="darkMode" checked>
+      </div>
+      <div class="setting-item">
+        <label>Default category</label>
+        <select id="defaultCategory">
+          <option value="marketing">Marketing</option>
+          <option value="development">Development</option>
+          <option value="writing">Writing</option>
+          <option value="business">Business</option>
+          <option value="education">Education</option>
+          <option value="creative">Creative</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary btn-full" id="logoutBtn">
+        Sign Out
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <div class="spinner"></div>
+    <p>Generating your prompt...</p>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <span class="toast-icon">✓</span>
+    <span class="toast-message" id="toastMessage">Copied to clipboard!</span>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

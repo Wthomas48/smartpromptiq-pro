@@ -1,0 +1,146 @@
+/* SmartPromptIQ Content Script Styles */
+
+/* These styles are injected into AI chat pages */
+
+/* Floating button hover effects */
+#smartpromptiq-floating-btn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+#smartpromptiq-floating-btn:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6) !important;
+}
+
+#smartpromptiq-floating-btn:active {
+  transform: scale(0.95) !important;
+}
+
+/* Quick panel animations */
+#smartpromptiq-quick-panel {
+  animation: spiqPanelIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes spiqPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Button styles in panel */
+#smartpromptiq-quick-panel button {
+  transition: all 0.2s ease !important;
+}
+
+#smartpromptiq-quick-panel button:hover {
+  transform: translateY(-1px) !important;
+}
+
+#smartpromptiq-quick-panel button:active {
+  transform: translateY(0) !important;
+}
+
+/* Input focus styles */
+#spiq-custom-input:focus {
+  outline: none !important;
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1) !important;
+}
+
+/* Generate button special effects */
+#spiq-generate:hover {
+  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+#spiq-generate:active {
+  transform: translateY(0) !important;
+}
+
+/* Notification slide animations */
+.spiq-notification {
+  animation: spiqSlideUp 0.3s ease !important;
+}
+
+@keyframes spiqSlideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes spiqSlideDown {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+}
+
+/* Scrollbar styling for panel */
+#smartpromptiq-quick-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+#smartpromptiq-quick-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#smartpromptiq-quick-panel::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 3px;
+}
+
+#smartpromptiq-quick-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+/* Highlight effect for inserted text */
+.spiq-inserted-text {
+  animation: spiqHighlight 1s ease;
+}
+
+@keyframes spiqHighlight {
+  0% {
+    background-color: rgba(139, 92, 246, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* Ensure our elements are always on top */
+#smartpromptiq-floating-btn,
+#smartpromptiq-quick-panel,
+.spiq-notification {
+  z-index: 2147483647 !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  #smartpromptiq-floating-btn {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 20px !important;
+    bottom: 80px !important;
+    right: 15px !important;
+  }
+
+  #smartpromptiq-quick-panel {
+    width: calc(100vw - 30px) !important;
+    right: 15px !important;
+    left: 15px !important;
+  }
+}

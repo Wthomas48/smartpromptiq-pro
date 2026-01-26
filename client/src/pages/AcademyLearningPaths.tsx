@@ -12,7 +12,7 @@ import {
   CheckCircle, Lock, ChevronRight, Trophy, Target,
   Zap, Brain, Rocket, Award, Play, ArrowRight,
   Sparkles, TrendingUp, Shield, Code, Palette,
-  MessageSquare, BarChart3, Lightbulb
+  MessageSquare, BarChart3, Lightbulb, Bot
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -163,18 +163,18 @@ const LEARNING_PATHS: LearningPath[] = [
   {
     id: 'ai-agents',
     title: 'AI Agents & Automation',
-    description: 'Build intelligent AI agents and automate complex workflows. The cutting edge of prompt engineering.',
-    icon: <Rocket className="w-6 h-6" />,
-    color: 'from-cyan-500 to-teal-500',
-    difficulty: 'expert',
-    duration: '15-20 hours',
-    coursesCount: 7,
-    lessonsCount: 60,
-    enrolledCount: 1800,
-    skills: ['Agent Design', 'Tool Use', 'Memory Systems', 'Workflow Automation', 'Orchestration'],
+    description: 'Build intelligent AI agents and automate complex workflows. Start with our FREE Masterclass and become an AI Agent expert!',
+    icon: <Bot className="w-6 h-6" />,
+    color: 'from-violet-500 to-purple-500',
+    difficulty: 'intermediate',
+    duration: '16-20 hours',
+    coursesCount: 8,
+    lessonsCount: 66,
+    enrolledCount: 4647,
+    skills: ['Agent Design', 'System Prompts', 'Embedding', 'Tool Use', 'Memory Systems', 'Monetization'],
     certification: 'AI Agent Architect Certificate',
-    prerequisites: ['Advanced Prompt Engineering'],
     courses: [
+      { id: 'ag0', title: '⭐ AI Agents Masterclass (FREE)', slug: 'ai-agents-masterclass', lessonsCount: 6, duration: '30 min', order: 0 },
       { id: 'ag1', title: 'Introduction to AI Agents', slug: 'intro-agents', lessonsCount: 8, duration: '1.5 hr', order: 1 },
       { id: 'ag2', title: 'Agent Architecture & Design', slug: 'agent-architecture', lessonsCount: 9, duration: '2 hr', order: 2 },
       { id: 'ag3', title: 'Tool Use & Function Calling', slug: 'tool-use', lessonsCount: 9, duration: '2 hr', order: 3 },

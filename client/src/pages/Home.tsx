@@ -3,6 +3,7 @@ import TopNavigation from "@/components/TopNavigation";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import BrainLogo from "@/components/BrainLogo";
 import { useLocation } from "wouter";
+import BRAND from "@/config/brand";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -49,13 +50,23 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen">
-      <TopNavigation 
+    <div className="min-h-screen" itemScope itemType="https://schema.org/WebPage">
+      {/* Schema.org Organization Structured Data for Google */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(BRAND.schema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(BRAND.webAppSchema) }}
+      />
+
+      <TopNavigation
         onGetStarted={handleGetStarted}
         onSignIn={handleSignIn}
       />
-      
-      <main>
+
+      <main role="main" id="main-content">
         {/* Hero Section with Animated Stars */}
         <section className="hero-section">
           <div className="stars-container" ref={heroStarsRef}></div>
@@ -73,15 +84,15 @@ export default function Home() {
               <span className="gradient-text">Build Real Solutions</span>
             </h1>
 
-            <p className="hero-description">
-              SmartPromptIQ™ unifies deep AI education with done-for-you prompt systems.
-              Master prompting through 57 courses and 555 lessons, then use BuilderIQ and Pro Tools
-              to generate full app specifications, blueprints, prompts, and deployment strategies.
+            {/* SEO-Optimized Definition for Google AI Overview (40-60 words) */}
+            <p className="hero-description" itemProp="description">
+              {BRAND.definition}
             </p>
 
+            {/* Learning-to-Execution Loop - Key Differentiator */}
             <p className="hero-tagline" style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.9)', marginTop: '-0.5rem', marginBottom: '1.5rem', fontStyle: 'italic' }}>
-              Your ideas deserve more than theory — they deserve creation.<br />
-              <span style={{ fontWeight: 600 }}>Welcome to the future of intelligent building.</span>
+              SmartPromptIQ is built on a powerful learning-to-execution loop.<br />
+              <span style={{ fontWeight: 600 }}>Learn how AI works, then immediately apply that knowledge to build real solutions — all inside one platform.</span>
             </p>
 
             <div className="cta-buttons">
@@ -122,7 +133,43 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Two Superpowers Section - NEW */}
+        {/* What is SmartPromptIQ - SEO Definition Section */}
+        <section className="py-16 bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900" itemScope itemType="https://schema.org/SoftwareApplication">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <meta itemProp="name" content="SmartPromptIQ" />
+            <meta itemProp="applicationCategory" content="BusinessApplication" />
+            <meta itemProp="operatingSystem" content="Web Browser" />
+
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              What is SmartPromptIQ?
+            </h2>
+            <p className="text-xl text-gray-200 leading-relaxed mb-8" itemProp="description">
+              <strong>SmartPromptIQ™</strong> is an all-in-one AI prompt engineering and application-building platform that teaches users how to design effective prompts and immediately apply them to real-world tools, workflows, and AI-powered applications. Through structured education and intelligent builders, users turn ideas into production-ready solutions without coding.
+            </p>
+            <div className="grid md:grid-cols-3 gap-6 text-left">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                <div className="text-3xl mb-3">📚</div>
+                <h3 className="text-lg font-bold text-white mb-2">Learn</h3>
+                <p className="text-gray-300 text-sm">Master AI through 57 expert courses with hands-on practice and professional certifications.</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                <div className="text-3xl mb-3">⚡</div>
+                <h3 className="text-lg font-bold text-white mb-2">Use</h3>
+                <p className="text-gray-300 text-sm">Apply your knowledge with BuilderIQ, AI Agents, Voice AI, and 100+ ready-to-use templates.</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                <div className="text-3xl mb-3">🚀</div>
+                <h3 className="text-lg font-bold text-white mb-2">Build</h3>
+                <p className="text-gray-300 text-sm">Create production-ready solutions — apps, chatbots, content — all without coding.</p>
+              </div>
+            </div>
+            <p className="text-lg text-purple-200 mt-8 font-medium">
+              This is not just education. This is not just tools. <strong className="text-white">This is a system.</strong>
+            </p>
+          </div>
+        </section>
+
+        {/* Two Superpowers Section */}
         <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
@@ -138,14 +185,15 @@ export default function Home() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-8 mt-16">
-              {/* Academy Card */}
-              <div className="bg-gradient-to-br from-purple-50 via-purple-100 to-indigo-100 rounded-3xl p-8 border-2 border-purple-200 shadow-xl hover:shadow-2xl transition-all duration-300">
+              {/* Academy Card - SEO Entity */}
+              <div className="bg-gradient-to-br from-purple-50 via-purple-100 to-indigo-100 rounded-3xl p-8 border-2 border-purple-200 shadow-xl hover:shadow-2xl transition-all duration-300" itemScope itemType="https://schema.org/Course">
+                <meta itemProp="provider" content="SmartPromptIQ" />
                 <div className="text-5xl mb-4">📚</div>
-                <h3 className="text-3xl font-extrabold text-gray-900 mb-3">
+                <h3 className="text-3xl font-extrabold text-gray-900 mb-3" itemProp="name">
                   SmartPromptIQ Academy
                 </h3>
-                <p className="text-gray-700 text-lg mb-6 leading-relaxed">
-                  Master prompt engineering with expert-led courses, interactive lessons, and earn professional certificates that prove your skills.
+                <p className="text-gray-700 text-lg mb-6 leading-relaxed" itemProp="description">
+                  The SmartPromptIQ Academy is a structured AI education system designed to teach prompt engineering, AI workflows, and real-world application building from beginner to advanced levels.
                 </p>
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-center text-gray-700 text-base">

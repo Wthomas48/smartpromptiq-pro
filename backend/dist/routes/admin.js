@@ -5,9 +5,329 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const express_validator_1 = require("express-validator");
+const stripe_1 = __importDefault(require("stripe"));
 const auth_1 = require("../middleware/auth");
 const database_1 = __importDefault(require("../config/database"));
+const logger_1 = require("../lib/logger");
 const router = express_1.default.Router();
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE CONFIGURATION FOR ADMIN PAYMENT VERIFICATION
+// ═══════════════════════════════════════════════════════════════════════════════
+/**
+ * Validate and sanitize Stripe key to prevent ERR_INVALID_CHAR errors
+ * Same validation as billing.ts for consistency
+ */
+const validateStripeKeyForAdmin = (key) => {
+    if (!key)
+        return null;
+    // Check for invalid characters
+    const hasNewline = /[\r\n]/.test(key);
+    const hasQuotes = /^["'].*["']$/.test(key);
+    if (hasNewline || hasQuotes) {
+        console.error('❌ Admin routes: STRIPE_SECRET_KEY contains invalid characters');
+        return null;
+    }
+    const trimmed = key.trim();
+    if (!trimmed.startsWith('sk_live_') && !trimmed.startsWith('sk_test_')) {
+        console.error('❌ Admin routes: STRIPE_SECRET_KEY must start with sk_live_ or sk_test_');
+        return null;
+    }
+    return trimmed;
+};
+let stripe = null;
+const validatedStripeKey = validateStripeKeyForAdmin(process.env.STRIPE_SECRET_KEY);
+if (validatedStripeKey) {
+    try {
+        stripe = new stripe_1.default(validatedStripeKey, {
+            apiVersion: '2023-10-16',
+            timeout: 30000,
+            maxNetworkRetries: 3
+        });
+        console.log('✅ Admin routes: Stripe initialized for payment verification');
+    }
+    catch (error) {
+        console.error('❌ Admin routes: Failed to initialize Stripe:', error.message);
+        stripe = null;
+    }
+}
+else {
+    console.warn('⚠️ Admin routes: Stripe not configured - payment verification disabled');
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+// QUERY PARAMETER VALIDATION HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+/**
+ * Safely parse integer query parameters with bounds checking
+ */
+const parseIntParam = (value, defaultValue, min = 1, max = 1000) => {
+    const parsed = parseInt(String(value || defaultValue), 10);
+    if (isNaN(parsed))
+        return defaultValue;
+    return Math.max(min, Math.min(parsed, max));
+};
+/**
+ * Safely parse timeframe parameter
+ */
+const parseTimeframe = (value) => {
+    const timeframes = {
+        '24h': { days: 1, label: '24 hours' },
+        '7d': { days: 7, label: '7 days' },
+        '30d': { days: 30, label: '30 days' },
+        '90d': { days: 90, label: '90 days' },
+        '1y': { days: 365, label: '1 year' }
+    };
+    return timeframes[String(value)] || timeframes['30d'];
+};
+/**
+ * Validate string enum parameter
+ */
+const parseEnumParam = (value, allowed, defaultValue) => {
+    const str = String(value || '');
+    return allowed.includes(str) ? str : defaultValue;
+};
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN SEED ENDPOINT (One-time setup, protected by secret key)
+// ═══════════════════════════════════════════════════════════════════════════════
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+/**
+ * POST /api/admin/seed
+ * Creates or updates the admin user
+ * Protected by ADMIN_SEED_SECRET environment variable
+ *
+ * SECURITY: This endpoint should be disabled in production or
+ * protected by additional measures (IP whitelist, VPN, etc.)
+ */
+router.post('/seed', async (req, res) => {
+    try {
+        const { secret, email, password } = req.body;
+        // SECURITY: Require ADMIN_SEED_SECRET to be explicitly set
+        const adminSeedSecret = process.env.ADMIN_SEED_SECRET;
+        if (!adminSeedSecret) {
+            logger_1.logger.securityEvent('Admin seed attempted but ADMIN_SEED_SECRET not configured', 'high', { ip: req.ip });
+            return res.status(503).json({
+                success: false,
+                message: 'Admin seed not configured'
+            });
+        }
+        // Verify seed secret with timing-safe comparison
+        if (!secret || secret !== adminSeedSecret) {
+            logger_1.logger.securityEvent('Admin seed attempt with invalid secret', 'high', { ip: req.ip });
+            return res.status(403).json({
+                success: false,
+                message: 'Invalid seed secret'
+            });
+        }
+        // SECURITY: Get admin credentials from environment variables
+        // Do NOT use hardcoded defaults in production
+        const adminEmail = email || process.env.ADMIN_EMAIL || 'admin@smartpromptiq.net';
+        const adminPassword = password || process.env.ADMIN_PASSWORD;
+        if (!adminPassword) {
+            logger_1.logger.error('Admin seed failed - ADMIN_PASSWORD not set');
+            return res.status(400).json({
+                success: false,
+                message: 'Admin password must be provided via request body or ADMIN_PASSWORD env var'
+            });
+        }
+        // Validate password strength
+        if (adminPassword.length < 12) {
+            return res.status(400).json({
+                success: false,
+                message: 'Admin password must be at least 12 characters'
+            });
+        }
+        // Check if admin exists
+        const existingAdmin = await database_1.default.user.findUnique({
+            where: { email: adminEmail }
+        });
+        const hashedPassword = await bcryptjs_1.default.hash(adminPassword, 12);
+        if (existingAdmin) {
+            // Update existing admin
+            await database_1.default.user.update({
+                where: { email: adminEmail },
+                data: {
+                    role: 'ADMIN',
+                    password: hashedPassword
+                }
+            });
+            logger_1.logger.info('Admin user updated', { email: adminEmail });
+            return res.json({
+                success: true,
+                message: 'Admin user updated successfully',
+                data: {
+                    email: adminEmail,
+                    role: 'ADMIN',
+                    action: 'updated'
+                }
+            });
+        }
+        // Create new admin
+        const admin = await database_1.default.user.create({
+            data: {
+                email: adminEmail,
+                password: hashedPassword,
+                firstName: 'Admin',
+                lastName: 'User',
+                role: 'ADMIN',
+                plan: 'ENTERPRISE',
+                subscriptionTier: 'ENTERPRISE',
+                tokenBalance: 999999,
+                generationsUsed: 0,
+                generationsLimit: 999999,
+                isActive: true
+            }
+        });
+        logger_1.logger.info('Admin user created', { email: adminEmail, id: admin.id });
+        res.json({
+            success: true,
+            message: 'Admin user created successfully',
+            data: {
+                id: admin.id,
+                email: admin.email,
+                role: admin.role,
+                action: 'created'
+            }
+        });
+    }
+    catch (error) {
+        console.error('Admin seed error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to seed admin user',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+/**
+ * POST /api/admin/seed-academy
+ * Seeds the academy courses - protected by ADMIN_SEED_SECRET
+ */
+router.post('/seed-academy', async (req, res) => {
+    try {
+        const { secret } = req.body;
+        const adminSeedSecret = process.env.ADMIN_SEED_SECRET;
+        if (!adminSeedSecret || secret !== adminSeedSecret) {
+            return res.status(403).json({ success: false, message: 'Invalid seed secret' });
+        }
+        // Clear existing academy data (FK-safe order)
+        await database_1.default.courseReview.deleteMany();
+        await database_1.default.lessonProgress.deleteMany();
+        await database_1.default.enrollment.deleteMany();
+        await database_1.default.lesson.deleteMany();
+        await database_1.default.course.deleteMany();
+        // FULL 57 COURSES CATALOG
+        const courses = [
+            // FREE TIER (3)
+            { title: 'Prompt Writing 101', slug: 'prompt-writing-101', description: 'Master the fundamentals of prompt engineering. Learn structure, context, and how to write clear, effective prompts.', category: 'prompt-engineering', difficulty: 'beginner', duration: 180, accessTier: 'free', priceUSD: 0, isPublished: true, order: 1, instructor: 'Dr. Sarah Chen', tags: 'fundamentals,beginner,free', averageRating: 4.9, reviewCount: 1234, enrollmentCount: 5432 },
+            { title: 'Introduction to AI Prompting', slug: 'introduction-to-ai-prompting', description: 'Understand how AI language models work and how to communicate with them effectively.', category: 'prompt-engineering', difficulty: 'beginner', duration: 120, accessTier: 'free', priceUSD: 0, isPublished: true, order: 2, instructor: 'Prof. Michael Zhang', tags: 'ai-basics,beginner,free', averageRating: 4.8, reviewCount: 892, enrollmentCount: 4123 },
+            { title: 'SmartPromptIQ Product Tour', slug: 'smartpromptiq-product-tour', description: 'Complete walkthrough of SmartPromptIQ platform features and capabilities.', category: 'smartpromptiq', difficulty: 'beginner', duration: 90, accessTier: 'free', priceUSD: 0, isPublished: true, order: 3, instructor: 'Emma Rodriguez', tags: 'platform,tutorial,free', averageRating: 4.9, reviewCount: 567, enrollmentCount: 3456 },
+            // SMARTPROMPTIQ SUBSCRIBER TIER (6)
+            { title: 'SmartPromptIQ Basics', slug: 'smartpromptiq-basics', description: 'Complete guide to getting the most from your SmartPromptIQ subscription.', category: 'smartpromptiq', difficulty: 'beginner', duration: 240, accessTier: 'smartpromptiq_included', priceUSD: 0, isPublished: true, order: 4, instructor: 'David Kim', tags: 'platform,basics,included', averageRating: 4.9, reviewCount: 445, enrollmentCount: 2234 },
+            { title: 'Advanced Routing & Execution', slug: 'advanced-routing-execution', description: "Master SmartPromptIQ's intelligent routing system and advanced execution modes.", category: 'smartpromptiq', difficulty: 'intermediate', duration: 300, accessTier: 'smartpromptiq_included', priceUSD: 0, isPublished: true, order: 5, instructor: 'Lisa Chen', tags: 'routing,advanced,included', averageRating: 4.8, reviewCount: 332, enrollmentCount: 1876 },
+            { title: 'Advanced Prompt Chaining', slug: 'advanced-prompt-chaining', description: 'Build complex, multi-step prompt systems that solve sophisticated problems.', category: 'smartpromptiq', difficulty: 'advanced', duration: 360, accessTier: 'smartpromptiq_included', priceUSD: 0, isPublished: true, order: 6, instructor: 'Dr. James Wilson', tags: 'chaining,advanced,included', averageRating: 4.9, reviewCount: 278, enrollmentCount: 1543 },
+            { title: 'Team Workflows & Collaboration', slug: 'team-workflows-collaboration', description: 'Set up and manage team-based prompting workflows in SmartPromptIQ.', category: 'smartpromptiq', difficulty: 'intermediate', duration: 180, accessTier: 'smartpromptiq_included', priceUSD: 0, isPublished: true, order: 7, instructor: 'Amanda Foster', tags: 'teams,collaboration,included', averageRating: 4.7, reviewCount: 189, enrollmentCount: 987 },
+            { title: '50+ SmartPromptIQ Templates Library', slug: 'smartpromptiq-templates-library', description: 'Pre-built, customizable prompt templates for common business tasks.', category: 'smartpromptiq', difficulty: 'beginner', duration: 120, accessTier: 'smartpromptiq_included', priceUSD: 0, isPublished: true, order: 8, instructor: 'Template Team', tags: 'templates,resources,included', averageRating: 4.8, reviewCount: 456, enrollmentCount: 2345 },
+            { title: 'Monthly Live Q&A Sessions', slug: 'monthly-live-qa-sessions', description: 'Interactive sessions with SmartPromptIQ experts.', category: 'smartpromptiq', difficulty: 'beginner', duration: 60, accessTier: 'smartpromptiq_included', priceUSD: 0, isPublished: true, order: 9, instructor: 'Expert Panel', tags: 'live,qa,community,included', averageRating: 4.9, reviewCount: 234, enrollmentCount: 1876 },
+            // PRO TIER - Foundation (2)
+            { title: 'Prompt Engineering Fundamentals', slug: 'prompt-engineering-fundamentals', description: 'Comprehensive foundation in professional prompt engineering.', category: 'prompt-engineering', difficulty: 'intermediate', duration: 480, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 10, instructor: 'Dr. Sarah Chen', tags: 'fundamentals,pro,foundation', averageRating: 4.9, reviewCount: 1567, enrollmentCount: 3456 },
+            { title: 'AI Model Comparison & Selection', slug: 'ai-model-comparison-selection', description: 'Learn when to use GPT-4, Claude, Gemini, and other models.', category: 'prompt-engineering', difficulty: 'intermediate', duration: 240, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 11, instructor: 'Prof. Michael Zhang', tags: 'models,comparison,pro', averageRating: 4.8, reviewCount: 892, enrollmentCount: 2345 },
+            // PRO TIER - Advanced Prompt Engineering (4)
+            { title: 'Advanced Prompt Patterns', slug: 'advanced-prompt-patterns', description: 'Master sophisticated prompt design patterns used by experts.', category: 'prompt-engineering', difficulty: 'advanced', duration: 480, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 12, instructor: 'Dr. James Wilson', tags: 'advanced,patterns,pro', averageRating: 4.9, reviewCount: 723, enrollmentCount: 1876 },
+            { title: 'Prompt Debugging & Optimization', slug: 'prompt-debugging-optimization', description: 'Systematic approaches to fixing and improving prompts.', category: 'prompt-engineering', difficulty: 'advanced', duration: 360, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 13, instructor: 'Alex Johnson', tags: 'debugging,optimization,pro', averageRating: 4.8, reviewCount: 654, enrollmentCount: 1543 },
+            { title: 'Multi-Agent Prompt Systems', slug: 'multi-agent-prompt-systems', description: 'Build systems with multiple AI agents working together.', category: 'prompt-engineering', difficulty: 'advanced', duration: 600, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 14, instructor: 'Dr. Emily Carter', tags: 'multi-agent,advanced,pro', averageRating: 4.9, reviewCount: 445, enrollmentCount: 987 },
+            { title: 'Prompt Security & Safety', slug: 'prompt-security-safety', description: 'Protect against prompt injection, jailbreaking, and misuse.', category: 'prompt-engineering', difficulty: 'intermediate', duration: 300, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 15, instructor: 'Marcus Davis', tags: 'security,safety,pro', averageRating: 4.7, reviewCount: 389, enrollmentCount: 1234 },
+            // PRO TIER - DevOps (2)
+            { title: 'DevOps Automation with AI', slug: 'devops-automation-ai', description: 'Build AI-powered DevOps workflows and automation systems.', category: 'devops', difficulty: 'intermediate', duration: 600, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 16, instructor: 'Carlos Rodriguez', tags: 'devops,automation,pro', averageRating: 4.9, reviewCount: 567, enrollmentCount: 1432 },
+            { title: 'Kubernetes & Container Prompting', slug: 'kubernetes-container-prompting', description: 'AI-powered container orchestration and management.', category: 'devops', difficulty: 'advanced', duration: 360, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 17, instructor: 'Carlos Rodriguez', tags: 'kubernetes,containers,devops,pro', averageRating: 4.8, reviewCount: 345, enrollmentCount: 876 },
+            // PRO TIER - Design (2)
+            { title: 'AI Design Systems', slug: 'ai-design-systems', description: 'Create stunning designs with AI for UI/UX, branding, and graphics.', category: 'design', difficulty: 'intermediate', duration: 360, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 18, instructor: 'Emma Johnson', tags: 'design,ui-ux,pro', averageRating: 4.8, reviewCount: 723, enrollmentCount: 1654 },
+            { title: 'Advanced Design Automation', slug: 'advanced-design-automation', description: 'Build AI-powered design workflows and creative systems.', category: 'design', difficulty: 'advanced', duration: 480, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 19, instructor: 'Emma Johnson', tags: 'design,automation,midjourney,pro', averageRating: 4.9, reviewCount: 456, enrollmentCount: 987 },
+            // PRO TIER - Finance (2)
+            { title: 'Trading & Finance AI', slug: 'trading-finance-ai', description: 'Build AI trading strategies and financial analysis systems.', category: 'finance', difficulty: 'advanced', duration: 720, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 20, instructor: 'David Lopez', tags: 'trading,finance,pro', averageRating: 4.9, reviewCount: 445, enrollmentCount: 1123 },
+            { title: 'Algorithmic Trading with AI', slug: 'algorithmic-trading-ai', description: 'Advanced algorithmic trading using AI prompts.', category: 'finance', difficulty: 'expert', duration: 600, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 21, instructor: 'David Lopez', tags: 'algo-trading,finance,expert,pro', averageRating: 4.9, reviewCount: 289, enrollmentCount: 654 },
+            // PRO TIER - Marketing (2)
+            { title: 'Content Creation & Marketing', slug: 'content-creation-marketing', description: 'Master AI-powered content creation for marketing.', category: 'marketing', difficulty: 'intermediate', duration: 420, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 22, instructor: 'Sophia Martinez', tags: 'content,marketing,pro', averageRating: 4.8, reviewCount: 891, enrollmentCount: 2134 },
+            { title: 'Video & Podcast Script Writing', slug: 'video-podcast-script-writing', description: 'Create compelling scripts for video and audio content.', category: 'marketing', difficulty: 'intermediate', duration: 300, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 23, instructor: 'Sophia Martinez', tags: 'video,podcast,scripting,pro', averageRating: 4.7, reviewCount: 567, enrollmentCount: 1234 },
+            // PRO TIER - Data (2)
+            { title: 'Data Analysis & Visualization', slug: 'data-analysis-visualization', description: 'Analyze data and create insights using AI prompts.', category: 'data', difficulty: 'intermediate', duration: 540, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 24, instructor: 'Dr. Raj Patel', tags: 'data,analysis,pro', averageRating: 4.8, reviewCount: 612, enrollmentCount: 1543 },
+            { title: 'SQL & Database Prompting', slug: 'sql-database-prompting', description: 'Generate and optimize SQL queries with AI.', category: 'data', difficulty: 'intermediate', duration: 360, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 25, instructor: 'Dr. Raj Patel', tags: 'sql,database,pro', averageRating: 4.7, reviewCount: 445, enrollmentCount: 987 },
+            // PRO TIER - Business (3)
+            { title: 'Customer Support Automation', slug: 'customer-support-automation', description: 'Build AI-powered customer support systems.', category: 'business', difficulty: 'intermediate', duration: 420, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 26, instructor: 'Jennifer Williams', tags: 'support,automation,business,pro', averageRating: 4.8, reviewCount: 523, enrollmentCount: 1432 },
+            { title: 'Sales Enablement with AI', slug: 'sales-enablement-ai', description: 'AI-powered sales processes and materials.', category: 'business', difficulty: 'intermediate', duration: 360, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 27, instructor: 'Robert Chen', tags: 'sales,business,pro', averageRating: 4.7, reviewCount: 389, enrollmentCount: 1123 },
+            { title: 'Legal Document Analysis', slug: 'legal-document-analysis', description: 'Use AI to analyze and draft legal documents.', category: 'business', difficulty: 'advanced', duration: 480, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 28, instructor: 'Attorney Lisa Chang', tags: 'legal,analysis,business,pro', averageRating: 4.8, reviewCount: 267, enrollmentCount: 654 },
+            // PRO TIER - Healthcare & Education (2)
+            { title: 'Healthcare & Medical Prompting', slug: 'healthcare-medical-prompting', description: 'AI applications in healthcare and medical research.', category: 'healthcare', difficulty: 'advanced', duration: 600, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 29, instructor: 'Dr. Sarah Johnson MD', tags: 'healthcare,medical,hipaa,pro', averageRating: 4.9, reviewCount: 389, enrollmentCount: 765 },
+            { title: 'Education & E-Learning', slug: 'education-e-learning', description: 'Create educational content and learning systems with AI.', category: 'education', difficulty: 'intermediate', duration: 420, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 30, instructor: 'Prof. Amanda White', tags: 'education,elearning,teaching,pro', averageRating: 4.8, reviewCount: 623, enrollmentCount: 1345 },
+            // PRO TIER - Development (7)
+            { title: 'Code Generation & Review', slug: 'code-generation-review', description: 'Master AI-assisted software development.', category: 'development', difficulty: 'advanced', duration: 540, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 31, instructor: 'Jessica Lee', tags: 'coding,development,pro', averageRating: 4.9, reviewCount: 1234, enrollmentCount: 2345 },
+            { title: 'API Integration Prompting', slug: 'api-integration-prompting', description: 'Connect AI to external APIs and services.', category: 'development', difficulty: 'intermediate', duration: 360, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 32, instructor: 'Tom Harris', tags: 'api,integration,development,pro', averageRating: 4.7, reviewCount: 567, enrollmentCount: 1234 },
+            { title: 'No-Code/Low-Code with AI', slug: 'no-code-low-code-ai', description: 'Build applications without traditional coding using AI.', category: 'development', difficulty: 'intermediate', duration: 300, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 33, instructor: 'Rachel Green', tags: 'no-code,zapier,automation,pro', averageRating: 4.8, reviewCount: 789, enrollmentCount: 1876 },
+            { title: 'Python for Prompt Engineers', slug: 'python-prompt-engineers', description: 'Use Python to scale and automate prompt workflows.', category: 'development', difficulty: 'intermediate', duration: 600, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 34, instructor: 'Ryan Chen', tags: 'python,automation,pro', averageRating: 4.9, reviewCount: 876, enrollmentCount: 1654 },
+            { title: 'JavaScript & Web Integration', slug: 'javascript-web-integration', description: 'Integrate AI prompts into web applications.', category: 'development', difficulty: 'intermediate', duration: 480, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 35, instructor: 'Alex Park', tags: 'javascript,web,development,pro', averageRating: 4.8, reviewCount: 654, enrollmentCount: 1432 },
+            { title: 'Prompt Architecture & Design Patterns', slug: 'prompt-architecture-design-patterns', description: 'Enterprise-grade prompt system architecture.', category: 'development', difficulty: 'expert', duration: 720, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 36, instructor: 'Dr. Patricia Moore', tags: 'architecture,enterprise,expert,pro', averageRating: 4.9, reviewCount: 345, enrollmentCount: 678 },
+            { title: 'Fine-Tuning & Custom Models', slug: 'fine-tuning-custom-models', description: 'When and how to fine-tune custom AI models.', category: 'development', difficulty: 'expert', duration: 900, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 37, instructor: 'Dr. Kevin Zhang', tags: 'fine-tuning,custom-models,expert,pro', averageRating: 4.9, reviewCount: 234, enrollmentCount: 567 },
+            // PRO TIER - Advanced Frameworks (3)
+            { title: 'RAG (Retrieval-Augmented Generation)', slug: 'rag-retrieval-augmented-generation', description: 'Build knowledge-enhanced AI systems.', category: 'development', difficulty: 'advanced', duration: 600, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 38, instructor: 'Dr. Laura Kim', tags: 'rag,advanced,pro', averageRating: 4.9, reviewCount: 534, enrollmentCount: 1123 },
+            { title: 'LangChain & Framework Mastery', slug: 'langchain-framework-mastery', description: 'Master LangChain and other AI orchestration frameworks.', category: 'development', difficulty: 'advanced', duration: 720, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 39, instructor: 'Brandon Lee', tags: 'langchain,frameworks,advanced,pro', averageRating: 4.9, reviewCount: 678, enrollmentCount: 1234 },
+            { title: 'Prompt Engineering for Enterprise', slug: 'prompt-engineering-enterprise', description: 'Deploy and manage AI at enterprise scale.', category: 'business', difficulty: 'expert', duration: 840, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 40, instructor: 'Margaret Thompson', tags: 'enterprise,governance,expert,pro', averageRating: 4.9, reviewCount: 456, enrollmentCount: 789 },
+            // PRO TIER - Research & Creative (4)
+            { title: 'AI Research Methods', slug: 'ai-research-methods', description: 'Use AI to accelerate research and discovery.', category: 'research', difficulty: 'advanced', duration: 600, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 41, instructor: 'Dr. Helen Foster', tags: 'research,academic,advanced,pro', averageRating: 4.8, reviewCount: 345, enrollmentCount: 678 },
+            { title: 'Prompt Engineering for Scientific Computing', slug: 'prompt-engineering-scientific-computing', description: 'AI applications in scientific research.', category: 'research', difficulty: 'advanced', duration: 720, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 42, instructor: 'Dr. Richard Wang', tags: 'science,computing,research,pro', averageRating: 4.8, reviewCount: 267, enrollmentCount: 543 },
+            { title: 'Creative Writing with AI', slug: 'creative-writing-ai', description: 'Write novels, stories, and creative content with AI.', category: 'creative', difficulty: 'intermediate', duration: 480, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 43, instructor: 'Author Monica Blake', tags: 'writing,creative,storytelling,pro', averageRating: 4.7, reviewCount: 567, enrollmentCount: 1234 },
+            { title: 'Game Development & Interactive Fiction', slug: 'game-development-interactive-fiction', description: 'Create game narratives and interactive experiences.', category: 'creative', difficulty: 'intermediate', duration: 540, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 44, instructor: 'Game Designer Chris Miller', tags: 'gaming,narrative,interactive,pro', averageRating: 4.8, reviewCount: 445, enrollmentCount: 876 },
+            // PRO TIER - Workshops & Events (3)
+            { title: 'Weekly Live Workshops', slug: 'weekly-live-workshops', description: 'Hands-on workshops on trending topics.', category: 'events', difficulty: 'intermediate', duration: 120, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 45, instructor: 'Workshop Team', tags: 'live,workshops,events,pro', averageRating: 4.9, reviewCount: 789, enrollmentCount: 2345 },
+            { title: 'Monthly Case Study Deep Dives', slug: 'monthly-case-study-deep-dives', description: 'Detailed analysis of real-world implementations.', category: 'events', difficulty: 'advanced', duration: 180, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 46, instructor: 'Industry Experts', tags: 'case-studies,real-world,events,pro', averageRating: 4.9, reviewCount: 567, enrollmentCount: 1876 },
+            { title: 'Quarterly Hackathons', slug: 'quarterly-hackathons', description: 'Build AI projects, compete, win prizes.', category: 'events', difficulty: 'intermediate', duration: 2880, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 47, instructor: 'Hackathon Team', tags: 'hackathon,competition,events,pro', averageRating: 4.9, reviewCount: 445, enrollmentCount: 1234 },
+            // CERTIFICATION PROGRAMS (6)
+            { title: 'Certified Prompt Engineer (CPE)', slug: 'certified-prompt-engineer-cpe', description: 'Complete certification program with exam. Become a recognized Prompt Engineering professional.', category: 'certification', difficulty: 'advanced', duration: 2400, accessTier: 'certification', priceUSD: 29900, isPublished: true, order: 48, instructor: 'Certification Board', tags: 'certification,professional,exam', averageRating: 4.9, reviewCount: 1567, enrollmentCount: 3456 },
+            { title: 'Certified SmartPromptIQ Architect (CSA)', slug: 'certified-smartpromptiq-architect-csa', description: 'Advanced architecture certification. Requires SmartPromptIQ subscription.', category: 'certification', difficulty: 'expert', duration: 3600, accessTier: 'certification', priceUSD: 39900, isPublished: true, order: 49, instructor: 'Senior Architects', tags: 'certification,architect,expert', averageRating: 4.9, reviewCount: 432, enrollmentCount: 987 },
+            { title: 'Certified DevOps AI Engineer', slug: 'certified-devops-ai-engineer', description: 'DevOps + AI specialization certification.', category: 'certification', difficulty: 'advanced', duration: 2100, accessTier: 'certification', priceUSD: 29900, isPublished: true, order: 50, instructor: 'DevOps Experts', tags: 'certification,devops,specialist', averageRating: 4.8, reviewCount: 289, enrollmentCount: 567 },
+            { title: 'Certified AI Design Specialist', slug: 'certified-ai-design-specialist', description: 'Design + AI specialization certification.', category: 'certification', difficulty: 'advanced', duration: 1800, accessTier: 'certification', priceUSD: 29900, isPublished: true, order: 51, instructor: 'Design Experts', tags: 'certification,design,specialist', averageRating: 4.8, reviewCount: 234, enrollmentCount: 456 },
+            { title: 'Certified Financial AI Engineer', slug: 'certified-financial-ai-engineer', description: 'Finance + AI specialization certification.', category: 'certification', difficulty: 'advanced', duration: 2400, accessTier: 'certification', priceUSD: 29900, isPublished: true, order: 52, instructor: 'Finance Experts', tags: 'certification,finance,specialist', averageRating: 4.9, reviewCount: 178, enrollmentCount: 345 },
+            { title: 'Certified Enterprise AI Architect', slug: 'certified-enterprise-ai-architect', description: 'Enterprise deployment specialization certification.', category: 'certification', difficulty: 'expert', duration: 3000, accessTier: 'certification', priceUSD: 39900, isPublished: true, order: 53, instructor: 'Enterprise Architects', tags: 'certification,enterprise,architect', averageRating: 4.9, reviewCount: 156, enrollmentCount: 289 },
+            // BONUS RESOURCES (4)
+            { title: 'Prompt Template Library (500+ Templates)', slug: 'prompt-template-library-500', description: 'Categorized, fully customizable prompt templates.', category: 'resources', difficulty: 'beginner', duration: 60, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 54, instructor: 'Template Team', tags: 'templates,resources,library,pro', averageRating: 4.9, reviewCount: 1234, enrollmentCount: 3456 },
+            { title: 'AI Model Comparison Database', slug: 'ai-model-comparison-database', description: 'Real-time model performance data and cost calculators.', category: 'resources', difficulty: 'beginner', duration: 30, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 55, instructor: 'Research Team', tags: 'models,comparison,resources,pro', averageRating: 4.8, reviewCount: 876, enrollmentCount: 2345 },
+            { title: 'Community Forum & Discord Access', slug: 'community-forum-discord-access', description: '24/7 peer support, expert office hours, project showcases.', category: 'resources', difficulty: 'beginner', duration: 0, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 56, instructor: 'Community Team', tags: 'community,discord,forum,pro', averageRating: 4.9, reviewCount: 2345, enrollmentCount: 5678 },
+            { title: 'Resource Library & Downloads', slug: 'resource-library-downloads', description: 'E-books, guides, cheat sheets, video tutorials, newsletters.', category: 'resources', difficulty: 'beginner', duration: 0, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 57, instructor: 'Content Team', tags: 'resources,downloads,library,pro', averageRating: 4.8, reviewCount: 1567, enrollmentCount: 4321 },
+        ];
+        for (const course of courses) {
+            await database_1.default.course.create({ data: course });
+        }
+        // Add lessons for AI Agents Masterclass
+        const masterclass = await database_1.default.course.findUnique({ where: { slug: 'ai-agents-masterclass' } });
+        if (masterclass) {
+            const lessons = [
+                { title: 'Welcome to AI Agents', description: 'Introduction to AI agents', duration: 5, order: 1, isFree: true },
+                { title: 'Creating Your First AI Agent', description: 'Step-by-step guide', duration: 6, order: 2, isFree: true },
+                { title: 'Writing Effective System Prompts', description: 'Master the CRISP framework', duration: 7, order: 3, isFree: true },
+                { title: 'Embedding Agents on Your Website', description: 'Technical implementation', duration: 5, order: 4, isFree: true },
+                { title: 'Advanced Features', description: 'Voice, analytics, customization', duration: 4, order: 5, isFree: true },
+                { title: 'Monetization Strategies', description: 'Turn agents into revenue', duration: 3, order: 6, isFree: true },
+            ];
+            for (const lesson of lessons) {
+                await database_1.default.lesson.create({
+                    data: {
+                        courseId: masterclass.id,
+                        title: lesson.title,
+                        description: lesson.description,
+                        content: `# ${lesson.title}\n\n${lesson.description}`,
+                        duration: lesson.duration,
+                        order: lesson.order,
+                        isFree: lesson.isFree,
+                        isPublished: true,
+                    },
+                });
+            }
+        }
+        const count = await database_1.default.course.count();
+        res.json({ success: true, message: `Academy seeded with ${count} courses` });
+    }
+    catch (error) {
+        console.error('Academy seed error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // Admin authentication middleware
 const requireAdmin = async (req, res, next) => {
     try {
@@ -1215,6 +1535,477 @@ router.post('/payments/:id/refund', auth_1.authenticate, requireAdmin, async (re
         res.status(500).json({
             success: false,
             message: 'Internal server error'
+        });
+    }
+});
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRIPE PAYMENT VERIFICATION ENDPOINTS
+// ═══════════════════════════════════════════════════════════════════════════════
+/**
+ * GET /api/admin/payments/verify/:subscriptionId
+ * Verify a subscription's payment status directly with Stripe
+ */
+router.get('/payments/verify/:subscriptionId', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { subscriptionId } = req.params;
+        if (!stripe) {
+            return res.status(503).json({
+                success: false,
+                message: 'Stripe is not configured. Payment verification unavailable.'
+            });
+        }
+        // Find the local subscription record
+        const localSubscription = await database_1.default.subscription.findFirst({
+            where: {
+                OR: [
+                    { id: subscriptionId },
+                    { stripeSubscriptionId: subscriptionId }
+                ]
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true,
+                        stripeCustomerId: true
+                    }
+                }
+            }
+        });
+        if (!localSubscription) {
+            return res.status(404).json({
+                success: false,
+                message: 'Subscription not found in local database'
+            });
+        }
+        // If we have a Stripe subscription ID, verify with Stripe
+        let stripeData = null;
+        if (localSubscription.stripeSubscriptionId) {
+            try {
+                const stripeSubscription = await stripe.subscriptions.retrieve(localSubscription.stripeSubscriptionId, { expand: ['latest_invoice', 'customer', 'default_payment_method'] });
+                stripeData = {
+                    id: stripeSubscription.id,
+                    status: stripeSubscription.status,
+                    currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
+                    currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
+                    cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+                    canceledAt: stripeSubscription.canceled_at ? new Date(stripeSubscription.canceled_at * 1000).toISOString() : null,
+                    created: new Date(stripeSubscription.created * 1000).toISOString(),
+                    latestInvoice: stripeSubscription.latest_invoice ? {
+                        id: stripeSubscription.latest_invoice.id,
+                        status: stripeSubscription.latest_invoice.status,
+                        amountPaid: stripeSubscription.latest_invoice.amount_paid,
+                        amountDue: stripeSubscription.latest_invoice.amount_due,
+                        paidAt: stripeSubscription.latest_invoice.status_transitions?.paid_at
+                            ? new Date(stripeSubscription.latest_invoice.status_transitions.paid_at * 1000).toISOString()
+                            : null
+                    } : null,
+                    customer: stripeSubscription.customer ? {
+                        id: typeof stripeSubscription.customer === 'string' ? stripeSubscription.customer : stripeSubscription.customer.id,
+                        email: typeof stripeSubscription.customer !== 'string' ? stripeSubscription.customer.email : null
+                    } : null
+                };
+                logger_1.logger.info('Stripe subscription verified', {
+                    subscriptionId,
+                    stripeStatus: stripeSubscription.status,
+                    localStatus: localSubscription.status
+                });
+            }
+            catch (stripeError) {
+                logger_1.logger.error('Stripe verification failed', stripeError, { subscriptionId });
+                stripeData = {
+                    error: true,
+                    message: stripeError.message || 'Failed to retrieve from Stripe',
+                    code: stripeError.code
+                };
+            }
+        }
+        // Check for sync discrepancies
+        const syncStatus = {
+            inSync: true,
+            discrepancies: []
+        };
+        if (stripeData && !stripeData.error) {
+            // Check status sync
+            const stripeStatusMap = {
+                'active': 'active',
+                'past_due': 'past_due',
+                'canceled': 'canceled',
+                'incomplete': 'pending',
+                'incomplete_expired': 'expired',
+                'trialing': 'active',
+                'unpaid': 'past_due'
+            };
+            const expectedLocalStatus = stripeStatusMap[stripeData.status] || stripeData.status;
+            if (localSubscription.status !== expectedLocalStatus) {
+                syncStatus.inSync = false;
+                syncStatus.discrepancies.push(`Status mismatch: Local="${localSubscription.status}", Stripe="${stripeData.status}"`);
+            }
+        }
+        res.json({
+            success: true,
+            data: {
+                local: {
+                    id: localSubscription.id,
+                    userId: localSubscription.userId,
+                    userEmail: localSubscription.user.email,
+                    userName: localSubscription.user.firstName && localSubscription.user.lastName
+                        ? `${localSubscription.user.firstName} ${localSubscription.user.lastName}`
+                        : localSubscription.user.email.split('@')[0],
+                    tier: localSubscription.tier,
+                    status: localSubscription.status,
+                    priceInCents: localSubscription.priceInCents,
+                    stripeSubscriptionId: localSubscription.stripeSubscriptionId,
+                    createdAt: localSubscription.createdAt,
+                    updatedAt: localSubscription.updatedAt
+                },
+                stripe: stripeData,
+                syncStatus,
+                verifiedAt: new Date().toISOString()
+            }
+        });
+    }
+    catch (error) {
+        console.error('Payment verification error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error during payment verification'
+        });
+    }
+});
+/**
+ * GET /api/admin/payments/stripe-customers
+ * List all Stripe customers with their payment status
+ */
+router.get('/payments/stripe-customers', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { limit = 20, starting_after } = req.query;
+        if (!stripe) {
+            return res.status(503).json({
+                success: false,
+                message: 'Stripe is not configured'
+            });
+        }
+        // Fetch customers from Stripe
+        const params = {
+            limit: Math.min(Number(limit), 100),
+            expand: ['data.subscriptions']
+        };
+        if (starting_after) {
+            params.starting_after = starting_after;
+        }
+        const customers = await stripe.customers.list(params);
+        // Match with local users
+        const enrichedCustomers = await Promise.all(customers.data.map(async (customer) => {
+            const localUser = await database_1.default.user.findFirst({
+                where: {
+                    OR: [
+                        { stripeCustomerId: customer.id },
+                        { email: customer.email || '' }
+                    ]
+                },
+                select: {
+                    id: true,
+                    email: true,
+                    firstName: true,
+                    lastName: true,
+                    subscriptionTier: true,
+                    tokensUsed: true,
+                    generationsUsed: true,
+                    lastLogin: true
+                }
+            });
+            return {
+                stripeCustomerId: customer.id,
+                email: customer.email,
+                name: customer.name,
+                created: new Date(customer.created * 1000).toISOString(),
+                subscriptions: (customer.subscriptions?.data || []).map((sub) => ({
+                    id: sub.id,
+                    status: sub.status,
+                    currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+                    cancelAtPeriodEnd: sub.cancel_at_period_end
+                })),
+                localUser: localUser ? {
+                    id: localUser.id,
+                    email: localUser.email,
+                    name: localUser.firstName && localUser.lastName
+                        ? `${localUser.firstName} ${localUser.lastName}`
+                        : localUser.email.split('@')[0],
+                    tier: localUser.subscriptionTier,
+                    lastLogin: localUser.lastLogin
+                } : null,
+                synced: !!localUser
+            };
+        }));
+        res.json({
+            success: true,
+            data: {
+                customers: enrichedCustomers,
+                hasMore: customers.has_more,
+                totalFetched: enrichedCustomers.length
+            }
+        });
+    }
+    catch (error) {
+        console.error('Stripe customers fetch error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch Stripe customers'
+        });
+    }
+});
+/**
+ * GET /api/admin/payments/recent-charges
+ * Get recent Stripe charges for payment monitoring
+ */
+router.get('/payments/recent-charges', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        // Validate and sanitize limit parameter
+        const rawLimit = req.query.limit;
+        const parsedLimit = parseInt(String(rawLimit || '20'), 10);
+        const limit = isNaN(parsedLimit) || parsedLimit < 1 ? 20 : Math.min(parsedLimit, 100);
+        if (!stripe) {
+            return res.status(503).json({
+                success: false,
+                message: 'Stripe is not configured'
+            });
+        }
+        const charges = await stripe.charges.list({
+            limit,
+            expand: ['data.customer', 'data.invoice']
+        });
+        const formattedCharges = charges.data.map(charge => ({
+            id: charge.id,
+            amount: charge.amount,
+            amountRefunded: charge.amount_refunded,
+            currency: charge.currency,
+            status: charge.status,
+            paid: charge.paid,
+            refunded: charge.refunded,
+            disputed: charge.disputed,
+            customer: charge.customer ? {
+                id: typeof charge.customer === 'string' ? charge.customer : charge.customer.id,
+                email: typeof charge.customer !== 'string' ? charge.customer.email : null
+            } : null,
+            receiptEmail: charge.receipt_email,
+            description: charge.description,
+            failureCode: charge.failure_code,
+            failureMessage: charge.failure_message,
+            created: new Date(charge.created * 1000).toISOString(),
+            invoice: charge.invoice ? {
+                id: typeof charge.invoice === 'string' ? charge.invoice : charge.invoice.id
+            } : null
+        }));
+        // Calculate summary stats
+        const summary = {
+            totalCharges: formattedCharges.length,
+            successfulCharges: formattedCharges.filter(c => c.status === 'succeeded').length,
+            failedCharges: formattedCharges.filter(c => c.status === 'failed').length,
+            totalAmount: formattedCharges.reduce((sum, c) => sum + (c.status === 'succeeded' ? c.amount : 0), 0),
+            totalRefunded: formattedCharges.reduce((sum, c) => sum + c.amountRefunded, 0)
+        };
+        res.json({
+            success: true,
+            data: {
+                charges: formattedCharges,
+                summary,
+                hasMore: charges.has_more
+            }
+        });
+    }
+    catch (error) {
+        console.error('Recent charges fetch error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch recent charges'
+        });
+    }
+});
+/**
+ * POST /api/admin/payments/sync-subscription/:subscriptionId
+ * Sync a subscription's status from Stripe to local database
+ */
+router.post('/payments/sync-subscription/:subscriptionId', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { subscriptionId } = req.params;
+        if (!stripe) {
+            return res.status(503).json({
+                success: false,
+                message: 'Stripe is not configured'
+            });
+        }
+        // Find local subscription
+        const localSubscription = await database_1.default.subscription.findFirst({
+            where: {
+                OR: [
+                    { id: subscriptionId },
+                    { stripeSubscriptionId: subscriptionId }
+                ]
+            }
+        });
+        if (!localSubscription) {
+            return res.status(404).json({
+                success: false,
+                message: 'Subscription not found'
+            });
+        }
+        if (!localSubscription.stripeSubscriptionId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Subscription has no Stripe ID - cannot sync'
+            });
+        }
+        // Fetch from Stripe
+        const stripeSubscription = await stripe.subscriptions.retrieve(localSubscription.stripeSubscriptionId);
+        // Map Stripe status to local status
+        const statusMap = {
+            'active': 'active',
+            'past_due': 'past_due',
+            'canceled': 'canceled',
+            'incomplete': 'pending',
+            'incomplete_expired': 'expired',
+            'trialing': 'active',
+            'unpaid': 'past_due',
+            'paused': 'paused'
+        };
+        const newStatus = statusMap[stripeSubscription.status] || stripeSubscription.status;
+        // Update local subscription
+        const updatedSubscription = await database_1.default.subscription.update({
+            where: { id: localSubscription.id },
+            data: {
+                status: newStatus,
+                updatedAt: new Date()
+            }
+        });
+        // Log the sync action
+        logger_1.logger.info('Subscription synced from Stripe', {
+            subscriptionId: localSubscription.id,
+            stripeSubscriptionId: localSubscription.stripeSubscriptionId,
+            oldStatus: localSubscription.status,
+            newStatus,
+            syncedBy: req.user.id
+        });
+        res.json({
+            success: true,
+            message: 'Subscription synced successfully',
+            data: {
+                subscriptionId: updatedSubscription.id,
+                previousStatus: localSubscription.status,
+                newStatus,
+                stripeStatus: stripeSubscription.status,
+                syncedAt: new Date().toISOString(),
+                syncedBy: req.user.id
+            }
+        });
+    }
+    catch (error) {
+        console.error('Subscription sync error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to sync subscription'
+        });
+    }
+});
+/**
+ * GET /api/admin/payments/dashboard
+ * Comprehensive payment dashboard with Stripe data
+ */
+router.get('/payments/dashboard', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        // Local database stats
+        const localStats = {
+            totalSubscriptions: await database_1.default.subscription.count(),
+            activeSubscriptions: await database_1.default.subscription.count({ where: { status: 'active' } }),
+            canceledSubscriptions: await database_1.default.subscription.count({ where: { status: 'canceled' } }),
+            pendingSubscriptions: await database_1.default.subscription.count({ where: { status: 'pending' } })
+        };
+        // Revenue from local database
+        const revenueResult = await database_1.default.subscription.aggregate({
+            where: { status: 'active' },
+            _sum: { priceInCents: true }
+        });
+        // Stripe live data (if available)
+        let stripeStats = null;
+        if (stripe) {
+            try {
+                // Get balance
+                const balance = await stripe.balance.retrieve();
+                // Get recent payment intents
+                const recentPayments = await stripe.paymentIntents.list({
+                    limit: 10,
+                    created: {
+                        gte: Math.floor(Date.now() / 1000) - (24 * 60 * 60) // Last 24 hours
+                    }
+                });
+                // Get subscription stats
+                const activeSubscriptions = await stripe.subscriptions.list({
+                    status: 'active',
+                    limit: 1
+                });
+                stripeStats = {
+                    available: true,
+                    balance: {
+                        available: balance.available.map(b => ({ amount: b.amount, currency: b.currency })),
+                        pending: balance.pending.map(b => ({ amount: b.amount, currency: b.currency }))
+                    },
+                    recentPayments: {
+                        count: recentPayments.data.length,
+                        totalAmount: recentPayments.data.reduce((sum, p) => sum + (p.amount || 0), 0),
+                        succeeded: recentPayments.data.filter(p => p.status === 'succeeded').length,
+                        failed: recentPayments.data.filter(p => p.status === 'canceled' || p.status === 'requires_payment_method').length
+                    },
+                    hasActiveSubscriptions: activeSubscriptions.data.length > 0
+                };
+            }
+            catch (stripeError) {
+                stripeStats = {
+                    available: false,
+                    error: stripeError.message
+                };
+            }
+        }
+        // Recent payment events from local database
+        const recentSubscriptions = await database_1.default.subscription.findMany({
+            take: 10,
+            orderBy: { createdAt: 'desc' },
+            include: {
+                user: {
+                    select: {
+                        email: true,
+                        firstName: true,
+                        lastName: true
+                    }
+                }
+            }
+        });
+        res.json({
+            success: true,
+            data: {
+                local: {
+                    ...localStats,
+                    monthlyRecurringRevenue: (revenueResult._sum.priceInCents || 0) / 100
+                },
+                stripe: stripeStats,
+                recentActivity: recentSubscriptions.map(sub => ({
+                    id: sub.id,
+                    userEmail: sub.user.email,
+                    tier: sub.tier,
+                    status: sub.status,
+                    amount: sub.priceInCents / 100,
+                    createdAt: sub.createdAt
+                })),
+                generatedAt: new Date().toISOString()
+            }
+        });
+    }
+    catch (error) {
+        console.error('Payment dashboard error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to generate payment dashboard'
         });
     }
 });
@@ -3150,6 +3941,1248 @@ router.post('/users/:id/unsuspend', auth_1.authenticate, requireAdmin, async (re
         res.status(500).json({
             success: false,
             message: 'Internal server error'
+        });
+    }
+});
+// =============================================================================
+// STORAGE CLEANUP ENDPOINTS
+// =============================================================================
+const cleanupService_1 = require("../services/cleanupService");
+const supabase_1 = require("../lib/supabase");
+/**
+ * POST /api/admin/storage/cleanup
+ * Trigger manual storage cleanup
+ */
+router.post('/storage/cleanup', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { retentionDays = cleanupService_1.DEFAULT_RETENTION_DAYS } = req.body;
+        console.log(`🧹 Admin triggered storage cleanup (retention: ${retentionDays} days)`);
+        const result = await (0, cleanupService_1.runCleanup)(retentionDays);
+        res.json({
+            success: result.success,
+            message: result.success ? 'Cleanup completed successfully' : 'Cleanup completed with errors',
+            summary: {
+                totalFilesDeleted: result.totalFilesDeleted,
+                totalFilesSkipped: result.totalFilesSkipped,
+                totalErrors: result.totalErrors,
+                duration: result.duration,
+                timestamp: result.timestamp,
+            },
+            details: result.results,
+        });
+    }
+    catch (error) {
+        console.error('Storage cleanup error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Storage cleanup failed',
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
+    }
+});
+/**
+ * GET /api/admin/storage/stats
+ * Get storage statistics for all audio buckets
+ */
+router.get('/storage/stats', auth_1.authenticate, requireAdmin, async (_req, res) => {
+    try {
+        const stats = {};
+        for (const [key, bucket] of Object.entries(supabase_1.STORAGE_BUCKETS)) {
+            const bucketStats = await (0, cleanupService_1.getBucketStats)(bucket);
+            stats[bucket] = bucketStats;
+        }
+        res.json({
+            success: true,
+            buckets: Object.values(supabase_1.STORAGE_BUCKETS),
+            stats,
+            retentionDays: cleanupService_1.DEFAULT_RETENTION_DAYS,
+        });
+    }
+    catch (error) {
+        console.error('Storage stats error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get storage stats',
+        });
+    }
+});
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER FEATURE ACCESS MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+// Feature limits by tier (mirrors frontend featureAccess.ts)
+const TIER_LIMITS = {
+    free: {
+        promptsPerMonth: 10,
+        tokensPerMonth: 50,
+        advancedModels: false,
+        voiceGenerationsPerMonth: 5,
+        openAIVoices: true,
+        elevenLabsVoices: false,
+        premiumElevenLabsVoices: false,
+        voiceDownloads: false,
+        voiceCommercialUse: false,
+        musicTracksPerMonth: 3,
+        introOutroAccess: false,
+        introOutroDownloads: false,
+        premiumMusicLibrary: false,
+        voiceMusicMixing: false,
+        imageGenerationsPerMonth: 5,
+        stableDiffusion: true,
+        dalleAccess: false,
+        dalle3Access: false,
+        printIntegration: false,
+        blueprintsPerMonth: 1,
+        storyModeVoice: false,
+        appTemplates: false,
+        deploymentHub: false,
+        codeExport: false,
+        freeCourses: true,
+        allCourses: false,
+        certificates: false,
+        earlyAccess: false,
+        playgroundTests: 5,
+        pdfExport: false,
+        jsonExport: false,
+        audioDownloads: false,
+        videoExport: false,
+        removeBranding: false,
+        apiAccess: false,
+        apiCallsPerMonth: 0,
+        webhooks: false,
+        teamMembers: 1,
+        teamWorkspace: false,
+        adminDashboard: false,
+        supportLevel: 'community',
+        responseTime: '48-72 hours',
+    },
+    starter: {
+        promptsPerMonth: 100,
+        tokensPerMonth: 500,
+        advancedModels: false,
+        voiceGenerationsPerMonth: 50,
+        openAIVoices: true,
+        elevenLabsVoices: false,
+        premiumElevenLabsVoices: false,
+        voiceDownloads: true,
+        voiceCommercialUse: false,
+        musicTracksPerMonth: 10,
+        introOutroAccess: true,
+        introOutroDownloads: true,
+        premiumMusicLibrary: false,
+        voiceMusicMixing: false,
+        imageGenerationsPerMonth: 30,
+        stableDiffusion: true,
+        dalleAccess: false,
+        dalle3Access: false,
+        printIntegration: false,
+        blueprintsPerMonth: 3,
+        storyModeVoice: false,
+        appTemplates: true,
+        deploymentHub: false,
+        codeExport: false,
+        freeCourses: true,
+        allCourses: false,
+        certificates: false,
+        earlyAccess: false,
+        playgroundTests: 25,
+        pdfExport: true,
+        jsonExport: false,
+        audioDownloads: true,
+        videoExport: false,
+        removeBranding: false,
+        apiAccess: false,
+        apiCallsPerMonth: 0,
+        webhooks: false,
+        teamMembers: 1,
+        teamWorkspace: false,
+        adminDashboard: false,
+        supportLevel: 'email',
+        responseTime: '24-48 hours',
+    },
+    pro: {
+        promptsPerMonth: 500,
+        tokensPerMonth: 2000,
+        advancedModels: true,
+        voiceGenerationsPerMonth: 200,
+        openAIVoices: true,
+        elevenLabsVoices: true,
+        premiumElevenLabsVoices: false,
+        voiceDownloads: true,
+        voiceCommercialUse: true,
+        musicTracksPerMonth: 50,
+        introOutroAccess: true,
+        introOutroDownloads: true,
+        premiumMusicLibrary: true,
+        voiceMusicMixing: true,
+        imageGenerationsPerMonth: 100,
+        stableDiffusion: true,
+        dalleAccess: true,
+        dalle3Access: true,
+        printIntegration: true,
+        blueprintsPerMonth: 10,
+        storyModeVoice: true,
+        appTemplates: true,
+        deploymentHub: true,
+        codeExport: true,
+        freeCourses: true,
+        allCourses: true,
+        certificates: true,
+        earlyAccess: false,
+        playgroundTests: 100,
+        pdfExport: true,
+        jsonExport: true,
+        audioDownloads: true,
+        videoExport: true,
+        removeBranding: false,
+        apiAccess: false,
+        apiCallsPerMonth: 0,
+        webhooks: false,
+        teamMembers: 1,
+        teamWorkspace: false,
+        adminDashboard: false,
+        supportLevel: 'priority',
+        responseTime: '12-24 hours',
+    },
+    business: {
+        promptsPerMonth: 2000,
+        tokensPerMonth: 5000,
+        advancedModels: true,
+        voiceGenerationsPerMonth: 500,
+        openAIVoices: true,
+        elevenLabsVoices: true,
+        premiumElevenLabsVoices: true,
+        voiceDownloads: true,
+        voiceCommercialUse: true,
+        musicTracksPerMonth: 150,
+        introOutroAccess: true,
+        introOutroDownloads: true,
+        premiumMusicLibrary: true,
+        voiceMusicMixing: true,
+        imageGenerationsPerMonth: 300,
+        stableDiffusion: true,
+        dalleAccess: true,
+        dalle3Access: true,
+        printIntegration: true,
+        blueprintsPerMonth: -1,
+        storyModeVoice: true,
+        appTemplates: true,
+        deploymentHub: true,
+        codeExport: true,
+        freeCourses: true,
+        allCourses: true,
+        certificates: true,
+        earlyAccess: true,
+        playgroundTests: 500,
+        pdfExport: true,
+        jsonExport: true,
+        audioDownloads: true,
+        videoExport: true,
+        removeBranding: true,
+        apiAccess: true,
+        apiCallsPerMonth: 1000,
+        webhooks: true,
+        teamMembers: 5,
+        teamWorkspace: true,
+        adminDashboard: true,
+        supportLevel: 'priority',
+        responseTime: '4-12 hours',
+    },
+    enterprise: {
+        promptsPerMonth: -1,
+        tokensPerMonth: 20000,
+        advancedModels: true,
+        voiceGenerationsPerMonth: -1,
+        openAIVoices: true,
+        elevenLabsVoices: true,
+        premiumElevenLabsVoices: true,
+        voiceDownloads: true,
+        voiceCommercialUse: true,
+        musicTracksPerMonth: -1,
+        introOutroAccess: true,
+        introOutroDownloads: true,
+        premiumMusicLibrary: true,
+        voiceMusicMixing: true,
+        imageGenerationsPerMonth: -1,
+        stableDiffusion: true,
+        dalleAccess: true,
+        dalle3Access: true,
+        printIntegration: true,
+        blueprintsPerMonth: -1,
+        storyModeVoice: true,
+        appTemplates: true,
+        deploymentHub: true,
+        codeExport: true,
+        freeCourses: true,
+        allCourses: true,
+        certificates: true,
+        earlyAccess: true,
+        playgroundTests: -1,
+        pdfExport: true,
+        jsonExport: true,
+        audioDownloads: true,
+        videoExport: true,
+        removeBranding: true,
+        apiAccess: true,
+        apiCallsPerMonth: -1,
+        webhooks: true,
+        teamMembers: -1,
+        teamWorkspace: true,
+        adminDashboard: true,
+        supportLevel: 'dedicated',
+        responseTime: '1-4 hours',
+    },
+};
+/**
+ * GET /api/admin/users/:id/features
+ * Get detailed feature access for a specific user
+ */
+router.get('/users/:id/features', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await database_1.default.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                subscriptionTier: true,
+                tokensUsed: true,
+                generationsUsed: true,
+                createdAt: true,
+                lastLogin: true,
+                emailVerified: true,
+                subscriptions: {
+                    where: { status: 'active' },
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                },
+                prompts: {
+                    select: { id: true },
+                },
+                usageLogs: {
+                    where: {
+                        createdAt: {
+                            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                        },
+                    },
+                    select: {
+                        tokensConsumed: true,
+                        costInCents: true,
+                        provider: true,
+                    },
+                },
+            },
+        });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+        // Get tier limits
+        const tier = user.subscriptionTier?.toLowerCase() || 'free';
+        const tierLimits = TIER_LIMITS[tier] || TIER_LIMITS.free;
+        // Calculate current usage
+        const totalTokensUsed = user.usageLogs.reduce((sum, log) => sum + log.tokensConsumed, 0);
+        const totalCost = user.usageLogs.reduce((sum, log) => sum + log.costInCents, 0) / 100;
+        const promptsCreated = user.prompts.length;
+        // Build feature access list with usage data
+        const featureAccess = {
+            prompts: {
+                name: 'Prompt Generation',
+                hasAccess: true,
+                limit: tierLimits.promptsPerMonth,
+                used: promptsCreated,
+                remaining: tierLimits.promptsPerMonth === -1 ? 'Unlimited' : Math.max(0, tierLimits.promptsPerMonth - promptsCreated),
+            },
+            tokens: {
+                name: 'AI Tokens',
+                hasAccess: true,
+                limit: tierLimits.tokensPerMonth,
+                used: totalTokensUsed,
+                remaining: tierLimits.tokensPerMonth === -1 ? 'Unlimited' : Math.max(0, tierLimits.tokensPerMonth - totalTokensUsed),
+            },
+            advancedModels: {
+                name: 'Advanced AI Models (GPT-4, Claude)',
+                hasAccess: tierLimits.advancedModels,
+                description: tierLimits.advancedModels ? 'Full access to GPT-4 and Claude' : 'Limited to GPT-3.5',
+            },
+            voiceGeneration: {
+                name: 'Voice Generation',
+                hasAccess: tierLimits.voiceGenerationsPerMonth > 0,
+                limit: tierLimits.voiceGenerationsPerMonth,
+                features: {
+                    openAIVoices: tierLimits.openAIVoices,
+                    elevenLabsVoices: tierLimits.elevenLabsVoices,
+                    premiumElevenLabsVoices: tierLimits.premiumElevenLabsVoices,
+                    voiceDownloads: tierLimits.voiceDownloads,
+                    voiceCommercialUse: tierLimits.voiceCommercialUse,
+                },
+            },
+            music: {
+                name: 'Music & Audio',
+                hasAccess: tierLimits.musicTracksPerMonth > 0,
+                limit: tierLimits.musicTracksPerMonth,
+                features: {
+                    introOutroAccess: tierLimits.introOutroAccess,
+                    introOutroDownloads: tierLimits.introOutroDownloads,
+                    premiumMusicLibrary: tierLimits.premiumMusicLibrary,
+                    voiceMusicMixing: tierLimits.voiceMusicMixing,
+                },
+            },
+            designStudio: {
+                name: 'Design Studio',
+                hasAccess: tierLimits.imageGenerationsPerMonth > 0,
+                limit: tierLimits.imageGenerationsPerMonth,
+                features: {
+                    stableDiffusion: tierLimits.stableDiffusion,
+                    dalleAccess: tierLimits.dalleAccess,
+                    dalle3Access: tierLimits.dalle3Access,
+                    printIntegration: tierLimits.printIntegration,
+                },
+            },
+            builderIQ: {
+                name: 'BuilderIQ',
+                hasAccess: tierLimits.blueprintsPerMonth !== 0,
+                limit: tierLimits.blueprintsPerMonth,
+                features: {
+                    storyModeVoice: tierLimits.storyModeVoice,
+                    appTemplates: tierLimits.appTemplates,
+                    deploymentHub: tierLimits.deploymentHub,
+                    codeExport: tierLimits.codeExport,
+                },
+            },
+            academy: {
+                name: 'Academy',
+                hasAccess: tierLimits.freeCourses,
+                features: {
+                    freeCourses: tierLimits.freeCourses,
+                    allCourses: tierLimits.allCourses,
+                    certificates: tierLimits.certificates,
+                    earlyAccess: tierLimits.earlyAccess,
+                    playgroundTests: tierLimits.playgroundTests,
+                },
+            },
+            downloads: {
+                name: 'Downloads & Exports',
+                hasAccess: tierLimits.pdfExport || tierLimits.audioDownloads,
+                features: {
+                    pdfExport: tierLimits.pdfExport,
+                    jsonExport: tierLimits.jsonExport,
+                    audioDownloads: tierLimits.audioDownloads,
+                    videoExport: tierLimits.videoExport,
+                    removeBranding: tierLimits.removeBranding,
+                },
+            },
+            api: {
+                name: 'API Access',
+                hasAccess: tierLimits.apiAccess,
+                limit: tierLimits.apiCallsPerMonth,
+                features: {
+                    webhooks: tierLimits.webhooks,
+                },
+            },
+            team: {
+                name: 'Team Features',
+                hasAccess: tierLimits.teamWorkspace,
+                limit: tierLimits.teamMembers,
+                features: {
+                    teamWorkspace: tierLimits.teamWorkspace,
+                    adminDashboard: tierLimits.adminDashboard,
+                },
+            },
+            support: {
+                name: 'Support',
+                level: tierLimits.supportLevel,
+                responseTime: tierLimits.responseTime,
+            },
+        };
+        res.json({
+            success: true,
+            data: {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.firstName && user.lastName
+                        ? `${user.firstName} ${user.lastName}`
+                        : user.firstName || user.email.split('@')[0],
+                    role: user.role,
+                    tier: user.subscriptionTier,
+                    createdAt: user.createdAt,
+                    lastLogin: user.lastLogin,
+                    emailVerified: user.emailVerified,
+                },
+                subscription: user.subscriptions[0] || null,
+                usage: {
+                    totalTokensUsed,
+                    totalCost: `$${totalCost.toFixed(2)}`,
+                    promptsCreated,
+                    period: 'Last 30 days',
+                },
+                featureAccess,
+                tierLimits,
+            },
+        });
+    }
+    catch (error) {
+        console.error('Get user features error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * POST /api/admin/impersonate/:id
+ * Generate a temporary impersonation token for viewing app as a specific user
+ * (Read-only access, no modifications allowed)
+ */
+router.post('/impersonate/:id', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const adminId = req.user.id;
+        // Find the target user
+        const targetUser = await database_1.default.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                subscriptionTier: true,
+            },
+        });
+        if (!targetUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+        // Cannot impersonate another admin
+        if (targetUser.role === 'ADMIN') {
+            return res.status(403).json({
+                success: false,
+                message: 'Cannot impersonate admin users',
+            });
+        }
+        // Log impersonation attempt for audit
+        console.log(`🔐 Admin ${adminId} is impersonating user ${targetUser.email} (${id})`);
+        // Import JWT for token generation
+        const jwt = require('jsonwebtoken');
+        const JWT_SECRET = process.env.JWT_SECRET || 'smartpromptiq-jwt-secret-key';
+        // Create impersonation token (short-lived, 30 minutes)
+        const impersonationToken = jwt.sign({
+            userId: targetUser.id,
+            email: targetUser.email,
+            role: targetUser.role,
+            subscriptionTier: targetUser.subscriptionTier,
+            isImpersonation: true,
+            impersonatedBy: adminId,
+            originalAdmin: req.user.email,
+        }, JWT_SECRET, { expiresIn: '30m' });
+        res.json({
+            success: true,
+            message: 'Impersonation session created',
+            data: {
+                impersonationToken,
+                targetUser: {
+                    id: targetUser.id,
+                    email: targetUser.email,
+                    name: targetUser.firstName && targetUser.lastName
+                        ? `${targetUser.firstName} ${targetUser.lastName}`
+                        : targetUser.firstName || targetUser.email.split('@')[0],
+                    tier: targetUser.subscriptionTier,
+                    role: targetUser.role,
+                },
+                expiresIn: '30 minutes',
+                restrictions: [
+                    'Read-only access',
+                    'Cannot make purchases',
+                    'Cannot modify user data',
+                    'Cannot delete content',
+                ],
+            },
+        });
+    }
+    catch (error) {
+        console.error('Impersonate user error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * GET /api/admin/feature-overview
+ * Get overview of all features across all tiers for admin reference
+ */
+router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, res) => {
+    try {
+        // Get user counts by tier
+        const tierCounts = await database_1.default.user.groupBy({
+            by: ['subscriptionTier'],
+            _count: {
+                subscriptionTier: true,
+            },
+        });
+        const tierStats = {};
+        tierCounts.forEach(tier => {
+            tierStats[tier.subscriptionTier?.toLowerCase() || 'free'] = tier._count.subscriptionTier;
+        });
+        // Build comprehensive feature overview
+        const featureOverview = {
+            tiers: ['free', 'starter', 'pro', 'business', 'enterprise'],
+            tierDisplayNames: {
+                free: 'Free',
+                starter: 'Starter ($19/mo)',
+                pro: 'Pro ($49/mo)',
+                business: 'Business ($99/mo)',
+                enterprise: 'Enterprise ($299/mo)',
+            },
+            tierUserCounts: tierStats,
+            features: {
+                promptGeneration: {
+                    name: 'Prompt Generation',
+                    limits: {
+                        free: '10/month',
+                        starter: '100/month',
+                        pro: '500/month',
+                        business: '2000/month',
+                        enterprise: 'Unlimited',
+                    },
+                },
+                voiceGeneration: {
+                    name: 'Voice Generation',
+                    limits: {
+                        free: '5/month (OpenAI only)',
+                        starter: '50/month (OpenAI only)',
+                        pro: '200/month (OpenAI + ElevenLabs)',
+                        business: '500/month (All voices)',
+                        enterprise: 'Unlimited (All voices)',
+                    },
+                },
+                musicAudio: {
+                    name: 'Music & Audio',
+                    limits: {
+                        free: '3 tracks/month',
+                        starter: '10 tracks/month + Intro/Outro',
+                        pro: '50 tracks/month + Premium Library',
+                        business: '150 tracks/month + All features',
+                        enterprise: 'Unlimited + All features',
+                    },
+                },
+                designStudio: {
+                    name: 'Design Studio',
+                    limits: {
+                        free: '5 images/month (SD only)',
+                        starter: '30 images/month (SD only)',
+                        pro: '100 images/month (SD + DALL-E 3)',
+                        business: '300 images/month + POD Integration',
+                        enterprise: 'Unlimited + POD Priority',
+                    },
+                },
+                builderIQ: {
+                    name: 'BuilderIQ',
+                    limits: {
+                        free: '1 blueprint/month',
+                        starter: '3 blueprints/month + Templates',
+                        pro: '10 blueprints/month + Story Mode + Deployment',
+                        business: 'Unlimited + All features',
+                        enterprise: 'Unlimited + All features',
+                    },
+                },
+                academy: {
+                    name: 'Academy',
+                    limits: {
+                        free: 'Free courses only',
+                        starter: 'Free courses only',
+                        pro: 'All 57 courses + Certificates',
+                        business: 'All courses + Early Access',
+                        enterprise: 'All courses + Early Access',
+                    },
+                },
+                api: {
+                    name: 'API Access',
+                    limits: {
+                        free: 'No access',
+                        starter: 'No access',
+                        pro: 'No access',
+                        business: '1000 calls/month + Webhooks',
+                        enterprise: 'Unlimited + Webhooks',
+                    },
+                },
+                team: {
+                    name: 'Team Features',
+                    limits: {
+                        free: '1 member',
+                        starter: '1 member',
+                        pro: '1 member',
+                        business: '5 members + Workspace + Admin',
+                        enterprise: 'Unlimited members + All features',
+                    },
+                },
+                support: {
+                    name: 'Support',
+                    limits: {
+                        free: 'Community (48-72h)',
+                        starter: 'Email (24-48h)',
+                        pro: 'Priority (12-24h)',
+                        business: 'Priority (4-12h)',
+                        enterprise: 'Dedicated (1-4h)',
+                    },
+                },
+            },
+            tierLimits: TIER_LIMITS,
+        };
+        res.json({
+            success: true,
+            data: featureOverview,
+        });
+    }
+    catch (error) {
+        console.error('Feature overview error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * PUT /api/admin/users/:id/tier
+ * Update a user's subscription tier (admin override)
+ */
+router.put('/users/:id/tier', auth_1.authenticate, requireAdmin, [
+    (0, express_validator_1.body)('tier').isIn(['free', 'starter', 'pro', 'business', 'enterprise']).withMessage('Invalid tier'),
+    (0, express_validator_1.body)('reason').notEmpty().trim().withMessage('Reason is required for tier changes'),
+], async (req, res) => {
+    try {
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: errors.array(),
+            });
+        }
+        const { id } = req.params;
+        const { tier, reason } = req.body;
+        const adminId = req.user.id;
+        const user = await database_1.default.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                email: true,
+                subscriptionTier: true,
+            },
+        });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+        const previousTier = user.subscriptionTier;
+        // Update user tier
+        await database_1.default.user.update({
+            where: { id },
+            data: {
+                subscriptionTier: tier.toUpperCase(),
+                updatedAt: new Date(),
+            },
+        });
+        // Log the admin action
+        console.log(`🔐 Admin ${adminId} changed user ${user.email} tier: ${previousTier} -> ${tier.toUpperCase()}. Reason: ${reason}`);
+        res.json({
+            success: true,
+            message: 'User tier updated successfully',
+            data: {
+                userId: id,
+                email: user.email,
+                previousTier,
+                newTier: tier.toUpperCase(),
+                updatedBy: adminId,
+                reason,
+                updatedAt: new Date().toISOString(),
+            },
+        });
+    }
+    catch (error) {
+        console.error('Update user tier error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER DELETION AND CLEANUP ENDPOINTS
+// ═══════════════════════════════════════════════════════════════════════════════
+/**
+ * POST /api/admin/users/bulk-delete
+ * Delete multiple users at once
+ */
+router.post('/users/bulk-delete', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { userIds, reason, permanent = false } = req.body;
+        if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'User IDs array is required',
+            });
+        }
+        if (!reason) {
+            return res.status(400).json({
+                success: false,
+                message: 'Deletion reason is required',
+            });
+        }
+        const adminId = req.user.id;
+        const results = [];
+        for (const userId of userIds) {
+            try {
+                // Check if user exists
+                const user = await database_1.default.user.findUnique({
+                    where: { id: userId },
+                });
+                if (!user) {
+                    results.push({ userId, success: false, error: 'User not found' });
+                    continue;
+                }
+                // Don't allow deleting admins
+                if (user.role === 'ADMIN') {
+                    results.push({ userId, success: false, error: 'Cannot delete admin users' });
+                    continue;
+                }
+                if (permanent) {
+                    // Permanent delete - remove from database
+                    await database_1.default.user.delete({
+                        where: { id: userId },
+                    });
+                }
+                else {
+                    // Soft delete - mark as deleted
+                    await database_1.default.user.update({
+                        where: { id: userId },
+                        data: {
+                            status: 'deleted',
+                            deletedAt: new Date(),
+                            email: `deleted_${Date.now()}_${user.email}`, // Anonymize email
+                        },
+                    });
+                }
+                results.push({ userId, success: true });
+                console.log(`🗑️ Admin ${adminId} ${permanent ? 'permanently' : 'soft'} deleted user ${user.email}. Reason: ${reason}`);
+            }
+            catch (err) {
+                results.push({ userId, success: false, error: err.message });
+            }
+        }
+        const successCount = results.filter(r => r.success).length;
+        const failCount = results.filter(r => !r.success).length;
+        res.json({
+            success: true,
+            message: `Deleted ${successCount} users, ${failCount} failed`,
+            data: {
+                results,
+                deletedBy: adminId,
+                permanent,
+                reason,
+                timestamp: new Date().toISOString(),
+            },
+        });
+    }
+    catch (error) {
+        console.error('Bulk delete users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * POST /api/admin/cleanup/demo-users
+ * Delete all demo/test users (emails containing 'demo', 'test', 'example')
+ */
+router.post('/cleanup/demo-users', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { confirm, permanent = false } = req.body;
+        if (confirm !== 'DELETE_DEMO_USERS') {
+            return res.status(400).json({
+                success: false,
+                message: 'Please confirm by setting confirm: "DELETE_DEMO_USERS"',
+            });
+        }
+        const adminId = req.user.id;
+        // Find demo users
+        const demoUsers = await database_1.default.user.findMany({
+            where: {
+                AND: [
+                    { role: { not: 'ADMIN' } }, // Never delete admins
+                    {
+                        OR: [
+                            { email: { contains: 'demo' } },
+                            { email: { contains: 'test' } },
+                            { email: { contains: 'example' } },
+                            { email: { endsWith: '@test.com' } },
+                            { email: { endsWith: '@demo.com' } },
+                            { email: { endsWith: '@example.com' } },
+                            { firstName: { contains: 'Demo' } },
+                            { firstName: { contains: 'Test' } },
+                        ],
+                    },
+                ],
+            },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                createdAt: true,
+            },
+        });
+        if (demoUsers.length === 0) {
+            return res.json({
+                success: true,
+                message: 'No demo users found',
+                data: { deletedCount: 0 },
+            });
+        }
+        const userIds = demoUsers.map(u => u.id);
+        if (permanent) {
+            // Permanent delete
+            await database_1.default.user.deleteMany({
+                where: { id: { in: userIds } },
+            });
+        }
+        else {
+            // Soft delete
+            await database_1.default.user.updateMany({
+                where: { id: { in: userIds } },
+                data: {
+                    status: 'deleted',
+                    deletedAt: new Date(),
+                },
+            });
+        }
+        console.log(`🧹 Admin ${adminId} cleaned up ${demoUsers.length} demo users (permanent: ${permanent})`);
+        res.json({
+            success: true,
+            message: `${permanent ? 'Permanently deleted' : 'Soft deleted'} ${demoUsers.length} demo users`,
+            data: {
+                deletedCount: demoUsers.length,
+                deletedUsers: demoUsers,
+                permanent,
+                deletedBy: adminId,
+                timestamp: new Date().toISOString(),
+            },
+        });
+    }
+    catch (error) {
+        console.error('Cleanup demo users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * POST /api/admin/cleanup/inactive-users
+ * Delete users inactive for X days
+ */
+router.post('/cleanup/inactive-users', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { daysInactive = 90, confirm, permanent = false } = req.body;
+        if (confirm !== 'DELETE_INACTIVE_USERS') {
+            return res.status(400).json({
+                success: false,
+                message: 'Please confirm by setting confirm: "DELETE_INACTIVE_USERS"',
+            });
+        }
+        if (daysInactive < 30) {
+            return res.status(400).json({
+                success: false,
+                message: 'Minimum inactive days is 30',
+            });
+        }
+        const adminId = req.user.id;
+        const cutoffDate = new Date(Date.now() - daysInactive * 24 * 60 * 60 * 1000);
+        // Find inactive users
+        const inactiveUsers = await database_1.default.user.findMany({
+            where: {
+                AND: [
+                    { role: { not: 'ADMIN' } }, // Never delete admins
+                    { subscriptionTier: 'free' }, // Only free tier users
+                    {
+                        OR: [
+                            { lastLogin: { lt: cutoffDate } },
+                            { lastLogin: null, createdAt: { lt: cutoffDate } },
+                        ],
+                    },
+                ],
+            },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                lastLogin: true,
+                createdAt: true,
+            },
+        });
+        if (inactiveUsers.length === 0) {
+            return res.json({
+                success: true,
+                message: `No users inactive for ${daysInactive}+ days found`,
+                data: { deletedCount: 0 },
+            });
+        }
+        const userIds = inactiveUsers.map(u => u.id);
+        if (permanent) {
+            await database_1.default.user.deleteMany({
+                where: { id: { in: userIds } },
+            });
+        }
+        else {
+            await database_1.default.user.updateMany({
+                where: { id: { in: userIds } },
+                data: {
+                    status: 'deleted',
+                    deletedAt: new Date(),
+                },
+            });
+        }
+        console.log(`🧹 Admin ${adminId} cleaned up ${inactiveUsers.length} inactive users (${daysInactive}+ days, permanent: ${permanent})`);
+        res.json({
+            success: true,
+            message: `${permanent ? 'Permanently deleted' : 'Soft deleted'} ${inactiveUsers.length} inactive users`,
+            data: {
+                deletedCount: inactiveUsers.length,
+                deletedUsers: inactiveUsers,
+                daysInactive,
+                permanent,
+                deletedBy: adminId,
+                timestamp: new Date().toISOString(),
+            },
+        });
+    }
+    catch (error) {
+        console.error('Cleanup inactive users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * GET /api/admin/deleted-users
+ * Get list of soft-deleted users
+ */
+router.get('/deleted-users', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const deletedUsers = await database_1.default.user.findMany({
+            where: {
+                status: 'deleted',
+            },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                deletedAt: true,
+                createdAt: true,
+                subscriptionTier: true,
+            },
+            orderBy: { deletedAt: 'desc' },
+        });
+        res.json({
+            success: true,
+            data: {
+                users: deletedUsers,
+                count: deletedUsers.length,
+            },
+        });
+    }
+    catch (error) {
+        console.error('Get deleted users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * POST /api/admin/users/:id/restore
+ * Restore a soft-deleted user
+ */
+router.post('/users/:id/restore', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const adminId = req.user.id;
+        const user = await database_1.default.user.findUnique({
+            where: { id },
+        });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+        if (user.status !== 'deleted') {
+            return res.status(400).json({
+                success: false,
+                message: 'User is not deleted',
+            });
+        }
+        // Restore the user
+        const restoredUser = await database_1.default.user.update({
+            where: { id },
+            data: {
+                status: 'active',
+                deletedAt: null,
+                // If email was anonymized, we can't restore it - user may need to update
+            },
+        });
+        console.log(`♻️ Admin ${adminId} restored user ${id}`);
+        res.json({
+            success: true,
+            message: 'User restored successfully',
+            data: {
+                userId: id,
+                email: restoredUser.email,
+                restoredBy: adminId,
+                timestamp: new Date().toISOString(),
+            },
+        });
+    }
+    catch (error) {
+        console.error('Restore user error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * DELETE /api/admin/users/:id/permanent
+ * Permanently delete a user (no recovery)
+ */
+router.delete('/users/:id/permanent', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { confirm, reason } = req.body;
+        const adminId = req.user.id;
+        if (confirm !== 'PERMANENT_DELETE') {
+            return res.status(400).json({
+                success: false,
+                message: 'Please confirm by setting confirm: "PERMANENT_DELETE"',
+            });
+        }
+        if (!reason) {
+            return res.status(400).json({
+                success: false,
+                message: 'Deletion reason is required',
+            });
+        }
+        const user = await database_1.default.user.findUnique({
+            where: { id },
+        });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+        if (user.role === 'ADMIN') {
+            return res.status(403).json({
+                success: false,
+                message: 'Cannot permanently delete admin users',
+            });
+        }
+        // Permanently delete user and all related data
+        await database_1.default.user.delete({
+            where: { id },
+        });
+        console.log(`⚠️ Admin ${adminId} PERMANENTLY deleted user ${user.email}. Reason: ${reason}`);
+        res.json({
+            success: true,
+            message: 'User permanently deleted',
+            data: {
+                deletedUserId: id,
+                deletedEmail: user.email,
+                reason,
+                deletedBy: adminId,
+                timestamp: new Date().toISOString(),
+            },
+        });
+    }
+    catch (error) {
+        console.error('Permanent delete user error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+/**
+ * POST /api/admin/cleanup/purge-deleted
+ * Permanently remove all soft-deleted users older than X days
+ */
+router.post('/cleanup/purge-deleted', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const { daysOld = 30, confirm } = req.body;
+        if (confirm !== 'PURGE_DELETED_USERS') {
+            return res.status(400).json({
+                success: false,
+                message: 'Please confirm by setting confirm: "PURGE_DELETED_USERS"',
+            });
+        }
+        const adminId = req.user.id;
+        const cutoffDate = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+        // Find soft-deleted users older than cutoff
+        const usersToDelete = await database_1.default.user.findMany({
+            where: {
+                status: 'deleted',
+                deletedAt: { lt: cutoffDate },
+            },
+            select: {
+                id: true,
+                email: true,
+                deletedAt: true,
+            },
+        });
+        if (usersToDelete.length === 0) {
+            return res.json({
+                success: true,
+                message: `No deleted users older than ${daysOld} days`,
+                data: { purgedCount: 0 },
+            });
+        }
+        const userIds = usersToDelete.map(u => u.id);
+        // Permanently delete
+        await database_1.default.user.deleteMany({
+            where: { id: { in: userIds } },
+        });
+        console.log(`🗑️ Admin ${adminId} purged ${usersToDelete.length} deleted users (${daysOld}+ days old)`);
+        res.json({
+            success: true,
+            message: `Permanently purged ${usersToDelete.length} deleted users`,
+            data: {
+                purgedCount: usersToDelete.length,
+                purgedUsers: usersToDelete,
+                daysOld,
+                purgedBy: adminId,
+                timestamp: new Date().toISOString(),
+            },
+        });
+    }
+    catch (error) {
+        console.error('Purge deleted users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
         });
     }
 });

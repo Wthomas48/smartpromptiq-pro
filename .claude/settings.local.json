@@ -297,7 +297,18 @@
       "WebFetch(domain:api.smartpromptiq.com)",
       "WebFetch(domain:smartpromptiq-pro.up.railway.app)",
       "WebFetch(domain:smartpromptiq.up.railway.app)",
-      "WebFetch(domain:smartpromptiq-pro-production.up.railway.app)"
+      "WebFetch(domain:smartpromptiq-pro-production.up.railway.app)",
+      "Bash(cd:*)",
+      "Bash(pkill:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:YkfdlJIvr22TsRRB@db.ycpvdoktcoejmywqfwwy.supabase.co:5432/postgres\" npx ts-node:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:YkfdlJIvr22TsRRB@db.ycpvdoktcoejmywqfwwy.supabase.co:5432/postgres?sslmode=require\" npx ts-node:*)",
+      "Bash(python3:*)",
+      "Bash(PGPASSWORD=xYiuuCchtQPUaaKVejYWcUSuSBiqCsIM psql:*)",
+      "Bash(for f in icons/icon16.png icons/icon32.png icons/icon48.png icons/icon128.png popup/popup.html options/options.html background/background.js content/content.js content/content.css content/auth-listener.js)",
+      "Bash(do if [ -f \"$f\" ])",
+      "Bash(then echo \"OK: $f\")",
+      "Bash(else echo \"MISSING: $f\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

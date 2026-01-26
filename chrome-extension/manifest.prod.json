@@ -1,0 +1,95 @@
+{
+  "manifest_version": 3,
+  "name": "SmartPromptIQ - AI Prompt Generator",
+  "short_name": "SmartPromptIQ",
+  "version": "1.1.0",
+  "description": "Generate AI prompts anywhere. Access your prompt library, templates & AI-powered generation in your browser.",
+  "author": "SmartPromptIQ",
+  "homepage_url": "https://smartpromptiq.com",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "SmartPromptIQ - Generate AI Prompts"
+  },
+
+  "options_page": "options/options.html",
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "contextMenus",
+    "clipboardWrite"
+  ],
+
+  "host_permissions": [
+    "https://smartpromptiq.com/*",
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://www.bing.com/chat/*",
+    "https://copilot.microsoft.com/*",
+    "https://poe.com/*",
+    "https://you.com/*",
+    "https://perplexity.ai/*"
+  ],
+
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://www.bing.com/chat/*",
+        "https://copilot.microsoft.com/*",
+        "https://poe.com/*",
+        "https://you.com/*",
+        "https://perplexity.ai/*"
+      ],
+      "js": ["content/content.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://smartpromptiq.com/*"],
+      "js": ["content/auth-listener.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "Open SmartPromptIQ popup"
+    }
+  }
+}

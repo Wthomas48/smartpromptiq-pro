@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import BackButton from '@/components/BackButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  BookOpen, 
-  Rocket, 
-  Users, 
-  DollarSign, 
-  Settings, 
+import TutorialSectionAudio from '@/components/TutorialSectionAudio';
+import TutorialSlideshow, { Slide } from '@/components/TutorialSlideshow';
+import { LiveChatWidget, ContactFormModal, ScheduleCallModal } from '@/components/SupportWidgets';
+import {
+  BookOpen,
+  Rocket,
+  Users,
+  DollarSign,
+  Settings,
   BarChart3,
   Brain,
   MessageSquare,
@@ -42,12 +45,20 @@ import {
   HelpCircle,
   Plus,
   Minus,
-  ArrowRight
+  ArrowRight,
+  Volume2
 } from 'lucide-react';
 
 export default function Documentation() {
   const [activeSection, setActiveSection] = useState('getting-started');
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
+  const [selectedTutorial, setSelectedTutorial] = useState<number | null>(null);
+  const [, navigate] = useLocation();
+
+  // Support widget states
+  const [showLiveChat, setShowLiveChat] = useState(false);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [showScheduleCall, setShowScheduleCall] = useState(false);
 
   const navigationItems = [
     { id: 'getting-started', label: 'Getting Started', icon: Rocket },
@@ -224,32 +235,200 @@ export default function Documentation() {
     {
       title: 'Quick Start Guide',
       description: 'Get up and running with SmartPromptIQ™ Pro in under 5 minutes',
+      audioContent: 'Welcome to the Quick Start Guide! In just 5 minutes, you will learn how to create your account, choose from our specialized AI categories, complete your first questionnaire, and generate professional prompts. This is the perfect starting point for new users who want to experience the power of SmartPromptIQ Pro right away.',
       duration: '5 min',
       level: 'Beginner',
-      steps: ['Create account', 'Choose category', 'Complete questionnaire', 'Generate your first prompt']
+      steps: ['Create account', 'Choose category', 'Complete questionnaire', 'Generate your first prompt'],
+      slides: [
+        {
+          title: 'Welcome to SmartPromptIQ Pro!',
+          content: 'SmartPromptIQ Pro is your AI-powered assistant for creating professional, industry-specific prompts. Whether you\'re in marketing, education, business, or personal development, we\'ve got you covered.',
+          narration: 'Welcome to SmartPromptIQ Pro! This powerful platform uses artificial intelligence to help you create professional, industry-specific prompts. Whether you work in marketing, education, business strategy, or personal development, SmartPromptIQ Pro has specialized tools designed just for you. Let\'s get you started on your journey to mastering AI-powered prompt generation.',
+          tips: ['No credit card required for free tier', 'Get 5 free prompts to explore', 'Access all basic features instantly']
+        },
+        {
+          title: 'Step 1: Create Your Account',
+          content: 'Sign up in seconds using your email or social login. Your account gives you access to all features, saved prompts, templates, and analytics.',
+          narration: 'Let\'s create your account. You can sign up in just seconds using your email address or through social login options like Google. Once registered, you\'ll have access to all platform features including saved prompts, custom templates, usage analytics, and more. Head to the Sign Up page and fill in your details to get started.',
+          tips: ['Use a business email for team features', 'Enable two-factor authentication for security', 'Complete your profile for personalized recommendations']
+        },
+        {
+          title: 'Step 2: Choose Your Category',
+          content: 'Browse 15+ specialized categories including Marketing, Education, Business Strategy, Content Creation, and more. Each category has tailored questionnaires and prompts.',
+          narration: 'Now it\'s time to choose your category. We offer over 15 specialized categories including Marketing and Sales, Education and Training, Business Strategy, Content Creation, Personal Development, and many more. Each category has been carefully designed with tailored questionnaires and industry-specific prompts. Click on any category that matches your needs to begin.',
+          tips: ['Start with your primary use case', 'You can always switch categories later', 'Request custom categories for specific needs']
+        },
+        {
+          title: 'Step 3: Complete the Questionnaire',
+          content: 'Answer intelligent questions that help our AI understand exactly what you need. The more context you provide, the better your prompts will be.',
+          narration: 'This is where the magic happens. Our intelligent questionnaire system asks smart questions to understand exactly what you need. Answer each question thoughtfully, and remember that the more context and detail you provide, the better your generated prompts will be. Take your time here because quality input leads to quality output.',
+          tips: ['Be specific about your goals', 'Include your target audience details', 'Mention any brand voice or tone preferences']
+        },
+        {
+          title: 'Step 4: Generate Your Prompt!',
+          content: 'Click generate and watch as our AI creates a professional, tailored prompt in seconds. Save it, copy it, or refine it further.',
+          narration: 'You\'re ready to generate your first prompt! Click the Generate button and watch as our AI creates a professional, perfectly tailored prompt in just seconds. You can save it to your library, copy it directly to use with any AI tool, or refine it further with additional customizations. Congratulations, you\'ve just created your first SmartPromptIQ Pro prompt!',
+          tips: ['Save prompts you like as templates', 'Use the copy button to instantly use your prompt', 'Try different variations for best results']
+        },
+        {
+          title: 'You\'re All Set!',
+          content: 'Congratulations! You\'ve completed the Quick Start Guide. Explore more features, try different categories, and start creating amazing AI prompts.',
+          narration: 'Congratulations! You have completed the Quick Start Guide and are now ready to explore everything SmartPromptIQ Pro has to offer. Try different categories, experiment with various question responses, and build your library of powerful prompts. Welcome to the future of AI-powered productivity!',
+          tips: ['Explore the template library', 'Check out advanced tutorials', 'Join our community for tips and tricks']
+        }
+      ] as Slide[]
     },
     {
       title: 'Mastering Questionnaires',
       description: 'Learn how to get the best results from our AI questionnaires',
+      audioContent: 'Our intelligent questionnaires are the key to generating perfect prompts. In this tutorial, you will learn to understand different question types, how to provide detailed context for better results, using advanced options for customization, and saving your responses for future use. Master these skills to unlock the full potential of AI-powered prompt generation.',
       duration: '10 min',
       level: 'Intermediate',
-      steps: ['Understanding question types', 'Providing detailed context', 'Using advanced options', 'Saving & reusing responses']
+      steps: ['Understanding question types', 'Providing detailed context', 'Using advanced options', 'Saving & reusing responses'],
+      slides: [
+        {
+          title: 'The Power of Smart Questionnaires',
+          content: 'Our questionnaires are the secret sauce behind perfect prompts. They use dynamic logic to ask the right questions based on your previous answers.',
+          narration: 'Welcome to Mastering Questionnaires! Our smart questionnaire system is the secret sauce that makes SmartPromptIQ Pro so powerful. Unlike static forms, our questionnaires use dynamic logic to ask exactly the right questions based on your previous answers. This adaptive approach ensures you get perfectly tailored prompts every single time.',
+          tips: ['Questionnaires adapt to your answers', 'Different categories have unique questions', 'Your responses directly shape your prompts']
+        },
+        {
+          title: 'Understanding Question Types',
+          content: 'We use multiple question formats: single choice, multiple choice, text input, sliders, and conditional branching to gather precise information.',
+          narration: 'Let\'s understand the different question types you\'ll encounter. We use single choice questions for specific selections, multiple choice when several options apply, text input for detailed descriptions, sliders for preferences like tone or complexity, and conditional branching that shows different questions based on your previous answers. Each type is designed to gather the most useful information efficiently.',
+          tips: ['Text inputs allow for the most customization', 'Multiple choice helps capture nuanced needs', 'Sliders are great for tone and style preferences']
+        },
+        {
+          title: 'Providing Rich Context',
+          content: 'The quality of your output depends on your input. Be specific, include examples, mention constraints, and describe your ideal outcome.',
+          narration: 'Here\'s a crucial tip: the quality of your generated prompt directly depends on the quality of your input. When answering questions, be specific about your goals, include relevant examples when asked, mention any constraints or requirements, and clearly describe your ideal outcome. Think of it like briefing a skilled assistant. The more context you provide, the better they can help you.',
+          tips: ['Include your target audience details', 'Mention specific industry terminology', 'Describe the desired tone and style', 'Share examples of what you like']
+        },
+        {
+          title: 'Advanced Options & Customization',
+          content: 'Unlock advanced settings to control prompt length, creativity level, technical depth, and output format for precise results.',
+          narration: 'For even more control, explore our advanced options. You can adjust prompt length from concise to comprehensive, set the creativity level from conservative to innovative, control technical depth for expert versus general audiences, and specify output formats like bullet points, paragraphs, or structured frameworks. These settings give you fine-grained control over your results.',
+          tips: ['Higher creativity for brainstorming', 'Lower creativity for factual content', 'Adjust technical depth for your audience', 'Choose formats that match your use case']
+        },
+        {
+          title: 'Saving & Reusing Responses',
+          content: 'Save time by storing your questionnaire responses. Reuse them as starting points for similar prompts without re-entering information.',
+          narration: 'Here\'s a productivity hack: save your questionnaire responses! When you complete a questionnaire, you can save those responses as a template. Next time you need a similar prompt, start from your saved responses and just tweak what\'s different. This saves tremendous time and ensures consistency across related prompts.',
+          tips: ['Save responses for recurring needs', 'Create variations from saved templates', 'Share response templates with your team']
+        },
+        {
+          title: 'Pro Tips from the Experts',
+          content: 'Think like your audience, iterate on your prompts, use the feedback system, and don\'t be afraid to experiment with different approaches.',
+          narration: 'Let me share some expert tips. First, always think from your audience\'s perspective when answering questions. Second, don\'t stop at your first prompt. Iterate and refine for better results. Third, use our feedback system to rate prompts because this helps improve our AI. Finally, experiment! Try different category combinations and unexpected approaches. Sometimes the best prompts come from creative exploration.',
+          tips: ['Think like your end user', 'Iterate for better results', 'Rate prompts to improve the AI', 'Experiment with different approaches']
+        }
+      ] as Slide[]
     },
     {
       title: 'Team Collaboration Setup',
       description: 'Set up your team workspace and manage collaboration',
+      audioContent: 'Collaboration is essential for teams. This advanced tutorial covers creating shared team workspaces, inviting team members with different permission levels, managing access controls, and tracking team analytics to measure productivity. Perfect for managers and team leads who want to maximize their team\'s AI capabilities.',
       duration: '15 min',
       level: 'Advanced',
-      steps: ['Create team workspace', 'Invite team members', 'Set permissions', 'Track team analytics']
+      steps: ['Create team workspace', 'Invite team members', 'Set permissions', 'Track team analytics'],
+      slides: [
+        {
+          title: 'Why Team Collaboration Matters',
+          content: 'Teams that collaborate on prompts see 3x better results. Shared knowledge, consistent messaging, and collective learning accelerate everyone\'s success.',
+          narration: 'Welcome to Team Collaboration Setup! Did you know that teams who collaborate on prompts see three times better results than individuals working alone? Shared knowledge means everyone benefits from discoveries. Consistent messaging keeps your brand voice unified. And collective learning accelerates everyone\'s success. Let\'s set up your team for maximum impact.',
+          tips: ['Shared prompts ensure brand consistency', 'Team analytics reveal best practices', 'Collaboration reduces duplicate effort']
+        },
+        {
+          title: 'Creating Your Team Workspace',
+          content: 'A workspace is your team\'s home base. It contains shared prompts, templates, analytics, and settings. One workspace can support your entire organization.',
+          narration: 'Let\'s create your team workspace. Think of it as your team\'s home base for all things prompt-related. Your workspace will contain shared prompts that everyone can access, team templates for consistent outputs, combined analytics for insights, and centralized settings. Navigate to the Teams section and click Create Workspace to get started.',
+          tips: ['Choose a clear workspace name', 'Add a description for clarity', 'Set default permissions thoughtfully']
+        },
+        {
+          title: 'Inviting Team Members',
+          content: 'Add team members via email invitation. They\'ll receive a link to join your workspace with their existing account or create a new one.',
+          narration: 'Now let\'s invite your team. Click Invite Members and enter their email addresses. They\'ll receive an invitation link to join your workspace. If they already have a SmartPromptIQ account, they\'ll be added instantly. New users will be guided to create an account first. You can invite individuals or upload a list for bulk invitations.',
+          tips: ['Use business emails for easier management', 'Send a personal note with invitations', 'Start with key team members, expand gradually']
+        },
+        {
+          title: 'Setting Role-Based Permissions',
+          content: 'Assign roles: Admin, Editor, or Viewer. Admins manage everything, Editors create and modify content, Viewers can only use existing prompts.',
+          narration: 'Permissions keep your workspace organized and secure. We offer three roles: Admins have full control including billing and member management. Editors can create, modify, and share prompts and templates. Viewers can use existing prompts but cannot make changes. Assign roles based on each person\'s responsibilities to maintain order while enabling productivity.',
+          tips: ['Limit Admin access to key stakeholders', 'Most team members work well as Editors', 'Use Viewer for external collaborators']
+        },
+        {
+          title: 'Sharing Prompts & Templates',
+          content: 'Share your best prompts with the team. Create team templates that anyone can use as starting points for consistent, high-quality outputs.',
+          narration: 'Sharing is where collaboration becomes powerful. When you create a great prompt, share it with your team so everyone can benefit. Even better, turn your best prompts into team templates. These become starting points that any team member can use, ensuring consistent quality and saving everyone time. Build a shared library of your organization\'s prompt expertise.',
+          tips: ['Tag templates by use case', 'Include usage notes for context', 'Regularly review and update shared templates']
+        },
+        {
+          title: 'Team Analytics & Insights',
+          content: 'Track usage patterns, popular prompts, token consumption, and productivity metrics. Use data to optimize your team\'s AI workflow.',
+          narration: 'Analytics reveal how your team uses AI. Track which prompts are most popular, how tokens are being consumed, who\'s most active, and what categories drive the most value. Use these insights to optimize workflows, identify training needs, and demonstrate return on investment to stakeholders. Data-driven teams get better results.',
+          tips: ['Review analytics weekly', 'Identify and share top performers', 'Use data to plan token budgets']
+        },
+        {
+          title: 'Best Practices for Team Success',
+          content: 'Establish naming conventions, create a template library, hold regular sharing sessions, and celebrate prompt wins to build a culture of AI excellence.',
+          narration: 'Let me share best practices for team success. First, establish clear naming conventions so prompts are easy to find. Second, build a comprehensive template library covering common use cases. Third, hold regular sharing sessions where team members present their best prompts. Finally, celebrate wins! Recognizing great prompts builds enthusiasm and encourages innovation. You\'re now ready to lead your team to AI excellence.',
+          tips: ['Create a naming convention guide', 'Schedule monthly prompt reviews', 'Recognize top contributors', 'Document lessons learned']
+        }
+      ] as Slide[]
     },
     {
       title: 'Template Management',
       description: 'Create, organize, and share templates effectively',
+      audioContent: 'Templates save time and ensure consistency. Learn how to save your best prompts as reusable templates, organize them with smart tagging, share templates with your team, and discover public templates from other users. This tutorial will help you build a powerful library of prompts for any situation.',
       duration: '8 min',
       level: 'Intermediate',
-      steps: ['Save prompts as templates', 'Organize with tags', 'Share with team', 'Use public templates']
+      steps: ['Save prompts as templates', 'Organize with tags', 'Share with team', 'Use public templates'],
+      slides: [
+        {
+          title: 'The Power of Templates',
+          content: 'Templates transform one-time prompts into reusable assets. Save hours of work by building a library of proven prompts ready for instant use.',
+          narration: 'Welcome to Template Management! Templates are one of the most powerful features in SmartPromptIQ Pro. They transform your one-time prompts into reusable assets that save hours of work. Imagine having a library of proven, effective prompts ready for instant use whenever you need them. Let\'s learn how to build that library.',
+          tips: ['Templates maintain consistency', 'Reuse saves significant time', 'Great templates can be shared and monetized']
+        },
+        {
+          title: 'Saving Prompts as Templates',
+          content: 'After generating a prompt you love, click "Save as Template". Add a name, description, and tags to make it easy to find later.',
+          narration: 'When you generate a prompt that works perfectly, don\'t let it disappear! Click the Save as Template button to preserve it. Give your template a clear, descriptive name that explains what it does. Add a detailed description of when and how to use it. This metadata makes your templates discoverable and useful for you and your team.',
+          tips: ['Use descriptive template names', 'Include use case in the description', 'Note any customization points']
+        },
+        {
+          title: 'Organizing with Smart Tags',
+          content: 'Tags are searchable labels. Use category tags, purpose tags, audience tags, and format tags to create a system that scales.',
+          narration: 'Organization is key to a useful template library. We recommend a multi-dimensional tagging system. Use category tags like marketing or education. Add purpose tags like email, social post, or presentation. Include audience tags like B2B or consumer. And don\'t forget format tags like bullet points or long-form. This system scales beautifully as your library grows.',
+          tips: ['Create a consistent tag vocabulary', 'Use 3-5 tags per template', 'Review and consolidate tags periodically']
+        },
+        {
+          title: 'Template Folders & Collections',
+          content: 'Group related templates into folders and collections. Create folders by project, client, campaign, or any organization that works for you.',
+          narration: 'Beyond tags, folders and collections provide another layer of organization. Create folders for specific projects, clients, or campaigns. Collections can group templates that work well together, like a complete social media campaign kit. This hierarchical organization helps you navigate large template libraries effortlessly.',
+          tips: ['Mirror your project structure', 'Create collections for common workflows', 'Archive old folders to reduce clutter']
+        },
+        {
+          title: 'Sharing Templates',
+          content: 'Share templates with your team for consistent outputs. Set permissions to control who can view, use, or edit shared templates.',
+          narration: 'Sharing multiplies the value of your templates. Share with your team to ensure everyone has access to your best work. When sharing, you can set permissions: allow only viewing, enable usage, or permit editing. Strategic sharing builds organizational capability while protecting your intellectual work.',
+          tips: ['Share proven templates only', 'Include usage instructions', 'Get feedback to improve templates']
+        },
+        {
+          title: 'Discovering Public Templates',
+          content: 'Browse thousands of public templates created by the community. Find inspiration, learn new approaches, and jumpstart your prompt creation.',
+          narration: 'You\'re not alone in this journey! Our public template library contains thousands of templates created by the SmartPromptIQ community. Browse by category, search by keyword, or explore trending templates. These public resources provide inspiration, teach new approaches, and help you jumpstart prompt creation in unfamiliar areas.',
+          tips: ['Check ratings and reviews', 'Customize public templates for your needs', 'Consider contributing your best work']
+        }
+      ] as Slide[]
     }
   ];
+
+  // Audio content for the tutorials section header
+  const tutorialsSectionAudio = {
+    title: 'Video Tutorials Overview',
+    content: 'Welcome to the SmartPromptIQ Pro Video Tutorials section. Here you will find step-by-step guides to help you master our AI-powered prompt generation platform. We offer tutorials for all skill levels, from beginners just getting started to advanced users looking to maximize their productivity. Each tutorial includes clear instructions, practical examples, and tips from our experts. Click on any tutorial to start learning, or use the audio buttons to listen to descriptions before watching.'
+  };
 
   const toggleFaq = (faqId: string) => {
     setExpandedFaq(expandedFaq === faqId ? null : faqId);
@@ -733,27 +912,124 @@ export default function Documentation() {
             {/* Tutorials Section */}
             {activeSection === 'tutorials' && (
               <div className="space-y-8">
+                {/* Slideshow Modal */}
+                {selectedTutorial !== null && tutorials[selectedTutorial] && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="w-full max-w-5xl">
+                      <TutorialSlideshow
+                        title={tutorials[selectedTutorial].title}
+                        description={tutorials[selectedTutorial].description}
+                        slides={tutorials[selectedTutorial].slides}
+                        level={tutorials[selectedTutorial].level}
+                        duration={tutorials[selectedTutorial].duration}
+                        onClose={() => setSelectedTutorial(null)}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <h2 className="text-3xl font-bold text-slate-900 mb-4">Video Tutorials</h2>
-                  <p className="text-slate-600 text-lg mb-8">
-                    Step-by-step video guides to help you master SmartPromptIQ™ Pro and get the most out of our AI platform.
+                  <div className="flex items-start justify-between mb-4">
+                    <h2 className="text-3xl font-bold text-slate-900">Interactive Tutorials with Voice Narration</h2>
+                    <TutorialSectionAudio
+                      title={tutorialsSectionAudio.title}
+                      content={tutorialsSectionAudio.content}
+                      variant="hero"
+                    />
+                  </div>
+                  <p className="text-slate-600 text-lg mb-4">
+                    Step-by-step interactive slideshows with AI voice narration to help you master SmartPromptIQ™ Pro.
                   </p>
+                  <div className="flex items-center gap-4 mb-8">
+                    <Badge className="bg-purple-100 text-purple-700 border-purple-200">
+                      <Volume2 className="w-3 h-3 mr-1" />
+                      Voice Narrated
+                    </Badge>
+                    <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                      <PlayCircle className="w-3 h-3 mr-1" />
+                      Interactive Slides
+                    </Badge>
+                    <Badge className="bg-green-100 text-green-700 border-green-200">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Pro Tips Included
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Section Audio Player - Full Version */}
+                <div className="mb-8">
+                  <TutorialSectionAudio
+                    title={tutorialsSectionAudio.title}
+                    content={tutorialsSectionAudio.content}
+                    variant="default"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {tutorials.map((tutorial, index) => (
-                    <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer">
-                      <div className="aspect-video bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center relative overflow-hidden">
-                        <PlayCircle className="w-16 h-16 text-white group-hover:scale-110 transition-transform" />
-                        <div className="absolute top-4 left-4">
-                          <Badge className="bg-white/20 text-white">{tutorial.duration}</Badge>
+                    <Card
+                      key={index}
+                      className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer border-2 hover:border-purple-300"
+                      onClick={() => setSelectedTutorial(index)}
+                    >
+                      <div className="aspect-video bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center relative overflow-hidden">
+                        {/* Animated background pattern */}
+                        <div className="absolute inset-0 opacity-20">
+                          <div className="absolute top-0 left-0 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse" />
+                          <div className="absolute bottom-0 right-0 w-60 h-60 bg-white rounded-full blur-3xl animate-pulse delay-700" />
+                        </div>
+
+                        {/* Play button */}
+                        <div className="relative z-10 flex flex-col items-center">
+                          <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 group-hover:bg-white/30 transition-all duration-300 border-2 border-white/30">
+                            <PlayCircle className="w-10 h-10 text-white" />
+                          </div>
+                          <span className="mt-3 text-white font-medium bg-black/20 backdrop-blur-sm px-4 py-1 rounded-full text-sm">
+                            Start Tutorial
+                          </span>
+                        </div>
+
+                        {/* Badges */}
+                        <div className="absolute top-4 left-4 flex gap-2">
+                          <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                            {tutorial.duration}
+                          </Badge>
+                          <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                            {tutorial.slides.length} slides
+                          </Badge>
                         </div>
                         <div className="absolute top-4 right-4">
-                          <Badge variant="secondary">{tutorial.level}</Badge>
+                          <Badge variant="secondary" className="bg-white/90">{tutorial.level}</Badge>
+                        </div>
+
+                        {/* Voice indicator */}
+                        <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-full px-3 py-1">
+                          <Volume2 className="w-4 h-4 text-white" />
+                          <span className="text-white text-xs">Voice Narrated</span>
+                        </div>
+
+                        {/* Audio preview button */}
+                        <div className="absolute bottom-4 right-4" onClick={(e) => e.stopPropagation()}>
+                          <TutorialSectionAudio
+                            title={tutorial.title}
+                            content={tutorial.audioContent}
+                            variant="hero"
+                          />
                         </div>
                       </div>
                       <CardContent className="p-6">
-                        <h3 className="text-xl font-semibold text-slate-900 mb-2">{tutorial.title}</h3>
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="text-xl font-semibold text-slate-900 group-hover:text-purple-600 transition-colors">
+                            {tutorial.title}
+                          </h3>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <TutorialSectionAudio
+                              title={tutorial.title}
+                              content={tutorial.audioContent}
+                              variant="inline"
+                            />
+                          </div>
+                        </div>
                         <p className="text-slate-600 mb-4">{tutorial.description}</p>
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-slate-700">What you'll learn:</p>
@@ -765,6 +1041,23 @@ export default function Documentation() {
                               </div>
                             ))}
                           </div>
+                        </div>
+                        {/* Action buttons */}
+                        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <TutorialSectionAudio
+                              title={tutorial.title}
+                              content={tutorial.audioContent}
+                              variant="compact"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                          >
+                            <PlayCircle className="w-4 h-4 mr-1" />
+                            Watch Now
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -857,6 +1150,11 @@ export default function Documentation() {
             {/* Support Section */}
             {activeSection === 'support' && (
               <div className="space-y-8">
+                {/* Support Widget Modals */}
+                <LiveChatWidget isOpen={showLiveChat} onClose={() => setShowLiveChat(false)} />
+                <ContactFormModal isOpen={showContactForm} onClose={() => setShowContactForm(false)} />
+                <ScheduleCallModal isOpen={showScheduleCall} onClose={() => setShowScheduleCall(false)} />
+
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900 mb-4">Support & Help</h2>
                   <p className="text-slate-600 text-lg mb-8">
@@ -865,73 +1163,131 @@ export default function Documentation() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[
-                    {
-                      title: 'Live Chat Support',
-                      description: 'Instant help for Pro and Business customers',
-                      icon: MessageSquare,
-                      color: 'from-green-500 to-emerald-500',
-                      availability: '24/7 for Business',
-                      action: 'Start Chat'
-                    },
-                    {
-                      title: 'Email Support',
-                      description: 'Detailed help for all users',
-                      icon: Mail,
-                      color: 'from-blue-500 to-cyan-500',
-                      availability: '24-48 hour response',
-                      action: 'Send Email'
-                    },
-                    {
-                      title: 'Phone Support',
-                      description: 'Direct phone support for Business customers',
-                      icon: Phone,
-                      color: 'from-purple-500 to-indigo-500',
-                      availability: 'Business hours',
-                      action: 'Schedule Call'
-                    },
-                    {
-                      title: 'Community Forum',
-                      description: 'Connect with other users and get tips',
-                      icon: Users,
-                      color: 'from-orange-500 to-red-500',
-                      availability: 'Always open',
-                      action: 'Join Forum'
-                    },
-                    {
-                      title: 'Knowledge Base',
-                      description: 'Comprehensive guides and tutorials',
-                      icon: BookOpen,
-                      color: 'from-teal-500 to-cyan-500',
-                      availability: 'Always available',
-                      action: 'Browse Articles'
-                    },
-                    {
-                      title: 'Video Tutorials',
-                      description: 'Step-by-step visual guides',
-                      icon: PlayCircle,
-                      color: 'from-pink-500 to-rose-500',
-                      availability: 'On-demand',
-                      action: 'Watch Videos'
-                    }
-                  ].map((support, index) => {
-                    const Icon = support.icon;
-                    return (
-                      <Card key={index} className="hover:shadow-lg transition-shadow">
-                        <CardContent className="p-6 text-center">
-                          <div className={`w-16 h-16 bg-gradient-to-br ${support.color} rounded-2xl flex items-center justify-center mx-auto mb-4`}>
-                            <Icon className="w-8 h-8 text-white" />
-                          </div>
-                          <h3 className="text-lg font-semibold text-slate-900 mb-2">{support.title}</h3>
-                          <p className="text-slate-600 text-sm mb-3">{support.description}</p>
-                          <Badge variant="secondary" className="text-xs mb-4">{support.availability}</Badge>
-                          <Button variant="outline" size="sm" className="w-full">
-                            {support.action}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                  {/* Live Chat Support */}
+                  <Card className="hover:shadow-lg transition-shadow hover:border-green-300 cursor-pointer group">
+                    <CardContent className="p-6 text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <MessageSquare className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Live Chat Support</h3>
+                      <p className="text-slate-600 text-sm mb-3">Instant AI-powered help available anytime</p>
+                      <Badge variant="secondary" className="text-xs mb-4">24/7 Available</Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-green-200 text-green-700 hover:bg-green-50"
+                        onClick={() => setShowLiveChat(true)}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Start Chat
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Email Support */}
+                  <Card className="hover:shadow-lg transition-shadow hover:border-blue-300 cursor-pointer group">
+                    <CardContent className="p-6 text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <Mail className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Email Support</h3>
+                      <p className="text-slate-600 text-sm mb-3">Detailed help for all your questions</p>
+                      <Badge variant="secondary" className="text-xs mb-4">24-48 hour response</Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                        onClick={() => setShowContactForm(true)}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Send Email
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Phone Support */}
+                  <Card className="hover:shadow-lg transition-shadow hover:border-purple-300 cursor-pointer group">
+                    <CardContent className="p-6 text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <Phone className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Phone Support</h3>
+                      <p className="text-slate-600 text-sm mb-3">Schedule a call with our support team</p>
+                      <Badge variant="secondary" className="text-xs mb-4">Business hours</Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
+                        onClick={() => setShowScheduleCall(true)}
+                      >
+                        <Phone className="w-4 h-4 mr-2" />
+                        Schedule Call
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Community Forum */}
+                  <Card className="hover:shadow-lg transition-shadow hover:border-orange-300 cursor-pointer group">
+                    <CardContent className="p-6 text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <Users className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Community Forum</h3>
+                      <p className="text-slate-600 text-sm mb-3">Connect with other users and get tips</p>
+                      <Badge variant="secondary" className="text-xs mb-4">Always open</Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-orange-200 text-orange-700 hover:bg-orange-50"
+                        onClick={() => window.open('https://discord.gg/smartpromptiq', '_blank')}
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        Join Forum
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Knowledge Base */}
+                  <Card className="hover:shadow-lg transition-shadow hover:border-teal-300 cursor-pointer group">
+                    <CardContent className="p-6 text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <BookOpen className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Knowledge Base</h3>
+                      <p className="text-slate-600 text-sm mb-3">Comprehensive guides and tutorials</p>
+                      <Badge variant="secondary" className="text-xs mb-4">Always available</Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-teal-200 text-teal-700 hover:bg-teal-50"
+                        onClick={() => setActiveSection('getting-started')}
+                      >
+                        <BookOpen className="w-4 h-4 mr-2" />
+                        Browse Articles
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Video Tutorials */}
+                  <Card className="hover:shadow-lg transition-shadow hover:border-pink-300 cursor-pointer group">
+                    <CardContent className="p-6 text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <PlayCircle className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Video Tutorials</h3>
+                      <p className="text-slate-600 text-sm mb-3">Step-by-step visual guides</p>
+                      <Badge variant="secondary" className="text-xs mb-4">On-demand</Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-pink-200 text-pink-700 hover:bg-pink-50"
+                        onClick={() => setActiveSection('tutorials')}
+                      >
+                        <PlayCircle className="w-4 h-4 mr-2" />
+                        Watch Videos
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1005,8 +1361,13 @@ export default function Documentation() {
                       Large organization? Our enterprise support includes dedicated account management, 
                       custom training, and priority development for your specific needs.
                     </p>
-                    <Button className="bg-white text-slate-900 hover:bg-slate-100">
-                      <ArrowRight className="w-4 h-4 mr-2" />
+                    <Button
+                      className="bg-white text-slate-900 hover:bg-slate-100"
+                      onClick={() => {
+                        window.location.href = 'mailto:sales@smartpromptiq.com?subject=Enterprise%20Sales%20Inquiry&body=Hello%20SmartPromptIQ%20Sales%20Team%2C%0A%0AI%20am%20interested%20in%20learning%20more%20about%20your%20Enterprise%20solutions.%0A%0ACompany%20Name%3A%20%0ATeam%20Size%3A%20%0AUse%20Case%3A%20%0A%0APlease%20contact%20me%20to%20discuss%20our%20requirements.%0A%0AThank%20you!';
+                      }}
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
                       Contact Sales
                     </Button>
                   </CardContent>

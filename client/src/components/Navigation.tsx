@@ -3,382 +3,466 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useRatingSystemContext } from "@/components/RatingSystemProvider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { User, CreditCard, LogOut, ChevronDown, Settings, Menu, X, Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store, Mic, AudioWaveform, Palette, Music2, Puzzle } from "lucide-react";
-import { useState } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  User, CreditCard, LogOut, ChevronDown, ChevronLeft, ChevronRight, Settings, Menu,
+  Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store, Mic, AudioWaveform,
+  Palette, Music2, Puzzle, Bot, LayoutDashboard, Sparkles, FileText, HelpCircle,
+  FolderOpen, TrendingUp, Briefcase, Calculator, BookOpen, UserCircle, X
+} from "lucide-react";
+import { useState, useEffect, createContext, useContext } from "react";
 import { useToast } from "@/hooks/use-toast";
 import BrainLogo from "@/components/BrainLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { safeMap, ensureArray } from "@/utils/arrayUtils";
+import { cn } from "@/lib/utils";
 
-export default function Navigation() {
-  const { isAuthenticated, user, logout, isAdmin } = useAuth();
+// Sidebar context for managing collapsed state across components
+interface SidebarContextType {
+  isCollapsed: boolean;
+  setIsCollapsed: (collapsed: boolean) => void;
+  isMobileOpen: boolean;
+  setIsMobileOpen: (open: boolean) => void;
+}
+
+const SidebarContext = createContext<SidebarContextType | null>(null);
+
+export const useSidebar = () => {
+  const context = useContext(SidebarContext);
+  if (!context) {
+    return { isCollapsed: false, setIsCollapsed: () => {}, isMobileOpen: false, setIsMobileOpen: () => {} };
+  }
+  return context;
+};
+
+// Navigation item types
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+  badgeColor?: string;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+// Organized navigation sections
+const navigationSections: NavSection[] = [
+  {
+    title: "Main",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/categories", label: "Create Prompt", icon: Sparkles, badge: "Start", badgeColor: "from-purple-500 to-pink-500" },
+    ]
+  },
+  {
+    title: "AI Studio",
+    items: [
+      { href: "/academy", label: "Academy", icon: GraduationCap, badge: "57", badgeColor: "from-purple-600 to-indigo-600" },
+      { href: "/builderiq", label: "BuilderIQ", icon: ShoppingBag, badge: "NEW", badgeColor: "from-teal-500 to-cyan-500" },
+      { href: "/agents", label: "AI Agents", icon: Bot, badge: "Embed", badgeColor: "from-violet-500 to-purple-500" },
+    ]
+  },
+  {
+    title: "Creative Tools",
+    items: [
+      { href: "/voice-builder", label: "Voice AI", icon: Mic, badgeColor: "from-cyan-500 to-purple-500" },
+      { href: "/intro-outro-builder", label: "Intro/Outro", icon: AudioWaveform, badgeColor: "from-pink-500 to-rose-500" },
+      { href: "/suno-music-builder", label: "AI Music", icon: Music2, badgeColor: "from-purple-500 to-pink-500" },
+      { href: "/design-studio", label: "Design Studio", icon: Palette, badgeColor: "from-indigo-500 to-violet-500" },
+    ]
+  },
+  {
+    title: "Marketplace",
+    items: [
+      { href: "/app-builders", label: "App Market", icon: Store, badge: "100+", badgeColor: "from-orange-500 to-amber-500" },
+      { href: "/teams", label: "Teams", icon: Users },
+    ]
+  },
+  {
+    title: "Categories",
+    items: [
+      { href: "/templates", label: "All Templates", icon: FolderOpen },
+      { href: "/marketing", label: "Marketing", icon: TrendingUp },
+      { href: "/product-development", label: "Product Dev", icon: Briefcase },
+      { href: "/financial-planning", label: "Finance", icon: Calculator },
+      { href: "/education", label: "Education", icon: BookOpen },
+      { href: "/personal-development", label: "Personal", icon: UserCircle },
+    ]
+  },
+  {
+    title: "Support",
+    items: [
+      { href: "/documentation", label: "Documentation", icon: FileText },
+      { href: "/contact", label: "Contact", icon: HelpCircle },
+    ]
+  }
+];
+
+// Single nav item component
+function NavItemComponent({ item, isCollapsed, onClick }: { item: NavItem; isCollapsed: boolean; onClick?: () => void }) {
+  const [location] = useLocation();
+  const isActive = location === item.href;
+  const Icon = item.icon;
+
+  const content = (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative",
+        isActive
+          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-200 shadow-sm"
+          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/50",
+        isCollapsed && "justify-center px-2"
+      )}
+    >
+      <Icon className={cn(
+        "flex-shrink-0 transition-colors",
+        isActive ? "text-indigo-600 dark:text-indigo-400" : "text-gray-500 group-hover:text-gray-700 dark:text-gray-500 dark:group-hover:text-gray-300",
+        isCollapsed ? "w-5 h-5" : "w-4 h-4"
+      )} />
+
+      {!isCollapsed && (
+        <>
+          <span className="flex-1 truncate">{item.label}</span>
+          {item.badge && (
+            <span className={cn(
+              "inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full text-white bg-gradient-to-r shadow-sm",
+              item.badgeColor || "from-indigo-500 to-indigo-600"
+            )}>
+              {item.badge}
+            </span>
+          )}
+        </>
+      )}
+
+      {/* Active indicator */}
+      {isActive && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-600 dark:bg-indigo-400 rounded-r-full" />
+      )}
+    </Link>
+  );
+
+  if (isCollapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          {content}
+        </TooltipTrigger>
+        <TooltipContent side="right" className="flex items-center gap-2">
+          {item.label}
+          {item.badge && (
+            <span className={cn(
+              "inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full text-white bg-gradient-to-r",
+              item.badgeColor || "from-indigo-500 to-indigo-600"
+            )}>
+              {item.badge}
+            </span>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
+}
+
+// Sidebar section component
+function SidebarSection({ section, isCollapsed, onItemClick }: { section: NavSection; isCollapsed: boolean; onItemClick?: () => void }) {
+  return (
+    <div className="mb-6">
+      {!isCollapsed && (
+        <h3 className="px-3 mb-2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+          {section.title}
+        </h3>
+      )}
+      <div className="space-y-1">
+        {section.items.map((item) => (
+          <NavItemComponent key={item.href} item={item} isCollapsed={isCollapsed} onClick={onItemClick} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Desktop sidebar component
+function DesktopSidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: boolean; setIsCollapsed: (v: boolean) => void }) {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) return null;
+
+  return (
+    <aside
+      className={cn(
+        "hidden lg:flex flex-col fixed left-0 top-0 bottom-0 z-40 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out",
+        isCollapsed ? "w-[68px]" : "w-64"
+      )}
+    >
+      {/* Logo area */}
+      <div className={cn(
+        "flex items-center h-16 px-4 border-b border-gray-200 dark:border-gray-800",
+        isCollapsed ? "justify-center" : "justify-between"
+      )}>
+        <Link href="/landing" className="flex items-center gap-2">
+          <BrainLogo size={28} animate={true} />
+          {!isCollapsed && (
+            <span className="text-lg font-bold text-slate-900 dark:text-white whitespace-nowrap">
+              SmartPromptIQ
+            </span>
+          )}
+        </Link>
+      </div>
+
+      {/* Navigation */}
+      <ScrollArea className="flex-1 py-4 px-3">
+        {navigationSections.map((section) => (
+          <SidebarSection key={section.title} section={section} isCollapsed={isCollapsed} />
+        ))}
+      </ScrollArea>
+
+      {/* Collapse toggle button */}
+      <div className="p-3 border-t border-gray-200 dark:border-gray-800">
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <>
+              <ChevronLeft className="w-4 h-4" />
+              <span>Collapse</span>
+            </>
+          )}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// Mobile sidebar sheet
+function MobileSidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (v: boolean) => void }) {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) return null;
+
+  return (
+    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <SheetContent side="left" className="w-72 p-0">
+        <SheetHeader className="px-4 py-4 border-b border-gray-200 dark:border-gray-800">
+          <SheetTitle className="flex items-center gap-2">
+            <BrainLogo size={24} animate={false} />
+            <span className="text-lg font-bold">SmartPromptIQ</span>
+          </SheetTitle>
+        </SheetHeader>
+        <ScrollArea className="h-[calc(100vh-80px)] py-4 px-3">
+          {navigationSections.map((section) => (
+            <SidebarSection
+              key={section.title}
+              section={section}
+              isCollapsed={false}
+              onItemClick={() => setIsOpen(false)}
+            />
+          ))}
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// Top bar component
+function TopBar({ onMobileMenuClick }: { onMobileMenuClick: () => void }) {
+  const { isAuthenticated, user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { toast } = useToast();
   const { showRating } = useRatingSystemContext();
-  
-  
-  // Mobile menu state
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isCollapsed } = useSidebar();
 
-
-  const handleSignIn = () => {
-    setLocation('/signin');
-  };
-
-  const handleLogout = () => {
-    logout();
-  };
+  const handleSignIn = () => setLocation('/signin');
+  const handleLogout = () => logout();
 
   const handleGiveFeedback = () => {
     showRating({
       type: 'manual',
-      context: {
-        page: location,
-        userInitiated: true,
-        timestamp: Date.now()
-      },
+      context: { page: location, userInitiated: true, timestamp: Date.now() },
       category: 'general',
       priority: 'medium'
     });
   };
 
-
-  // Navigation items for better organization
-  const mainNavItems = [
-    { href: "/dashboard", label: "Dashboard", icon: null, badge: null },
-    { href: "/categories", label: "Create Prompt", icon: null, badge: "Start Here!", special: true },
-    { href: "/academy", label: "Academy", icon: GraduationCap, badge: "57 Courses", academySpecial: true },
-    { href: "/builderiq", label: "BuilderIQ", icon: ShoppingBag, badge: "NEW", builderSpecial: true },
-    { href: "/voice-builder", label: "Voice", icon: Mic, badge: "AI", voiceSpecial: true },
-    { href: "/intro-outro-builder", label: "Intro/Outro", icon: AudioWaveform, badge: "Video", introSpecial: true },
-    { href: "/suno-music-builder", label: "AI Song Studio", icon: Music2, badge: "AI", sunoSpecial: true },
-    { href: "/design-studio", label: "Design", icon: Palette, badge: "Print", designSpecial: true },
-    { href: "/app-builders", label: "App Market", icon: Store, badge: "100+", marketSpecial: true },
-    { href: "/teams", label: "Teams", icon: Users, badge: null },
-    { href: "/documentation", label: "Docs", icon: null, badge: null },
-    { href: "/contact", label: "Contact", icon: null, badge: null }
-  ];
-
-  const categoryNavItems = [
-    { href: "/templates", label: "All Templates" },
-    { href: "/marketing", label: "Marketing" },
-    { href: "/product-development", label: "Product Development" },
-    { href: "/financial-planning", label: "Financial Planning" },
-    { href: "/education", label: "Education" },
-    { href: "/personal-development", label: "Personal Development" }
-  ];
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
   return (
-    <nav className="nav-blur sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700" role="navigation" aria-label="Main navigation">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/landing" className="flex items-center space-x-3" aria-label="SmartPromptIQ Home">
-            <BrainLogo size={32} animate={true} />
-            <span className="text-xl font-bold text-slate-900 dark:text-white">SmartPromptIQ™</span>
-          </Link>
-          
-          {/* Desktop Navigation */}
+    <header
+      className={cn(
+        "sticky top-0 z-30 h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 transition-all duration-300",
+        isAuthenticated && "lg:pl-64",
+        isAuthenticated && isCollapsed && "lg:pl-[68px]"
+      )}
+    >
+      <div className="flex items-center justify-between h-full px-4 lg:px-6">
+        {/* Left section */}
+        <div className="flex items-center gap-3">
+          {/* Mobile menu button */}
           {isAuthenticated && (
-            <div className="hidden lg:flex items-center space-x-1">
-              {safeMap(mainNavItems, (item) => (
-                <Link 
-                  key={item.href}
-                  href={item.href} 
-                  className={`nav-link px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2 relative ${
-                    location === item.href
-                      ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200'
-                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
-                  } ${
-                    item.special ? 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200/50 dark:border-purple-500/20 hover:shadow-md transition-all' : ''
-                  } ${
-                    (item as any).academySpecial ? 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200/50 dark:border-purple-500/20 hover:shadow-md transition-all' : ''
-                  } ${
-                    (item as any).builderSpecial ? 'bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200/50 dark:border-teal-500/20 hover:shadow-md transition-all' : ''
-                  } ${
-                    (item as any).marketSpecial ? 'bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200/50 dark:border-orange-500/20 hover:shadow-md transition-all' : ''
-                  } ${
-                    (item as any).voiceSpecial ? 'bg-gradient-to-r from-cyan-50 to-purple-50 dark:from-cyan-900/20 dark:to-purple-900/20 border border-cyan-200/50 dark:border-cyan-500/20 hover:shadow-md transition-all' : ''
-                  } ${
-                    (item as any).introSpecial ? 'bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 border border-pink-200/50 dark:border-pink-500/20 hover:shadow-md transition-all' : ''
-                  } ${
-                    (item as any).sunoSpecial ? 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200/50 dark:border-purple-500/20 hover:shadow-md transition-all' : ''
-                  } ${
-                    (item as any).designSpecial ? 'bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border border-indigo-200/50 dark:border-indigo-500/20 hover:shadow-md transition-all' : ''
-                  }`}
-                >
-                  {item.icon && <item.icon className="w-4 h-4" />}
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span className={`inline-flex items-center justify-center px-2 h-5 text-xs font-bold rounded-full ${
-                      item.special
-                        ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm animate-pulse'
-                        : (item as any).academySpecial
-                        ? 'text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-sm'
-                        : (item as any).builderSpecial
-                        ? 'text-white bg-gradient-to-r from-teal-500 to-cyan-500 shadow-sm'
-                        : (item as any).marketSpecial
-                        ? 'text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
-                        : (item as any).introSpecial
-                        ? 'text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-sm'
-                        : (item as any).sunoSpecial
-                        ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm'
-                        : (item as any).designSpecial
-                        ? 'text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow-sm'
-                        : 'text-white bg-indigo-600'
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
-
-              {/* Categories Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-1">
-                    <span>Categories</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56">
-                  {safeMap(categoryNavItems, (item) => (
-                    <DropdownMenuItem key={item.href} asChild>
-                      <Link href={item.href} className="w-full">
-                        {item.label}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <button
+              onClick={onMobileMenuClick}
+              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
           )}
 
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Token Balance Indicator */}
-            {isAuthenticated && (
-              <div className="hidden md:flex items-center space-x-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-700">
-                <Coins className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">{user?.tokenBalance || 0} tokens</span>
-              </div>
-            )}
-
-            {/* Language Switcher - Hidden on mobile */}
-            <div className="hidden sm:block">
-              <LanguageSwitcher variant="compact" />
-            </div>
-
-            {/* Theme Toggle - ALWAYS VISIBLE */}
-            <div className="flex-shrink-0">
-              <ThemeToggle />
-            </div>
-
-            {/* Mobile menu button */}
-            {isAuthenticated && (
-              <button
-                onClick={toggleMobileMenu}
-                className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all"
-                aria-expanded={isMobileMenuOpen}
-                aria-controls="mobile-menu"
-                aria-label={isMobileMenuOpen ? "Close main menu" : "Open main menu"}
-              >
-                {isMobileMenuOpen ? <X className="w-6 h-6" aria-hidden="true" /> : <Menu className="w-6 h-6" aria-hidden="true" />}
-              </button>
-            )}
-            
-            {/* User menu */}
-            {isAuthenticated ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <User className="w-4 h-4" />
-                    <span className="font-medium">
-                      {(user as any)?.firstName || user?.name || "User"}
-                    </span>
-                    <ChevronDown className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border shadow-lg">
-                  <DropdownMenuItem asChild>
-                    <Link href="/academy" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <GraduationCap className="w-4 h-4 mr-2 text-purple-600" />
-                      <div className="flex flex-col">
-                        <span className="font-medium">Academy</span>
-                        <span className="text-xs text-gray-500">57 Courses Available</span>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/tokens" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <Coins className="w-4 h-4 mr-2 text-indigo-600" />
-                      Manage Tokens
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/billing" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Billing & Subscription
-                    </Link>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Account Settings
-                    </Link>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem
-                    onClick={() => showRating({
-                      type: 'manual',
-                      context: { source: 'navigation_menu' },
-                      category: 'general',
-                      priority: 'medium'
-                    })}
-                    className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <Star className="w-4 h-4 mr-2 text-yellow-500" />
-                    Rate App Performance
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem asChild>
-                    <Link href="/chrome-extension" className="flex items-center w-full cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <Puzzle className="w-4 h-4 mr-2 text-purple-500" />
-                      <div className="flex flex-col">
-                        <span className="font-medium">Chrome Extension</span>
-                        <span className="text-xs text-gray-500">Coming Soon</span>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={handleGiveFeedback}
-                    className="cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <Heart className="w-4 h-4 mr-2 text-red-500" />
-                    Give Feedback
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={handleLogout}
-                    className="cursor-pointer px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <>
-                <Button 
-                  variant="ghost"
-                  onClick={handleSignIn}
-                >
-                  Sign In
-                </Button>
-                <Button 
-                  onClick={handleSignIn}
-                  className="bg-indigo-500 hover:bg-indigo-600"
-                >
-                  Get Started
-                </Button>
-              </>
-            )}
-          </div>
+          {/* Logo for mobile / non-authenticated */}
+          {(!isAuthenticated || true) && (
+            <Link href="/landing" className="flex lg:hidden items-center gap-2">
+              <BrainLogo size={28} animate={true} />
+              <span className="text-lg font-bold text-slate-900 dark:text-white">SmartPromptIQ</span>
+            </Link>
+          )}
         </div>
 
-        {/* Mobile Menu */}
-        {isAuthenticated && isMobileMenuOpen && (
-          <div className="lg:hidden" id="mobile-menu" role="menu" aria-orientation="vertical">
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-              {/* Theme Toggle in Mobile Menu */}
-              <div className="flex items-center justify-between px-3 py-2 mb-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Theme</span>
-                <ThemeToggle />
-              </div>
-              {safeMap(mainNavItems, (item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center justify-between px-3 py-2 rounded-md text-base font-medium transition-all ${
-                    location === item.href
-                      ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
-                  } ${
-                    (item as any).academySpecial ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 dark:from-purple-900/20 dark:to-indigo-900/20 dark:border-purple-500/20' : ''
-                  } ${
-                    (item as any).builderSpecial ? 'bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 dark:from-teal-900/20 dark:to-cyan-900/20 dark:border-teal-500/20' : ''
-                  } ${
-                    (item as any).marketSpecial ? 'bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 dark:from-orange-900/20 dark:to-amber-900/20 dark:border-orange-500/20' : ''
-                  } ${
-                    (item as any).voiceSpecial ? 'bg-gradient-to-r from-cyan-50 to-purple-50 border border-cyan-200 dark:from-cyan-900/20 dark:to-purple-900/20 dark:border-cyan-500/20' : ''
-                  } ${
-                    (item as any).introSpecial ? 'bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 dark:from-pink-900/20 dark:to-rose-900/20 dark:border-pink-500/20' : ''
-                  } ${
-                    (item as any).sunoSpecial ? 'bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 dark:from-purple-900/20 dark:to-pink-900/20 dark:border-purple-500/20' : ''
-                  } ${
-                    (item as any).designSpecial ? 'bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-200 dark:from-indigo-900/20 dark:to-violet-900/20 dark:border-indigo-500/20' : ''
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  role="menuitem"
-                >
-                  <div className="flex items-center space-x-2">
-                    {item.icon && <item.icon className="w-4 h-4" />}
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={`inline-flex items-center justify-center px-2 h-5 text-xs font-bold rounded-full ${
-                      item.special
-                        ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm animate-pulse'
-                        : (item as any).academySpecial
-                        ? 'text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-sm'
-                        : (item as any).builderSpecial
-                        ? 'text-white bg-gradient-to-r from-teal-500 to-cyan-500 shadow-sm'
-                        : (item as any).marketSpecial
-                        ? 'text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
-                        : (item as any).voiceSpecial
-                        ? 'text-white bg-gradient-to-r from-cyan-500 to-purple-500 shadow-sm'
-                        : (item as any).introSpecial
-                        ? 'text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-sm'
-                        : (item as any).sunoSpecial
-                        ? 'text-white bg-gradient-to-r from-purple-500 to-pink-500 shadow-sm'
-                        : (item as any).designSpecial
-                        ? 'text-white bg-gradient-to-r from-indigo-500 to-violet-500 shadow-sm'
-                        : 'text-white bg-indigo-600'
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
+        {/* Right section */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Token Balance */}
+          {isAuthenticated && (
+            <Link href="/tokens" className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-lg border border-indigo-200/50 dark:border-indigo-700/50 hover:shadow-sm transition-shadow">
+              <Coins className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                {user?.tokenBalance || 0}
+              </span>
+            </Link>
+          )}
 
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400 px-3 py-2">Categories</div>
-                {categoryNavItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="block px-6 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
+          {/* Language Switcher */}
+          <div className="hidden sm:block">
+            <LanguageSwitcher variant="compact" />
           </div>
-        )}
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
+
+          {/* User Menu / Auth buttons */}
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
+                    {((user as any)?.firstName || user?.name || "U").charAt(0).toUpperCase()}
+                  </div>
+                  <span className="hidden md:inline font-medium">
+                    {(user as any)?.firstName || user?.name || "User"}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {/* User info */}
+                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    {(user as any)?.firstName || user?.name || "User"}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                </div>
+
+                <DropdownMenuItem asChild>
+                  <Link href="/tokens" className="flex items-center cursor-pointer">
+                    <Coins className="w-4 h-4 mr-2 text-indigo-600" />
+                    Manage Tokens
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild>
+                  <Link href="/billing" className="flex items-center cursor-pointer">
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Billing
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="flex items-center cursor-pointer">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem asChild>
+                  <Link href="/chrome-extension" className="flex items-center cursor-pointer">
+                    <Puzzle className="w-4 h-4 mr-2 text-purple-500" />
+                    Chrome Extension
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={handleGiveFeedback} className="cursor-pointer">
+                  <Star className="w-4 h-4 mr-2 text-yellow-500" />
+                  Rate & Feedback
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 dark:text-red-400">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleSignIn}>
+                Sign In
+              </Button>
+              <Button size="sm" onClick={handleSignIn} className="bg-indigo-600 hover:bg-indigo-700">
+                Get Started
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
-      
-    </nav>
+    </header>
   );
 }
+
+// Main Navigation component with Sidebar Provider
+export default function Navigation() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  // Persist collapsed state
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    if (saved) setIsCollapsed(JSON.parse(saved));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(isCollapsed));
+  }, [isCollapsed]);
+
+  // Close mobile menu on route change
+  const [location] = useLocation();
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location]);
+
+  return (
+    <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }}>
+      {/* Desktop Sidebar */}
+      <DesktopSidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+
+      {/* Mobile Sidebar */}
+      <MobileSidebar isOpen={isMobileOpen} setIsOpen={setIsMobileOpen} />
+
+      {/* Top Bar */}
+      <TopBar onMobileMenuClick={() => setIsMobileOpen(true)} />
+    </SidebarContext.Provider>
+  );
+}
+
+// Export sidebar context hook and collapsed state for layout purposes
+export { SidebarContext };

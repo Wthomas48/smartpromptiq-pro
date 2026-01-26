@@ -10,16 +10,18 @@ class AIService {
         this.openai = null;
         this.anthropic = null;
         this.provider = process.env.AI_PROVIDER || 'fallback';
-        // Initialize OpenAI if key is provided
-        if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-api-key-here') {
+        // Initialize OpenAI if key is provided and valid
+        const openaiKey = process.env.OPENAI_API_KEY;
+        if (openaiKey && !openaiKey.includes('REPLACE') && openaiKey.startsWith('sk-')) {
             this.openai = new openai_1.default({
-                apiKey: process.env.OPENAI_API_KEY,
+                apiKey: openaiKey,
             });
         }
-        // Initialize Anthropic if key is provided
-        if (process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your-anthropic-api-key-here') {
+        // Initialize Anthropic if key is provided and valid
+        const anthropicKey = process.env.ANTHROPIC_API_KEY;
+        if (anthropicKey && !anthropicKey.includes('REPLACE') && anthropicKey.startsWith('sk-ant-')) {
             this.anthropic = new sdk_1.default({
-                apiKey: process.env.ANTHROPIC_API_KEY,
+                apiKey: anthropicKey,
             });
         }
         // Auto-detect provider if keys are available

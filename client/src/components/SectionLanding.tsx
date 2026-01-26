@@ -8,6 +8,7 @@ import {
   ChevronRight, Sparkles, BookOpen
 } from 'lucide-react';
 import PublicLandingLayout from './PublicLandingLayout';
+import BRAND from '@/config/brand';
 
 interface InternalLink {
   label: string;
@@ -179,6 +180,18 @@ const SectionLanding: React.FC<SectionLandingProps> = ({
         </div>
       </section>
 
+      {/* Platform Context Banner - Learning-to-Execution Loop */}
+      <section className="py-8 bg-gradient-to-r from-gray-900 via-indigo-900 to-gray-900">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-gray-200 text-lg">
+            <span className="text-white font-semibold">Part of SmartPromptIQ</span> — {BRAND.definition.split('.')[0]}.
+          </p>
+          <p className="text-indigo-300 text-sm mt-2">
+            Learn how AI works, then immediately apply that knowledge to build real solutions — all inside one platform.
+          </p>
+        </div>
+      </section>
+
       {/* What It's For Section */}
       <section className="py-16 lg:py-24 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -333,8 +346,11 @@ const SectionLanding: React.FC<SectionLandingProps> = ({
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Ready to Get Started with {title}?
           </h2>
-          <p className="text-xl text-white/90 mb-8">
+          <p className="text-xl text-white/90 mb-4">
             Join thousands of professionals already using SmartPromptIQ to transform their workflow.
+          </p>
+          <p className="text-lg text-white/70 mb-8 italic">
+            Learn the skills, use the tools, build real solutions — all in one platform.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href={ctaHref}>

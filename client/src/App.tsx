@@ -46,7 +46,7 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "@/pages/not-found";
-import Navigation from "@/components/Navigation";
+import Navigation, { useSidebar } from "@/components/Navigation";
 import AcademyNavigation from "@/components/AcademyNavigation";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AdminRoute from "@/components/AdminRoute";
@@ -74,6 +74,7 @@ import BuilderIQQuestionnaire from "@/pages/BuilderIQQuestionnaire";
 import BuilderIQBlueprint from "@/pages/BuilderIQBlueprint";
 import BuilderIQTemplates from "@/pages/BuilderIQTemplates";
 import BuilderIQAgents from "@/pages/BuilderIQAgents";
+import AgentDashboard from "@/pages/AgentDashboard";
 import BuilderIQPreview from "@/pages/BuilderIQPreview";
 // Gamification & Marketplace
 import GamificationDashboard from "@/pages/GamificationDashboard";
@@ -135,6 +136,12 @@ function Router() {
                            location === '/terms-of-service' || location === '/terms' ||
                            location === '/contact' || location === '/support';
 
+  // Check if current route is a public/marketing page (no sidebar)
+  const isPublicPage = location === '/' || location === '/landing' || location === '/home' ||
+                       location === '/pricing' || location === '/signin' || location === '/signup' ||
+                       location === '/register' || location === '/demo' || location === '/onboarding' ||
+                       location === '/chrome-extension' || location === '/extension';
+
   // Show loading state while checking authentication (with timeout)
   if (isLoading && !forceLoad) {
     return (
@@ -148,6 +155,9 @@ function Router() {
     );
   }
 
+  // Determine if we should show the sidebar navigation
+  const showSidebarNav = !isAdminRoute && !isAcademyRoute && !isBuilderIQRoute && !isStandalonePage && !isPublicPage;
+
   return (
     <>
       {/* Skip Link for Keyboard/Screen Reader Users */}
@@ -155,14 +165,15 @@ function Router() {
         Skip to main content
       </a>
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* Show appropriate navigation based on route */}
         <header role="banner">
-          {!isAdminRoute && !isAcademyRoute && !isBuilderIQRoute && !isStandalonePage && <Navigation />}
+          {showSidebarNav && <Navigation />}
           {isAcademyRoute && <AcademyNavigation />}
         </header>
 
-        <main id="main-content" role="main" tabIndex={-1}>
+        {/* Main content with sidebar offset for authenticated users */}
+        <MainContent showSidebarNav={showSidebarNav} isAuthenticated={isAuthenticated}>
           <Switch>
         {/* Public routes - always accessible */}
         <Route path="/onboarding" component={Onboarding} />
@@ -196,6 +207,7 @@ function Router() {
       <Route path="/builderiq/templates" component={BuilderIQTemplates} />
       <Route path="/builderiq/templates/:industry" component={BuilderIQTemplates} />
       <Route path="/builderiq/agents" component={BuilderIQAgents} />
+      <Route path="/agents" component={AgentDashboard} />
       <Route path="/builderiq/story" component={BuilderIQStoryAnalysis} />
 
       {/* Academy Routes */}
@@ -281,7 +293,7 @@ function Router() {
             {/* Fallback route */}
             <Route component={NotFound} />
           </Switch>
-        </main>
+        </MainContent>
 
         {/* Footer for accessibility */}
         <footer role="contentinfo" className="sr-only">
@@ -289,6 +301,53 @@ function Router() {
         </footer>
       </div>
     </>
+  );
+}
+
+// MainContent wrapper component that handles sidebar offset
+function MainContent({
+  children,
+  showSidebarNav,
+  isAuthenticated
+}: {
+  children: React.ReactNode;
+  showSidebarNav: boolean;
+  isAuthenticated: boolean;
+}) {
+  // Get sidebar state from localStorage to maintain consistency
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkSidebarState = () => {
+      const saved = localStorage.getItem('sidebar-collapsed');
+      if (saved) setSidebarCollapsed(JSON.parse(saved));
+    };
+
+    checkSidebarState();
+    // Listen for storage changes
+    window.addEventListener('storage', checkSidebarState);
+
+    // Also poll periodically for same-tab changes
+    const interval = setInterval(checkSidebarState, 100);
+
+    return () => {
+      window.removeEventListener('storage', checkSidebarState);
+      clearInterval(interval);
+    };
+  }, []);
+
+  return (
+    <main
+      id="main-content"
+      role="main"
+      tabIndex={-1}
+      className={`
+        transition-all duration-300 ease-in-out
+        ${showSidebarNav && isAuthenticated ? (sidebarCollapsed ? 'lg:ml-[68px]' : 'lg:ml-64') : ''}
+      `}
+    >
+      {children}
+    </main>
   );
 }
 
@@ -306,7 +365,7 @@ function App() {
                       <Toaster />
                       <Router />
                       {/* Global Voice Widget - Available on all pages */}
-                      <GlobalVoiceWidget position="bottom-right" />
+                      <GlobalVoiceWidget position="bottom-left" />
                     </ElevenLabsVoiceProvider>
                   </AudioStoreProvider>
                 </GamificationProvider>
