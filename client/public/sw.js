@@ -1,7 +1,7 @@
-// SmartPromptIQ Service Worker - v2.1 (Chrome Fix)
-const CACHE_NAME = 'smartpromptiq-v2';
-const STATIC_CACHE = 'smartpromptiq-static-v2';
-const DYNAMIC_CACHE = 'smartpromptiq-dynamic-v2';
+// SmartPromptIQ Service Worker - v3.0 (API passthrough fix)
+const CACHE_NAME = 'smartpromptiq-v3';
+const STATIC_CACHE = 'smartpromptiq-static-v3';
+const DYNAMIC_CACHE = 'smartpromptiq-dynamic-v3';
 
 // Assets to cache immediately
 const STATIC_ASSETS = [
@@ -64,9 +64,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API requests - Network first, fallback to cache
+  // NEVER intercept API requests - let them go directly to the network.
+  // Caching API responses causes stale data and masks real backend errors.
   if (API_ROUTES.some(route => url.pathname.startsWith(route))) {
-    event.respondWith(networkFirst(request));
     return;
   }
 
