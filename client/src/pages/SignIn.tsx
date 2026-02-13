@@ -13,19 +13,6 @@ import { useSecurityContext } from "@/components/SecurityProvider";
 import { CaptchaVerification } from "@/components/CaptchaVerification";
 
 export default function SignIn() {
-  // Enable production debugging
-  if (typeof window !== 'undefined') {
-    window.DEBUG_AUTH = true;
-  }
-
-  const debugLog = (label, data) => {
-    if (typeof window !== 'undefined' && window.DEBUG_AUTH) {
-      console.log(`🔍 AUTH DEBUG - ${label}:`, data);
-      console.log(`🔍 AUTH DEBUG - ${label} type:`, typeof data);
-      console.log(`🔍 AUTH DEBUG - ${label} isArray:`, Array.isArray(data));
-    }
-  };
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -49,7 +36,6 @@ export default function SignIn() {
   // ✅ FIXED: Redirect authenticated users to dashboard (but NOT new signups)
   useEffect(() => {
     if (!authLoading && isAuthenticated && !justSignedUp) {
-      console.log('✅ User already authenticated, redirecting to dashboard');
       setLocation('/dashboard');
     }
   }, [isAuthenticated, authLoading, setLocation, justSignedUp]);
@@ -69,17 +55,9 @@ export default function SignIn() {
     setIsLoading(true);
 
     try {
-      debugLog("Signin Request", { email });
-      console.log('🔍 Attempting signin with auth hook');
-
-      const result = await login(email, password);
-      debugLog("Signin Result", result);
-
-      console.log('✅ Signin successful via auth hook');
+      await login(email, password);
       // The auth hook will handle the redirect to dashboard
     } catch (err: any) {
-      debugLog("Signin Error", err);
-      console.error('❌ Signin error via auth hook:', err);
       setError(err.message || "Login failed. Please try again.");
     } finally {
       setIsLoading(false);
@@ -124,11 +102,7 @@ export default function SignIn() {
     }
 
     try {
-      debugLog("Signup Request", { email, firstName, lastName, deviceFingerprint });
-      console.log('🔍 Attempting signup with security verification');
-
       await signup(email, password, firstName, lastName);
-      console.log('✅ Signup successful with security verification');
 
       // Mark as new signup to prevent auto-redirect to dashboard
       setJustSignedUp(true);
@@ -136,8 +110,6 @@ export default function SignIn() {
       // Redirect new users to onboarding instead of dashboard
       setLocation('/onboarding')
     } catch (err: any) {
-      debugLog("Signup Error", err);
-      console.error('❌ Signup error:', err);
       setError(err.message || "Failed to create account");
 
       // Reset CAPTCHA on error

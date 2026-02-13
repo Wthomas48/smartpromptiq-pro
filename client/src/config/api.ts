@@ -39,7 +39,6 @@ export const getApiBaseUrl = (): string => {
   if (isDev) {
     const apiUrl = import.meta.env.VITE_API_URL;
     const localApi = apiUrl && apiUrl.trim() !== '' ? apiUrl : 'http://localhost:5000';
-    console.log('🔧 DEV MODE: Using API:', localApi);
     return localApi;
   }
 
@@ -50,7 +49,6 @@ export const getApiBaseUrl = (): string => {
     // Force localhost in browser (for testing production builds locally)
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       const localApi = 'http://localhost:5000';
-      console.log('🔧 LOCAL TESTING: Using local server:', localApi);
       return localApi;
     }
 
@@ -59,13 +57,11 @@ export const getApiBaseUrl = (): string => {
         hostname.includes('railway.app') ||
         hostname.includes('vercel.app') ||
         hostname.includes('netlify.app')) {
-      console.log('🚀 PRODUCTION: Using same-origin API');
       return ''; // Empty string = same origin
     }
   }
 
-  // ✅ FINAL FALLBACK: Same origin for production
-  console.log('🚀 FALLBACK: Using same-origin API');
+  // Final fallback: same origin for production
   return '';
 
   // In production, determine backend URL with enhanced validation
@@ -155,7 +151,6 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
         ...browserInfo
       };
 
-      console.log('🔐 Using simplified browser headers for Railway compatibility');
     }
 
     if (body) {
@@ -164,24 +159,7 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       }
     }
 
-    // 📤 PRODUCTION DEBUG: Log final request details
-    console.log('📤 Final API Request Details:', {
-      url: fullUrl,
-      method: options.method,
-      hasAuthToken: options.headers?.['Authorization'] ? 'YES' : 'NO',
-      hasDeviceFingerprint: options.headers?.['X-Device-Fingerprint'] ? 'YES' : 'NO',
-      contentType: options.headers?.['Content-Type'],
-      origin: options.headers?.['Origin'],
-      allHeaders: Object.keys(options.headers || {})
-    });
-
     const response = await fetch(fullUrl, options);
-    console.log('📥 Response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      url: response.url
-    });
     if (import.meta.env.DEV) {
     }
 

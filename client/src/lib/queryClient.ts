@@ -7,7 +7,6 @@ import { getApiBaseUrl } from "@/config/api";
  * This is a global safeguard to ensure stale tokens are cleaned up
  */
 function handleUnauthorizedError() {
-  console.log('🔐 401 Unauthorized - clearing auth data');
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   // Dispatch a custom event so auth context can react
@@ -45,15 +44,10 @@ export async function apiRequest(
 
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
-      console.log(`✅ Token found and added to headers:`, token.substring(0, 20) + '...');
-    } else {
-      console.warn(`⚠️ NO TOKEN FOUND in localStorage!`);
     }
 
     const baseUrl = getApiBaseUrl();
     const fullUrl = `${baseUrl}${url}`;
-    console.log(`🌐 QueryClient API Request: ${method} ${fullUrl}`);
-    console.log(`📋 Headers:`, headers);
 
     const res = await fetch(fullUrl, {
       method,
@@ -82,15 +76,10 @@ export const getQueryFn: <T>(options: {
 
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
-        console.log(`✅ useQuery Token found:`, token.substring(0, 20) + '...');
-      } else {
-        console.warn(`⚠️ useQuery NO TOKEN FOUND in localStorage!`);
       }
 
       const baseUrl = getApiBaseUrl();
       const fullUrl = `${baseUrl}${url}`;
-      console.log(`🌐 QueryClient GET Request: ${fullUrl}`);
-      console.log(`📋 useQuery Headers:`, headers);
 
       const res = await fetch(fullUrl, {
         headers,

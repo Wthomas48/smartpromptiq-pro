@@ -195,13 +195,21 @@ export function useReferral(): UseReferralReturn {
 
   // Load initial data - only if user is authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchReferralCode();
-      fetchStats();
-    }
-    // Leaderboard is public, can always fetch
-    fetchLeaderboard();
-  }, [isAuthenticated, fetchReferralCode, fetchStats, fetchLeaderboard]);
+    let cancelled = false;
+
+    const loadData = async () => {
+      if (isAuthenticated && !cancelled) {
+        await fetchReferralCode();
+        if (!cancelled) await fetchStats();
+      }
+      if (!cancelled) await fetchLeaderboard();
+    };
+
+    loadData();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   return {
     referralCode,

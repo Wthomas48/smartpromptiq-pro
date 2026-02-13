@@ -162,8 +162,7 @@ const AcademyCourses: React.FC = () => {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredCourses.map((course) => (
-              <Link key={course.id} href={`/academy/course/${course.slug}`}>
-                <a className="block">
+              <Link key={course.id} href={`/academy/course/${course.slug}`} className="block">
                   <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all border border-gray-200 overflow-hidden h-full">
                     {/* Course Header */}
                     <div className={`h-32 bg-gradient-to-br ${
@@ -248,7 +247,6 @@ const AcademyCourses: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </a>
               </Link>
             ))}
           </div>

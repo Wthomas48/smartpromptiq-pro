@@ -111,12 +111,11 @@ function Router() {
   const [location] = useLocation();
   const [forceLoad, setForceLoad] = React.useState(false);
 
-  // Force load after 3 seconds to prevent infinite loading
+  // Force load after timeout to prevent infinite loading (safety fallback)
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      console.log('Force loading app after timeout');
       setForceLoad(true);
-    }, 3000);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, []);

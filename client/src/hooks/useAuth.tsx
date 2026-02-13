@@ -39,11 +39,33 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  // ✅ Fixed: Proper state initialization with safe defaults
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  // Synchronously initialize auth state from localStorage to avoid loading delay
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    return !!(storedToken && storedUser && storedToken.length >= 20);
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    // Only show loading if there's no cached auth data to display
+    return !(storedToken && storedUser && storedToken.length >= 20);
+  });
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      const storedToken = localStorage.getItem("token");
+      if (storedUser && storedToken && storedToken.length >= 20) {
+        return JSON.parse(storedUser);
+      }
+    } catch {}
+    return null;
+  });
+  const [token, setToken] = useState<string | null>(() => {
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    return (storedToken && storedUser && storedToken.length >= 20) ? storedToken : null;
+  });
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -80,65 +102,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return { token, user };
   };
 
-  // ✅ NEW: Comprehensive debugging function for user data validation (dev only)
-  const debugUserData = (user: any, location: string) => {
-    if (import.meta.env.DEV) {
-      // Debug user data in development mode
-      if (import.meta.env.DEV) {
-        console.log(`User data at ${location}:`, {
-          user,
-          hasUser: !!user,
-          userType: typeof user,
-          hasRole: !!user?.role,
-          roleValue: user?.role,
-          roleType: typeof user?.role,
-          hasRoles: !!user?.roles,
-          rolesValue: user?.roles,
-          rolesType: typeof user?.roles,
-          rolesIsArray: Array.isArray(user?.roles),
-          rolesLength: Array.isArray(user?.roles) ? user.roles.length : 'N/A',
-          hasPermissions: !!user?.permissions,
-          permissionsValue: user?.permissions,
-          permissionsType: typeof user?.permissions,
-          permissionsIsArray: Array.isArray(user?.permissions),
-          permissionsLength: Array.isArray(user?.permissions) ? user.permissions.length : 'N/A',
-          email: user?.email,
-          firstName: user?.firstName,
-          lastName: user?.lastName
-        });
-      }
-    }
-  };
-
-  // Environment check on component mount (dev only)
-  if (import.meta.env.DEV) {
-    console.log('AUTH ENV CHECK:', {
-      isClient: typeof window !== 'undefined',
-      hasLocalStorage: typeof localStorage !== 'undefined',
-      currentUrl: typeof window !== 'undefined' ? window.location.href : 'SSR',
-    });
-  }
 
   const checkAuth = async () => {
     try {
       setIsLoading(true);
-      if (import.meta.env.DEV) {
-        console.log("Checking auth...");
-      }
 
-      // ✅ SUPABASE: First check Supabase session
+      // Check Supabase session first
       try {
-        if (import.meta.env.DEV) {
-          console.log('checkAuth: Checking Supabase session...');
-        }
         const { auth } = await import('@/lib/supabase');
         const { session, error } = await auth.getSession();
 
         if (!error && session?.user) {
-          if (import.meta.env.DEV) {
-            console.log('Supabase session found:', session.user);
-          }
-
           const supabaseUser = {
             id: session.user.id,
             email: session.user.email!,
@@ -153,21 +127,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsAuthenticated(true);
           updateUser(supabaseUser);
 
-          // Store in localStorage for consistency
           localStorage.setItem("token", session.access_token);
           localStorage.setItem("user", JSON.stringify(supabaseUser));
 
-          if (import.meta.env.DEV) {
-            console.log("Authenticated with Supabase session");
-          }
           setIsLoading(false);
           return;
         }
       } catch (supabaseError) {
-        // Only log in development - this is normal for unauthenticated users
-        if (import.meta.env.DEV) {
-          console.log('Supabase session check failed (this is normal for unauthenticated users):', supabaseError);
-        }
+        // Normal for unauthenticated users
       }
 
       // Check for auth token in localStorage (fallback for legacy/backend auth)
@@ -176,53 +143,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (storedToken && storedUser) {
         const storedUserData = JSON.parse(storedUser);
-        debugUserData(storedUserData, 'checkAuth - STORED user data');
 
         try {
-          // ✅ ENHANCED: Verify token with backend using authAPI.me
-          if (import.meta.env.DEV) {
-            console.log('checkAuth: Verifying token with backend...');
-          }
           const data = await authAPI.me();
 
           if (data.success && data.data?.user) {
             const backendUserData = data.data.user;
-            debugUserData(backendUserData, 'checkAuth - BACKEND user data');
 
-            // Merge stored user data with backend data, prioritizing stored data for names
             const mergedUserData = {
               ...backendUserData,
-              // Prioritize stored firstName/lastName if they exist and backend doesn't have them
               firstName: storedUserData.firstName || backendUserData.firstName,
               lastName: storedUserData.lastName || backendUserData.lastName,
             };
 
-            debugUserData(mergedUserData, 'checkAuth - MERGED user data');
-
             setToken(storedToken);
             setIsAuthenticated(true);
-
-            // Use centralized updateUser for consistent data processing
             updateUser(mergedUserData);
-
-            if (import.meta.env.DEV) {
-              console.log("User authenticated with merged data:", mergedUserData);
-              debugUserData(mergedUserData, 'checkAuth - AFTER updateUser (merged)');
-            }
             return;
           }
         } catch (backendError: any) {
-          // Only log in development - this is normal for unauthenticated users
-          if (import.meta.env.DEV) {
-            console.log("Backend auth check failed (this is normal for unauthenticated users):", backendError);
-          }
-
-          // Check if it's an invalid token error
           if (backendError.message && backendError.message.includes('Invalid token')) {
-            if (import.meta.env.DEV) {
-              console.log("Invalid token detected, clearing auth data...");
-            }
-            // Clear invalid token and user data
             localStorage.removeItem("token");
             localStorage.removeItem("user");
             setIsAuthenticated(false);
@@ -231,36 +171,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setIsLoading(false);
             return;
           }
-
-          debugUserData(storedUserData, 'checkAuth - BACKEND ERROR, using stored');
         }
 
-        // ✅ ENHANCED: Fallback to stored data if backend is unavailable
-        debugUserData(storedUserData, 'checkAuth - FALLBACK to stored data');
+        // Fallback to stored data if backend is unavailable
         setToken(storedToken);
         setIsAuthenticated(true);
-
-        // Use centralized updateUser for consistent data processing
         updateUser(storedUserData);
-
-        if (import.meta.env.DEV) {
-          console.log("User authenticated from storage:", storedUserData);
-          debugUserData(storedUserData, 'checkAuth - AFTER updateUser (stored)');
-        }
       } else {
-        // Only log in development - this is normal for unauthenticated users on landing page
-        if (import.meta.env.DEV) {
-          console.log("No token found - user is not authenticated (this is normal for landing page)");
-        }
         setIsAuthenticated(false);
         setUser(null);
         setToken(null);
       }
     } catch (error) {
-      // Only log in development - this is normal for unauthenticated users on landing page
-      if (import.meta.env.DEV) {
-        console.log("Auth check completed with no authentication (this is normal for landing page):", error);
-      }
       setIsAuthenticated(false);
       setUser(null);
       setToken(null);
@@ -277,9 +199,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // If we have a token but no user data, or vice versa, clear both
       if ((storedToken && !storedUser) || (!storedToken && storedUser)) {
-        if (import.meta.env.DEV) {
-          console.log("Inconsistent auth data detected, clearing...");
-        }
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setIsAuthenticated(false);
@@ -290,9 +209,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // If we have both but the token looks invalid (too short, malformed, etc.)
       if (storedToken && storedToken.length < 20) {
-        if (import.meta.env.DEV) {
-          console.log("Invalid token format detected, clearing...");
-        }
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         setIsAuthenticated(false);
@@ -309,7 +225,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Listen for global unauthorized events (from API layer)
   useEffect(() => {
     const handleUnauthorized = () => {
-      console.log("🔐 Global unauthorized event received - clearing auth state");
       setIsAuthenticated(false);
       setUser(null);
       setToken(null);
@@ -325,19 +240,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log("Attempting backend login:", { email });
 
-      // Use backend authentication only (Supabase disabled for now)
-      console.log("Using backend authentication");
       const response = await authAPI.login(email, password);
 
-      console.log("Backend login response:", response);
-
       if (response.success) {
-        // ✅ ULTRA-ROBUST: Use normalization function
         try {
           const { token, user } = normalizeAuthResponse(response);
-          console.log('Login response normalized successfully');
 
           localStorage.setItem("token", token);
           localStorage.setItem("user", JSON.stringify(user));
@@ -382,19 +290,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signup = async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
       setIsLoading(true);
-      console.log("Attempting backend signup:", { email, firstName, lastName });
 
-      // Use backend authentication only (Supabase disabled for now)
-      console.log("Using backend registration");
       const response = await authAPI.register(email, password, firstName, lastName);
 
-      console.log("Backend register response:", response);
-
       if (response.success) {
-        // ✅ ULTRA-ROBUST: Use normalization function
         try {
           const { token, user } = normalizeAuthResponse(response);
-          console.log('Signup response normalized successfully');
 
           // Create user with fallback values if needed
           const normalizedUser = {
@@ -467,66 +368,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ✅ ENHANCED: Centralized user data update using safe utilities
   const updateUser = (userData: any) => {
-    console.log('🔍 === UPDATE USER DEBUG START ===');
-    console.log('🔍 Received user data:', userData);
-    console.log('🔍 User data type:', typeof userData);
-    console.log('🔍 User data keys:', userData ? Object.keys(userData) : 'N/A');
-    console.log('🔍 User data JSON:', JSON.stringify(userData, null, 2));
+    if (!userData) return;
 
-    debugUserData(userData, 'updateUser - BEFORE processing');
-
-    if (!userData) {
-      console.warn('⚠️ updateUser called with null/undefined userData');
-      debugUserData(userData, 'updateUser - NULL/UNDEFINED userData');
-      return;
-    }
-
-    // ✅ USE SAFE UTILITY: Ensure safe data structure with comprehensive validation
     const safeUser = ensureSafeUser(userData);
-
-    console.log('🔍 SafeUser result:', safeUser);
-    console.log('🔍 SafeUser type:', typeof safeUser);
-    console.log('🔍 SafeUser keys:', safeUser ? Object.keys(safeUser) : 'N/A');
-
     if (!safeUser) {
-      console.error('❌ updateUser: ensureSafeUser returned null');
-      console.log('🔍 ensureSafeUser returned null - stopping here');
+      console.error('updateUser: ensureSafeUser returned null');
       return;
     }
 
-    // ✅ VALIDATE: Ensure the user object is valid
-    console.log('🔍 Checking isValidUser...');
-    console.log('🔍 safeUser.id:', safeUser.id, '(type:', typeof safeUser.id, ')');
-    console.log('🔍 safeUser.email:', safeUser.email, '(type:', typeof safeUser.email, ')');
-    console.log('🔍 safeUser.role:', safeUser.role, '(type:', typeof safeUser.role, ')');
-    console.log('🔍 safeUser.roles:', safeUser.roles, '(isArray:', Array.isArray(safeUser.roles), ')');
-    console.log('🔍 safeUser.permissions:', safeUser.permissions, '(isArray:', Array.isArray(safeUser.permissions), ')');
-
-    const validationResult = isValidUser(safeUser);
-    console.log('🔍 isValidUser result:', validationResult);
-
-    if (!validationResult) {
-      console.error('❌ updateUser: Invalid user object after safety processing:', safeUser);
-      console.log('🔍 Validation failed - stopping here');
+    if (!isValidUser(safeUser)) {
+      console.error('updateUser: Invalid user object after safety processing');
       return;
     }
 
-    debugUserData(safeUser, 'updateUser - AFTER processing (safeUser)');
-
-    console.log('🔍 Setting safe user data:', safeUser);
     setUser(safeUser);
     localStorage.setItem("user", JSON.stringify(safeUser));
-
-    console.log('🔍 === UPDATE USER SUCCESS ===');
-    console.log('🔍 User state updated successfully');
-
-    // Debug the state immediately after setting
-    setTimeout(() => {
-      debugUserData(safeUser, 'updateUser - AFTER setState (immediate)');
-      console.log('🔍 === UPDATE USER DEBUG END ===');
-    }, 0);
   };
 
   const updateTokenBalance = (newBalance: number) => {

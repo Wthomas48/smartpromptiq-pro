@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/database'; // Use shared singleton
 import emailService from '../services/emailService';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 /**
  * POST /api/academy/seed-courses
@@ -287,6 +286,13 @@ router.get('/courses/:slug', async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
 
+    if (!slug || typeof slug !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid course slug',
+      });
+    }
+
     const course = await prisma.course.findUnique({
       where: { slug },
       include: {
@@ -300,7 +306,6 @@ router.get('/courses/:slug', async (req: Request, res: Response) => {
             duration: true,
             order: true,
             isFree: true,
-            // Don't include content yet - requires enrollment
           },
         },
         _count: {
@@ -315,7 +320,7 @@ router.get('/courses/:slug', async (req: Request, res: Response) => {
     if (!course) {
       return res.status(404).json({
         success: false,
-        message: 'Course not found',
+        message: `Course not found: ${slug}`,
       });
     }
 
@@ -325,6 +330,15 @@ router.get('/courses/:slug', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error fetching course:', error);
+
+    // Distinguish database connection errors from other errors
+    if (error.code === 'P2024' || error.message?.includes('connection')) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database temporarily unavailable. Please try again shortly.',
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Failed to fetch course',
