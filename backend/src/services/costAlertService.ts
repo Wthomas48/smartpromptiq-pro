@@ -14,10 +14,8 @@
  */
 
 import emailService from './emailService';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/database'; // Use shared singleton
 import { COST_ALERTS, COST_CONTROL_FLAGS, formatCost } from '../config/costs';
-
-const prisma = new PrismaClient();
 
 // Track sent alerts to prevent spam
 const alertsSent: Map<string, Date> = new Map();

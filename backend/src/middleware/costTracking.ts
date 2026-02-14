@@ -16,7 +16,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/database'; // Use shared singleton
 import {
   API_COSTS,
   TOKEN_COSTS,
@@ -30,8 +30,6 @@ import {
   formatCost,
 } from '../config/costs';
 import { checkAndSendCostAlerts, sendUserHighUsageAlert } from '../services/costAlertService';
-
-const prisma = new PrismaClient();
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES

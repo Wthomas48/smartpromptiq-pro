@@ -1,10 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/database'; // Use shared singleton
 import crypto from 'crypto';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Optional auth middleware - populates req.user if token exists, but doesn't require it
 const optionalAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {

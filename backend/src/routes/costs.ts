@@ -8,7 +8,7 @@
  */
 
 import express, { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/database'; // Use shared singleton
 import {
   API_COSTS,
   TOKEN_COSTS,
@@ -27,7 +27,6 @@ import { getUserUsageStats, getSystemCostStats } from '../middleware/costTrackin
 import { sendCostAlert, checkAndSendCostAlerts } from '../services/costAlertService';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUBLIC ENDPOINTS
