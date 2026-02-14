@@ -3,17 +3,89 @@ import {
   User, Plus, Zap, Star, BarChart3, Settings, CreditCard,
   Users, FileText, Clock, TrendingUp, Award, Target,
   Lightbulb, Calendar, Activity, BookOpen, Gift, Rocket,
-  ExternalLink, DollarSign, Sparkles, Code, Globe, ShoppingCart, Mic
+  ExternalLink, DollarSign, Sparkles, Code, Globe, ShoppingCart, Mic,
+  Link2, Unlink, Loader2, CheckCircle2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { getApiBaseUrl, apiRequest } from '@/config/api';
 import ReferralWidget from '@/components/ReferralWidget';
 import { VoiceAssistant } from '@/components/VoiceAssistant';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Discord connection state
+  const [discordStatus, setDiscordStatus] = useState<{
+    connected: boolean;
+    discordUsername: string | null;
+    oauthConfigured: boolean;
+    inviteUrl: string;
+  }>({ connected: false, discordUsername: null, oauthConfigured: false, inviteUrl: 'https://discord.gg/smartpromptiq' });
+  const [discordLoading, setDiscordLoading] = useState(false);
+
+  // Handle Discord OAuth callback params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const discordParam = params.get('discord');
+    if (discordParam) {
+      if (discordParam === 'connected') {
+        toast({ title: 'Discord Connected!', description: 'Your Discord account has been linked successfully.' });
+      } else if (discordParam === 'error') {
+        const reason = params.get('reason') || 'unknown';
+        toast({ title: 'Discord Connection Failed', description: `Could not connect Discord (${reason}). Please try again.`, variant: 'destructive' });
+      }
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  // Fetch Discord connection status
+  useEffect(() => {
+    const fetchDiscordStatus = async () => {
+      try {
+        const res = await apiRequest('GET', '/api/discord/status');
+        const data = await res.json();
+        if (data.success) {
+          setDiscordStatus({
+            connected: data.connected,
+            discordUsername: data.discordUsername,
+            oauthConfigured: data.oauthConfigured,
+            inviteUrl: data.inviteUrl || 'https://discord.gg/smartpromptiq',
+          });
+        }
+      } catch {
+        // Silently fail - Discord status is non-critical
+      }
+    };
+    fetchDiscordStatus();
+  }, []);
+
+  const handleDiscordConnect = () => {
+    const baseUrl = getApiBaseUrl();
+    window.location.href = `${baseUrl}/api/discord/connect`;
+  };
+
+  const handleDiscordDisconnect = async () => {
+    setDiscordLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/discord/disconnect');
+      const data = await res.json();
+      if (data.success) {
+        setDiscordStatus(prev => ({ ...prev, connected: false, discordUsername: null }));
+        toast({ title: 'Discord Disconnected', description: 'Your Discord account has been unlinked.' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Failed to disconnect Discord.', variant: 'destructive' });
+    } finally {
+      setDiscordLoading(false);
+    }
+  };
+
   const [stats, setStats] = useState({
     promptsGenerated: 127,
     tokensUsed: 2450,
@@ -383,21 +455,62 @@ export default function Dashboard() {
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
                   </svg>
-                  Join Our Community
+                  {discordStatus.connected ? 'Discord Connected' : 'Join Our Community'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-white/90 text-sm mb-3">
-                  Get help, share prompts, and connect with other users!
-                </p>
-                <a
-                  href="https://discord.gg/smartpromptiq"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full py-2 bg-white text-[#5865F2] hover:bg-gray-100 font-semibold rounded-lg transition-all text-center text-sm"
-                >
-                  Join Discord
-                </a>
+                {discordStatus.connected ? (
+                  <>
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle2 className="w-4 h-4 text-green-300" />
+                      <span className="text-white/90 text-sm font-medium">{discordStatus.discordUsername}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <a
+                        href={discordStatus.inviteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2 bg-white text-[#5865F2] hover:bg-gray-100 font-semibold rounded-lg transition-all text-center text-sm"
+                      >
+                        Open Discord
+                      </a>
+                      <button
+                        onClick={handleDiscordDisconnect}
+                        disabled={discordLoading}
+                        className="px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-sm"
+                        title="Disconnect Discord"
+                      >
+                        {discordLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Unlink className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-white/90 text-sm mb-3">
+                      Get help, share prompts, and connect with other users!
+                    </p>
+                    <div className="flex gap-2">
+                      {discordStatus.oauthConfigured ? (
+                        <button
+                          onClick={handleDiscordConnect}
+                          className="flex-1 py-2 bg-white text-[#5865F2] hover:bg-gray-100 font-semibold rounded-lg transition-all text-center text-sm flex items-center justify-center gap-2"
+                        >
+                          <Link2 className="w-4 h-4" />
+                          Connect Discord
+                        </button>
+                      ) : (
+                        <a
+                          href={discordStatus.inviteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-2 bg-white text-[#5865F2] hover:bg-gray-100 font-semibold rounded-lg transition-all text-center text-sm"
+                        >
+                          Join Discord
+                        </a>
+                      )}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>

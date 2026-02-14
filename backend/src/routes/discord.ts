@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
 
 const router = express.Router();
@@ -118,7 +118,7 @@ router.get('/invite', (_req: Request, res: Response) => {
 });
 
 // GET /api/discord/status - Connection status and config check
-router.get('/status', async (req: Request, res: Response) => {
+router.get('/status', optionalAuth, async (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
   const userId = authReq.user?.id;
 
@@ -293,8 +293,8 @@ router.post('/disconnect', authenticate, async (req: Request, res: Response) => 
   }
 });
 
-// POST /api/discord/webhook/test - Test webhook delivery
-router.post('/webhook/test', async (_req: Request, res: Response) => {
+// POST /api/discord/webhook/test - Test webhook delivery (requires auth)
+router.post('/webhook/test', authenticate, async (_req: Request, res: Response) => {
   const success = await sendDiscordWebhook({
     title: 'Test Notification',
     description: 'This is a test notification from SmartPromptIQ',
