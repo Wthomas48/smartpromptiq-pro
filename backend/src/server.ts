@@ -55,6 +55,7 @@ import audioRoutes from './routes/audio';
 import shotstackRoutes from './routes/shotstack';
 import chatRoutes from './routes/chat'; // Embeddable Widget Chat API
 import agentsRoutes from './routes/agents'; // Agent Management API
+import discordRoutes from './routes/discord'; // Discord OAuth + Webhook Notifications
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECURE ENVIRONMENT LOADING
@@ -529,6 +530,7 @@ app.use('/api/audio', audioRoutes); // Unified Audio Pipeline - Speech/Music gen
 app.use('/api/shotstack', shotstackRoutes); // Shotstack Video API - Short video creation with voice + music
 app.use('/api/chat', chatRoutes); // Embeddable Widget Chat API - Public API for widget communication
 app.use('/api/agents', agentsRoutes); // Agent Management API - Create and manage chat agents
+app.use('/api/discord', discordRoutes); // Discord OAuth + Webhook Notifications
 app.use('/api', generateRoutes);
 app.use('/api/personal', categoryRoutes);
 app.use('/api/product', categoryRoutes);

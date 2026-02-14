@@ -30,76 +30,20 @@ const config = {
   ]
 };
 
-// Determine the API base URL based on environment with enhanced validation
+// Determine the API base URL based on environment
 export const getApiBaseUrl = (): string => {
-  // ✅ CHECK: Only use DEV mode, not VITE_API_URL (which can be empty string)
-  const isDev = import.meta.env.DEV;
-
-  // In development mode, check for explicit API URL or default to localhost
-  if (isDev) {
-    const apiUrl = import.meta.env.VITE_API_URL;
-    const localApi = apiUrl && apiUrl.trim() !== '' ? apiUrl : 'http://localhost:5000';
-    return localApi;
+  // Always respect VITE_API_URL if explicitly set (works in both dev and prod)
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl && apiUrl.trim() !== '') {
+    return apiUrl.trim();
   }
 
-  // ✅ PRODUCTION MODE: Use same-origin or explicit production URL
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-
-    // Force localhost in browser (for testing production builds locally)
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      const localApi = 'http://localhost:5000';
-      return localApi;
-    }
-
-    // Production domains - use same origin (empty string)
-    if (hostname.includes('smartpromptiq.com') ||
-        hostname.includes('railway.app') ||
-        hostname.includes('vercel.app') ||
-        hostname.includes('netlify.app')) {
-      return ''; // Empty string = same origin
-    }
+  // Dev mode fallback: localhost
+  if (import.meta.env.DEV) {
+    return 'http://localhost:5000';
   }
 
-  // Final fallback: same origin for production
-  return '';
-
-  // In production, determine backend URL with enhanced validation
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const origin = window.location.origin;
-
-
-    // Check if hostname is in allowed hosts
-    if (config.allowedHosts.includes(hostname)) {
-    }
-
-    // If running on localhost in production, connect to backend on correct port
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      return apiUrl;
-    }
-
-    // For production deployments, check patterns
-    const isProductionDomain = config.productionPatterns.some(pattern =>
-      hostname.includes(pattern)
-    );
-
-    if (isProductionDomain) {
-      // For Railway/Vercel/Netlify deployment, use same origin (backend serves frontend)
-      return import.meta.env.VITE_API_URL || '';
-    }
-
-    // ✅ SMARTPROMPTIQ.COM: Handle your production domain specifically
-    if (hostname.includes('smartpromptiq.com')) {
-      return ''; // Use same origin for production (backend serves frontend)
-    }
-
-    // For other deployed environments, use environment variable or same origin
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    return apiUrl;
-  }
-
+  // Production: use same origin (backend serves frontend on Railway/Vercel/etc.)
   return '';
 };
 
@@ -115,15 +59,9 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Origin': typeof window !== 'undefined' ? window.location.origin : '',
-        // Add production headers for better compatibility
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
       },
       credentials: 'include',
       mode: 'cors',
-      // Add timeout and other robust options - Fixed AbortSignal timeout issue
-      // signal: AbortSignal.timeout(15000), // Removed - causes timeout issues in some environments
     };
 
     // Add auth token if available
@@ -135,23 +73,6 @@ export const apiRequest = async (method: string, url: string, body?: any) => {
       };
     }
 
-    // Add simplified browser headers for Railway compatibility
-    if (typeof window !== 'undefined') {
-      // Use simple, reliable browser identification instead of complex fingerprinting
-      const browserInfo = {
-        'User-Agent': navigator.userAgent,
-        'Accept-Language': navigator.language,
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-Client-Type': 'browser',
-        'X-Timestamp': Date.now().toString()
-      };
-
-      options.headers = {
-        ...options.headers,
-        ...browserInfo
-      };
-
-    }
 
     if (body) {
       options.body = JSON.stringify(body);
@@ -571,9 +492,6 @@ export const demoApiRequest = async (method: string, url: string, body?: any) =>
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Origin': typeof window !== 'undefined' ? window.location.origin : '',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
       },
       credentials: 'include',
       mode: 'cors',

@@ -81,6 +81,22 @@ const AcademyCourseDetail: React.FC = () => {
     }
   }, [course?.id, isAuthenticated]);
 
+  // Set document title and meta for SEO
+  useEffect(() => {
+    if (course) {
+      document.title = `${course.title} | SmartPromptIQ Academy - Learn AI & Prompt Engineering`;
+
+      // Update meta description
+      let metaDescription = document.querySelector('meta[name="description"]');
+      if (!metaDescription) {
+        metaDescription = document.createElement('meta');
+        metaDescription.setAttribute('name', 'description');
+        document.head.appendChild(metaDescription);
+      }
+      metaDescription.setAttribute('content', generateSEODefinition(course));
+    }
+  }, [course]);
+
   const fetchCourse = async (slug: string) => {
     try {
       const response = await apiRequest('GET', `/api/academy/courses/${slug}`);
@@ -232,22 +248,6 @@ const AcademyCourseDetail: React.FC = () => {
       </div>
     );
   }
-
-  // Set document title and meta for SEO
-  useEffect(() => {
-    if (course) {
-      document.title = `${course.title} | SmartPromptIQ Academy - Learn AI & Prompt Engineering`;
-
-      // Update meta description
-      let metaDescription = document.querySelector('meta[name="description"]');
-      if (!metaDescription) {
-        metaDescription = document.createElement('meta');
-        metaDescription.setAttribute('name', 'description');
-        document.head.appendChild(metaDescription);
-      }
-      metaDescription.setAttribute('content', generateSEODefinition(course));
-    }
-  }, [course]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-indigo-50" itemScope itemType="https://schema.org/Course">

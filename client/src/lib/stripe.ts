@@ -6,6 +6,7 @@
  */
 
 import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { getApiBaseUrl } from '../config/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STRIPE CONFIGURATION
@@ -157,7 +158,8 @@ export async function redirectToStripeCheckout(
 
   let response: Response;
   try {
-    response = await fetch('/api/billing/create-checkout-session', {
+    const apiBase = getApiBaseUrl();
+    response = await fetch(`${apiBase}/api/billing/create-checkout-session`, {
       method: 'POST',
       headers,
       signal: controller.signal,
