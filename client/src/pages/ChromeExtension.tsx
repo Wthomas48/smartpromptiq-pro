@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Chrome,
@@ -10,17 +10,301 @@ import {
   Keyboard,
   Sparkles,
   CheckCircle,
-  ArrowRight,
-  ExternalLink,
   Copy,
   MessageSquare,
   Code,
-  FileText,
-  Lightbulb,
   Home,
-  Play
+  Play,
+  ArrowDown,
+  MousePointer,
+  Type,
+  Send,
+  Check
 } from 'lucide-react';
 
+// ============================================
+// ANIMATED DEMO COMPONENT
+// ============================================
+function AnimatedDemo() {
+  const [demoStep, setDemoStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [typedText, setTypedText] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const demoSteps = [
+    { label: 'Select Text', icon: <MousePointer className="w-4 h-4" /> },
+    { label: 'Right-Click', icon: <MousePointer2 className="w-4 h-4" /> },
+    { label: 'Choose Action', icon: <Sparkles className="w-4 h-4" /> },
+    { label: 'AI Generates', icon: <Zap className="w-4 h-4" /> },
+    { label: 'Result Ready', icon: <Check className="w-4 h-4" /> },
+  ];
+
+  const generatedPrompt = "Act as a senior marketing strategist. Analyze the following product description and create a compelling value proposition that highlights unique benefits, addresses customer pain points, and includes a clear call-to-action. Format with headers and bullet points.";
+
+  // Cursor blink
+  useEffect(() => {
+    const blink = setInterval(() => setShowCursor(prev => !prev), 530);
+    return () => clearInterval(blink);
+  }, []);
+
+  // Auto-play demo
+  const startDemo = () => {
+    setIsPlaying(true);
+    setDemoStep(0);
+    setTypedText('');
+  };
+
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    if (demoStep < 3) {
+      const timer = setTimeout(() => setDemoStep(prev => prev + 1), 1800);
+      return () => clearTimeout(timer);
+    }
+
+    if (demoStep === 3) {
+      // Type out the generated prompt
+      let i = 0;
+      setTypedText('');
+      intervalRef.current = setInterval(() => {
+        i++;
+        setTypedText(generatedPrompt.slice(0, i));
+        if (i >= generatedPrompt.length) {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          setTimeout(() => setDemoStep(4), 600);
+        }
+      }, 18);
+      return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    }
+
+    if (demoStep === 4) {
+      const timer = setTimeout(() => {
+        setIsPlaying(false);
+        setDemoStep(0);
+        setTypedText('');
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [demoStep, isPlaying]);
+
+  return (
+    <section className="py-20 px-4" id="demo">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 mb-4">
+            <Play className="w-3 h-3 mr-1" />
+            Interactive Demo
+          </Badge>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">See It In Action</h2>
+          <p className="text-gray-400 max-w-xl mx-auto">
+            Watch how SmartPromptIQ transforms any text into a powerful AI prompt in seconds
+          </p>
+        </div>
+
+        {/* Step Indicators */}
+        <div className="flex items-center justify-center gap-2 md:gap-4 mb-10 flex-wrap">
+          {demoSteps.map((step, i) => (
+            <div key={i} className="flex items-center gap-2 md:gap-4">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-500 ${
+                i < demoStep ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                i === demoStep && isPlaying ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50 scale-110 shadow-lg shadow-purple-500/20' :
+                'bg-white/5 text-gray-500 border border-white/10'
+              }`}>
+                {i < demoStep ? <Check className="w-3.5 h-3.5" /> : step.icon}
+                <span className="hidden md:inline">{step.label}</span>
+              </div>
+              {i < demoSteps.length - 1 && (
+                <div className={`w-6 md:w-10 h-0.5 transition-all duration-500 ${
+                  i < demoStep ? 'bg-green-500/50' : 'bg-white/10'
+                }`} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Demo Browser Window */}
+        <div className="relative max-w-4xl mx-auto">
+          {/* Glow effects */}
+          <div className="absolute -inset-4 bg-gradient-to-r from-purple-500/10 via-transparent to-cyan-500/10 rounded-3xl blur-xl" />
+
+          <div className="relative bg-[#0d1117] rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+            {/* Browser Chrome */}
+            <div className="bg-[#161b22] px-4 py-3 border-b border-white/10 flex items-center gap-3">
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                <div className="w-3 h-3 rounded-full bg-green-500/80" />
+              </div>
+              <div className="flex-1 mx-4">
+                <div className="bg-[#0d1117] rounded-lg px-4 py-1.5 text-sm text-gray-400 flex items-center gap-2 border border-white/5">
+                  <span className="text-green-400">🔒</span>
+                  <span>chatgpt.com/chat</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all duration-300 ${
+                  isPlaying ? 'bg-gradient-to-br from-purple-500 to-cyan-500 shadow-lg shadow-purple-500/30' : 'bg-[#21262d]'
+                }`}>
+                  🧠
+                </div>
+              </div>
+            </div>
+
+            {/* Browser Content */}
+            <div className="p-6 md:p-8 min-h-[420px]">
+              {/* Simulated ChatGPT Interface */}
+              <div className="space-y-6">
+                {/* Previous message */}
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#19c37d] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    AI
+                  </div>
+                  <div className="bg-[#1a1f2e] rounded-2xl rounded-tl-sm p-4 max-w-lg">
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      Welcome! How can I help you today? I can assist with writing, coding, analysis, and more.
+                    </p>
+                  </div>
+                </div>
+
+                {/* User's text with selection highlight */}
+                <div className="flex gap-3 justify-end">
+                  <div className="bg-[#2f3542] rounded-2xl rounded-tr-sm p-4 max-w-lg relative">
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      I need help with my{' '}
+                      <span className={`transition-all duration-700 rounded px-0.5 ${
+                        demoStep >= 1 && isPlaying
+                          ? 'bg-blue-500/40 text-blue-200 border-b-2 border-blue-400'
+                          : ''
+                      }`}>
+                        product marketing strategy for our new SaaS platform
+                      </span>
+                      . Can you help me create better prompts?
+                    </p>
+
+                    {/* Selection cursor animation */}
+                    {demoStep === 0 && isPlaying && (
+                      <div className="absolute -right-1 top-1/2 -translate-y-1/2 animate-bounce">
+                        <MousePointer className="w-5 h-5 text-purple-400 drop-shadow-lg" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    U
+                  </div>
+                </div>
+
+                {/* Context Menu */}
+                {demoStep >= 1 && demoStep < 3 && isPlaying && (
+                  <div className="flex justify-end mr-12">
+                    <div className="bg-[#1c2333] rounded-xl border border-white/20 shadow-2xl shadow-black/50 overflow-hidden w-64 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
+                        <div className="w-5 h-5 rounded bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-[10px]">🧠</div>
+                        <span className="text-white text-xs font-semibold">SmartPromptIQ</span>
+                      </div>
+                      {[
+                        { icon: '✨', label: 'Improve Text', active: false },
+                        { icon: '🎯', label: 'Generate Prompt', active: demoStep >= 2 },
+                        { icon: '💡', label: 'Explain', active: false },
+                        { icon: '📋', label: 'Summarize', active: false },
+                      ].map((item, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-center gap-3 px-3 py-2.5 text-sm transition-all duration-300 ${
+                            item.active
+                              ? 'bg-purple-500/30 text-purple-200'
+                              : 'text-gray-400 hover:bg-white/5'
+                          }`}
+                        >
+                          <span>{item.icon}</span>
+                          <span>{item.label}</span>
+                          {item.active && (
+                            <ArrowDown className="w-3 h-3 ml-auto text-purple-400 animate-pulse" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Generated Prompt Result */}
+                {demoStep >= 3 && isPlaying && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-gradient-to-br from-purple-500/10 to-cyan-500/10 border border-purple-500/30 rounded-2xl p-5 relative">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-xs">🧠</div>
+                        <span className="text-purple-300 text-xs font-semibold">SmartPromptIQ Generated</span>
+                        {demoStep === 4 && (
+                          <Badge className="ml-auto bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                            <Check className="w-3 h-3 mr-1" />
+                            Copied to clipboard
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-gray-200 text-sm leading-relaxed font-mono">
+                        {typedText}
+                        {demoStep === 3 && showCursor && <span className="text-purple-400 ml-0.5">|</span>}
+                      </p>
+                      {demoStep === 4 && (
+                        <div className="flex gap-2 mt-4">
+                          <button className="px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium border border-purple-500/30 flex items-center gap-1">
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                          <button className="px-3 py-1.5 bg-cyan-500/20 text-cyan-300 rounded-lg text-xs font-medium border border-cyan-500/30 flex items-center gap-1">
+                            <Send className="w-3 h-3" /> Insert into Chat
+                          </button>
+                          <button className="px-3 py-1.5 bg-white/5 text-gray-400 rounded-lg text-xs font-medium border border-white/10 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" /> Refine
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Play button overlay when not playing */}
+          {!isPlaying && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] rounded-2xl">
+              <button
+                onClick={startDemo}
+                className="group flex flex-col items-center gap-4"
+              >
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-2xl shadow-purple-500/30 group-hover:scale-110 transition-transform">
+                  <Play className="w-8 h-8 text-white ml-1" />
+                </div>
+                <span className="text-white font-semibold text-lg">Play Demo</span>
+                <span className="text-gray-400 text-sm">See the extension in action</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stats below demo */}
+        <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto mt-10">
+          {[
+            { value: '< 3s', label: 'Generation Time' },
+            { value: '10+', label: 'AI Platforms' },
+            { value: '1-Click', label: 'Insert Result' },
+          ].map((stat, i) => (
+            <div key={i} className="text-center p-4 bg-white/5 rounded-xl border border-white/10">
+              <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                {stat.value}
+              </div>
+              <div className="text-gray-400 text-sm mt-1">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function ChromeExtension() {
   const [copied, setCopied] = useState(false);
 
@@ -93,6 +377,10 @@ export default function ChromeExtension() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const scrollToDemo = () => {
+    document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950/30 to-slate-950">
       {/* Header */}
@@ -156,6 +444,7 @@ export default function ChromeExtension() {
               size="lg"
               variant="outline"
               className="border-purple-500/50 text-purple-300 hover:bg-purple-500/20 px-8 py-6 text-lg"
+              onClick={scrollToDemo}
             >
               <Play className="w-5 h-5 mr-2" />
               Watch Demo
@@ -173,6 +462,9 @@ export default function ChromeExtension() {
           </div>
         </div>
       </section>
+
+      {/* ANIMATED DEMO */}
+      <AnimatedDemo />
 
       {/* Extension Preview */}
       <section className="py-16 px-4">
@@ -406,7 +698,7 @@ export default function ChromeExtension() {
             Ready to Supercharge Your AI Workflow?
           </h2>
           <p className="text-xl text-gray-400 mb-8">
-            Download the SmartPromptIQ Chrome Extension and start generating better prompts today.
+            Get notified when the SmartPromptIQ Chrome Extension launches and start generating better prompts everywhere.
           </p>
           <Link href="/contact">
             <Button
@@ -423,7 +715,7 @@ export default function ChromeExtension() {
       {/* Footer */}
       <footer className="py-8 px-4 border-t border-white/10">
         <div className="max-w-6xl mx-auto text-center text-gray-500 text-sm">
-          <p>© 2025 SmartPromptIQ™ — The Intelligent Prompt Engineering Platform</p>
+          <p>&copy; 2025 SmartPromptIQ&trade; — The Intelligent Prompt Engineering Platform</p>
         </div>
       </footer>
     </div>
