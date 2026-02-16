@@ -24,7 +24,7 @@ const OVERLAP_TOKENS = 100;
 export async function parseDocument(buffer: Buffer, fileType: string): Promise<string> {
   switch (fileType.toLowerCase()) {
     case 'pdf': {
-      const pdfParse = (await import('pdf-parse')).default;
+      const pdfParse = require('pdf-parse');
       const data = await pdfParse(buffer);
       return data.text || '';
     }

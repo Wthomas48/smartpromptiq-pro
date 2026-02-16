@@ -46,9 +46,9 @@ router.post('/upload', authenticate, async (req: Request, res: Response) => {
 
     // Deduct upload tokens
     const tokenCost = getTokenCost('document' as any, 'upload-process');
-    const deducted = await deductTokens(userId, tokenCost, 'document-upload', `Upload: ${fileName}`);
-    if (!deducted.success) {
-      return res.status(402).json({ success: false, error: deducted.error || 'Insufficient tokens' });
+    const deducted = await deductTokens(userId, tokenCost);
+    if (!deducted) {
+      return res.status(402).json({ success: false, error: 'Insufficient tokens' });
     }
 
     // Upload to Supabase Storage
@@ -346,9 +346,9 @@ router.post('/:id/chat', authenticate, async (req: Request, res: Response) => {
 
     // Deduct chat tokens
     const tokenCost = getTokenCost('document' as any, 'chat-standard');
-    const deducted = await deductTokens(userId, tokenCost, 'document-chat', `Chat: ${document.title}`);
-    if (!deducted.success) {
-      return res.status(402).json({ success: false, error: deducted.error || 'Insufficient tokens' });
+    const deducted = await deductTokens(userId, tokenCost);
+    if (!deducted) {
+      return res.status(402).json({ success: false, error: 'Insufficient tokens' });
     }
 
     // Run RAG chat
