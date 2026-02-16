@@ -77,6 +77,7 @@ model User {
   academySubscription    AcademySubscription?
   agents                 Agent[]
   apiKeys                ApiKey[]
+  documents              Document[]
 
   @@map("users")
 }
@@ -1473,12 +1474,29 @@ model Agent {
   user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
   apiKeys       ApiKey[]
   conversations Conversation[]
+  agentDocuments AgentDocument[]
 
   @@index([userId])
   @@index([slug])
   @@index([isPublic])
   @@index([isActive])
   @@map("agents")
+}
+
+model AgentDocument {
+  id         String @id @default(cuid())
+  agentId    String
+  documentId String
+
+  createdAt DateTime @default(now())
+
+  agent    Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, documentId])
+  @@index([agentId])
+  @@index([documentId])
+  @@map("agent_documents")
 }
 
 model ApiKey {
@@ -1594,4 +1612,112 @@ model Message {
   @@index([role])
   @@index([createdAt])
   @@map("messages")
+}
+
+// ============================================
+// RAG - DOCUMENT CHAT SYSTEM
+// ============================================
+
+model Document {
+  id     String @id @default(cuid())
+  userId String
+
+  title       String
+  fileName    String
+  fileType    String  // pdf, txt, md, docx
+  fileSize    Int     // bytes
+  mimeType    String
+  filePath    String  // Supabase Storage path
+
+  status       String  @default("uploading") // uploading, processing, ready, failed
+  errorMessage String?
+  textContent  String? // Full extracted text
+  chunkCount   Int     @default(0)
+  totalTokens  Int     @default(0)
+
+  chatCount  Int       @default(0)
+  lastChatAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks         DocumentChunk[]
+  chats          DocumentChat[]
+  agentDocuments AgentDocument[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id         String @id @default(cuid())
+  documentId String
+
+  content    String
+  chunkIndex Int
+  tokenCount Int
+
+  embedding  String  // JSON array of floats (1536 dims)
+
+  pageNumber Int?
+  heading    String?
+
+  createdAt DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([chunkIndex])
+  @@map("document_chunks")
+}
+
+model DocumentChat {
+  id         String @id @default(cuid())
+  documentId String
+  userId     String
+
+  title    String?
+  provider String  @default("openai")
+  model    String  @default("gpt-4o")
+
+  messageCount Int @default(0)
+  tokenCount   Int @default(0)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastMessageAt DateTime?
+
+  document Document              @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  messages DocumentChatMessage[]
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("document_chats")
+}
+
+model DocumentChatMessage {
+  id     String @id @default(cuid())
+  chatId String
+
+  role    String // user, assistant, system
+  content String
+
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+
+  chunksUsed  String? // JSON array of chunk IDs
+  costInCents Int?
+
+  createdAt DateTime @default(now())
+
+  chat DocumentChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+  @@index([createdAt])
+  @@map("document_chat_messages")
 }

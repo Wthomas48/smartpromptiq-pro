@@ -9,7 +9,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const heroStarsRef = useRef<HTMLDivElement>(null);
   const ctaStarsRef = useRef<HTMLDivElement>(null);
-  
+
   const handleGetStarted = () => {
     setLocation("/signin?mode=signup");
   };
@@ -27,19 +27,12 @@ export default function Home() {
     for (let i = 0; i < count; i++) {
       const star = document.createElement('div');
       star.className = 'star floating-star';
-      
-      // Random size between 2-6px
       const size = Math.random() * 4 + 2;
       star.style.width = size + 'px';
       star.style.height = size + 'px';
-      
-      // Random position
       star.style.left = Math.random() * 100 + '%';
       star.style.top = Math.random() * 100 + '%';
-      
-      // Random animation delay
       star.style.animationDelay = Math.random() * 6 + 's';
-      
       container.appendChild(star);
     }
   };
@@ -51,7 +44,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" itemScope itemType="https://schema.org/WebPage">
-      {/* Schema.org Organization Structured Data for Google */}
+      {/* Schema.org Structured Data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(BRAND.schema) }}
@@ -67,43 +60,55 @@ export default function Home() {
       />
 
       <main role="main" id="main-content">
-        {/* Hero Section with Animated Stars */}
+
+        {/* ================================================
+            1) HERO SECTION
+            ================================================ */}
         <section className="hero-section">
           <div className="stars-container" ref={heroStarsRef}></div>
-          
+
           <div className="hero-content">
             <div className="hero-logo-section">
               <div className="flex items-center justify-center mb-4">
                 <BrainLogo size={100} animate={true} variant="gradient" className="hero-brain-logo" />
               </div>
-              <div className="hero-badge">The Complete AI Prompt Engineering & App Creation Platform</div>
             </div>
 
             <h1 className="hero-title">
-              Learn the Skills, Use the Tools<br />
-              <span className="gradient-text">Build Real Solutions</span>
+              Turn Ideas Into AI-Powered <br />
+              <span className="gradient-text">Apps, Prompts & Workflows</span>
             </h1>
 
-            {/* SEO-Optimized Definition for Google AI Overview (40-60 words) */}
             <p className="hero-description" itemProp="description">
-              {BRAND.definition}
+              The all-in-one platform where you learn prompt engineering, generate production-ready AI content, and build real applications — no coding required.
             </p>
 
-            {/* Learning-to-Execution Loop - Key Differentiator */}
-            <p className="hero-tagline" style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.9)', marginTop: '-0.5rem', marginBottom: '1.5rem', fontStyle: 'italic' }}>
-              SmartPromptIQ is built on a powerful learning-to-execution loop.<br />
-              <span style={{ fontWeight: 600 }}>Learn how AI works, then immediately apply that knowledge to build real solutions — all inside one platform.</span>
-            </p>
+            {/* 3 Outcome-Focused Bullet Benefits */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
+              <div className="flex items-center gap-2 text-white/90">
+                <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></span>
+                <span>Launch AI apps in minutes, not months</span>
+              </div>
+              <div className="flex items-center gap-2 text-white/90">
+                <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></span>
+                <span>10x your content output with smart prompts</span>
+              </div>
+              <div className="flex items-center gap-2 text-white/90">
+                <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></span>
+                <span>Earn certifications that prove your AI skills</span>
+              </div>
+            </div>
 
             <div className="cta-buttons">
               <button onClick={handleGetStarted} className="btn btn-primary">
-                ✨ Start Building Smarter
+                Start Free — Build Your First AI App
               </button>
               <button onClick={handleDemo} className="btn btn-secondary">
-                🎮 Launch the Demo
+                Try the Live Demo
               </button>
             </div>
-            
+
+            {/* Social Proof Line */}
             <div className="stats-grid">
               <div className="stat-card">
                 <div className="stat-number">
@@ -121,968 +126,643 @@ export default function Home() {
                 <div className="stat-number">
                   <AnimatedCounter end={98.7} decimals={1} suffix="%" duration={2200} className="stat-number" />
                 </div>
-                <div className="stat-label">Success Rate</div>
+                <div className="stat-label">Satisfaction Rate</div>
               </div>
               <div className="stat-card">
                 <div className="stat-number">
-                  <AnimatedCounter end={24} suffix="/7" duration={2800} className="stat-number" />
+                  <AnimatedCounter end={57} duration={1800} className="stat-number" />
                 </div>
-                <div className="stat-label">Support Available</div>
+                <div className="stat-label">Expert Courses</div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* What is SmartPromptIQ - SEO Definition Section */}
-        <section className="py-16 bg-gradient-to-r from-indigo-900 via-purple-900 to-indigo-900" itemScope itemType="https://schema.org/SoftwareApplication">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <meta itemProp="name" content="SmartPromptIQ" />
-            <meta itemProp="applicationCategory" content="BusinessApplication" />
-            <meta itemProp="operatingSystem" content="Web Browser" />
-
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-              What is SmartPromptIQ?
-            </h2>
-            <p className="text-xl text-gray-200 leading-relaxed mb-8" itemProp="description">
-              <strong>SmartPromptIQ™</strong> is an all-in-one AI prompt engineering and application-building platform that teaches users how to design effective prompts and immediately apply them to real-world tools, workflows, and AI-powered applications. Through structured education and intelligent builders, users turn ideas into production-ready solutions without coding.
-            </p>
-            <div className="grid md:grid-cols-3 gap-6 text-left">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                <div className="text-3xl mb-3">📚</div>
-                <h3 className="text-lg font-bold text-white mb-2">Learn</h3>
-                <p className="text-gray-300 text-sm">Master AI through 57 expert courses with hands-on practice and professional certifications.</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                <div className="text-3xl mb-3">⚡</div>
-                <h3 className="text-lg font-bold text-white mb-2">Use</h3>
-                <p className="text-gray-300 text-sm">Apply your knowledge with BuilderIQ, AI Agents, Voice AI, and 100+ ready-to-use templates.</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                <div className="text-3xl mb-3">🚀</div>
-                <h3 className="text-lg font-bold text-white mb-2">Build</h3>
-                <p className="text-gray-300 text-sm">Create production-ready solutions — apps, chatbots, content — all without coding.</p>
-              </div>
-            </div>
-            <p className="text-lg text-purple-200 mt-8 font-medium">
-              This is not just education. This is not just tools. <strong className="text-white">This is a system.</strong>
-            </p>
-          </div>
-        </section>
-
-        {/* Two Superpowers Section */}
+        {/* ================================================
+            2) CHOOSE YOUR PATH
+            ================================================ */}
         <section className="py-20 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <div className="inline-block px-4 py-2 bg-gradient-to-r from-purple-100 to-blue-100 rounded-full mb-4">
-                <span className="text-sm font-semibold text-purple-700">🎯 ONE PLATFORM, TWO SUPERPOWERS</span>
+                <span className="text-sm font-semibold text-purple-700">FIND YOUR FIT</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
-                The Only Platform Where <span className="gradient-text">Learning Meets Execution</span>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
+                What Brings You Here?
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Stop switching between education platforms and execution tools. SmartPromptIQ gives you both in one seamless experience.
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                SmartPromptIQ works differently depending on your goal. Pick the path that fits you best.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8 mt-16">
-              {/* Academy Card - SEO Entity */}
-              <div className="bg-gradient-to-br from-purple-50 via-purple-100 to-indigo-100 rounded-3xl p-8 border-2 border-purple-200 shadow-xl hover:shadow-2xl transition-all duration-300" itemScope itemType="https://schema.org/Course">
-                <meta itemProp="provider" content="SmartPromptIQ" />
-                <div className="text-5xl mb-4">📚</div>
-                <h3 className="text-3xl font-extrabold text-gray-900 mb-3" itemProp="name">
-                  SmartPromptIQ Academy
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Path 1: Learner */}
+              <button
+                onClick={() => setLocation('/academy')}
+                className="group text-left bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-6 border-2 border-purple-200 hover:border-purple-400 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="text-4xl mb-4">🎓</div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-purple-700 transition-colors">
+                  I want to learn AI & prompt engineering
                 </h3>
-                <p className="text-gray-700 text-lg mb-6 leading-relaxed" itemProp="description">
-                  The SmartPromptIQ Academy is a structured AI education system designed to teach prompt engineering, AI workflows, and real-world application building from beginner to advanced levels.
+                <p className="text-sm text-gray-600">
+                  57 courses, hands-on projects, and certifications to go from beginner to expert.
                 </p>
-                <ul className="space-y-3 mb-8">
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>57 expert courses</strong> from industry leaders</span>
-                  </li>
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>555+ interactive lessons</strong> with hands-on practice</span>
-                  </li>
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>Audio learning & quizzes</strong> for every style</span>
-                  </li>
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>Professional certificates</strong> to share on LinkedIn</span>
-                  </li>
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>Live playground</strong> to test your prompts</span>
-                  </li>
-                </ul>
-                <div className="bg-white/70 backdrop-blur rounded-xl p-4 mb-6 border border-purple-200">
-                  <p className="text-sm text-purple-800 font-semibold mb-2">🎯 Perfect for:</p>
-                  <p className="text-gray-700 text-sm">
-                    Students • Career changers • Professionals upskilling • Educators building AI knowledge
-                  </p>
+                <div className="mt-4 text-sm font-semibold text-purple-600 flex items-center gap-1">
+                  Explore Academy <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-                <button
-                  onClick={() => setLocation('/academy')}
-                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 px-6 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  <i className="fas fa-graduation-cap mr-2"></i>
-                  Explore Academy →
-                </button>
-              </div>
+              </button>
 
-              {/* Pro Tools Card */}
-              <div className="bg-gradient-to-br from-blue-50 via-cyan-100 to-blue-100 rounded-3xl p-8 border-2 border-blue-200 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <div className="text-5xl mb-4">⚡</div>
-                <h3 className="text-3xl font-extrabold text-gray-900 mb-3">
-                  SmartPromptIQ Pro
+              {/* Path 2: Creator */}
+              <button
+                onClick={handleGetStarted}
+                className="group text-left bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border-2 border-blue-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="text-4xl mb-4">✍️</div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">
+                  I want to generate better prompts & content
                 </h3>
-                <p className="text-gray-700 text-lg mb-6 leading-relaxed">
-                  Generate production-ready AI prompts instantly with smart questionnaires, professional templates, and team collaboration tools.
+                <p className="text-sm text-gray-600">
+                  Smart questionnaires and 100+ templates to produce expert-level prompts instantly.
                 </p>
-                <ul className="space-y-3 mb-8">
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>AI-powered generation</strong> with smart questionnaires</span>
-                  </li>
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>50+ professional templates</strong> for every use case</span>
-                  </li>
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>Team collaboration</strong> with shared workspaces</span>
-                  </li>
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>API access</strong> for integrations & automation</span>
-                  </li>
-                  <li className="flex items-center text-gray-700 text-base">
-                    <i className="fas fa-check-circle text-green-500 mr-3 text-lg"></i>
-                    <span><strong>Advanced analytics</strong> to track performance</span>
-                  </li>
-                </ul>
-                <div className="bg-white/70 backdrop-blur rounded-xl p-4 mb-6 border border-blue-200">
-                  <p className="text-sm text-blue-800 font-semibold mb-2">🚀 Perfect for:</p>
-                  <p className="text-gray-700 text-sm">
-                    Agencies • Startups • Product teams • Consultants • Marketing teams executing campaigns
-                  </p>
+                <div className="mt-4 text-sm font-semibold text-blue-600 flex items-center gap-1">
+                  Start Creating <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-                <button
-                  onClick={() => setLocation('/pricing')}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 px-6 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  <i className="fas fa-rocket mr-2"></i>
-                  Try Pro Tools →
-                </button>
-              </div>
-            </div>
+              </button>
 
-            {/* Value Proposition Bar */}
-            <div className="mt-16 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 rounded-2xl p-8 text-center text-white shadow-2xl">
-              <h4 className="text-2xl font-bold mb-3">✨ Get Both for Just $49/month</h4>
-              <p className="text-lg text-purple-100 mb-6">
-                Full Academy access (57 courses) + Pro Tools (200 AI prompts/month). One login. One platform. Zero friction.
-              </p>
+              {/* Path 3: Builder */}
+              <button
+                onClick={handleGetStarted}
+                className="group text-left bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border-2 border-emerald-200 hover:border-emerald-400 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="text-4xl mb-4">🚀</div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-emerald-700 transition-colors">
+                  I want to build AI-powered apps & workflows
+                </h3>
+                <p className="text-sm text-gray-600">
+                  BuilderIQ generates complete app blueprints. Deploy chatbots and AI agents without code.
+                </p>
+                <div className="mt-4 text-sm font-semibold text-emerald-600 flex items-center gap-1">
+                  Start Building <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                </div>
+              </button>
+
+              {/* Path 4: Team/Business */}
               <button
                 onClick={() => setLocation('/pricing')}
-                className="bg-white text-purple-600 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-50 transition-all duration-200 shadow-lg inline-flex items-center"
+                className="group text-left bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 border-2 border-orange-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
-                <i className="fas fa-star mr-2"></i>
-                View All Plans & Pricing
+                <div className="text-4xl mb-4">🏢</div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-orange-700 transition-colors">
+                  I want AI for my team or business
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Shared workspaces, team analytics, API access, and white-label solutions at scale.
+                </p>
+                <div className="mt-4 text-sm font-semibold text-orange-600 flex items-center gap-1">
+                  View Plans <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                </div>
               </button>
             </div>
           </div>
         </section>
 
-        {/* Chrome Extension Section - COMING SOON */}
-        <section className="py-20 bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <div className="inline-block px-4 py-2 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 rounded-full mb-4 border border-purple-500/30 animate-pulse">
-                <span className="text-sm font-semibold text-purple-300">🚀 CHROME EXTENSION — COMING SOON!</span>
+        {/* ================================================
+            3) ACADEMY SECTION
+            ================================================ */}
+        <section className="py-20 bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-900" itemScope itemType="https://schema.org/Course">
+          <meta itemProp="provider" content="SmartPromptIQ" />
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left: Content */}
+              <div>
+                <div className="inline-block px-4 py-2 bg-purple-500/20 rounded-full mb-4 border border-purple-500/30">
+                  <span className="text-sm font-semibold text-purple-300">SMARTPROMPTIQ ACADEMY</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4" itemProp="name">
+                  Master AI — From First Prompt <br />to Professional Certification
+                </h2>
+                <p className="text-lg text-gray-300 mb-8 leading-relaxed" itemProp="description">
+                  The most comprehensive AI education system available. Learn prompt engineering through structured courses, then immediately practice in our hands-on playground.
+                </p>
+
+                <ul className="space-y-4 mb-8">
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-green-400 text-sm font-bold">✓</span>
+                    </span>
+                    <span className="text-gray-200"><strong className="text-white">57 expert-led courses</strong> covering beginner to advanced prompt engineering</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-green-400 text-sm font-bold">✓</span>
+                    </span>
+                    <span className="text-gray-200"><strong className="text-white">Live playground</strong> to test and refine your prompts in real time</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-green-400 text-sm font-bold">✓</span>
+                    </span>
+                    <span className="text-gray-200"><strong className="text-white">Professional certifications</strong> you can share on LinkedIn and resumes</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-green-400 text-sm font-bold">✓</span>
+                    </span>
+                    <span className="text-gray-200"><strong className="text-white">Real-world use cases</strong> — marketing, dev, sales, education, and more</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-green-400 text-sm font-bold">✓</span>
+                    </span>
+                    <span className="text-gray-200"><strong className="text-white">Audio lessons & quizzes</strong> for every learning style</span>
+                  </li>
+                </ul>
+
+                <button
+                  onClick={() => setLocation('/academy')}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  Explore the Academy &rarr;
+                </button>
               </div>
-              <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
-                SmartPromptIQ <span className="bg-gradient-to-r from-orange-400 to-yellow-400 bg-clip-text text-transparent">Everywhere You Work</span>
+
+              {/* Right: Visual Stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-center">
+                  <div className="text-4xl font-extrabold text-white mb-1">57</div>
+                  <div className="text-sm text-purple-300">Expert Courses</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-center">
+                  <div className="text-4xl font-extrabold text-white mb-1">555+</div>
+                  <div className="text-sm text-purple-300">Interactive Lessons</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-center">
+                  <div className="text-4xl font-extrabold text-white mb-1">10K+</div>
+                  <div className="text-sm text-purple-300">Students Enrolled</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-center">
+                  <div className="text-4xl font-extrabold text-white mb-1">4.9</div>
+                  <div className="text-sm text-purple-300">Average Rating</div>
+                </div>
+                <div className="col-span-2 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/30">
+                  <p className="text-center text-purple-200 text-sm italic">
+                    "This is not just education. This is not just tools. <strong className="text-white">This is a system.</strong>"
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ================================================
+            4) PRO TOOLS SECTION
+            ================================================ */}
+        <section className="py-20 bg-gray-50">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="inline-block px-4 py-2 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-full mb-4">
+                <span className="text-sm font-semibold text-blue-700">PRO TOOLS</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+                Stop Prompting. Start <span className="gradient-text">Producing.</span>
               </h2>
-              <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-                Access the full power of SmartPromptIQ directly in your browser — generate prompts on ChatGPT, Claude, Gemini, and 10+ AI platforms with one click
+              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                Generate production-ready prompts, build complete app blueprints, deploy AI chatbots, and create professional voiceovers — all from one dashboard.
               </p>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              {/* Extension Preview - Enhanced */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              {/* Tool Card: Prompt Generator */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl mb-4">
+                  ✨
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Smart Prompt Generator</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Answer a few smart questions. Get expert-level prompts for marketing, dev, sales, education — any industry.
+                </p>
+                <div className="text-sm text-purple-600 font-medium">25+ categories &middot; Instant results</div>
+              </div>
+
+              {/* Tool Card: BuilderIQ */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-2xl mb-4">
+                  🏗️
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">BuilderIQ</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Describe your idea in plain English. Get a complete app blueprint with features, architecture, and deployment plan.
+                </p>
+                <div className="text-sm text-blue-600 font-medium">Idea &rarr; Blueprint in seconds</div>
+              </div>
+
+              {/* Tool Card: AI Agents */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-2xl mb-4">
+                  🤖
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">AI Agents & Chatbots</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Create custom chatbots powered by GPT and Claude. Deploy to any website with a single embed code.
+                </p>
+                <div className="text-sm text-emerald-600 font-medium">No-code deployment</div>
+              </div>
+
+              {/* Tool Card: Templates */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-2xl mb-4">
+                  📋
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">100+ Templates</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Battle-tested prompt templates for marketing, copywriting, development, HR, sales, and more. Ready to use.
+                </p>
+                <div className="text-sm text-orange-600 font-medium">Copy, customize, ship</div>
+              </div>
+
+              {/* Tool Card: Voice AI */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-2xl mb-4">
+                  🎙️
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Voice AI Studio</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Convert text to natural speech with 20+ premium AI voices. Perfect for podcasts, videos, and courses.
+                </p>
+                <div className="text-sm text-pink-600 font-medium">ElevenLabs + OpenAI voices</div>
+              </div>
+
+              {/* Tool Card: Team Collaboration */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-2xl mb-4">
+                  👥
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Team Workspaces</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Shared prompt libraries, usage analytics, role-based access, and API keys for your entire team.
+                </p>
+                <div className="text-sm text-violet-600 font-medium">Built for collaboration</div>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={handleGetStarted}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 px-8 rounded-xl font-bold text-lg hover:from-blue-700 hover:to-cyan-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                Build with Pro Tools &rarr;
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ================================================
+            5) FOUR PILLARS SECTION
+            ================================================ */}
+        <section className="py-20 bg-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-14">
+              <div className="inline-block px-4 py-2 bg-gradient-to-r from-purple-100 to-blue-100 rounded-full mb-4">
+                <span className="text-sm font-semibold text-purple-700">THE PLATFORM</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
+                Four Pillars. One Platform.
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Everything you need to create, automate, learn, and scale with AI.
+              </p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {/* Pillar: Create */}
               <div className="relative">
-                {/* Floating elements for visual effect */}
-                <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-orange-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 border border-purple-500/30 shadow-2xl relative">
-                  {/* Browser mockup header */}
-                  <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/10">
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    </div>
-                    <div className="flex-1 bg-white/5 rounded-lg px-3 py-1 text-xs text-gray-400 ml-2">
-                      chat.openai.com
-                    </div>
-                  </div>
-
-                  {/* Extension popup preview */}
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-3xl shadow-lg">
-                      🧠
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        SmartPromptIQ
-                        <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-500 text-white rounded-full">PREVIEW</span>
-                      </h3>
-                      <p className="text-gray-400 text-sm">v1.1.0 • Chrome Extension</p>
-                    </div>
-                  </div>
-
-                  {/* Quick actions grid */}
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10 hover:border-purple-500/50 transition-colors cursor-pointer">
-                      <div className="text-lg mb-1">✨</div>
-                      <div className="text-white text-sm font-semibold">Improve Text</div>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10 hover:border-purple-500/50 transition-colors cursor-pointer">
-                      <div className="text-lg mb-1">💡</div>
-                      <div className="text-white text-sm font-semibold">Explain</div>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10 hover:border-purple-500/50 transition-colors cursor-pointer">
-                      <div className="text-lg mb-1">📋</div>
-                      <div className="text-white text-sm font-semibold">Summarize</div>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10 hover:border-purple-500/50 transition-colors cursor-pointer">
-                      <div className="text-lg mb-1">💻</div>
-                      <div className="text-white text-sm font-semibold">Code Help</div>
-                    </div>
-                  </div>
-
-                  {/* Category selector */}
-                  <div className="bg-white/5 rounded-lg p-3 border border-white/10 mb-4">
-                    <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Select Category</div>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs rounded-full">📣 Marketing</span>
-                      <span className="px-3 py-1 bg-white/10 text-gray-300 text-xs rounded-full">💻 Development</span>
-                      <span className="px-3 py-1 bg-white/10 text-gray-300 text-xs rounded-full">✍️ Writing</span>
-                      <span className="px-3 py-1 bg-white/10 text-gray-300 text-xs rounded-full">💼 Business</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white py-3 px-4 rounded-lg text-sm font-bold shadow-lg">
-                      🚀 Generate & Insert
-                    </button>
-                    <button className="bg-white/10 text-white py-3 px-4 rounded-lg text-sm font-semibold border border-white/20">
-                      📚
-                    </button>
-                  </div>
-
-                  {/* Stats bar */}
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-white/10 text-xs">
-                    <span className="text-gray-400">Recent: <span className="text-white">12 prompts</span></span>
-                    <span className="text-green-400 font-semibold">45 tokens remaining</span>
-                  </div>
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl mb-5 shadow-lg">
+                  🎨
                 </div>
-
-                {/* Badge */}
-                <div className="absolute -top-4 -right-4 bg-gradient-to-r from-purple-500 to-cyan-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-1">
-                  <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                  SOON
-                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Create</h3>
+                <p className="text-sm text-gray-600 mb-4">Turn ideas into polished AI-powered outputs.</p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-purple-500">&#9679;</span> Production-ready prompts & content
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-purple-500">&#9679;</span> App blueprints from descriptions
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-purple-500">&#9679;</span> Professional voiceovers & audio
+                  </li>
+                </ul>
               </div>
 
-              {/* Features List - Enhanced */}
-              <div className="space-y-5">
-                <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:border-purple-500/30 transition-colors">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-2xl flex-shrink-0 shadow-lg">
-                    ⚡
-                  </div>
+              {/* Pillar: Automate */}
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-2xl mb-5 shadow-lg">
+                  ⚡
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Automate</h3>
+                <p className="text-sm text-gray-600 mb-4">Let AI handle the repetitive work.</p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-blue-500">&#9679;</span> AI chatbots & agents on any site
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-blue-500">&#9679;</span> Smart workflows & optimization
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-blue-500">&#9679;</span> Batch processing & scheduling
+                  </li>
+                </ul>
+              </div>
+
+              {/* Pillar: Learn */}
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-2xl mb-5 shadow-lg">
+                  📚
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Learn</h3>
+                <p className="text-sm text-gray-600 mb-4">Build real AI skills with structured education.</p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-emerald-500">&#9679;</span> 57 courses &middot; 555+ lessons
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-emerald-500">&#9679;</span> Certifications & progress tracking
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-emerald-500">&#9679;</span> Hands-on playground & quizzes
+                  </li>
+                </ul>
+              </div>
+
+              {/* Pillar: Scale */}
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-2xl mb-5 shadow-lg">
+                  📈
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Scale</h3>
+                <p className="text-sm text-gray-600 mb-4">Grow from solo user to enterprise team.</p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-orange-500">&#9679;</span> Team workspaces & permissions
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-orange-500">&#9679;</span> Usage analytics & cost tracking
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-gray-700">
+                    <span className="text-orange-500">&#9679;</span> API access & white-label options
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ================================================
+            6) HOW IT WORKS (simplified process)
+            ================================================ */}
+        <section className="py-20 bg-gradient-to-br from-gray-900 via-purple-900/50 to-gray-900">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-14">
+              <div className="inline-block px-4 py-2 bg-purple-500/20 rounded-full mb-4 border border-purple-500/30">
+                <span className="text-sm font-semibold text-purple-300">HOW IT WORKS</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-3">
+                From Idea to Output in <span className="bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">Four Steps</span>
+              </h2>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-extrabold mx-auto mb-4 shadow-lg">1</div>
+                <h3 className="text-lg font-bold text-white mb-2">Pick a Category</h3>
+                <p className="text-sm text-gray-400">Marketing, dev, sales, education — choose your domain from 25+ categories.</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white text-2xl font-extrabold mx-auto mb-4 shadow-lg">2</div>
+                <h3 className="text-lg font-bold text-white mb-2">Answer Smart Questions</h3>
+                <p className="text-sm text-gray-400">Our AI adapts questions to your context so the output matches exactly what you need.</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white text-2xl font-extrabold mx-auto mb-4 shadow-lg">3</div>
+                <h3 className="text-lg font-bold text-white mb-2">AI Generates Content</h3>
+                <p className="text-sm text-gray-400">Get production-ready prompts, blueprints, or content in seconds — not hours.</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white text-2xl font-extrabold mx-auto mb-4 shadow-lg">4</div>
+                <h3 className="text-lg font-bold text-white mb-2">Refine & Ship</h3>
+                <p className="text-sm text-gray-400">Edit, export, or deploy. Share with your team or use directly in ChatGPT, Claude, and more.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ================================================
+            7) SOCIAL PROOF & USE CASES
+            ================================================ */}
+        <section className="py-20 bg-gray-50">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-14">
+              <div className="inline-block px-4 py-2 bg-gradient-to-r from-purple-100 to-blue-100 rounded-full mb-4">
+                <span className="text-sm font-semibold text-purple-700">SUCCESS STORIES</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
+                Trusted by Teams That Ship
+              </h2>
+            </div>
+
+            {/* Testimonials */}
+            <div className="grid md:grid-cols-3 gap-6 mb-16">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-1 mb-3 text-yellow-400 text-sm">★★★★★</div>
+                <blockquote className="text-gray-700 mb-4 text-sm leading-relaxed">
+                  "SmartPromptIQ cut our marketing strategy development from weeks to hours. Conversion rates increased 340% in 3 months. The ROI paid for itself in the first week."
+                </blockquote>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">SC</div>
                   <div>
-                    <h4 className="text-lg font-bold text-white mb-1">Works on 10+ AI Platforms</h4>
-                    <p className="text-gray-400 text-sm">ChatGPT, Claude, Gemini, Copilot, Poe, Perplexity, You.com and more — one extension for all your AI tools</p>
+                    <div className="text-sm font-bold text-gray-900">Sarah Chen</div>
+                    <div className="text-xs text-gray-500">CMO, TechFlow Inc.</div>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:border-green-500/30 transition-colors">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-2xl flex-shrink-0 shadow-lg">
-                    🎯
-                  </div>
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-1 mb-3 text-yellow-400 text-sm">★★★★★</div>
+                <blockquote className="text-gray-700 mb-4 text-sm leading-relaxed">
+                  "The team collaboration features are game-changing. Our product development cycle improved by 40% and cross-team alignment is seamless. Best investment we've made."
+                </blockquote>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white text-sm font-bold">MJ</div>
                   <div>
-                    <h4 className="text-lg font-bold text-white mb-1">Context-Aware Smart Prompts</h4>
-                    <p className="text-gray-400 text-sm">Select text on any page, right-click, and let AI improve, explain, or summarize it instantly</p>
+                    <div className="text-sm font-bold text-gray-900">Marcus Johnson</div>
+                    <div className="text-xs text-gray-500">Head of Product, DataSync Corp</div>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:border-orange-500/30 transition-colors">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-2xl flex-shrink-0 shadow-lg">
-                    ⌨️
-                  </div>
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-1 mb-3 text-yellow-400 text-sm">★★★★★</div>
+                <blockquote className="text-gray-700 mb-4 text-sm leading-relaxed">
+                  "As an educator, SmartPromptIQ revolutionized how I create learning materials. Student engagement increased 85% and course completion hit an all-time high of 94%."
+                </blockquote>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white text-sm font-bold">ER</div>
                   <div>
-                    <h4 className="text-lg font-bold text-white mb-1">Keyboard Shortcuts</h4>
-                    <p className="text-gray-400 text-sm"><kbd className="px-2 py-1 bg-white/10 rounded text-xs">Ctrl+Shift+P</kbd> for popup, <kbd className="px-2 py-1 bg-white/10 rounded text-xs">Ctrl+Shift+G</kbd> for quick generate</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:border-blue-500/30 transition-colors">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-2xl flex-shrink-0 shadow-lg">
-                    🔄
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold text-white mb-1">Auto-Sync with Your Account</h4>
-                    <p className="text-gray-400 text-sm">Login once on the website, extension syncs automatically. Your prompts, settings, and tokens sync everywhere</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 p-4 bg-white/5 rounded-xl border border-white/10 hover:border-pink-500/30 transition-colors">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-2xl flex-shrink-0 shadow-lg">
-                    🚀
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold text-white mb-1">One-Click Insert</h4>
-                    <p className="text-gray-400 text-sm">Generated prompts are automatically inserted into ChatGPT, Claude, or any AI chat — no copy-paste needed</p>
+                    <div className="text-sm font-bold text-gray-900">Dr. Emily Rodriguez</div>
+                    <div className="text-xs text-gray-500">Professor, Stanford University</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Supported Platforms */}
-            <div className="mt-16">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-white mb-2">Works Everywhere You Chat with AI</h3>
-                <p className="text-gray-400">Seamlessly integrates with all major AI platforms</p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-4">
-                {[
-                  { name: 'ChatGPT', icon: '🤖' },
-                  { name: 'Claude', icon: '🟠' },
-                  { name: 'Gemini', icon: '✨' },
-                  { name: 'Copilot', icon: '🔵' },
-                  { name: 'Poe', icon: '💬' },
-                  { name: 'Perplexity', icon: '🔍' },
-                  { name: 'You.com', icon: '🌐' },
-                ].map((platform) => (
-                  <div key={platform.name} className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
-                    <span className="text-lg">{platform.icon}</span>
-                    <span className="text-white font-medium">{platform.name}</span>
-                  </div>
-                ))}
-              </div>
+            {/* Use Cases */}
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-bold text-gray-900">Built for Every Use Case</h3>
             </div>
-
-            {/* Download CTA */}
-            <div className="mt-12">
-              <div className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 rounded-3xl p-8 border border-purple-500/30 shadow-2xl">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-4xl shadow-xl">
-                      🧠
-                    </div>
-                    <div>
-                      <h4 className="text-2xl font-bold text-white mb-1">Chrome Extension Coming Soon</h4>
-                      <p className="text-gray-300">Free for all SmartPromptIQ users • Currently in review</p>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className="text-purple-400 text-sm">Under Chrome Web Store Review</span>
-                        <span className="text-gray-500">|</span>
-                        <span className="text-gray-400 text-sm">v1.1.0</span>
-                        <span className="text-gray-500">|</span>
-                        <span className="text-gray-400 text-sm">Manifest V3</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      onClick={() => setLocation('/chrome-extension')}
-                      className="bg-gradient-to-r from-purple-500 to-cyan-500 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-purple-600 hover:to-cyan-600 transition-all duration-200 shadow-lg flex items-center gap-2"
-                    >
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-3.952 6.848a12.014 12.014 0 0 0 9.296-9.559zM12 8.182a3.818 3.818 0 1 0 0 7.636 3.818 3.818 0 0 0 0-7.636z"/>
-                      </svg>
-                      Get Notified
-                    </button>
-                    <button
-                      onClick={() => setLocation('/chrome-extension')}
-                      className="bg-white/10 text-white px-6 py-4 rounded-xl font-semibold border border-white/20 hover:bg-white/20 transition-all duration-200 flex items-center gap-2"
-                    >
-                      Learn More →
-                    </button>
-                  </div>
-                </div>
-
-                {/* Feature highlights */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-white/10">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white">10+</div>
-                    <div className="text-sm text-gray-400">AI Platforms</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white">6</div>
-                    <div className="text-sm text-gray-400">Categories</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white">4</div>
-                    <div className="text-sm text-gray-400">Quick Actions</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-white">100%</div>
-                    <div className="text-sm text-gray-400">Free</div>
-                  </div>
-                </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="bg-white rounded-xl p-5 border border-gray-200 text-center hover:shadow-md transition-shadow">
+                <div className="text-3xl mb-3">🏢</div>
+                <h4 className="font-bold text-gray-900 text-sm mb-1">Agencies</h4>
+                <p className="text-xs text-gray-500">White-label AI solutions for client delivery at scale</p>
+              </div>
+              <div className="bg-white rounded-xl p-5 border border-gray-200 text-center hover:shadow-md transition-shadow">
+                <div className="text-3xl mb-3">🎨</div>
+                <h4 className="font-bold text-gray-900 text-sm mb-1">Creators</h4>
+                <p className="text-xs text-gray-500">Content, voiceovers, and marketing prompts 10x faster</p>
+              </div>
+              <div className="bg-white rounded-xl p-5 border border-gray-200 text-center hover:shadow-md transition-shadow">
+                <div className="text-3xl mb-3">🛒</div>
+                <h4 className="font-bold text-gray-900 text-sm mb-1">E-commerce</h4>
+                <p className="text-xs text-gray-500">Product descriptions, SEO content, and chatbots</p>
+              </div>
+              <div className="bg-white rounded-xl p-5 border border-gray-200 text-center hover:shadow-md transition-shadow">
+                <div className="text-3xl mb-3">📖</div>
+                <h4 className="font-bold text-gray-900 text-sm mb-1">Coaches</h4>
+                <p className="text-xs text-gray-500">Course content, client materials, and AI assistants</p>
+              </div>
+              <div className="bg-white rounded-xl p-5 border border-gray-200 text-center hover:shadow-md transition-shadow">
+                <div className="text-3xl mb-3">👥</div>
+                <h4 className="font-bold text-gray-900 text-sm mb-1">Internal Teams</h4>
+                <p className="text-xs text-gray-500">Shared prompts, workflows, and team analytics</p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="features-section">
-          <div className="section-header">
-            <div className="section-badge">🚀 POWERFUL FEATURES</div>
-            <h2 className="section-title">Everything You Need to <span className="gradient-text">Succeed</span></h2>
-            <p className="section-description">
-              Discover the revolutionary tools that make Smart PromptIQ the ultimate solution for generating AI-powered prompts and transforming your creative process into extraordinary results.
-            </p>
-          </div>
-
-          {/* Professional Key Features - No Clickable Elements */}
-          <div className="feature-categories-pro">
-            <div className="category-card-pro marketing-gradient">
-              <div className="category-header">
-                <div className="category-icon-pro">🚀</div>
-                <div className="category-badge">Core Feature</div>
+        {/* ================================================
+            8) PRICING OVERVIEW
+            ================================================ */}
+        <section className="py-20 bg-white">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="inline-block px-4 py-2 bg-gradient-to-r from-purple-100 to-blue-100 rounded-full mb-4">
+                <span className="text-sm font-semibold text-purple-700">PRICING</span>
               </div>
-              <h3 className="category-title">AI-Powered Generation</h3>
-              <p className="category-description">Revolutionary AI algorithms that understand context and generate perfect prompts tailored to your specific needs and industry requirements</p>
-              <ul className="category-features">
-                <li>✓ Context-Aware Intelligence</li>
-                <li>✓ Industry-Specific Templates</li>
-                <li>✓ Multi-Language Support</li>
-                <li>✓ Real-Time Optimization</li>
-              </ul>
-              <div className="category-info-badge">
-                Advanced AI Technology
-              </div>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
+                Start Free. Upgrade When Ready.
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                No credit card required. Every plan includes Academy access and Pro Tools. Pay only when you need more.
+              </p>
             </div>
 
-            <div className="category-card-pro development-gradient">
-              <div className="category-header">
-                <div className="category-icon-pro">⚡</div>
-                <div className="category-badge">Performance</div>
+            <div className="grid sm:grid-cols-3 gap-6 mb-10">
+              {/* Free */}
+              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 text-center">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Free</h3>
+                <div className="text-3xl font-extrabold text-gray-900 mb-4">$0<span className="text-base font-normal text-gray-500">/mo</span></div>
+                <ul className="text-sm text-gray-600 space-y-2 mb-6 text-left">
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> 10 AI prompts/month</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Academy preview</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Basic templates</li>
+                </ul>
+                <button
+                  onClick={handleGetStarted}
+                  className="w-full py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:border-purple-400 hover:text-purple-700 transition-colors"
+                >
+                  Get Started
+                </button>
               </div>
-              <h3 className="category-title">Lightning-Fast Processing</h3>
-              <p className="category-description">Optimized infrastructure delivering results in seconds with 99.9% uptime and enterprise-grade security for your data</p>
-              <ul className="category-features">
-                <li>✓ Sub-2 Second Response Time</li>
-                <li>✓ 99.9% Uptime Guarantee</li>
-                <li>✓ Enterprise Security</li>
-                <li>✓ Global CDN Network</li>
-              </ul>
-              <div className="category-info-badge">
-                High Performance
-              </div>
-            </div>
 
-            <div className="category-card-pro education-gradient">
-              <div className="category-header">
-                <div className="category-icon-pro">🎯</div>
-                <div className="category-badge">Intelligence</div>
-              </div>
-              <h3 className="category-title">Smart Customization</h3>
-              <p className="category-description">Intelligent questionnaire system that adapts to your responses and generates increasingly personalized and effective prompts</p>
-              <ul className="category-features">
-                <li>✓ Adaptive Questioning</li>
-                <li>✓ Learning Algorithms</li>
-                <li>✓ Personal Preferences</li>
-                <li>✓ Continuous Improvement</li>
-              </ul>
-              <div className="category-info-badge">
-                Smart Learning
-              </div>
-            </div>
-
-            <div className="category-card-pro financial-gradient">
-              <div className="category-header">
-                <div className="category-icon-pro">📊</div>
-                <div className="category-badge">Analytics</div>
-              </div>
-              <h3 className="category-title">Advanced Analytics</h3>
-              <p className="category-description">Comprehensive insights into your prompt performance with detailed analytics, A/B testing, and ROI tracking capabilities</p>
-              <ul className="category-features">
-                <li>✓ Performance Tracking</li>
-                <li>✓ A/B Testing Suite</li>
-                <li>✓ ROI Measurements</li>
-                <li>✓ Detailed Reports</li>
-              </ul>
-              <div className="category-info-badge">
-                Data-Driven
-              </div>
-            </div>
-          </div>
-          
-          {/* Complete Platform Capabilities - Informational Only */}
-          <div className="pro-features-header">
-            <h3 className="pro-features-title">Complete Platform Capabilities</h3>
-            <p className="pro-features-subtitle">Comprehensive suite of professional tools for AI-powered content generation</p>
-          </div>
-
-          <div className="app-features-grid-pro">
-            <div className="app-feature-card-pro dashboard-theme">
-              <div className="feature-header-pro">
-                <div className="feature-icon-pro gradient-bg-blue">🎨</div>
-                <div className="feature-status">Creative Suite</div>
-              </div>
-              <h3 className="feature-title-pro">Creative Content Generation</h3>
-              <p className="feature-description-pro">Advanced AI tools for generating marketing copy, social media content, blog posts, and creative briefs with professional-grade quality.</p>
-              <div className="feature-metrics">
-                <div className="metric"><span className="metric-value">50+</span> Content Types</div>
-                <div className="metric"><span className="metric-value">12</span> Languages</div>
-              </div>
-              <div className="feature-info-pro">Professional Quality Output</div>
-            </div>
-
-            <div className="app-feature-card-pro templates-theme">
-              <div className="feature-header-pro">
-                <div className="feature-icon-pro gradient-bg-green">🧠</div>
-                <div className="feature-status">Smart Intelligence</div>
-              </div>
-              <h3 className="feature-title-pro">Intelligent Questionnaires</h3>
-              <p className="feature-description-pro">Dynamic question systems that learn from your responses and adapt to create increasingly personalized and effective prompts.</p>
-              <div className="feature-metrics">
-                <div className="metric"><span className="metric-value">AI-Driven</span> Logic</div>
-                <div className="metric"><span className="metric-value">Adaptive</span> Learning</div>
-              </div>
-              <div className="feature-info-pro">Personalized Experience</div>
-            </div>
-
-            <div className="app-feature-card-pro teams-theme">
-              <div className="feature-header-pro">
-                <div className="feature-icon-pro gradient-bg-purple">⚙️</div>
-                <div className="feature-status">Automation</div>
-              </div>
-              <h3 className="feature-title-pro">Workflow Automation</h3>
-              <p className="feature-description-pro">Streamlined processes that automatically generate, refine, and optimize content based on your specific requirements and goals.</p>
-              <div className="feature-metrics">
-                <div className="metric"><span className="metric-value">Auto</span> Optimization</div>
-                <div className="metric"><span className="metric-value">Smart</span> Workflows</div>
-              </div>
-              <div className="feature-info-pro">Efficiency Focused</div>
-            </div>
-
-            <div className="app-feature-card-pro analytics-theme">
-              <div className="feature-header-pro">
-                <div className="feature-icon-pro gradient-bg-orange">🔒</div>
-                <div className="feature-status">Enterprise</div>
-              </div>
-              <h3 className="feature-title-pro">Security & Compliance</h3>
-              <p className="feature-description-pro">Enterprise-grade security with GDPR compliance, data encryption, and comprehensive audit trails for business-critical operations.</p>
-              <div className="feature-metrics">
-                <div className="metric"><span className="metric-value">256-bit</span> Encryption</div>
-                <div className="metric"><span className="metric-value">GDPR</span> Compliant</div>
-              </div>
-              <div className="feature-info-pro">Enterprise Ready</div>
-            </div>
-
-            <div className="app-feature-card-pro pricing-theme">
-              <div className="feature-header-pro">
-                <div className="feature-icon-pro gradient-bg-cyan">💡</div>
-                <div className="feature-status">Innovation</div>
-              </div>
-              <h3 className="feature-title-pro">Continuous Innovation</h3>
-              <p className="feature-description-pro">Regular updates with new features, improved AI models, and enhanced capabilities based on user feedback and industry trends.</p>
-              <div className="feature-metrics">
-                <div className="metric"><span className="metric-value">Weekly</span> Updates</div>
-                <div className="metric"><span className="metric-value">Latest</span> AI Models</div>
-              </div>
-              <div className="feature-info-pro">Always Evolving</div>
-            </div>
-
-            <div className="app-feature-card-pro docs-theme">
-              <div className="feature-header-pro">
-                <div className="feature-icon-pro gradient-bg-pink">🌐</div>
-                <div className="feature-status">Global</div>
-              </div>
-              <h3 className="feature-title-pro">Multi-Industry Support</h3>
-              <p className="feature-description-pro">Specialized knowledge bases covering technology, healthcare, finance, education, marketing, and dozens of other industries.</p>
-              <div className="feature-metrics">
-                <div className="metric"><span className="metric-value">25+</span> Industries</div>
-                <div className="metric"><span className="metric-value">Global</span> Standards</div>
-              </div>
-              <div className="feature-info-pro">Industry Expertise</div>
-            </div>
-          </div>
-        </section>
-
-        {/* Industry Solutions Section */}
-        <section className="industry-solutions-section">
-          <div className="section-header-pro">
-            <div className="section-badge-pro">🏭 INDUSTRY EXPERTISE</div>
-            <h2 className="section-title-pro">Specialized Solutions for <span className="gradient-text">Every Industry</span></h2>
-            <p className="section-description-pro">
-              Our AI understands the unique challenges and requirements of different industries, delivering specialized prompts that speak your business language.
-            </p>
-          </div>
-
-          <div className="industry-grid">
-            <div className="industry-card tech-industry">
-              <div className="industry-icon">💻</div>
-              <h3>Technology & Software</h3>
-              <p>Technical documentation, API specifications, software architecture, and development workflows with precision.</p>
-              <div className="industry-stats">
-                <div className="stat">500+ Tech Companies</div>
-                <div className="stat">95% Accuracy Rate</div>
-              </div>
-            </div>
-
-            <div className="industry-card healthcare-industry">
-              <div className="industry-icon">🏥</div>
-              <h3>Healthcare & Medical</h3>
-              <p>Compliance-ready content, medical protocols, patient education materials, and research documentation.</p>
-              <div className="industry-stats">
-                <div className="stat">HIPAA Compliant</div>
-                <div className="stat">Medical Accuracy</div>
-              </div>
-            </div>
-
-            <div className="industry-card finance-industry">
-              <div className="industry-icon">💰</div>
-              <h3>Finance & Banking</h3>
-              <p>Regulatory compliance, financial analysis, investment strategies, and risk assessment documentation.</p>
-              <div className="industry-stats">
-                <div className="stat">SEC Compliant</div>
-                <div className="stat">Risk Analysis</div>
-              </div>
-            </div>
-
-            <div className="industry-card education-industry">
-              <div className="industry-icon">🎓</div>
-              <h3>Education & Training</h3>
-              <p>Curriculum development, assessment creation, learning objectives, and educational content optimization.</p>
-              <div className="industry-stats">
-                <div className="stat">1000+ Educators</div>
-                <div className="stat">Learning Focused</div>
-              </div>
-            </div>
-
-            <div className="industry-card retail-industry">
-              <div className="industry-icon">🛍️</div>
-              <h3>Retail & E-commerce</h3>
-              <p>Product descriptions, marketing campaigns, customer service protocols, and sales optimization strategies.</p>
-              <div className="industry-stats">
-                <div className="stat">300+ Brands</div>
-                <div className="stat">Sales Boost</div>
-              </div>
-            </div>
-
-            <div className="industry-card manufacturing-industry">
-              <div className="industry-icon">🏭</div>
-              <h3>Manufacturing & Industrial</h3>
-              <p>Process documentation, quality control, safety protocols, and operational efficiency improvements.</p>
-              <div className="industry-stats">
-                <div className="stat">ISO Standards</div>
-                <div className="stat">Safety First</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Technical Capabilities Section */}
-        <section className="technical-capabilities-section">
-          <div className="section-header-pro">
-            <div className="section-badge-pro">⚡ TECHNICAL EXCELLENCE</div>
-            <h2 className="section-title-pro">Cutting-Edge <span className="gradient-text">AI Technology</span></h2>
-            <p className="section-description-pro">
-              Built on the latest advances in artificial intelligence, natural language processing, and machine learning to deliver unprecedented results.
-            </p>
-          </div>
-
-          <div className="technical-grid">
-            <div className="tech-feature">
-              <div className="tech-icon">🧠</div>
-              <h3>Advanced NLP Engine</h3>
-              <p>State-of-the-art natural language processing that understands context, tone, and intent with human-like comprehension.</p>
-              <div className="tech-metrics">
-                <div className="metric">99.2% Context Accuracy</div>
-                <div className="metric">50+ Languages</div>
-              </div>
-            </div>
-
-            <div className="tech-feature">
-              <div className="tech-icon">🎯</div>
-              <h3>Machine Learning Optimization</h3>
-              <p>Continuously learning algorithms that improve with every interaction, personalizing output to your specific needs.</p>
-              <div className="tech-metrics">
-                <div className="metric">Real-time Learning</div>
-                <div className="metric">Adaptive Models</div>
-              </div>
-            </div>
-
-            <div className="tech-feature">
-              <div className="tech-icon">⚡</div>
-              <h3>High-Performance Computing</h3>
-              <p>Cloud-native architecture with distributed processing ensuring lightning-fast response times and 99.9% uptime.</p>
-              <div className="tech-metrics">
-                <div className="metric">Sub-2s Response</div>
-                <div className="metric">Global CDN</div>
-              </div>
-            </div>
-
-            <div className="tech-feature">
-              <div className="tech-icon">🔒</div>
-              <h3>Enterprise Security</h3>
-              <p>Military-grade encryption, compliance standards, and data protection protocols ensuring your information stays secure.</p>
-              <div className="tech-metrics">
-                <div className="metric">256-bit Encryption</div>
-                <div className="metric">SOC2 Compliant</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Process Overview Section */}
-        <section className="process-overview-section">
-          <div className="section-header-pro">
-            <div className="section-badge-pro">🔄 HOW IT WORKS</div>
-            <h2 className="section-title-pro">Simple Process, <span className="gradient-text">Powerful Results</span></h2>
-            <p className="section-description-pro">
-              Our intuitive workflow transforms your ideas into professional-grade prompts in just four simple steps.
-            </p>
-          </div>
-
-          <div className="process-steps">
-            <div className="process-step">
-              <div className="step-number">1</div>
-              <div className="step-content">
-                <h3>Choose Your Category</h3>
-                <p>Select from our comprehensive library of industry-specific categories and use cases tailored to your needs.</p>
-                <div className="step-highlight">25+ Categories Available</div>
-              </div>
-            </div>
-
-            <div className="process-step">
-              <div className="step-number">2</div>
-              <div className="step-content">
-                <h3>Answer Smart Questions</h3>
-                <p>Our intelligent questionnaire adapts to your responses, asking the right questions to understand your requirements.</p>
-                <div className="step-highlight">AI-Powered Questions</div>
-              </div>
-            </div>
-
-            <div className="process-step">
-              <div className="step-number">3</div>
-              <div className="step-content">
-                <h3>AI Generates Content</h3>
-                <p>Advanced algorithms process your input and generate comprehensive, professional-quality prompts and content.</p>
-                <div className="step-highlight">Instant Generation</div>
-              </div>
-            </div>
-
-            <div className="process-step">
-              <div className="step-number">4</div>
-              <div className="step-content">
-                <h3>Refine & Perfect</h3>
-                <p>Review, customize, and optimize the generated content with built-in editing tools and suggestions.</p>
-                <div className="step-highlight">Professional Quality</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Enhanced Testimonials Section */}
-        <section className="testimonials-section-pro">
-          <div className="section-header-pro">
-            <div className="section-badge-pro">⭐ CUSTOMER SUCCESS STORIES</div>
-            <h2 className="section-title-pro">Trusted by <span className="gradient-text">25,000+</span> Industry Leaders</h2>
-            <p className="section-description-pro">
-              See how businesses across industries are using Smart PromptIQ to accelerate growth, streamline workflows, and achieve unprecedented success with AI-powered solutions.
-            </p>
-          </div>
-
-          {/* Company Logos */}
-          <div className="company-logos">
-            <div className="logo-text">TechFlow Inc.</div>
-            <div className="logo-text">DataSync Corp</div>
-            <div className="logo-text">Stanford University</div>
-            <div className="logo-text">InnovateCorp</div>
-            <div className="logo-text">GrowthLabs</div>
-            <div className="logo-text">EdTech Solutions</div>
-          </div>
-
-          <div className="testimonials-grid-pro">
-            <div className="testimonial-card-pro featured">
-              <div className="testimonial-header">
-                <div className="testimonial-stars">⭐⭐⭐⭐⭐</div>
-                <div className="testimonial-rating">5.0</div>
-              </div>
-              <blockquote className="testimonial-quote-pro">
-                "SmartPromptIQ transformed our entire marketing strategy development from weeks to hours. The AI-powered prompts are incredibly detailed, actionable, and deliver real ROI. Our conversion rates increased by 340% in just 3 months."
-              </blockquote>
-              <div className="testimonial-metrics">
-                <div className="metric"><span>340%</span> Conversion Increase</div>
-                <div className="metric"><span>10x</span> Faster Strategy</div>
-              </div>
-              <div className="testimonial-author-pro">
-                <div className="author-avatar">SC</div>
-                <div className="author-info">
-                  <div className="author-name">Sarah Chen</div>
-                  <div className="author-title">Chief Marketing Officer</div>
-                  <div className="author-company">TechFlow Inc. · Series B Startup</div>
+              {/* Pro - Highlighted */}
+              <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-6 text-center text-white shadow-xl relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-orange-400 to-yellow-400 text-gray-900 text-xs font-bold rounded-full">
+                  MOST POPULAR
                 </div>
+                <h3 className="text-lg font-bold mb-1">Pro</h3>
+                <div className="text-3xl font-extrabold mb-4">$49<span className="text-base font-normal text-purple-200">/mo</span></div>
+                <ul className="text-sm text-purple-100 space-y-2 mb-6 text-left">
+                  <li className="flex items-center gap-2"><span className="text-green-300">✓</span> 200 AI prompts/month</li>
+                  <li className="flex items-center gap-2"><span className="text-green-300">✓</span> Full Academy access (57 courses)</li>
+                  <li className="flex items-center gap-2"><span className="text-green-300">✓</span> All Pro Tools + templates</li>
+                  <li className="flex items-center gap-2"><span className="text-green-300">✓</span> Voice AI + AI Agents</li>
+                </ul>
+                <button
+                  onClick={handleGetStarted}
+                  className="w-full py-3 rounded-xl bg-white text-purple-700 font-bold hover:bg-gray-100 transition-colors"
+                >
+                  Start Pro Free Trial
+                </button>
+              </div>
+
+              {/* Business */}
+              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 text-center">
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Business</h3>
+                <div className="text-3xl font-extrabold text-gray-900 mb-4">$149<span className="text-base font-normal text-gray-500">/mo</span></div>
+                <ul className="text-sm text-gray-600 space-y-2 mb-6 text-left">
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> 1,000 AI prompts/month</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Team workspaces (5 seats)</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> API access + analytics</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Priority support</li>
+                </ul>
+                <button
+                  onClick={() => setLocation('/pricing')}
+                  className="w-full py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:border-purple-400 hover:text-purple-700 transition-colors"
+                >
+                  View Business Plan
+                </button>
               </div>
             </div>
 
-            <div className="testimonial-card-pro">
-              <div className="testimonial-header">
-                <div className="testimonial-stars">⭐⭐⭐⭐⭐</div>
-                <div className="testimonial-rating">5.0</div>
-              </div>
-              <blockquote className="testimonial-quote-pro">
-                "The team collaboration features are absolutely game-changing. Our product development cycle improved by 40% and cross-team alignment is now seamless. The ROI speaks for itself."
-              </blockquote>
-              <div className="testimonial-metrics">
-                <div className="metric"><span>40%</span> Cycle Improvement</div>
-                <div className="metric"><span>95%</span> Team Satisfaction</div>
-              </div>
-              <div className="testimonial-author-pro">
-                <div className="author-avatar">MJ</div>
-                <div className="author-info">
-                  <div className="author-name">Marcus Johnson</div>
-                  <div className="author-title">Head of Product</div>
-                  <div className="author-company">DataSync Corp · Fortune 500</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="testimonial-card-pro">
-              <div className="testimonial-header">
-                <div className="testimonial-stars">⭐⭐⭐⭐⭐</div>
-                <div className="testimonial-rating">5.0</div>
-              </div>
-              <blockquote className="testimonial-quote-pro">
-                "As an educator, SmartPromptIQ revolutionized how I create learning materials. Student engagement increased by 85%, and course completion rates hit an all-time high of 94%."
-              </blockquote>
-              <div className="testimonial-metrics">
-                <div className="metric"><span>85%</span> More Engagement</div>
-                <div className="metric"><span>94%</span> Completion Rate</div>
-              </div>
-              <div className="testimonial-author-pro">
-                <div className="author-avatar">ER</div>
-                <div className="author-info">
-                  <div className="author-name">Dr. Emily Rodriguez</div>
-                  <div className="author-title">Professor & Researcher</div>
-                  <div className="author-company">Stanford University · Education</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Trust Indicators */}
-          <div className="trust-indicators">
-            <div className="trust-item">
-              <div className="trust-number">4.9/5</div>
-              <div className="trust-label">Average Rating</div>
-            </div>
-            <div className="trust-item">
-              <div className="trust-number">25,000+</div>
-              <div className="trust-label">Active Users</div>
-            </div>
-            <div className="trust-item">
-              <div className="trust-number">99.9%</div>
-              <div className="trust-label">Uptime</div>
-            </div>
-            <div className="trust-item">
-              <div className="trust-number">2.1M+</div>
-              <div className="trust-label">Prompts Generated</div>
+            <div className="text-center">
+              <button
+                onClick={() => setLocation('/pricing')}
+                className="text-purple-600 font-semibold hover:text-purple-800 transition-colors"
+              >
+                Compare all 6 plans &rarr;
+              </button>
+              <p className="text-sm text-gray-500 mt-3">
+                30-day money-back guarantee &middot; Cancel anytime &middot; No hidden fees
+              </p>
             </div>
           </div>
         </section>
 
-        {/* Enhanced CTA Section with Signup Options */}
+        {/* ================================================
+            9) FINAL CTA SECTION
+            ================================================ */}
         <section className="cta-section">
           <div className="stars-container" ref={ctaStarsRef}></div>
 
           <div className="cta-content">
-            <h2 className="cta-title">Ready to Transform Your Creative Process?</h2>
-            <p className="cta-description">
-              Join thousands of innovative professionals, creative teams, and forward-thinking businesses who are already using Smart PromptIQ to revolutionize their workflow and achieve extraordinary results.
+            <h2 className="cta-title">Ready to Build Smarter with AI?</h2>
+            <p className="cta-description" style={{ maxWidth: '600px', margin: '0 auto 2rem' }}>
+              Join thousands of creators, founders, and teams who use SmartPromptIQ to turn ideas into AI-powered results every day.
             </p>
 
-            {/* Enhanced Signup Card */}
-            <div className="signup-card-container">
-              <div className="signup-card">
-                <div className="signup-card-header">
-                  <div className="signup-badge">🚀 Get Started Today</div>
-                  <h3 className="signup-card-title">Choose Your Path</h3>
-                  <p className="signup-card-description">Start creating amazing AI prompts in seconds</p>
-                </div>
-
-                <div className="signup-options">
-                  <div className="signup-option primary">
-                    <div className="option-header">
-                      <div className="option-icon">✨</div>
-                      <div className="option-title">Create Free Account</div>
-                      <div className="option-badge">Most Popular</div>
-                    </div>
-                    <div className="option-description">Full access to all features with 10 free AI prompts</div>
-                    <div className="option-features">
-                      <div className="feature">✓ 15+ Categories</div>
-                      <div className="feature">✓ AI-Powered Generation</div>
-                      <div className="feature">✓ Save & Export</div>
-                      <div className="feature">✓ No Credit Card Required</div>
-                    </div>
-                    <button onClick={handleGetStarted} className="option-button primary">
-                      Create Free Account
-                    </button>
-                  </div>
-
-                  <div className="signup-option secondary">
-                    <div className="option-header">
-                      <div className="option-icon">🔑</div>
-                      <div className="option-title">Sign In</div>
-                      <div className="option-badge">Existing User</div>
-                    </div>
-                    <div className="option-description">Access your account and continue creating</div>
-                    <div className="option-features">
-                      <div className="feature">✓ Access Saved Prompts</div>
-                      <div className="feature">✓ View Generation History</div>
-                      <div className="feature">✓ Resume Projects</div>
-                      <div className="feature">✓ Account Dashboard</div>
-                    </div>
-                    <button onClick={handleSignIn} className="option-button secondary">
-                      Sign In to Account
-                    </button>
-                  </div>
-                </div>
-
-                <div className="signup-guarantee">
-                  <div className="guarantee-content">
-                    <div className="guarantee-icon">🛡️</div>
-                    <div className="guarantee-text">
-                      <strong>30-Day Money Back Guarantee</strong>
-                      <span>• No hidden fees • Cancel anytime • Full refund</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="demo-option">
-                  <div className="demo-divider">
-                    <span>Or try before you commit</span>
-                  </div>
-                  <button onClick={handleDemo} className="demo-button">
-                    🎮 Try Demo (No Signup Required)
-                  </button>
-                </div>
-              </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+              <button onClick={handleGetStarted} className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                Start Free — No Credit Card
+              </button>
+              <button onClick={handleDemo} className="bg-white/10 text-white px-8 py-4 rounded-xl font-semibold text-lg border border-white/20 hover:bg-white/20 transition-all duration-200">
+                Try the Demo
+              </button>
             </div>
 
             <div className="cta-trust-indicators">
               <div className="trust-stat">
-                <div className="trust-number">25,000+</div>
+                <div className="trust-number">8,900+</div>
                 <div className="trust-label">Active Users</div>
               </div>
               <div className="trust-stat">
@@ -1090,7 +770,7 @@ export default function Home() {
                 <div className="trust-label">User Rating</div>
               </div>
               <div className="trust-stat">
-                <div className="trust-number">2.1M+</div>
+                <div className="trust-number">47K+</div>
                 <div className="trust-label">Prompts Created</div>
               </div>
               <div className="trust-stat">
@@ -1131,25 +811,18 @@ export default function Home() {
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-3.952 6.848a12.014 12.014 0 0 0 9.296-9.559zM12 8.182a3.818 3.818 0 1 0 0 7.636 3.818 3.818 0 0 0 0-7.636z"/>
               </svg>
-              Get Notified
+              Learn More
             </button>
-          </div>
-          <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-300 mt-4 pt-4 border-t border-white/10">
-            <span className="px-3 py-1 bg-white/5 rounded-full">✨ Quick Actions</span>
-            <span className="px-3 py-1 bg-white/5 rounded-full">⌨️ Keyboard Shortcuts</span>
-            <span className="px-3 py-1 bg-white/5 rounded-full">🔄 Auto-Sync</span>
-            <span className="px-3 py-1 bg-white/5 rounded-full">🚀 One-Click Insert</span>
           </div>
         </div>
 
         <div className="footer-badges">
           <div className="footer-badge">Enterprise Security</div>
           <div className="footer-badge">GDPR Compliant</div>
-          <div className="footer-badge">ISO 27001 Certified</div>
           <div className="footer-badge">4.9/5 Rating</div>
-          <div className="footer-badge">25,000+ Users</div>
+          <div className="footer-badge">8,900+ Users</div>
         </div>
-        <p>Trusted by industry leaders and innovative companies worldwide</p>
+        <p>Trusted by creators, startups, and growing businesses worldwide</p>
 
         {/* Social Links */}
         <div className="flex justify-center gap-4 mt-6">
@@ -1197,7 +870,7 @@ export default function Home() {
         </div>
 
         <div className="text-xs opacity-60 mt-4" style={{ textAlign: 'center' }}>
-          © 2026 SmartPromptIQ™ — The Intelligent Prompt Engineering Platform
+          &copy; 2026 SmartPromptIQ&trade; — The Intelligent Prompt Engineering Platform
         </div>
       </footer>
     </div>

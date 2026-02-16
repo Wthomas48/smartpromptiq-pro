@@ -3,8 +3,10 @@ import cors from 'cors';
 import { body, validationResult } from 'express-validator';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import prisma from '../config/database';
 import { authenticateApiKey, ApiKeyRequest, requirePermission } from '../middleware/apiKeyAuth';
+import { embedQuery, cosineSimilarity } from '../services/ragService';
 
 const router = express.Router();
 
@@ -46,6 +48,13 @@ if (openaiKey && !openaiKey.includes('REPLACE') && openaiKey.startsWith('sk-')) 
 const anthropicKey = process.env.ANTHROPIC_API_KEY;
 if (anthropicKey && !anthropicKey.includes('REPLACE') && anthropicKey.startsWith('sk-ant-')) {
   anthropic = new Anthropic({ apiKey: anthropicKey });
+}
+
+let gemini: GenerativeModel | null = null;
+const geminiKey = process.env.GOOGLE_API_KEY;
+if (geminiKey && !geminiKey.includes('REPLACE') && geminiKey.length > 10) {
+  const genAI = new GoogleGenerativeAI(geminiKey);
+  gemini = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 }
 
 interface ChatMessage {
@@ -157,6 +166,58 @@ router.post('/', [
       content: message
     });
 
+    // ── Knowledge Base RAG Context ──────────────────────────────
+    // If the agent has attached documents, retrieve relevant chunks
+    // and inject them into the system prompt.
+    let systemPrompt = agent.systemPrompt;
+
+    try {
+      const agentDocs = await prisma.agentDocument.findMany({
+        where: { agentId: agent.id },
+        include: {
+          document: {
+            select: { id: true, status: true },
+          },
+        },
+      });
+
+      const readyDocIds = agentDocs
+        .filter((ad) => ad.document.status === 'ready')
+        .map((ad) => ad.documentId);
+
+      if (readyDocIds.length > 0 && openai) {
+        // Embed user question and search across all attached docs
+        const queryEmbedding = await embedQuery(message);
+
+        const allChunks = await prisma.documentChunk.findMany({
+          where: { documentId: { in: readyDocIds } },
+          select: { content: true, chunkIndex: true, heading: true, embedding: true },
+        });
+
+        const scored = allChunks
+          .map((chunk) => {
+            const emb: number[] = JSON.parse(chunk.embedding);
+            return { ...chunk, similarity: cosineSimilarity(queryEmbedding, emb) };
+          })
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, 5);
+
+        if (scored.length > 0 && scored[0].similarity > 0.3) {
+          const contextBlocks = scored
+            .map((c, i) => {
+              const header = c.heading ? ` (${c.heading})` : '';
+              return `[${i + 1}]${header}\n${c.content}`;
+            })
+            .join('\n\n---\n\n');
+
+          systemPrompt += `\n\n## Knowledge Base Context\nThe following excerpts from uploaded documents may help answer the user's question. Use them when relevant and cite sources with [1], [2], etc. If the answer is not in the excerpts, use your general knowledge.\n\n${contextBlocks}`;
+        }
+      }
+    } catch (ragError) {
+      console.error('RAG context retrieval error (non-fatal):', ragError);
+      // Continue without RAG context — not a fatal error
+    }
+
     // Generate AI response
     let assistantMessage = '';
     let tokensUsed = 0;
@@ -167,7 +228,7 @@ router.post('/', [
           model: agent.model,
           max_tokens: agent.maxTokens,
           temperature: agent.temperature,
-          system: agent.systemPrompt,
+          system: systemPrompt,
           messages: conversationHistory.map(msg => ({
             role: msg.role === 'system' ? 'user' : msg.role,
             content: msg.content
@@ -184,7 +245,7 @@ router.post('/', [
           max_tokens: agent.maxTokens,
           temperature: agent.temperature,
           messages: [
-            { role: 'system', content: agent.systemPrompt },
+            { role: 'system', content: systemPrompt },
             ...conversationHistory
           ]
         });
@@ -192,6 +253,19 @@ router.post('/', [
         assistantMessage = response.choices[0]?.message?.content ||
           'I apologize, but I could not generate a response.';
         tokensUsed = response.usage?.total_tokens || 0;
+      } else if (agent.provider === 'gemini' && gemini) {
+        const result = await gemini.generateContent({
+          contents: [
+            { role: 'user', parts: [{ text: `${systemPrompt}\n\n${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}` }] },
+          ],
+          generationConfig: {
+            maxOutputTokens: agent.maxTokens,
+            temperature: agent.temperature,
+          },
+        });
+        const resp = result.response;
+        assistantMessage = resp.text() || 'I apologize, but I could not generate a response.';
+        tokensUsed = resp.usageMetadata?.totalTokenCount || 0;
       } else {
         // Fallback response when no AI provider is configured
         assistantMessage = generateFallbackResponse(agent.name, message);

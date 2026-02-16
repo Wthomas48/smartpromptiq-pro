@@ -39,16 +39,17 @@ router.post('/generate-prompt', [
       });
     }
 
-    const { category, answers, customization } = req.body;
+    const { category, answers, customization, provider: preferredProvider } = req.body;
 
     console.log('🚀 Generating prompt with AI service:', {
       category,
+      preferredProvider: preferredProvider || 'default',
       provider: aiService.getProviderStatus(),
       configured: aiService.isConfigured()
     });
 
     // Generate the AI prompt using the AI service
-    const result = await aiService.generatePrompt(category, answers, customization);
+    const result = await aiService.generatePrompt(category, answers, customization, preferredProvider);
 
     // Update user's generation count
     await prisma.user.update({
@@ -64,6 +65,8 @@ router.post('/generate-prompt', [
         prompt: result.content,
         category,
         generatedAt: new Date(),
+        provider: result.provider || aiService.getProviderStatus(),
+        model: result.model,
         usage: result.usage
       }
     });
@@ -107,16 +110,17 @@ router.post('/refine-prompt', [
       });
     }
 
-    const { currentPrompt, refinementQuery, category, originalAnswers } = req.body;
+    const { currentPrompt, refinementQuery, category, originalAnswers, provider: preferredProvider } = req.body;
 
     console.log('🔧 Refining prompt with AI service:', {
       category,
+      preferredProvider: preferredProvider || 'default',
       provider: aiService.getProviderStatus(),
       refinementQuery: refinementQuery.substring(0, 50) + '...'
     });
 
     // Refine the prompt using the AI service
-    const result = await aiService.refinePrompt(currentPrompt, refinementQuery, category, originalAnswers);
+    const result = await aiService.refinePrompt(currentPrompt, refinementQuery, category, originalAnswers, preferredProvider);
 
     // Update user's generation count for refinements
     await prisma.user.update({
@@ -691,6 +695,25 @@ This comprehensive plan provides the structure and flexibility needed for sustai
 
   return prompt;
 }
+
+// Get available AI providers
+router.get('/providers', authenticate, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        providers: aiService.getAvailableProviders(),
+        defaultProvider: aiService.getProviderStatus(),
+      }
+    });
+  } catch (error) {
+    console.error('Get providers error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get provider list'
+    });
+  }
+});
 
 // Get generation stats
 router.get('/stats', authenticate, async (req, res) => {

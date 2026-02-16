@@ -49,6 +49,8 @@ export const API_COSTS = {
     'dall-e-3-standard': 0.04,  // $0.04 per image (1024x1024)
     'dall-e-3-hd': 0.08,        // $0.08 per image (1024x1024 HD)
     'dall-e-2': 0.02,           // $0.02 per image
+    // Embeddings
+    'text-embedding-3-small': 0.00002, // $0.02 per 1M tokens
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -78,6 +80,28 @@ export const API_COSTS = {
     'claude-3-haiku': {
       input: 0.00025,   // $0.25 per 1M tokens
       output: 0.00125,  // $1.25 per 1M tokens
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // GOOGLE (GEMINI) COSTS
+  // ─────────────────────────────────────────────────────────────────────────────
+  google: {
+    'gemini-2.0-flash': {
+      input: 0.0001,    // $0.10 per 1M tokens
+      output: 0.0004,   // $0.40 per 1M tokens
+    },
+    'gemini-2.0-flash-lite': {
+      input: 0.000075,  // $0.075 per 1M tokens
+      output: 0.0003,   // $0.30 per 1M tokens
+    },
+    'gemini-1.5-pro': {
+      input: 0.00125,   // $1.25 per 1M tokens
+      output: 0.005,    // $5.00 per 1M tokens
+    },
+    'gemini-1.5-flash': {
+      input: 0.000075,  // $0.075 per 1M tokens
+      output: 0.0003,   // $0.30 per 1M tokens
     },
   },
 
@@ -203,6 +227,15 @@ export const TOKEN_COSTS = {
     'template-customize': 5,  // Customize template
     'export-pdf': 2,          // Export to PDF
     'export-code': 15,        // Export starter code
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // DOCUMENT CHAT (RAG)
+  // ─────────────────────────────────────────────────────────────────────────────
+  document: {
+    'upload-process': 3,      // Upload + parse + embed
+    'chat-standard': 2,       // Standard RAG chat query
+    'chat-premium': 5,        // Premium RAG chat (GPT-4 / Claude Opus)
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -556,6 +589,8 @@ export const COST_CONTROL_FLAGS = {
   enableDALLE3: true,
   enableElevenLabs: true,
   enableSuno: true,
+  enableGemini: true,
+  enableDocumentChat: true,
 
   // Fallback to cheaper alternatives
   fallbackToGPT35: true,      // If GPT-4 disabled, use GPT-3.5

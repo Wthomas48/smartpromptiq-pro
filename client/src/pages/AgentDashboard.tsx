@@ -20,8 +20,10 @@ import {
   Copy, Check, Eye, EyeOff, RefreshCw, MessageSquare, Users,
   Zap, Globe, Palette, Volume2, Shield, Clock, ArrowRight,
   ExternalLink, Download, Play, Loader2, AlertCircle, Sparkles,
-  GraduationCap, BookOpen, Trophy, Star, ChevronRight, Rocket
+  GraduationCap, BookOpen, Trophy, Star, ChevronRight, Rocket,
+  FileText, Link2, Unlink
 } from 'lucide-react';
+import { apiRequest } from '@/config/api';
 
 // SEO-optimized content for public landing
 const agentsLandingContent = {
@@ -161,6 +163,11 @@ const AgentDashboard: React.FC = () => {
   const [embedCode, setEmbedCode] = useState('');
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Knowledge Base state
+  const [agentDocs, setAgentDocs] = useState<any[]>([]);
+  const [userDocs, setUserDocs] = useState<any[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
 
   // Form state for creating/editing agents
   const [formData, setFormData] = useState({
@@ -339,6 +346,49 @@ const AgentDashboard: React.FC = () => {
   // Generate slug from name
   const generateSlug = (name: string) => {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  };
+
+  // ── Knowledge Base functions ─────────────────────────────
+  const fetchAgentDocuments = async (agentId: string) => {
+    setIsLoadingDocs(true);
+    try {
+      const res = await apiRequest('GET', `/api/agents/${agentId}/documents`);
+      const data = await res.json();
+      setAgentDocs(data.data || []);
+    } catch (e) {
+      console.error('Failed to load agent documents:', e);
+    }
+    setIsLoadingDocs(false);
+  };
+
+  const fetchUserDocuments = async () => {
+    try {
+      const res = await apiRequest('GET', '/api/documents');
+      const data = await res.json();
+      setUserDocs((data.documents || []).filter((d: any) => d.status === 'ready'));
+    } catch (e) {
+      console.error('Failed to load user documents:', e);
+    }
+  };
+
+  const attachDocument = async (agentId: string, documentId: string) => {
+    try {
+      await apiRequest('POST', `/api/agents/${agentId}/documents`, { documentId });
+      toast({ title: 'Document attached', description: 'Knowledge base updated.' });
+      fetchAgentDocuments(agentId);
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const detachDocument = async (agentId: string, documentId: string) => {
+    try {
+      await apiRequest('DELETE', `/api/agents/${agentId}/documents/${documentId}`);
+      toast({ title: 'Document removed' });
+      fetchAgentDocuments(agentId);
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    }
   };
 
   useEffect(() => {
@@ -665,6 +715,7 @@ const AgentDashboard: React.FC = () => {
                 <TabsList className="bg-slate-800">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="config">Configuration</TabsTrigger>
+                  <TabsTrigger value="knowledge" onClick={() => { fetchAgentDocuments(selectedAgent.id); fetchUserDocuments(); }}>Knowledge Base</TabsTrigger>
                   <TabsTrigger value="api-keys">API Keys</TabsTrigger>
                   <TabsTrigger value="embed">Embed</TabsTrigger>
                 </TabsList>
@@ -760,6 +811,78 @@ const AgentDashboard: React.FC = () => {
                       <p className="text-white">{selectedAgent.voiceEnabled ? 'Yes' : 'No'}</p>
                     </div>
                   </div>
+                </TabsContent>
+
+                <TabsContent value="knowledge" className="mt-6 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Knowledge Base</h3>
+                    <p className="text-sm text-gray-400 mb-4">Attach documents so this agent can answer questions using your content.</p>
+                  </div>
+
+                  {/* Attached documents */}
+                  {isLoadingDocs ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+                    </div>
+                  ) : agentDocs.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Attached Documents</p>
+                      {agentDocs.map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FileText className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white truncate">{doc.title}</p>
+                              <p className="text-xs text-gray-500">{doc.fileType?.toUpperCase()} · {doc.chunkCount} chunks</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                            onClick={() => detachDocument(selectedAgent.id, doc.id)}
+                          >
+                            <Unlink className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 bg-slate-800/50 rounded-lg border border-dashed border-slate-700">
+                      <FileText className="w-10 h-10 mx-auto text-gray-600 mb-2" />
+                      <p className="text-sm text-gray-400">No documents attached yet</p>
+                      <p className="text-xs text-gray-500 mt-1">Upload documents in Doc Chat, then attach them here</p>
+                    </div>
+                  )}
+
+                  {/* Available documents to attach */}
+                  {userDocs.filter((d) => !agentDocs.some((ad) => ad.id === d.id)).length > 0 && (
+                    <div className="space-y-2 pt-4 border-t border-slate-700">
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Available Documents</p>
+                      {userDocs
+                        .filter((d) => !agentDocs.some((ad) => ad.id === d.id))
+                        .map((doc) => (
+                          <div key={doc.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <FileText className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-gray-300 truncate">{doc.title}</p>
+                                <p className="text-xs text-gray-500">{doc.fileType?.toUpperCase()} · {doc.chunkCount} chunks</p>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-green-400 hover:text-green-300 hover:bg-green-900/20"
+                              onClick={() => attachDocument(selectedAgent.id, doc.id)}
+                            >
+                              <Link2 className="w-4 h-4 mr-1" />
+                              Attach
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="api-keys" className="mt-6 space-y-4">

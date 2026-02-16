@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Copy, Save, Plus, Loader2 } from "lucide-react";
+import { Sparkles, Copy, Save, Plus, Loader2, Bot } from "lucide-react";
 import PromptCustomizer from "@/components/PromptCustomizer";
 import PromptRefinement from "@/components/PromptRefinement";
 import QuickSuggestions from "@/components/QuickSuggestions";
@@ -26,6 +26,7 @@ export default function Generation() {
   const [promptTitle, setPromptTitle] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("business");
   const [directMode, setDirectMode] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState("auto");
 
   // Get questionnaire data from session storage
   const questionnaireData = JSON.parse(sessionStorage.getItem('questionnaire') || '{}');
@@ -65,7 +66,8 @@ export default function Generation() {
       const response = await apiRequest("POST", "/api/demo-generate-prompt", {
         category: directMode ? selectedCategory : (questionnaireData.category || "business"),
         answers: directMode ? {} : (questionnaireData.responses || {}),
-        customization
+        customization,
+        ...(selectedProvider !== 'auto' && { provider: selectedProvider }),
       });
       const result = await response.json();
       return result.data || result; // Handle both new and old response formats
@@ -329,6 +331,35 @@ export default function Generation() {
                             </select>
                           </div>
                         )}
+
+                        {/* AI Model Selector */}
+                        <div className="mb-6">
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            <Bot className="inline w-4 h-4 mr-1 -mt-0.5" />
+                            AI Model
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { id: 'auto', label: 'Auto', desc: 'Best available' },
+                              { id: 'openai', label: 'GPT-4o', desc: 'OpenAI' },
+                              { id: 'anthropic', label: 'Claude', desc: 'Anthropic' },
+                              { id: 'gemini', label: 'Gemini', desc: 'Google' },
+                            ].map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => setSelectedProvider(p.id)}
+                                className={`p-2.5 rounded-lg border-2 text-left transition-all text-sm ${
+                                  selectedProvider === p.id
+                                    ? 'border-indigo-500 bg-indigo-50 shadow-sm'
+                                    : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="font-semibold text-slate-900">{p.label}</div>
+                                <div className="text-xs text-slate-500">{p.desc}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     <Button
                       onClick={() => generateMutation.mutate()}

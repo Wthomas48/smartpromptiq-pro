@@ -49,13 +49,18 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
  */
 export const VOICE_OUTPUT_BUCKET = 'voice-output';
 export const MUSIC_OUTPUT_BUCKET = 'music-output';
+export const IMAGE_OUTPUT_BUCKET = 'image-output';
 
 /**
  * All storage buckets for initialization
  */
+export const DOCUMENT_UPLOADS_BUCKET = 'document-uploads';
+
 export const STORAGE_BUCKETS = {
   VOICE: VOICE_OUTPUT_BUCKET,
   MUSIC: MUSIC_OUTPUT_BUCKET,
+  IMAGE: IMAGE_OUTPUT_BUCKET,
+  DOCUMENT: DOCUMENT_UPLOADS_BUCKET,
 } as const;
 
 /**
@@ -425,6 +430,7 @@ export default {
   initializeStorageBuckets,
   VOICE_OUTPUT_BUCKET,
   MUSIC_OUTPUT_BUCKET,
+  IMAGE_OUTPUT_BUCKET,
   STORAGE_BUCKETS,
   SIGNED_URL_EXPIRY_SECONDS,
   MAX_AUDIO_FILE_SIZE,

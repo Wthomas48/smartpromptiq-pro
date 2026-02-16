@@ -1,8 +1,11 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 
 interface AIResponse {
   content: string;
+  provider?: string;
+  model?: string;
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -13,6 +16,7 @@ interface AIResponse {
 class AIService {
   private openai: OpenAI | null = null;
   private anthropic: Anthropic | null = null;
+  private gemini: GenerativeModel | null = null;
   private provider: string;
 
   constructor() {
@@ -34,20 +38,32 @@ class AIService {
       });
     }
 
+    // Initialize Google Gemini if key is provided and valid
+    const geminiKey = process.env.GOOGLE_API_KEY;
+    if (geminiKey && !geminiKey.includes('REPLACE') && geminiKey.length > 10) {
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      this.gemini = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    }
+
     // Auto-detect provider if keys are available
-    if (!this.openai && !this.anthropic) {
+    if (!this.openai && !this.anthropic && !this.gemini) {
       this.provider = 'fallback';
       console.log('🤖 AI Service: Using fallback mock generation (no API keys configured)');
     } else if (this.openai && this.provider === 'openai') {
       console.log('🤖 AI Service: Using OpenAI GPT');
     } else if (this.anthropic && this.provider === 'anthropic') {
       console.log('🤖 AI Service: Using Anthropic Claude');
+    } else if (this.gemini && this.provider === 'gemini') {
+      console.log('🤖 AI Service: Using Google Gemini');
     } else if (this.openai) {
       this.provider = 'openai';
       console.log('🤖 AI Service: Auto-selected OpenAI GPT');
     } else if (this.anthropic) {
       this.provider = 'anthropic';
       console.log('🤖 AI Service: Auto-selected Anthropic Claude');
+    } else if (this.gemini) {
+      this.provider = 'gemini';
+      console.log('🤖 AI Service: Auto-selected Google Gemini');
     }
   }
 
@@ -123,6 +139,44 @@ Always deliver comprehensive, valuable content that exceeds expectations.`,
         completion_tokens: response.usage.output_tokens,
         total_tokens: response.usage.input_tokens + response.usage.output_tokens
       }
+    };
+  }
+
+  private async generateWithGemini(prompt: string): Promise<AIResponse> {
+    if (!this.gemini) throw new Error('Google Gemini not configured');
+
+    const systemInstruction = `You are a professional AI prompt engineer and strategy consultant. Generate high-quality, detailed, and actionable content based on the user's requirements. Make sure your responses are:
+
+1. Professional and well-structured
+2. Specific and actionable
+3. Tailored to the user's exact needs
+4. Include concrete examples where appropriate
+5. Provide step-by-step guidance when relevant
+6. Use proper formatting with headers, lists, and sections
+
+Always deliver comprehensive, valuable content that exceeds expectations.`;
+
+    const result = await this.gemini.generateContent({
+      contents: [{ role: 'user', parts: [{ text: `${systemInstruction}\n\n${prompt}` }] }],
+      generationConfig: {
+        maxOutputTokens: 3000,
+        temperature: 0.7,
+      },
+    });
+
+    const response = result.response;
+    const text = response.text();
+    const usage = response.usageMetadata;
+
+    return {
+      content: text || 'No content generated',
+      provider: 'gemini',
+      model: 'gemini-2.0-flash',
+      usage: {
+        prompt_tokens: usage?.promptTokenCount || 0,
+        completion_tokens: usage?.candidatesTokenCount || 0,
+        total_tokens: usage?.totalTokenCount || 0,
+      },
     };
   }
 
@@ -1484,7 +1538,7 @@ Please provide a detailed strategy that addresses the user's specific needs with
     };
   }
 
-  async generatePrompt(category: string, answers: any, customization: any): Promise<AIResponse> {
+  async generatePrompt(category: string, answers: any, customization: any, preferredProvider?: string): Promise<AIResponse> {
     try {
       let systemPrompt = `You are an expert ${category} strategist and consultant. Based on the user's specific responses and requirements, create a comprehensive, professional, and highly actionable ${category} strategy.
 
@@ -1505,26 +1559,32 @@ Requirements for your response:
 
 Create a detailed ${category} strategy that exceeds expectations and provides tremendous value.`;
 
-      // Try real AI services first, fall back to mock if needed
-      if (this.provider === 'openai' && this.openai) {
+      // Use preferred provider if specified and available, otherwise use default
+      const activeProvider = this.resolveProvider(preferredProvider);
+
+      if (activeProvider === 'openai' && this.openai) {
         console.log('🤖 Generating with OpenAI...');
-        return await this.generateWithOpenAI(systemPrompt);
-      } else if (this.provider === 'anthropic' && this.anthropic) {
+        const result = await this.generateWithOpenAI(systemPrompt);
+        return { ...result, provider: 'openai', model: 'gpt-4o' };
+      } else if (activeProvider === 'anthropic' && this.anthropic) {
         console.log('🤖 Generating with Anthropic...');
-        return await this.generateWithAnthropic(systemPrompt);
+        const result = await this.generateWithAnthropic(systemPrompt);
+        return { ...result, provider: 'anthropic', model: 'claude-3-haiku' };
+      } else if (activeProvider === 'gemini' && this.gemini) {
+        console.log('🤖 Generating with Google Gemini...');
+        return await this.generateWithGemini(systemPrompt);
       } else {
         console.log('🤖 Using fallback mock generation...');
         return this.generateMockResponse(category, answers, customization);
       }
     } catch (error) {
       console.error('AI generation error:', error);
-      // Always fall back to mock on error
       console.log('🤖 Falling back to mock generation due to error...');
       return this.generateMockResponse(category, answers, customization);
     }
   }
 
-  async refinePrompt(currentPrompt: string, refinementQuery: string, category: string, originalAnswers?: any): Promise<AIResponse> {
+  async refinePrompt(currentPrompt: string, refinementQuery: string, category: string, originalAnswers?: any, preferredProvider?: string): Promise<AIResponse> {
     try {
       const systemPrompt = `You are an expert prompt refinement specialist. The user has an existing ${category} prompt and wants to refine it based on their specific request.
 
@@ -1550,14 +1610,18 @@ Requirements:
 
 Return the complete refined prompt that incorporates the user's requested improvements.`;
 
-      if (this.provider === 'openai' && this.openai) {
+      const activeProvider = this.resolveProvider(preferredProvider);
+
+      if (activeProvider === 'openai' && this.openai) {
         console.log('🤖 Refining with OpenAI...');
         return await this.generateWithOpenAI(systemPrompt);
-      } else if (this.provider === 'anthropic' && this.anthropic) {
+      } else if (activeProvider === 'anthropic' && this.anthropic) {
         console.log('🤖 Refining with Anthropic...');
         return await this.generateWithAnthropic(systemPrompt);
+      } else if (activeProvider === 'gemini' && this.gemini) {
+        console.log('🤖 Refining with Google Gemini...');
+        return await this.generateWithGemini(systemPrompt);
       } else {
-        // Enhanced mock refinement logic
         console.log('🤖 Using fallback mock refinement...');
         return this.generateMockRefinement(currentPrompt, refinementQuery, category, originalAnswers);
       }
@@ -1602,12 +1666,32 @@ Return the complete refined prompt that incorporates the user's requested improv
     };
   }
 
+  private resolveProvider(preferred?: string): string {
+    if (preferred) {
+      // Check if the preferred provider is available
+      if (preferred === 'openai' && this.openai) return 'openai';
+      if (preferred === 'anthropic' && this.anthropic) return 'anthropic';
+      if (preferred === 'gemini' && this.gemini) return 'gemini';
+      // If preferred provider not available, fall through to default
+      console.log(`⚠️ Preferred provider '${preferred}' not available, using default '${this.provider}'`);
+    }
+    return this.provider;
+  }
+
   getProviderStatus(): string {
     return this.provider;
   }
 
+  getAvailableProviders(): { id: string; name: string; model: string; available: boolean }[] {
+    return [
+      { id: 'openai', name: 'OpenAI', model: 'GPT-4o', available: this.openai !== null },
+      { id: 'anthropic', name: 'Anthropic', model: 'Claude 3 Haiku', available: this.anthropic !== null },
+      { id: 'gemini', name: 'Google', model: 'Gemini 2.0 Flash', available: this.gemini !== null },
+    ];
+  }
+
   isConfigured(): boolean {
-    return this.openai !== null || this.anthropic !== null;
+    return this.openai !== null || this.anthropic !== null || this.gemini !== null;
   }
 
   async generateSuggestions(category?: string): Promise<Array<{id: string, title: string, description: string}>> {

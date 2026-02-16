@@ -10,7 +10,8 @@ import {
   User, CreditCard, LogOut, ChevronDown, ChevronLeft, ChevronRight, Settings, Menu,
   Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store, Mic, AudioWaveform,
   Palette, Music2, Puzzle, Bot, LayoutDashboard, Sparkles, FileText, HelpCircle,
-  FolderOpen, TrendingUp, Briefcase, Calculator, BookOpen, UserCircle, X
+  FolderOpen, TrendingUp, Briefcase, Calculator, BookOpen, UserCircle, X,
+  Image as ImageIcon
 } from "lucide-react";
 import { useState, useEffect, createContext, useContext } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +67,7 @@ const navigationSections: NavSection[] = [
       { href: "/academy", label: "Academy", icon: GraduationCap, badge: "57", badgeColor: "from-purple-600 to-indigo-600" },
       { href: "/builderiq", label: "BuilderIQ", icon: ShoppingBag, badge: "NEW", badgeColor: "from-teal-500 to-cyan-500" },
       { href: "/agents", label: "AI Agents", icon: Bot, badge: "Embed", badgeColor: "from-violet-500 to-purple-500" },
+      { href: "/document-chat", label: "Doc Chat", icon: FileText, badge: "NEW", badgeColor: "from-amber-500 to-orange-500" },
     ]
   },
   {
@@ -74,6 +76,7 @@ const navigationSections: NavSection[] = [
       { href: "/voice-builder", label: "Voice AI", icon: Mic, badgeColor: "from-cyan-500 to-purple-500" },
       { href: "/intro-outro-builder", label: "Intro/Outro", icon: AudioWaveform, badgeColor: "from-pink-500 to-rose-500" },
       { href: "/suno-music-builder", label: "AI Music", icon: Music2, badgeColor: "from-purple-500 to-pink-500" },
+      { href: "/image-generator", label: "Image AI", icon: ImageIcon, badge: "NEW", badgeColor: "from-emerald-500 to-teal-500" },
       { href: "/design-studio", label: "Design Studio", icon: Palette, badgeColor: "from-indigo-500 to-violet-500" },
     ]
   },

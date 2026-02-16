@@ -96,6 +96,10 @@ import SunoMusicBuilder from "@/pages/SunoMusicBuilder";
 import VideoBuilder from "@/pages/VideoBuilder";
 // AI Design Studio & Print Shop
 import DesignStudio from "@/pages/DesignStudio";
+// AI Image Generation (DALL-E 3)
+import ImageGenerator from "@/pages/ImageGenerator";
+// Document Chat - RAG-powered document Q&A
+import DocumentChat from "@/pages/DocumentChat";
 // Chrome Extension Landing Page
 import ChromeExtension from "@/pages/ChromeExtension";
 // Accessibility Settings
@@ -282,6 +286,14 @@ function Router() {
       {/* Video Builder - Short Video Creation */}
       <Route path="/video-builder" component={VideoBuilder} />
       <Route path="/video" component={VideoBuilder} />
+
+      {/* AI Image Generation (DALL-E 3) */}
+      <Route path="/image-generator" component={ImageGenerator} />
+      <Route path="/image-ai" component={ImageGenerator} />
+
+      {/* Document Chat - RAG-powered document Q&A */}
+      <Route path="/document-chat" component={DocumentChat} />
+      <Route path="/documents" component={DocumentChat} />
 
       {/* AI Design Studio & Print Shop */}
       <Route path="/design-studio" component={DesignStudio} />
