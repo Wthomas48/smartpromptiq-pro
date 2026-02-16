@@ -100,6 +100,14 @@ import DesignStudio from "@/pages/DesignStudio";
 import ImageGenerator from "@/pages/ImageGenerator";
 // Document Chat - RAG-powered document Q&A
 import DocumentChat from "@/pages/DocumentChat";
+// Web Search - Tavily-powered search + AI synthesis
+import WebSearch from "@/pages/WebSearch";
+// Vision / Image Analysis - Multi-provider AI image understanding
+import ImageAnalysis from "@/pages/ImageAnalysis";
+// Code Interpreter - Sandboxed code execution
+import CodeInterpreter from "@/pages/CodeInterpreter";
+// Persistent Memory - User preferences across sessions
+import MemoryPage from "@/pages/Memory";
 // Chrome Extension Landing Page
 import ChromeExtension from "@/pages/ChromeExtension";
 // Accessibility Settings
@@ -294,6 +302,21 @@ function Router() {
       {/* Document Chat - RAG-powered document Q&A */}
       <Route path="/document-chat" component={DocumentChat} />
       <Route path="/documents" component={DocumentChat} />
+
+      {/* Web Search - Tavily-powered search + AI synthesis */}
+      <Route path="/web-search" component={WebSearch} />
+      <Route path="/search" component={WebSearch} />
+
+      {/* Vision / Image Analysis */}
+      <Route path="/image-analysis" component={ImageAnalysis} />
+      <Route path="/vision" component={ImageAnalysis} />
+
+      {/* Code Interpreter */}
+      <Route path="/code-interpreter" component={CodeInterpreter} />
+      <Route path="/code" component={CodeInterpreter} />
+
+      {/* Persistent Memory */}
+      <Route path="/memory" component={MemoryPage} />
 
       {/* AI Design Studio & Print Shop */}
       <Route path="/design-studio" component={DesignStudio} />

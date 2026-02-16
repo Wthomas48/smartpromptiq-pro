@@ -106,6 +106,14 @@ export const API_COSTS = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // TAVILY (WEB SEARCH)
+  // ─────────────────────────────────────────────────────────────────────────────
+  tavily: {
+    'basic': 0.001,             // ~$1 per 1000 basic searches
+    'advanced': 0.002,          // ~$2 per 1000 advanced searches
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // STABLE DIFFUSION / IMAGE GENERATION
   // ─────────────────────────────────────────────────────────────────────────────
   stability: {
@@ -236,6 +244,32 @@ export const TOKEN_COSTS = {
     'upload-process': 3,      // Upload + parse + embed
     'chat-standard': 2,       // Standard RAG chat query
     'chat-premium': 5,        // Premium RAG chat (GPT-4 / Claude Opus)
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // WEB SEARCH
+  // ─────────────────────────────────────────────────────────────────────────────
+  search: {
+    'search-basic': 2,          // Basic web search (raw results only)
+    'search-advanced': 3,       // Deep web search (raw results only)
+    'synthesize-basic': 3,      // Search + AI synthesis (basic)
+    'synthesize-advanced': 5,   // Search + AI synthesis (deep)
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // CODE EXECUTION
+  // ─────────────────────────────────────────────────────────────────────────────
+  code: {
+    'execute': 1,              // Run code snippet (Piston API)
+    'execute-with-ai': 3,     // AI generates + runs code
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // VISION / IMAGE ANALYSIS
+  // ─────────────────────────────────────────────────────────────────────────────
+  vision: {
+    'analyze-standard': 3,    // Standard image analysis (auto provider)
+    'analyze-premium': 6,     // Premium image analysis (GPT-4o / Claude Sonnet)
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -591,6 +625,9 @@ export const COST_CONTROL_FLAGS = {
   enableSuno: true,
   enableGemini: true,
   enableDocumentChat: true,
+  enableWebSearch: true,
+  enableVision: true,
+  enableCodeExecution: true,
 
   // Fallback to cheaper alternatives
   fallbackToGPT35: true,      // If GPT-4 disabled, use GPT-3.5

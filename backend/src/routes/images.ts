@@ -448,4 +448,176 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
   }
 });
 
+// ============================================
+// VISION / IMAGE ANALYSIS ENDPOINTS
+// ============================================
+
+import { analyzeImage, isVisionConfigured, getVisionProviders } from '../services/visionService';
+
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20 MB
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+// GET /api/images/vision/status
+router.get('/vision/status', authenticate, async (req: Request, res: Response) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        configured: isVisionConfigured(),
+        providers: getVisionProviders(),
+      },
+    });
+  } catch (error) {
+    console.error('Vision status error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/images/analyze
+router.post('/analyze', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).user!.id;
+    const { imageData, mimeType, prompt, provider, fileName } = req.body;
+
+    // Validate inputs
+    if (!imageData || !mimeType || !prompt) {
+      return res.status(400).json({ success: false, error: 'imageData, mimeType, and prompt are required' });
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
+      return res.status(400).json({
+        success: false,
+        error: `Unsupported image type: ${mimeType}. Supported: JPEG, PNG, GIF, WebP`,
+      });
+    }
+
+    if (typeof prompt !== 'string' || prompt.trim().length < 2) {
+      return res.status(400).json({ success: false, error: 'Prompt must be at least 2 characters' });
+    }
+
+    // Check image size
+    const imageBuffer = Buffer.from(imageData, 'base64');
+    if (imageBuffer.length > MAX_IMAGE_SIZE) {
+      return res.status(400).json({ success: false, error: 'Image exceeds 20 MB limit' });
+    }
+
+    // Deduct tokens
+    const tokenCost = getTokenCost('vision' as any, 'analyze-standard');
+    const deducted = await deductTokens(userId, tokenCost);
+    if (!deducted) {
+      return res.status(402).json({ success: false, error: 'Insufficient tokens' });
+    }
+
+    // Analyze image
+    const result = await analyzeImage(imageData, mimeType, prompt.trim(), { provider });
+
+    // Store analysis in database
+    const generation = await prisma.generation.create({
+      data: {
+        userId,
+        projectId: userId, // Use userId as default project
+        prompt: prompt.trim(),
+        response: result.analysis,
+        model: result.model,
+        category: 'image-vision',
+        tokenCount: result.usage.total_tokens,
+        metadata: JSON.stringify({
+          provider: result.provider,
+          model: result.model,
+          mimeType,
+          fileName: fileName || 'uploaded-image',
+          imageSize: imageBuffer.length,
+          usage: result.usage,
+        }),
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: generation.id,
+        analysis: result.analysis,
+        provider: result.provider,
+        model: result.model,
+        usage: result.usage,
+        tokensUsed: tokenCost,
+      },
+    });
+  } catch (error: any) {
+    console.error('Vision analysis error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Image analysis failed' });
+  }
+});
+
+// GET /api/images/analyses
+router.get('/analyses', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).user!.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+
+    const [analyses, total] = await Promise.all([
+      prisma.generation.findMany({
+        where: { userId, category: 'image-vision' },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          prompt: true,
+          response: true,
+          model: true,
+          tokenCount: true,
+          metadata: true,
+          createdAt: true,
+        },
+      }),
+      prisma.generation.count({
+        where: { userId, category: 'image-vision' },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        analyses: analyses.map((a) => ({
+          ...a,
+          metadata: a.metadata ? JSON.parse(a.metadata) : null,
+        })),
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (error) {
+    console.error('List analyses error:', error);
+    res.status(500).json({ success: false, error: 'Failed to list analyses' });
+  }
+});
+
+// DELETE /api/images/analyses/:id
+router.delete('/analyses/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).user!.id;
+
+    const analysis = await prisma.generation.findFirst({
+      where: { id: req.params.id, userId, category: 'image-vision' },
+    });
+
+    if (!analysis) {
+      return res.status(404).json({ success: false, error: 'Analysis not found' });
+    }
+
+    await prisma.generation.delete({ where: { id: analysis.id } });
+
+    res.json({ success: true, message: 'Analysis deleted' });
+  } catch (error) {
+    console.error('Delete analysis error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete analysis' });
+  }
+});
+
 export default router;

@@ -78,6 +78,7 @@ model User {
   agents                 Agent[]
   apiKeys                ApiKey[]
   documents              Document[]
+  memories               UserMemory[]
 
   @@map("users")
 }
@@ -1720,4 +1721,26 @@ model DocumentChatMessage {
   @@index([chatId])
   @@index([createdAt])
   @@map("document_chat_messages")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER MEMORY - Persistent preferences/facts across conversations
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model UserMemory {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String   // The memory/fact/preference
+  category  String   @default("general") // general, preference, fact, instruction
+  source    String   @default("user") // user (manual) or auto (AI-extracted)
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@map("user_memories")
 }

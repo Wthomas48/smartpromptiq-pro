@@ -11,7 +11,11 @@ import {
   Users, Coins, Heart, Star, GraduationCap, ShoppingBag, Store, Mic, AudioWaveform,
   Palette, Music2, Puzzle, Bot, LayoutDashboard, Sparkles, FileText, HelpCircle,
   FolderOpen, TrendingUp, Briefcase, Calculator, BookOpen, UserCircle, X,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Globe,
+  Eye,
+  Code2,
+  Brain
 } from "lucide-react";
 import { useState, useEffect, createContext, useContext } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +72,10 @@ const navigationSections: NavSection[] = [
       { href: "/builderiq", label: "BuilderIQ", icon: ShoppingBag, badge: "NEW", badgeColor: "from-teal-500 to-cyan-500" },
       { href: "/agents", label: "AI Agents", icon: Bot, badge: "Embed", badgeColor: "from-violet-500 to-purple-500" },
       { href: "/document-chat", label: "Doc Chat", icon: FileText, badge: "NEW", badgeColor: "from-amber-500 to-orange-500" },
+      { href: "/web-search", label: "Web Search", icon: Globe, badge: "NEW", badgeColor: "from-blue-500 to-cyan-500" },
+      { href: "/image-analysis", label: "Vision AI", icon: Eye, badge: "NEW", badgeColor: "from-purple-500 to-pink-500" },
+      { href: "/code-interpreter", label: "Code Run", icon: Code2, badge: "NEW", badgeColor: "from-emerald-500 to-teal-500" },
+      { href: "/memory", label: "Memory", icon: Brain, badge: "NEW", badgeColor: "from-indigo-500 to-violet-500" },
     ]
   },
   {
