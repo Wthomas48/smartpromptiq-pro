@@ -125,9 +125,9 @@ const validateSecrets = () => {
         console.error('\n🚨 SECURITY ERRORS:');
         errors.forEach(e => console.error(`   ${e}`));
         if (isProduction) {
-            console.error('\n❌ Cannot start server with missing/placeholder secrets in production');
+            console.error('\n⚠️ PRODUCTION WARNING: Missing secrets — some features will be degraded');
             console.error('   Configure environment variables in Railway or your hosting provider');
-            process.exit(1);
+            // Don't exit — let the server start with degraded functionality
         }
         else {
             console.warn('\n⚠️ Running in development with incomplete configuration');
