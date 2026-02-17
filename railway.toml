@@ -1,11 +1,8 @@
 [build]
-builder = "nixpacks"
-
-[build.nixpacks]
-aptPkgs = ["openssl"]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "cd backend && npm install --production && cd .. && npx prisma generate --schema=./backend/prisma/schema.prisma && node backend/dist/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"

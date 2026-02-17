@@ -1,6 +1,8 @@
 node_modules
 client/node_modules
+backend/node_modules
 client/dist
+backend/dist
 .git
 .env
 .env.local
@@ -11,3 +13,6 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 *.log
+Dockerfile.disabled
+Dockerfile.multistage
+chrome-extension
