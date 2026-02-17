@@ -1,12 +1,11 @@
 FROM node:22-alpine
 
-# Cache buster — change this value to force a full rebuild
-ARG CACHE_BUST=2026-02-17-v3
-
 WORKDIR /app
 
 # Install build dependencies for native modules + openssl for Prisma
-RUN apk add --no-cache python3 make g++ openssl
+# cairo/pango/etc for canvas, build-base for native addons
+RUN apk add --no-cache python3 make g++ openssl \
+    cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev pixman-dev
 
 # Set build environment
 ENV NODE_OPTIONS="--max-old-space-size=2048"
@@ -17,8 +16,10 @@ COPY client/package*.json ./client/
 COPY backend/package*.json ./backend/
 COPY backend/prisma ./backend/prisma
 
-# Install ALL dependencies (need devDependencies for building)
-RUN npm install --legacy-peer-deps
+# Install dependencies
+# Root: production only (skip canvas/sqlite3 devDeps that cause build failures)
+# Client + Backend: all deps (need devDeps for vite build and tsc)
+RUN npm install --legacy-peer-deps --omit=dev
 RUN cd client && npm install --legacy-peer-deps
 RUN cd backend && npm install --legacy-peer-deps
 
@@ -50,10 +51,6 @@ ENV NODE_ENV=production
 
 # Expose port (Railway sets PORT env var)
 EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-8080}/api/health || exit 1
 
 # Start: generate Prisma (for correct platform binary) then run compiled backend
 CMD ["sh", "-c", "npx prisma generate --schema=./backend/prisma/schema.prisma && node backend/dist/server.js"]
