@@ -48,8 +48,9 @@ export const socketAuthMiddleware = async (
         return next();
       }
     }
-  } catch {
+  } catch (err: any) {
     // Fall through to Strategy 2
+    if (isDevelopment) console.log('🔌 Socket auth Strategy 1 (Backend JWT) failed:', err.message);
   }
 
   // Strategy 2: Supabase JWT
@@ -57,21 +58,59 @@ export const socketAuthMiddleware = async (
     const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
     const secret = supabaseJwtSecret || (isDevelopment ? process.env.JWT_SECRET : null);
 
-    if (secret) {
+    if (!secret) {
+      console.warn('🔌 Socket auth: No SUPABASE_JWT_SECRET configured');
+    } else {
       const decoded = jwt.verify(token, secret) as any;
       if (decoded?.sub && decoded?.email) {
+        // Look up user by email first
         let user = await prisma.user.findUnique({
           where: { email: decoded.email },
           select: { id: true, email: true, firstName: true, lastName: true, role: true },
         });
+        // Try by Supabase sub ID
+        if (!user) {
+          user = await prisma.user.findUnique({
+            where: { id: decoded.sub },
+            select: { id: true, email: true, firstName: true, lastName: true, role: true },
+          });
+        }
+        // Auto-create user if not found (same as REST auth findOrCreateSupabaseUser)
+        if (!user) {
+          try {
+            const created = await prisma.user.create({
+              data: {
+                id: decoded.sub,
+                email: decoded.email,
+                password: '',
+                firstName: decoded.email.split('@')[0],
+                lastName: '',
+                role: 'USER',
+                plan: 'free',
+                tokenBalance: 100,
+                subscriptionStatus: 'active',
+              },
+            });
+            user = { id: created.id, email: created.email, firstName: created.firstName, lastName: created.lastName, role: created.role };
+            console.log(`🔌 Socket auth: Auto-created user ${decoded.email}`);
+          } catch (createErr: any) {
+            if (createErr.code === 'P2002') {
+              user = await prisma.user.findUnique({
+                where: { email: decoded.email },
+                select: { id: true, email: true, firstName: true, lastName: true, role: true },
+              });
+            }
+          }
+        }
         if (user) {
           socket.data.user = user as SocketUser;
           return next();
         }
+        console.warn(`🔌 Socket auth: JWT valid for ${decoded.email} but could not resolve user`);
       }
     }
-  } catch {
-    // Fall through to error
+  } catch (err: any) {
+    console.warn('🔌 Socket auth Strategy 2 (Supabase JWT) failed:', err.message);
   }
 
   next(new Error('Invalid or expired token'));
