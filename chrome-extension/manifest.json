@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SmartPromptIQ - AI Prompt Generator",
   "short_name": "SmartPromptIQ",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Generate AI prompts anywhere. Access your prompt library, templates & AI-powered generation in your browser.",
   "author": "SmartPromptIQ",
   "homepage_url": "https://smartpromptiq.com",
@@ -26,10 +26,8 @@
   "permissions": [
     "storage",
     "activeTab",
-    "tabs",
     "contextMenus",
     "clipboardWrite",
-    "alarms",
     "notifications",
     "scripting"
   ],
@@ -39,7 +37,7 @@
     "https://chatgpt.com/*",
     "https://claude.ai/*",
     "https://gemini.google.com/*",
-    "https://www.bing.com/chat/*",
+    "https://www.bing.com/*",
     "https://copilot.microsoft.com/*",
     "https://poe.com/*",
     "https://you.com/*",
@@ -56,38 +54,39 @@
         "https://chatgpt.com/*",
         "https://claude.ai/*",
         "https://gemini.google.com/*",
-        "https://www.bing.com/chat/*",
+        "https://www.bing.com/*",
         "https://copilot.microsoft.com/*",
         "https://poe.com/*",
         "https://you.com/*",
         "https://www.perplexity.ai/*"
       ],
-      "js": ["content/content.js"],
-      "css": ["content/content.css"],
+      "js": [
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
       "run_at": "document_idle"
     },
     {
       "matches": [
         "https://smartpromptiq.com/*"
       ],
-      "js": ["content/auth-listener.js"],
+      "js": [
+        "content/auth-listener.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["icons/*", "popup/*", "utils/*"],
+      "resources": [
+        "icons/*",
+        "popup/*",
+        "utils/*"
+      ],
       "matches": [
-        "https://smartpromptiq.com/*",
-        "https://chat.openai.com/*",
-        "https://chatgpt.com/*",
-        "https://claude.ai/*",
-        "https://gemini.google.com/*",
-        "https://www.bing.com/chat/*",
-        "https://copilot.microsoft.com/*",
-        "https://poe.com/*",
-        "https://you.com/*",
-        "https://www.perplexity.ai/*"
+        "<all_urls>"
       ]
     }
   ],
@@ -108,39 +107,3 @@
     }
   }
 }
-```
-
----
-
-## What Changed
-
-| Section | Change Made |
-|---------|-------------|
-| `name` | Removed "(DEV)" |
-| `short_name` | Removed "DEV" |
-| `description` | Removed "DEVELOPMENT BUILD -" |
-| `default_title` | Removed "(DEV)" |
-| `host_permissions` | Removed all localhost and 127.0.0.1 URLs |
-| `host_permissions` | Removed bard.google.com (deprecated) |
-| `host_permissions` | Fixed perplexity.ai → www.perplexity.ai |
-| `content_scripts` | Removed localhost matches |
-| `content_scripts` | Removed bard.google.com |
-| `web_accessible_resources` | Changed `<all_urls>` to specific AI platform URLs |
-
----
-
-## Recommended Workflow
-
-1. **Keep your current manifest** for local development
-2. **Create a separate folder** called `production` or `dist`
-3. **Copy the clean manifest** there for Chrome Web Store uploads
-
-This way you can still test locally while having a clean production build.
-
----
-
-## Updated Host Permission Justification
-
-Since we cleaned up the URLs, update your justification to:
-```
-SmartPromptIQ requires host permissions for smartpromptiq.com (authentication and sync) and supported AI platforms including ChatGPT, Claude, Gemini, Copilot, Poe, You.com, and Perplexity. These permissions enable direct prompt insertion into chat interfaces. The extension only activates on these specific sites and does not access, collect, or transmit any page content or user data.

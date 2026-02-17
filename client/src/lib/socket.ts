@@ -23,7 +23,7 @@ export function connectSocket(token: string): Socket {
 
   socket = io(baseUrl || window.location.origin, {
     auth: { token },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 2000,

@@ -308,7 +308,11 @@
       "Bash(do if [ -f \"$f\" ])",
       "Bash(then echo \"OK: $f\")",
       "Bash(else echo \"MISSING: $f\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(pushd:*)",
+      "Bash(pg_isready:*)",
+      "Bash(command -v:*)",
+      "Bash(kill:*)"
     ],
     "deny": [],
     "ask": []
