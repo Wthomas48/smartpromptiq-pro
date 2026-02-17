@@ -539,37 +539,79 @@ app.get('/widget.js', (req, res) => {
 console.log('📦 Widget.js endpoint configured at /widget.js');
 // Serve static files from client build
 const clientDistPath = path_1.default.join(__dirname, '../../client/dist');
-console.log('🔍 Looking for client build at:', clientDistPath);
-console.log('🔍 Client dist exists:', require('fs').existsSync(clientDistPath));
-if (require('fs').existsSync(clientDistPath)) {
-    console.log('📁 Client dist contents:', require('fs').readdirSync(clientDistPath));
+const clientDistExists = fs_1.default.existsSync(clientDistPath);
+console.log(`📁 Client dist: ${clientDistPath} (exists: ${clientDistExists})`);
+if (clientDistExists) {
+    app.use(express_1.default.static(clientDistPath));
 }
-app.use(express_1.default.static(clientDistPath));
-// API route not found handler - should come AFTER all API routes
+else {
+    console.warn('⚠️ Client dist not found — SPA routes will fail');
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+// API 404 HANDLER — catches any /api/* request that no router handled
+// ═══════════════════════════════════════════════════════════════════════════════
 app.all('/api/*', (req, res) => {
-    console.error(`❌ API route not found: ${req.method} ${req.originalUrl}`);
+    console.error(`❌ [API 404] ${req.method} ${req.originalUrl}`);
+    const registeredApiPrefixes = [
+        '/api/health', '/api/auth', '/api/users', '/api/projects', '/api/billing',
+        '/api/teams', '/api/generations', '/api/prompts', '/api/cache', '/api/templates',
+        '/api/suggestions', '/api/feedback', '/api/admin', '/api/custom-categories',
+        '/api/rating', '/api/utils', '/api/academy', '/api/contact', '/api/builderiq',
+        '/api/referral', '/api/voice', '/api/music', '/api/elevenlabs', '/api/costs',
+        '/api/audio', '/api/shotstack', '/api/chat', '/api/agents', '/api/discord',
+        '/api/images', '/api/documents', '/api/search', '/api/code', '/api/memory',
+        '/api/generate-prompt', '/api/observability', '/api/metrics'
+    ];
     res.status(404).json({
         success: false,
-        message: `API route ${req.originalUrl} not found`,
-        method: req.method,
-        availableRoutes: ['/health', '/api/health', '/api/auth/login', '/api/auth/register', '/api/auth/me', '/api/teams', '/api/billing/info', '/api/suggestions/personalized', '/api/generate-prompt', '/api/prompts']
+        message: `API route not found: ${req.method} ${req.originalUrl}`,
+        handler: 'api-404-catchall',
+        availableRoutes: registeredApiPrefixes
     });
 });
-// SPA fallback - serve index.html for non-API routes (GET only)
-// Exclude socket.io paths — those are handled by Socket.io at the HTTP server level
-app.get('*', (req, res) => {
-    if (req.originalUrl.startsWith('/socket.io')) {
-        return res.status(404).json({ error: 'Socket.io endpoint - use WebSocket connection' });
+// ═══════════════════════════════════════════════════════════════════════════════
+// GUARD: Paths that must NEVER be served as SPA
+// /socket.io — handled by Socket.io at the HTTP server level
+// /vendor, /wp-admin, /cgi-bin, etc. — bot probes, return 404
+// ═══════════════════════════════════════════════════════════════════════════════
+const nonSpaPatterns = ['/socket.io', '/vendor', '/wp-admin', '/wp-includes', '/wp-content', '/cgi-bin', '/.env', '/.git', '/xmlrpc.php', '/phpmyadmin'];
+app.use((req, res, next) => {
+    const p = req.path.toLowerCase();
+    if (nonSpaPatterns.some(prefix => p.startsWith(prefix))) {
+        console.log(`🛡️ [BLOCKED] Non-SPA path: ${req.method} ${req.originalUrl}`);
+        return res.status(404).json({
+            success: false,
+            message: 'Not found',
+            handler: 'non-spa-guard'
+        });
     }
-    console.log(`📄 Serving SPA for: ${req.originalUrl}`);
+    next();
+});
+// ═══════════════════════════════════════════════════════════════════════════════
+// SPA FALLBACK — serve index.html ONLY for GET requests to real frontend routes
+// ═══════════════════════════════════════════════════════════════════════════════
+app.get('*', (req, res) => {
+    // Only serve SPA for navigation requests (no file extension, or known SPA paths)
+    const ext = path_1.default.extname(req.path);
+    if (ext && ext !== '.html') {
+        // Request for a specific file type (e.g. .js, .css, .map) that wasn't found in static
+        console.log(`📁 [STATIC 404] ${req.originalUrl}`);
+        return res.status(404).json({
+            success: false,
+            message: `Static file not found: ${req.path}`,
+            handler: 'static-404'
+        });
+    }
+    console.log(`📄 [SPA] Serving index.html for: ${req.originalUrl}`);
     res.sendFile(path_1.default.join(clientDistPath, 'index.html'));
 });
-// Catch all for unmatched routes
-app.use('*', (req, res) => {
+// Non-GET catch-all (POST/PUT/DELETE to unknown paths)
+app.use((req, res) => {
+    console.error(`❌ [404] ${req.method} ${req.originalUrl}`);
     res.status(404).json({
         success: false,
-        message: `Route ${req.originalUrl} not found`,
-        availableRoutes: ['/health', '/api']
+        message: `Route not found: ${req.method} ${req.originalUrl}`,
+        handler: 'catch-all-404'
     });
 });
 // ═══════════════════════════════════════════════════════════════════════════════
