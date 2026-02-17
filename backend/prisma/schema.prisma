@@ -79,6 +79,7 @@ model User {
   apiKeys                ApiKey[]
   documents              Document[]
   memories               UserMemory[]
+  teamActivities         TeamActivity[]
 
   @@map("users")
 }
@@ -92,8 +93,10 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members  TeamMember[]
-  projects Project[]
+  members    TeamMember[]
+  projects   Project[]
+  prompts    Prompt[]
+  activities TeamActivity[]
 
   @@map("teams")
 }
@@ -390,15 +393,19 @@ model Prompt {
   usageCount Int       @default(0)
   lastUsed   DateTime?
 
-  userId String
+  userId  String
+  version Int     @default(1)
+  teamId  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@index([userId, category])
   @@index([userId, isFavorite])
+  @@index([teamId])
   @@map("prompts")
 }
 
@@ -1743,4 +1750,23 @@ model UserMemory {
   @@index([userId])
   @@index([userId, isActive])
   @@map("user_memories")
+}
+
+model TeamActivity {
+  id         String   @id @default(cuid())
+  teamId     String
+  userId     String
+  action     String
+  targetType String?
+  targetId   String?
+  targetName String?
+  metadata   String?
+
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt])
+  @@map("team_activities")
 }

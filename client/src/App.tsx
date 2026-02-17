@@ -108,6 +108,8 @@ import ImageAnalysis from "@/pages/ImageAnalysis";
 import CodeInterpreter from "@/pages/CodeInterpreter";
 // Persistent Memory - User preferences across sessions
 import MemoryPage from "@/pages/Memory";
+// Real-Time Collaboration - Socket.io provider
+import { SocketProvider } from "@/components/SocketProvider";
 // Chrome Extension Landing Page
 import ChromeExtension from "@/pages/ChromeExtension";
 // Accessibility Settings
@@ -396,10 +398,12 @@ function App() {
                 <GamificationProvider>
                   <AudioStoreProvider>
                     <ElevenLabsVoiceProvider>
-                      <Toaster />
-                      <Router />
-                      {/* Global Voice Widget - Available on all pages */}
-                      <GlobalVoiceWidget position="bottom-left" />
+                      <SocketProvider>
+                        <Toaster />
+                        <Router />
+                        {/* Global Voice Widget - Available on all pages */}
+                        <GlobalVoiceWidget position="bottom-left" />
+                      </SocketProvider>
                     </ElevenLabsVoiceProvider>
                   </AudioStoreProvider>
                 </GamificationProvider>

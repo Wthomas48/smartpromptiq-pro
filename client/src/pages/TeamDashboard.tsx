@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { usePresence, PresenceMember } from "@/hooks/usePresence";
+import { useActivityFeed, useTeamPrompts, TeamActivityItem } from "@/hooks/useActivityFeed";
+import { useCollaboration, Collaborator } from "@/hooks/useCollaboration";
+import { useSocket } from "@/hooks/useSocket";
+import { apiRequest as apiReq } from "@/config/api";
 import {
   Users, Plus, Settings, Crown, Shield, User, Eye, Share2, UserPlus,
   BarChart3, Target, TrendingUp, Calendar, Clock, MessageSquare, FileText,
@@ -96,7 +101,8 @@ export default function TeamDashboard() {
     { id: 'members', label: 'Members', icon: Users, color: 'from-green-500 to-emerald-500' },
     { id: 'activity', label: 'Activity', icon: Activity, color: 'from-orange-500 to-red-500' },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp, color: 'from-indigo-500 to-purple-500' },
-    { id: 'integrations', label: 'Integrations', icon: GitBranch, color: 'from-teal-500 to-cyan-500' }
+    { id: 'integrations', label: 'Integrations', icon: GitBranch, color: 'from-teal-500 to-cyan-500' },
+    { id: 'collaborate', label: 'Collaborate', icon: Sparkles, color: 'from-yellow-500 to-orange-500' }
   ];
 
   // Fetch user's teams
@@ -192,6 +198,38 @@ export default function TeamDashboard() {
   };
 
   const selectedTeamData = teams.find(team => team.id === selectedTeam);
+
+  // ============================================
+  // REAL-TIME COLLABORATION HOOKS
+  // ============================================
+  const teamIdStr = selectedTeam ? String(selectedTeam) : null;
+  const { onlineMembers, updateMyStatus } = usePresence(teamIdStr);
+  const { activities: liveActivities, isLoading: activityLoading } = useActivityFeed(teamIdStr);
+  const { data: teamPromptsData } = useTeamPrompts(teamIdStr);
+  const { isConnected } = useSocket();
+  const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+
+  const { collaborators, documentVersion, sendUpdate, sendCursorMove, setDocumentVersion } = useCollaboration({
+    documentType: 'prompt',
+    documentId: editingPromptId,
+    teamId: teamIdStr,
+  });
+
+  const sharedPrompts = teamPromptsData?.prompts || [];
+
+  // Share a prompt mutation
+  const sharePromptMutation = useMutation({
+    mutationFn: async ({ promptId }: { promptId: string }) => {
+      const res = await apiReq('POST', `/api/teams/${teamIdStr}/prompts/${promptId}/share`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-prompts', teamIdStr] });
+      toast({ title: 'Prompt shared with team' });
+    },
+  });
 
   // Mock data for enhanced features
   const mockTeamStats = {
@@ -379,8 +417,29 @@ export default function TeamDashboard() {
             <div className="hidden lg:flex space-x-4">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
-                  <span className="text-white text-sm font-medium">{mockTeamStats.activeMembers} Active</span>
+                  {isConnected ? (
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+                  ) : (
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  )}
+                  <span className="text-white text-sm font-medium">
+                    {onlineMembers.length > 0 ? `${onlineMembers.length} Online` : `${mockTeamStats.activeMembers} Active`}
+                  </span>
+                  {/* Presence Avatars */}
+                  {onlineMembers.length > 0 && (
+                    <div className="flex -space-x-2 ml-2">
+                      {onlineMembers.slice(0, 3).map(m => (
+                        <div key={m.userId} className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 border-2 border-white/30 flex items-center justify-center text-[10px] text-white font-bold" title={m.name}>
+                          {m.name.charAt(0)}
+                        </div>
+                      ))}
+                      {onlineMembers.length > 3 && (
+                        <div className="w-6 h-6 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-[10px] text-white">
+                          +{onlineMembers.length - 3}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
@@ -1467,6 +1526,250 @@ export default function TeamDashboard() {
                       </CardContent>
                     </Card>
                   </div>
+                </div>
+              )}
+
+              {/* Collaborate Tab — Real-Time Collaboration */}
+              {activeTab === 'collaborate' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-bold text-white flex items-center">
+                      <Sparkles className="mr-3 text-yellow-400" size={24} />
+                      Real-Time Collaboration
+                      {isConnected && (
+                        <Badge className="ml-3 bg-green-500/20 text-green-300 border-green-500/30">
+                          <div className="w-2 h-2 bg-green-400 rounded-full mr-1.5 animate-pulse" />
+                          Connected
+                        </Badge>
+                      )}
+                    </h3>
+                  </div>
+
+                  {/* Online Team Members */}
+                  <Card className="bg-white/10 border-white/20 text-white">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-lg">
+                        <Users className="mr-2 text-green-400" size={20} />
+                        Online Members ({onlineMembers.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {onlineMembers.length > 0 ? (
+                        <div className="flex flex-wrap gap-3">
+                          {onlineMembers.map(m => (
+                            <div key={m.userId} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+                              <div className="relative">
+                                <Avatar className="w-8 h-8">
+                                  <AvatarFallback className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs">
+                                    {m.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-gray-900 ${
+                                  m.status === 'online' ? 'bg-green-500' : m.status === 'away' ? 'bg-yellow-500' : 'bg-red-500'
+                                }`} />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-white">{m.name}</div>
+                                {m.currentPage && (
+                                  <div className="text-[10px] text-white/50">{m.currentPage}</div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-white/50">
+                          <Users size={24} className="mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No team members online right now</p>
+                          <p className="text-xs mt-1">Team members will appear here when they connect</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Shared Prompts — Collaborative Editing */}
+                  <Card className="bg-white/10 border-white/20 text-white">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-lg">
+                        <FileText className="mr-2 text-blue-400" size={20} />
+                        Shared Team Prompts ({sharedPrompts.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {sharedPrompts.length > 0 ? (
+                        <div className="space-y-3">
+                          {sharedPrompts.map((prompt: any) => (
+                            <div key={prompt.id} className="bg-white/5 rounded-lg p-4 border border-white/10 hover:border-white/20 transition-all">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-semibold text-white">{prompt.title}</h4>
+                                <div className="flex items-center gap-2">
+                                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                                    v{prompt.version}
+                                  </Badge>
+                                  <Button
+                                    size="sm"
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                                    onClick={() => {
+                                      setEditingPromptId(prompt.id);
+                                      setEditTitle(prompt.title);
+                                      setEditContent(prompt.content);
+                                      setDocumentVersion(prompt.version);
+                                    }}
+                                  >
+                                    <Edit3 size={14} className="mr-1" />
+                                    Edit Together
+                                  </Button>
+                                </div>
+                              </div>
+                              <p className="text-sm text-white/60 line-clamp-2">{prompt.content}</p>
+                              <div className="flex items-center gap-3 mt-2 text-xs text-white/50">
+                                <span>by {prompt.owner?.name}</span>
+                                <span>{prompt.category}</span>
+                                <span>{new Date(prompt.updatedAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-white/50">
+                          <FileText size={24} className="mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No shared prompts yet</p>
+                          <p className="text-xs mt-1">Share prompts from your library to enable team collaboration</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Collaborative Editor */}
+                  {editingPromptId && (
+                    <Card className="bg-slate-900/80 border-yellow-500/30 text-white">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center text-lg">
+                            <Sparkles className="mr-2 text-yellow-400 animate-pulse" size={20} />
+                            Collaborative Editor
+                            <Badge className="ml-3 bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+                              v{documentVersion}
+                            </Badge>
+                          </CardTitle>
+                          <div className="flex items-center gap-3">
+                            {/* Active Collaborators */}
+                            {collaborators.length > 0 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-white/50">Editing with:</span>
+                                <div className="flex -space-x-2">
+                                  {collaborators.map(c => (
+                                    <div
+                                      key={c.userId}
+                                      className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
+                                      style={{ borderColor: c.color, backgroundColor: c.color + '30', color: c.color }}
+                                      title={c.userName}
+                                    >
+                                      {c.userName.charAt(0)}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-white/20 text-white hover:bg-white/10"
+                              onClick={() => setEditingPromptId(null)}
+                            >
+                              Close
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <label className="text-sm text-white/60 mb-1 block">Title</label>
+                          <Input
+                            value={editTitle}
+                            onChange={(e) => {
+                              setEditTitle(e.target.value);
+                              sendUpdate('title', e.target.value);
+                            }}
+                            onSelect={(e) => {
+                              const input = e.target as HTMLInputElement;
+                              sendCursorMove('title', input.selectionStart || 0);
+                            }}
+                            className="bg-white/10 border-white/20 text-white"
+                            placeholder="Prompt title..."
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/60 mb-1 block">Content</label>
+                          <Textarea
+                            value={editContent}
+                            onChange={(e) => {
+                              setEditContent(e.target.value);
+                              sendUpdate('content', e.target.value);
+                            }}
+                            onSelect={(e) => {
+                              const textarea = e.target as HTMLTextAreaElement;
+                              sendCursorMove('content', textarea.selectionStart || 0);
+                            }}
+                            className="bg-white/10 border-white/20 text-white min-h-[200px] font-mono"
+                            placeholder="Prompt content..."
+                          />
+                        </div>
+                        {/* Cursor indicators */}
+                        {collaborators.filter(c => c.cursor).length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {collaborators.filter(c => c.cursor).map(c => (
+                              <div key={c.userId} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full" style={{ backgroundColor: c.color + '20', color: c.color }}>
+                                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: c.color }} />
+                                {c.userName} editing {c.cursor?.field}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Live Activity Feed */}
+                  <Card className="bg-white/10 border-white/20 text-white">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-lg">
+                        <Activity className="mr-2 text-orange-400 animate-pulse" size={20} />
+                        Live Activity Feed
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {liveActivities.length > 0 ? (
+                        <div className="space-y-3">
+                          {liveActivities.slice(0, 10).map((act) => (
+                            <div key={act.id} className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                              <div className="p-2 rounded-lg bg-orange-500/20">
+                                <Activity size={14} className="text-orange-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm text-white">
+                                  <span className="text-blue-400 font-medium">{act.user.name}</span>
+                                  {' '}{act.action.replace(/_/g, ' ')}
+                                  {act.targetName && (
+                                    <span className="text-emerald-400"> {act.targetName}</span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-white/50 mt-1">
+                                  {new Date(act.createdAt).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-white/50">
+                          <Activity size={24} className="mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No activity yet</p>
+                          <p className="text-xs mt-1">Team actions will appear here in real-time</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               )}
 

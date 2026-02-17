@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const http_1 = require("http");
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
@@ -12,6 +13,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const database_1 = require("./config/database");
+const index_1 = require("./socket/index");
 // ═══════════════════════════════════════════════════════════════════════════════
 // OBSERVABILITY IMPORTS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -35,7 +37,6 @@ const feedback_1 = __importDefault(require("./routes/feedback"));
 const admin_1 = __importDefault(require("./routes/admin"));
 const custom_categories_1 = __importDefault(require("./routes/custom-categories"));
 const rating_1 = __importDefault(require("./routes/rating"));
-const demo_1 = __importDefault(require("./routes/demo"));
 const categories_1 = __importDefault(require("./routes/categories"));
 const utils_1 = __importDefault(require("./routes/utils"));
 const academy_1 = __importDefault(require("./routes/academy"));
@@ -51,6 +52,12 @@ const audio_1 = __importDefault(require("./routes/audio"));
 const shotstack_1 = __importDefault(require("./routes/shotstack"));
 const chat_1 = __importDefault(require("./routes/chat")); // Embeddable Widget Chat API
 const agents_1 = __importDefault(require("./routes/agents")); // Agent Management API
+const discord_1 = __importDefault(require("./routes/discord")); // Discord OAuth + Webhook Notifications
+const images_1 = __importDefault(require("./routes/images")); // Image Generation - DALL-E 3 AI Images
+const documents_1 = __importDefault(require("./routes/documents")); // Document Chat - RAG-powered document Q&A
+const search_1 = __importDefault(require("./routes/search")); // Web Search - Tavily-powered search + AI synthesis
+const code_1 = __importDefault(require("./routes/code")); // Code Interpreter - Piston-powered code execution
+const memory_1 = __importDefault(require("./routes/memory")); // Persistent Memory - User preferences across sessions
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECURE ENVIRONMENT LOADING
 // Priority: .env.local (secrets) > .env (defaults) > Railway env vars
@@ -465,7 +472,6 @@ app.use('/api/feedback', feedback_1.default);
 app.use('/api/admin', admin_1.default);
 app.use('/api/custom-categories', custom_categories_1.default);
 app.use('/api/rating', rating_1.default);
-app.use('/api/demo', demo_1.default);
 app.use('/api/utils', utils_1.default);
 app.use('/api/academy', academy_1.default);
 app.use('/api/academy/billing', academy_billing_1.default);
@@ -480,6 +486,12 @@ app.use('/api/audio', audio_1.default); // Unified Audio Pipeline - Speech/Music
 app.use('/api/shotstack', shotstack_1.default); // Shotstack Video API - Short video creation with voice + music
 app.use('/api/chat', chat_1.default); // Embeddable Widget Chat API - Public API for widget communication
 app.use('/api/agents', agents_1.default); // Agent Management API - Create and manage chat agents
+app.use('/api/discord', discord_1.default); // Discord OAuth + Webhook Notifications
+app.use('/api/images', images_1.default); // Image Generation - DALL-E 3 AI Images
+app.use('/api/documents', documents_1.default); // Document Chat - RAG-powered document Q&A
+app.use('/api/search', search_1.default); // Web Search - Tavily-powered search + AI synthesis
+app.use('/api/code', code_1.default); // Code Interpreter - Piston-powered code execution
+app.use('/api/memory', memory_1.default); // Persistent Memory - User preferences across sessions
 app.use('/api', generate_1.default);
 app.use('/api/personal', categories_1.default);
 app.use('/api/product', categories_1.default);
@@ -555,8 +567,11 @@ app.use('*', (req, res) => {
 app.use(observability_1.errorTrackingMiddleware);
 // Audio cleanup scheduler (optional - enable via env var)
 const cleanupAudio_1 = require("./workers/cleanupAudio");
+// Create HTTP server and attach Socket.io
+const server = (0, http_1.createServer)(app);
+(0, index_1.initializeSocket)(server);
 // Start server
-app.listen(PORT, '0.0.0.0', async () => {
+server.listen(PORT, '0.0.0.0', async () => {
     // Use structured logging for server startup
     logger_1.logger.info('Server starting', {
         port: PORT,

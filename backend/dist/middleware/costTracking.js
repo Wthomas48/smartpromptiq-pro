@@ -22,10 +22,9 @@ exports.preCheckTokens = preCheckTokens;
 exports.deductTokens = deductTokens;
 exports.getUserUsageStats = getUserUsageStats;
 exports.getSystemCostStats = getSystemCostStats;
-const client_1 = require("@prisma/client");
+const database_1 = require("../config/database"); // Use shared singleton
 const costs_1 = require("../config/costs");
 const costAlertService_1 = require("../services/costAlertService");
-const prisma = new client_1.PrismaClient();
 // In-memory cache for daily/monthly usage (for performance)
 const usageCache = new Map();
 // Daily cost accumulator
@@ -46,7 +45,7 @@ function trackCost(options) {
         }
         try {
             // 1. Get user and subscription info
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
                 select: {
                     id: true,
@@ -143,7 +142,7 @@ async function processCostAfterResponse(req, responseBody) {
         const actualCost = responseBody?.metadata?.apiCost || options.estimatedCost || 0;
         // 1. Deduct tokens from user (unless skipped)
         if (!options.skipTokenDeduction) {
-            await prisma.user.update({
+            await database_1.prisma.user.update({
                 where: { id: userId },
                 data: {
                     tokenBalance: { decrement: tokenCost },
@@ -151,7 +150,7 @@ async function processCostAfterResponse(req, responseBody) {
             });
         }
         // 2. Log the usage
-        await prisma.usageLog.create({
+        await database_1.prisma.usageLog.create({
             data: {
                 userId,
                 action: `${options.category}:${options.feature}`,
@@ -196,7 +195,7 @@ async function preCheckTokens(req, res, next, category, feature) {
         return res.status(401).json({ error: 'Authentication required' });
     }
     try {
-        const user = await prisma.user.findUnique({
+        const user = await database_1.prisma.user.findUnique({
             where: { id: userId },
             select: { tokenBalance: true },
         });
@@ -220,7 +219,7 @@ async function preCheckTokens(req, res, next, category, feature) {
  */
 async function deductTokens(userId, amount) {
     try {
-        const result = await prisma.user.updateMany({
+        const result = await database_1.prisma.user.updateMany({
             where: {
                 id: userId,
                 tokenBalance: { gte: amount },
@@ -248,7 +247,7 @@ async function getUserUsageStats(userId) {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     try {
         const [dailyUsage, monthlyUsage, user] = await Promise.all([
-            prisma.usageLog.aggregate({
+            database_1.prisma.usageLog.aggregate({
                 where: {
                     userId,
                     createdAt: { gte: today },
@@ -256,7 +255,7 @@ async function getUserUsageStats(userId) {
                 _sum: { tokensUsed: true, cost: true },
                 _count: true,
             }),
-            prisma.usageLog.aggregate({
+            database_1.prisma.usageLog.aggregate({
                 where: {
                     userId,
                     createdAt: { gte: monthStart },
@@ -264,7 +263,7 @@ async function getUserUsageStats(userId) {
                 _sum: { tokensUsed: true, cost: true },
                 _count: true,
             }),
-            prisma.user.findUnique({
+            database_1.prisma.user.findUnique({
                 where: { id: userId },
                 select: { tokenBalance: true, subscriptionTier: true },
             }),
@@ -301,17 +300,17 @@ async function getSystemCostStats() {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     try {
         const [dailyCosts, monthlyCosts, topUsers] = await Promise.all([
-            prisma.usageLog.aggregate({
+            database_1.prisma.usageLog.aggregate({
                 where: { createdAt: { gte: today } },
                 _sum: { cost: true, tokensUsed: true },
                 _count: true,
             }),
-            prisma.usageLog.aggregate({
+            database_1.prisma.usageLog.aggregate({
                 where: { createdAt: { gte: monthStart } },
                 _sum: { cost: true, tokensUsed: true },
                 _count: true,
             }),
-            prisma.usageLog.groupBy({
+            database_1.prisma.usageLog.groupBy({
                 by: ['userId'],
                 where: { createdAt: { gte: today } },
                 _sum: { cost: true },
@@ -394,13 +393,13 @@ async function checkCostAlerts(cost, userId) {
     if (userId && cost > 0) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const userDailyCost = await prisma.usageLog.aggregate({
+        const userDailyCost = await database_1.prisma.usageLog.aggregate({
             where: { userId, createdAt: { gte: today } },
             _sum: { cost: true },
         });
         const totalUserCost = userDailyCost._sum.cost || 0;
         if (totalUserCost >= costs_1.COST_ALERTS.perUser.daily) {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
                 select: { email: true },
             });

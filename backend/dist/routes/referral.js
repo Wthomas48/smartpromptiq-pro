@@ -4,11 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const client_1 = require("@prisma/client");
+const database_1 = require("../config/database"); // Use shared singleton
 const crypto_1 = __importDefault(require("crypto"));
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
-const prisma = new client_1.PrismaClient();
 // Optional auth middleware - populates req.user if token exists, but doesn't require it
 const optionalAuth = async (req, res, next) => {
     try {
@@ -39,12 +38,12 @@ router.get('/my-code', auth_1.authenticate, async (req, res) => {
     try {
         const userId = req.user.id;
         // Check if user already has a referral code
-        let referralCode = await prisma.referralCode.findUnique({
+        let referralCode = await database_1.prisma.referralCode.findUnique({
             where: { userId },
         });
         // If not, create one
         if (!referralCode) {
-            const user = await prisma.user.findUnique({
+            const user = await database_1.prisma.user.findUnique({
                 where: { id: userId },
                 select: { firstName: true },
             });
@@ -52,13 +51,13 @@ router.get('/my-code', auth_1.authenticate, async (req, res) => {
             let code = generateReferralCode(user?.firstName || undefined);
             let attempts = 0;
             while (attempts < 10) {
-                const existing = await prisma.referralCode.findUnique({ where: { code } });
+                const existing = await database_1.prisma.referralCode.findUnique({ where: { code } });
                 if (!existing)
                     break;
                 code = generateReferralCode(user?.firstName || undefined);
                 attempts++;
             }
-            referralCode = await prisma.referralCode.create({
+            referralCode = await database_1.prisma.referralCode.create({
                 data: {
                     userId,
                     code,
@@ -95,7 +94,7 @@ router.get('/my-code', auth_1.authenticate, async (req, res) => {
 router.get('/stats', auth_1.authenticate, async (req, res) => {
     try {
         const userId = req.user.id;
-        const referralCode = await prisma.referralCode.findUnique({
+        const referralCode = await database_1.prisma.referralCode.findUnique({
             where: { userId },
             include: {
                 referrals: {
@@ -118,14 +117,14 @@ router.get('/stats', auth_1.authenticate, async (req, res) => {
             });
         }
         // Get counts by status
-        const pendingCount = await prisma.referral.count({
+        const pendingCount = await database_1.prisma.referral.count({
             where: {
                 referrerId: userId,
                 status: { in: ['pending', 'signed_up'] },
             },
         });
         // Get recent rewards
-        const recentRewards = await prisma.referralReward.findMany({
+        const recentRewards = await database_1.prisma.referralReward.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' },
             take: 5,
@@ -181,7 +180,7 @@ router.get('/leaderboard', async (req, res) => {
         // Try to get leaderboard, but return empty array if table doesn't exist
         let topReferrers = [];
         try {
-            topReferrers = await prisma.referralCode.findMany({
+            topReferrers = await database_1.prisma.referralCode.findMany({
                 where: {
                     successfulReferrals: { gt: 0 },
                     isActive: true,
@@ -214,7 +213,7 @@ router.get('/leaderboard', async (req, res) => {
         // Get user names (anonymized)
         const leaderboard = await Promise.all(topReferrers.map(async (r, index) => {
             try {
-                const user = await prisma.user.findUnique({
+                const user = await database_1.prisma.user.findUnique({
                     where: { id: r.userId },
                     select: { firstName: true },
                 });
@@ -258,7 +257,7 @@ router.post('/validate', async (req, res) => {
         if (!code) {
             return res.status(400).json({ error: 'Referral code is required' });
         }
-        const referralCode = await prisma.referralCode.findUnique({
+        const referralCode = await database_1.prisma.referralCode.findUnique({
             where: { code: code.toUpperCase() },
             select: {
                 id: true,
@@ -283,7 +282,7 @@ router.post('/validate', async (req, res) => {
             });
         }
         // Get referrer name for display
-        const referrer = await prisma.user.findUnique({
+        const referrer = await database_1.prisma.user.findUnique({
             where: { id: referralCode.userId },
             select: { firstName: true },
         });
@@ -313,7 +312,7 @@ router.post('/track-signup', async (req, res) => {
             return res.status(400).json({ error: 'Referral code and new user ID are required' });
         }
         // Find the referral code
-        const refCode = await prisma.referralCode.findUnique({
+        const refCode = await database_1.prisma.referralCode.findUnique({
             where: { code: referralCode.toUpperCase() },
         });
         if (!refCode || !refCode.isActive) {
@@ -324,7 +323,7 @@ router.post('/track-signup', async (req, res) => {
             return res.status(400).json({ error: 'Cannot use your own referral code' });
         }
         // Check if this referral already exists
-        const existingReferral = await prisma.referral.findUnique({
+        const existingReferral = await database_1.prisma.referral.findUnique({
             where: {
                 referrerId_refereeId: {
                     referrerId: refCode.userId,
@@ -340,7 +339,7 @@ router.post('/track-signup', async (req, res) => {
             });
         }
         // Create the referral record
-        const referral = await prisma.referral.create({
+        const referral = await database_1.prisma.referral.create({
             data: {
                 referralCodeId: refCode.id,
                 referrerId: refCode.userId,
@@ -353,21 +352,21 @@ router.post('/track-signup', async (req, res) => {
             },
         });
         // Update referral code stats
-        await prisma.referralCode.update({
+        await database_1.prisma.referralCode.update({
             where: { id: refCode.id },
             data: {
                 totalReferrals: { increment: 1 },
             },
         });
         // Award tokens to the new user (referee)
-        await prisma.user.update({
+        await database_1.prisma.user.update({
             where: { id: newUserId },
             data: {
                 tokenBalance: { increment: refCode.refereeRewardTokens },
             },
         });
         // Update referral with referee reward
-        await prisma.referral.update({
+        await database_1.prisma.referral.update({
             where: { id: referral.id },
             data: {
                 refereeRewarded: true,
@@ -376,7 +375,7 @@ router.post('/track-signup', async (req, res) => {
             },
         });
         // Create reward record for referee
-        await prisma.referralReward.create({
+        await database_1.prisma.referralReward.create({
             data: {
                 userId: newUserId,
                 type: 'referee_welcome',
@@ -386,11 +385,11 @@ router.post('/track-signup', async (req, res) => {
             },
         });
         // Create token transaction for referee
-        const user = await prisma.user.findUnique({
+        const user = await database_1.prisma.user.findUnique({
             where: { id: newUserId },
             select: { tokenBalance: true },
         });
-        await prisma.tokenTransaction.create({
+        await database_1.prisma.tokenTransaction.create({
             data: {
                 userId: newUserId,
                 type: 'bonus',
@@ -422,7 +421,7 @@ router.post('/track-conversion', async (req, res) => {
             return res.status(400).json({ error: 'User ID is required' });
         }
         // Find any pending referral for this user
-        const referral = await prisma.referral.findFirst({
+        const referral = await database_1.prisma.referral.findFirst({
             where: {
                 refereeId: userId,
                 status: 'signed_up',
@@ -439,14 +438,14 @@ router.post('/track-conversion', async (req, res) => {
             });
         }
         // Award tokens to the referrer
-        await prisma.user.update({
+        await database_1.prisma.user.update({
             where: { id: referral.referrerId },
             data: {
                 tokenBalance: { increment: referral.referralCode.referrerRewardTokens },
             },
         });
         // Update referral status
-        await prisma.referral.update({
+        await database_1.prisma.referral.update({
             where: { id: referral.id },
             data: {
                 status: 'converted',
@@ -457,7 +456,7 @@ router.post('/track-conversion', async (req, res) => {
             },
         });
         // Update referral code stats
-        await prisma.referralCode.update({
+        await database_1.prisma.referralCode.update({
             where: { id: referral.referralCodeId },
             data: {
                 successfulReferrals: { increment: 1 },
@@ -465,7 +464,7 @@ router.post('/track-conversion', async (req, res) => {
             },
         });
         // Create reward record for referrer
-        await prisma.referralReward.create({
+        await database_1.prisma.referralReward.create({
             data: {
                 userId: referral.referrerId,
                 type: 'referrer_conversion',
@@ -475,11 +474,11 @@ router.post('/track-conversion', async (req, res) => {
             },
         });
         // Create token transaction for referrer
-        const referrer = await prisma.user.findUnique({
+        const referrer = await database_1.prisma.user.findUnique({
             where: { id: referral.referrerId },
             select: { tokenBalance: true },
         });
-        await prisma.tokenTransaction.create({
+        await database_1.prisma.tokenTransaction.create({
             data: {
                 userId: referral.referrerId,
                 type: 'bonus',
@@ -490,7 +489,7 @@ router.post('/track-conversion', async (req, res) => {
             },
         });
         // Check for milestone bonuses
-        const referralCode = await prisma.referralCode.findUnique({
+        const referralCode = await database_1.prisma.referralCode.findUnique({
             where: { id: referral.referralCodeId },
         });
         if (referralCode) {
@@ -505,7 +504,7 @@ router.post('/track-conversion', async (req, res) => {
             const milestone = milestones.find(m => m.count === referralCode.successfulReferrals);
             if (milestone) {
                 // Check if milestone was already awarded
-                const existingMilestone = await prisma.referralReward.findFirst({
+                const existingMilestone = await database_1.prisma.referralReward.findFirst({
                     where: {
                         userId: referral.referrerId,
                         milestoneType: milestone.name,
@@ -513,13 +512,13 @@ router.post('/track-conversion', async (req, res) => {
                 });
                 if (!existingMilestone) {
                     // Award milestone bonus
-                    await prisma.user.update({
+                    await database_1.prisma.user.update({
                         where: { id: referral.referrerId },
                         data: {
                             tokenBalance: { increment: milestone.bonus },
                         },
                     });
-                    await prisma.referralReward.create({
+                    await database_1.prisma.referralReward.create({
                         data: {
                             userId: referral.referrerId,
                             type: 'milestone_bonus',
@@ -552,13 +551,13 @@ router.get('/history', auth_1.authenticate, async (req, res) => {
         const { page = 1, limit = 20 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
         const [referrals, total] = await Promise.all([
-            prisma.referral.findMany({
+            database_1.prisma.referral.findMany({
                 where: { referrerId: userId },
                 orderBy: { signedUpAt: 'desc' },
                 skip,
                 take: Number(limit),
             }),
-            prisma.referral.count({
+            database_1.prisma.referral.count({
                 where: { referrerId: userId },
             }),
         ]);
@@ -607,14 +606,14 @@ router.post('/customize-code', auth_1.authenticate, async (req, res) => {
             });
         }
         // Check if code is already taken
-        const existing = await prisma.referralCode.findUnique({
+        const existing = await database_1.prisma.referralCode.findUnique({
             where: { code: normalizedCode },
         });
         if (existing && existing.userId !== userId) {
             return res.status(400).json({ error: 'This code is already taken' });
         }
         // Update the code
-        const updated = await prisma.referralCode.update({
+        const updated = await database_1.prisma.referralCode.update({
             where: { userId },
             data: { code: normalizedCode },
         });

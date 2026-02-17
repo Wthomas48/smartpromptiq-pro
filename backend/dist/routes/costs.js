@@ -12,12 +12,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const client_1 = require("@prisma/client");
+const database_1 = require("../config/database"); // Use shared singleton
 const costs_1 = require("../config/costs");
 const costTracking_1 = require("../middleware/costTracking");
 const costAlertService_1 = require("../services/costAlertService");
 const router = express_1.default.Router();
-const prisma = new client_1.PrismaClient();
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUBLIC ENDPOINTS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -119,13 +118,13 @@ router.get('/my-history', async (req, res) => {
             where.createdAt = { ...where.createdAt, lte: new Date(endDate) };
         }
         const [history, total] = await Promise.all([
-            prisma.usageLog.findMany({
+            database_1.prisma.usageLog.findMany({
                 where,
                 orderBy: { createdAt: 'desc' },
                 skip: (parseInt(page) - 1) * parseInt(limit),
                 take: parseInt(limit),
             }),
-            prisma.usageLog.count({ where }),
+            database_1.prisma.usageLog.count({ where }),
         ]);
         res.json({
             success: true,
@@ -159,7 +158,7 @@ router.post('/check-tokens', async (req, res) => {
         return res.status(400).json({ error: 'Category and feature are required' });
     }
     try {
-        const user = await prisma.user.findUnique({
+        const user = await database_1.prisma.user.findUnique({
             where: { id: userId },
             select: { tokenBalance: true, subscriptionTier: true },
         });
@@ -245,14 +244,14 @@ router.get('/admin/dashboard', async (req, res) => {
         // Get cost breakdown by provider
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const costByProvider = await prisma.usageLog.groupBy({
+        const costByProvider = await database_1.prisma.usageLog.groupBy({
             by: ['provider'],
             where: { createdAt: { gte: today } },
             _sum: { cost: true },
             _count: true,
         });
         // Get cost breakdown by feature
-        const costByFeature = await prisma.usageLog.groupBy({
+        const costByFeature = await database_1.prisma.usageLog.groupBy({
             by: ['action'],
             where: { createdAt: { gte: today } },
             _sum: { cost: true, tokensUsed: true },
@@ -301,7 +300,7 @@ router.get('/admin/users/:userId', async (req, res) => {
     const { userId } = req.params;
     try {
         const stats = await (0, costTracking_1.getUserUsageStats)(userId);
-        const user = await prisma.user.findUnique({
+        const user = await database_1.prisma.user.findUnique({
             where: { id: userId },
             select: {
                 id: true,
@@ -375,7 +374,7 @@ router.get('/admin/high-spenders', async (req, res) => {
         else {
             startDate.setDate(1); // Monthly
         }
-        const highSpenders = await prisma.usageLog.groupBy({
+        const highSpenders = await database_1.prisma.usageLog.groupBy({
             by: ['userId'],
             where: { createdAt: { gte: startDate } },
             _sum: { cost: true, tokensUsed: true },
@@ -385,7 +384,7 @@ router.get('/admin/high-spenders', async (req, res) => {
         });
         // Get user details
         const userIds = highSpenders.map(s => s.userId);
-        const users = await prisma.user.findMany({
+        const users = await database_1.prisma.user.findMany({
             where: { id: { in: userIds } },
             select: { id: true, email: true, name: true, subscriptionTier: true },
         });
@@ -424,7 +423,7 @@ router.get('/admin/trends', async (req, res) => {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - parseInt(days));
         // Get daily aggregates
-        const dailyData = await prisma.$queryRaw `
+        const dailyData = await database_1.prisma.$queryRaw `
       SELECT
         DATE(createdAt) as date,
         SUM(cost) as totalCost,

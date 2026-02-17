@@ -4,11 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const client_1 = require("@prisma/client");
+const database_1 = require("../config/database"); // Use shared singleton
 const emailService_1 = __importDefault(require("../services/emailService"));
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
-const prisma = new client_1.PrismaClient();
 /**
  * POST /api/academy/seed-courses
  * Seeds academy courses - protected by secret
@@ -21,11 +20,11 @@ router.post('/seed-courses', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Invalid secret' });
         }
         // Clear and reseed
-        await prisma.courseReview.deleteMany();
-        await prisma.lessonProgress.deleteMany();
-        await prisma.enrollment.deleteMany();
-        await prisma.lesson.deleteMany();
-        await prisma.course.deleteMany();
+        await database_1.prisma.courseReview.deleteMany();
+        await database_1.prisma.lessonProgress.deleteMany();
+        await database_1.prisma.enrollment.deleteMany();
+        await database_1.prisma.lesson.deleteMany();
+        await database_1.prisma.course.deleteMany();
         // FULL 57 COURSES CATALOG
         const courses = [
             // FREE TIER (3)
@@ -104,10 +103,10 @@ router.post('/seed-courses', async (req, res) => {
             { title: 'Resource Library & Downloads', slug: 'resource-library-downloads', description: 'E-books, guides, cheat sheets, video tutorials, newsletters.', category: 'resources', difficulty: 'beginner', duration: 0, accessTier: 'pro', priceUSD: 0, isPublished: true, order: 57, instructor: 'Content Team', tags: 'resources,downloads,library,pro', averageRating: 4.8, reviewCount: 1567, enrollmentCount: 4321 },
         ];
         for (const c of courses) {
-            await prisma.course.create({ data: c });
+            await database_1.prisma.course.create({ data: c });
         }
         // Add lessons for AI Agents Masterclass
-        const mc = await prisma.course.findUnique({ where: { slug: 'ai-agents-masterclass' } });
+        const mc = await database_1.prisma.course.findUnique({ where: { slug: 'ai-agents-masterclass' } });
         if (mc) {
             const lessons = [
                 { title: 'Welcome to AI Agents', description: 'Introduction to AI agents and what you will learn', content: '# Welcome to AI Agents Masterclass!\n\nIn this course you will learn to build, deploy, and monetize AI chat agents.', duration: 5, order: 1, isFree: true },
@@ -118,10 +117,10 @@ router.post('/seed-courses', async (req, res) => {
                 { title: 'Monetization Strategies', description: 'Turn your agents into revenue', content: '# Monetization Strategies\n\n1. Sell as a service\n2. Lead generation\n3. Customer support savings\n4. Premium chat tiers', duration: 3, order: 6, isFree: true },
             ];
             for (const l of lessons) {
-                await prisma.lesson.create({ data: { courseId: mc.id, ...l, isPublished: true } });
+                await database_1.prisma.lesson.create({ data: { courseId: mc.id, ...l, isPublished: true } });
             }
         }
-        const count = await prisma.course.count();
+        const count = await database_1.prisma.course.count();
         res.json({ success: true, message: `Seeded ${count} courses`, count });
     }
     catch (error) {
@@ -148,7 +147,7 @@ router.get('/courses', async (req, res) => {
             where.difficulty = difficulty;
         if (accessTier)
             where.accessTier = accessTier;
-        const courses = await prisma.course.findMany({
+        const courses = await database_1.prisma.course.findMany({
             where,
             orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
             include: {
@@ -210,7 +209,7 @@ router.get('/search', async (req, res) => {
             courseWhere.accessTier = accessTier;
         // Search courses and lessons in parallel
         const [courses, lessons] = await Promise.all([
-            prisma.course.findMany({
+            database_1.prisma.course.findMany({
                 where: courseWhere,
                 include: {
                     _count: {
@@ -226,7 +225,7 @@ router.get('/search', async (req, res) => {
                     { averageRating: 'desc' },
                 ],
             }),
-            prisma.lesson.findMany({
+            database_1.prisma.lesson.findMany({
                 where: {
                     isPublished: true,
                     OR: [
@@ -280,7 +279,13 @@ router.get('/search', async (req, res) => {
 router.get('/courses/:slug', async (req, res) => {
     try {
         const { slug } = req.params;
-        const course = await prisma.course.findUnique({
+        if (!slug || typeof slug !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid course slug',
+            });
+        }
+        const course = await database_1.prisma.course.findUnique({
             where: { slug },
             include: {
                 lessons: {
@@ -293,7 +298,6 @@ router.get('/courses/:slug', async (req, res) => {
                         duration: true,
                         order: true,
                         isFree: true,
-                        // Don't include content yet - requires enrollment
                     },
                 },
                 _count: {
@@ -307,7 +311,7 @@ router.get('/courses/:slug', async (req, res) => {
         if (!course) {
             return res.status(404).json({
                 success: false,
-                message: 'Course not found',
+                message: `Course not found: ${slug}`,
             });
         }
         res.json({
@@ -317,6 +321,13 @@ router.get('/courses/:slug', async (req, res) => {
     }
     catch (error) {
         console.error('Error fetching course:', error);
+        // Distinguish database connection errors from other errors
+        if (error.code === 'P2024' || error.message?.includes('connection')) {
+            return res.status(503).json({
+                success: false,
+                message: 'Database temporarily unavailable. Please try again shortly.',
+            });
+        }
         res.status(500).json({
             success: false,
             message: 'Failed to fetch course',
@@ -342,7 +353,7 @@ router.get('/my-courses', auth_1.authenticate, async (req, res) => {
                 message: 'Authentication required',
             });
         }
-        const enrollments = await prisma.enrollment.findMany({
+        const enrollments = await database_1.prisma.enrollment.findMany({
             where: { userId },
             include: {
                 course: {
@@ -386,7 +397,7 @@ router.post('/enroll', auth_1.authenticate, async (req, res) => {
             });
         }
         // Check if course exists
-        const course = await prisma.course.findUnique({
+        const course = await database_1.prisma.course.findUnique({
             where: { id: courseId },
         });
         if (!course) {
@@ -396,7 +407,7 @@ router.post('/enroll', auth_1.authenticate, async (req, res) => {
             });
         }
         // Check if already enrolled
-        const existingEnrollment = await prisma.enrollment.findUnique({
+        const existingEnrollment = await database_1.prisma.enrollment.findUnique({
             where: {
                 userId_courseId: {
                     userId,
@@ -412,7 +423,7 @@ router.post('/enroll', auth_1.authenticate, async (req, res) => {
             });
         }
         // Create enrollment
-        const enrollment = await prisma.enrollment.create({
+        const enrollment = await database_1.prisma.enrollment.create({
             data: {
                 userId,
                 courseId,
@@ -431,7 +442,7 @@ router.post('/enroll', auth_1.authenticate, async (req, res) => {
             },
         });
         // Update course enrollment count
-        await prisma.course.update({
+        await database_1.prisma.course.update({
             where: { id: courseId },
             data: {
                 enrollmentCount: {
@@ -441,7 +452,7 @@ router.post('/enroll', auth_1.authenticate, async (req, res) => {
         });
         // Get user details for email
         // @ts-ignore
-        const user = await prisma.user.findUnique({
+        const user = await database_1.prisma.user.findUnique({
             where: { id: userId },
             select: {
                 email: true,
@@ -509,7 +520,7 @@ router.get('/lesson/:lessonId', async (req, res) => {
                 console.log('Invalid token, continuing as unauthenticated user');
             }
         }
-        const lesson = await prisma.lesson.findUnique({
+        const lesson = await database_1.prisma.lesson.findUnique({
             where: { id: lessonId },
             include: {
                 course: {
@@ -549,7 +560,7 @@ router.get('/lesson/:lessonId', async (req, res) => {
         // Get user's progress for this lesson (only if authenticated)
         let progress = null;
         if (userId) {
-            progress = await prisma.lessonProgress.findUnique({
+            progress = await database_1.prisma.lessonProgress.findUnique({
                 where: {
                     userId_lessonId: {
                         userId,
@@ -602,7 +613,7 @@ router.post('/progress/:lessonId', auth_1.authenticate, async (req, res) => {
                 message: 'Authentication required',
             });
         }
-        const progress = await prisma.lessonProgress.upsert({
+        const progress = await database_1.prisma.lessonProgress.upsert({
             where: {
                 userId_lessonId: {
                     userId,
@@ -661,7 +672,7 @@ router.get('/admin/stats', auth_1.authenticate, async (req, res) => {
         }
         // Check if user is admin
         // @ts-ignore
-        const user = await prisma.user.findUnique({
+        const user = await database_1.prisma.user.findUnique({
             where: { id: userId },
             select: { role: true },
         });
@@ -673,21 +684,21 @@ router.get('/admin/stats', auth_1.authenticate, async (req, res) => {
         }
         // Get academy statistics
         const [totalCourses, publishedCourses, totalEnrollments, activeEnrollments, completedCourses, totalCertificates, totalLessons, recentEnrollments, topCourses,] = await Promise.all([
-            prisma.course.count(),
-            prisma.course.count({ where: { isPublished: true } }),
-            prisma.enrollment.count(),
-            prisma.enrollment.count({ where: { status: 'active' } }),
-            prisma.enrollment.count({ where: { status: 'completed' } }),
-            prisma.certificate.count(),
-            prisma.lesson.count({ where: { isPublished: true } }),
-            prisma.enrollment.findMany({
+            database_1.prisma.course.count(),
+            database_1.prisma.course.count({ where: { isPublished: true } }),
+            database_1.prisma.enrollment.count(),
+            database_1.prisma.enrollment.count({ where: { status: 'active' } }),
+            database_1.prisma.enrollment.count({ where: { status: 'completed' } }),
+            database_1.prisma.certificate.count(),
+            database_1.prisma.lesson.count({ where: { isPublished: true } }),
+            database_1.prisma.enrollment.findMany({
                 take: 10,
                 orderBy: { enrolledAt: 'desc' },
                 include: {
                     course: true,
                 },
             }),
-            prisma.course.findMany({
+            database_1.prisma.course.findMany({
                 take: 5,
                 orderBy: { enrollmentCount: 'desc' },
                 where: { isPublished: true },
@@ -704,7 +715,7 @@ router.get('/admin/stats', auth_1.authenticate, async (req, res) => {
         // Get enrollment growth (last 30 days)
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentEnrollmentCount = await prisma.enrollment.count({
+        const recentEnrollmentCount = await database_1.prisma.enrollment.count({
             where: {
                 enrolledAt: {
                     gte: thirtyDaysAgo,
@@ -767,7 +778,7 @@ router.post('/lesson/:lessonId/rating', auth_1.authenticate, async (req, res) =>
             });
         }
         // Check if lesson exists
-        const lesson = await prisma.lesson.findUnique({
+        const lesson = await database_1.prisma.lesson.findUnique({
             where: { id: lessonId },
         });
         if (!lesson) {
@@ -785,7 +796,7 @@ router.post('/lesson/:lessonId/rating', auth_1.authenticate, async (req, res) =>
             });
         }
         // Create or update rating in lessonProgress
-        const progress = await prisma.lessonProgress.upsert({
+        const progress = await database_1.prisma.lessonProgress.upsert({
             where: {
                 userId_lessonId: {
                     userId,
@@ -837,7 +848,7 @@ router.get('/dashboard', auth_1.authenticate, async (req, res) => {
             });
         }
         // Get user's enrollments with progress
-        const enrollments = await prisma.enrollment.findMany({
+        const enrollments = await database_1.prisma.enrollment.findMany({
             where: { userId },
             include: {
                 course: {
@@ -850,19 +861,19 @@ router.get('/dashboard', auth_1.authenticate, async (req, res) => {
             },
         });
         // Get overall progress stats
-        const totalLessonsCompleted = await prisma.lessonProgress.count({
+        const totalLessonsCompleted = await database_1.prisma.lessonProgress.count({
             where: {
                 userId,
                 completed: true,
             },
         });
         // Get certificates
-        const certificates = await prisma.certificate.findMany({
+        const certificates = await database_1.prisma.certificate.findMany({
             where: { userId },
             orderBy: { issuedAt: 'desc' },
         });
         // Get recent activity
-        const recentProgress = await prisma.lessonProgress.findMany({
+        const recentProgress = await database_1.prisma.lessonProgress.findMany({
             where: { userId },
             orderBy: { updatedAt: 'desc' },
             take: 10,
@@ -910,7 +921,7 @@ router.get('/dashboard', auth_1.authenticate, async (req, res) => {
 async function checkCourseAccess(userId, courseId) {
     try {
         // Get course details
-        const course = await prisma.course.findUnique({
+        const course = await database_1.prisma.course.findUnique({
             where: { id: courseId },
             select: { accessTier: true },
         });
@@ -918,7 +929,7 @@ async function checkCourseAccess(userId, courseId) {
             return false;
         // Get user subscription tier
         // @ts-ignore
-        const user = await prisma.user.findUnique({
+        const user = await database_1.prisma.user.findUnique({
             where: { id: userId },
             select: { subscriptionTier: true },
         });
@@ -931,7 +942,7 @@ async function checkCourseAccess(userId, courseId) {
             return false;
         }
         // Check enrollment status
-        const enrollment = await prisma.enrollment.findUnique({
+        const enrollment = await database_1.prisma.enrollment.findUnique({
             where: {
                 userId_courseId: {
                     userId,
@@ -972,7 +983,7 @@ function checkSubscriptionAccess(userTier, courseAccessTier) {
  */
 async function updateEnrollmentProgress(userId, lessonId) {
     try {
-        const lesson = await prisma.lesson.findUnique({
+        const lesson = await database_1.prisma.lesson.findUnique({
             where: { id: lessonId },
             include: {
                 course: {
@@ -987,7 +998,7 @@ async function updateEnrollmentProgress(userId, lessonId) {
         if (!lesson)
             return;
         const totalLessons = lesson.course.lessons.length;
-        const completedLessons = await prisma.lessonProgress.count({
+        const completedLessons = await database_1.prisma.lessonProgress.count({
             where: {
                 userId,
                 lessonId: {
@@ -999,7 +1010,7 @@ async function updateEnrollmentProgress(userId, lessonId) {
         const progressPercentage = (completedLessons / totalLessons) * 100;
         const isNewlyCompleted = progressPercentage === 100;
         // Check if enrollment was previously completed
-        const currentEnrollment = await prisma.enrollment.findUnique({
+        const currentEnrollment = await database_1.prisma.enrollment.findUnique({
             where: {
                 userId_courseId: {
                     userId,
@@ -1008,7 +1019,7 @@ async function updateEnrollmentProgress(userId, lessonId) {
             },
         });
         const wasAlreadyCompleted = currentEnrollment?.status === 'completed';
-        await prisma.enrollment.update({
+        await database_1.prisma.enrollment.update({
             where: {
                 userId_courseId: {
                     userId,
@@ -1037,7 +1048,7 @@ async function updateEnrollmentProgress(userId, lessonId) {
 async function handleCourseCompletion(userId, courseId, courseTitle) {
     try {
         // Get user details
-        const user = await prisma.user.findUnique({
+        const user = await database_1.prisma.user.findUnique({
             where: { id: userId },
             select: {
                 email: true,
@@ -1048,7 +1059,7 @@ async function handleCourseCompletion(userId, courseId, courseTitle) {
         if (!user)
             return;
         // Get total lessons completed and time spent
-        const course = await prisma.course.findUnique({
+        const course = await database_1.prisma.course.findUnique({
             where: { id: courseId },
             include: {
                 lessons: {
@@ -1058,7 +1069,7 @@ async function handleCourseCompletion(userId, courseId, courseTitle) {
         });
         if (!course)
             return;
-        const lessonProgressData = await prisma.lessonProgress.findMany({
+        const lessonProgressData = await database_1.prisma.lessonProgress.findMany({
             where: {
                 userId,
                 lessonId: {
@@ -1069,7 +1080,7 @@ async function handleCourseCompletion(userId, courseId, courseTitle) {
         const totalTimeSpent = lessonProgressData.reduce((sum, lp) => sum + (lp.timeSpent || 0), 0);
         const timeInHours = Math.round(totalTimeSpent / 60);
         // Create certificate
-        const certificate = await prisma.certificate.create({
+        const certificate = await database_1.prisma.certificate.create({
             data: {
                 userId,
                 courseId,

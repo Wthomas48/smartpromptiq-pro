@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -7,6 +8,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { connectDatabase } from './config/database';
+import { initializeSocket } from './socket/index';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // OBSERVABILITY IMPORTS
@@ -39,7 +41,6 @@ import feedbackRoutes from './routes/feedback';
 import adminRoutes from './routes/admin';
 import customCategoryRoutes from './routes/custom-categories';
 import ratingRoutes from './routes/rating';
-import demoRoutes from './routes/demo';
 import categoryRoutes from './routes/categories';
 import utilsRoutes from './routes/utils';
 import academyRoutes from './routes/academy';
@@ -520,7 +521,6 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/custom-categories', customCategoryRoutes);
 app.use('/api/rating', ratingRoutes);
-app.use('/api/demo', demoRoutes);
 app.use('/api/utils', utilsRoutes);
 app.use('/api/academy', academyRoutes);
 app.use('/api/academy/billing', academyBillingRoutes);
@@ -627,8 +627,12 @@ app.use(errorTrackingMiddleware);
 // Audio cleanup scheduler (optional - enable via env var)
 import { startCleanupScheduler } from './workers/cleanupAudio';
 
+// Create HTTP server and attach Socket.io
+const server = createServer(app);
+initializeSocket(server);
+
 // Start server
-app.listen(PORT, '0.0.0.0', async () => {
+server.listen(PORT, '0.0.0.0', async () => {
   // Use structured logging for server startup
   logger.info('Server starting', {
     port: PORT,

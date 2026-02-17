@@ -46,7 +46,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supabase = exports.ALLOWED_AUDIO_MIME_TYPES = exports.MAX_AUDIO_FILE_SIZE = exports.SIGNED_URL_EXPIRY_SECONDS = exports.STORAGE_BUCKETS = exports.MUSIC_OUTPUT_BUCKET = exports.VOICE_OUTPUT_BUCKET = void 0;
+exports.supabase = exports.ALLOWED_AUDIO_MIME_TYPES = exports.MAX_AUDIO_FILE_SIZE = exports.SIGNED_URL_EXPIRY_SECONDS = exports.STORAGE_BUCKETS = exports.DOCUMENT_UPLOADS_BUCKET = exports.IMAGE_OUTPUT_BUCKET = exports.MUSIC_OUTPUT_BUCKET = exports.VOICE_OUTPUT_BUCKET = void 0;
 exports.getSupabaseClient = getSupabaseClient;
 exports.uploadAudioAndGetSignedUrl = uploadAudioAndGetSignedUrl;
 exports.uploadToBucketAndGetSignedUrl = uploadToBucketAndGetSignedUrl;
@@ -82,12 +82,16 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
  */
 exports.VOICE_OUTPUT_BUCKET = 'voice-output';
 exports.MUSIC_OUTPUT_BUCKET = 'music-output';
+exports.IMAGE_OUTPUT_BUCKET = 'image-output';
 /**
  * All storage buckets for initialization
  */
+exports.DOCUMENT_UPLOADS_BUCKET = 'document-uploads';
 exports.STORAGE_BUCKETS = {
     VOICE: exports.VOICE_OUTPUT_BUCKET,
     MUSIC: exports.MUSIC_OUTPUT_BUCKET,
+    IMAGE: exports.IMAGE_OUTPUT_BUCKET,
+    DOCUMENT: exports.DOCUMENT_UPLOADS_BUCKET,
 };
 /**
  * Signed URL expiration time in seconds
@@ -384,6 +388,7 @@ exports.default = {
     initializeStorageBuckets,
     VOICE_OUTPUT_BUCKET: exports.VOICE_OUTPUT_BUCKET,
     MUSIC_OUTPUT_BUCKET: exports.MUSIC_OUTPUT_BUCKET,
+    IMAGE_OUTPUT_BUCKET: exports.IMAGE_OUTPUT_BUCKET,
     STORAGE_BUCKETS: exports.STORAGE_BUCKETS,
     SIGNED_URL_EXPIRY_SECONDS: exports.SIGNED_URL_EXPIRY_SECONDS,
     MAX_AUDIO_FILE_SIZE: exports.MAX_AUDIO_FILE_SIZE,

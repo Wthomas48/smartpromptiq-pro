@@ -21,9 +21,8 @@ exports.sendCostAlert = sendCostAlert;
 exports.checkAndSendCostAlerts = checkAndSendCostAlerts;
 exports.sendUserHighUsageAlert = sendUserHighUsageAlert;
 const emailService_1 = __importDefault(require("./emailService"));
-const client_1 = require("@prisma/client");
+const database_1 = require("../config/database"); // Use shared singleton
 const costs_1 = require("../config/costs");
-const prisma = new client_1.PrismaClient();
 // Track sent alerts to prevent spam
 const alertsSent = new Map();
 const ALERT_COOLDOWN_HOURS = 4; // Don't resend same alert within 4 hours
@@ -48,7 +47,7 @@ function markAlertSent(alertKey) {
  */
 async function getAdminEmails() {
     try {
-        const admins = await prisma.user.findMany({
+        const admins = await database_1.prisma.user.findMany({
             where: { isAdmin: true },
             select: { email: true },
         });
@@ -259,11 +258,11 @@ async function checkAndSendCostAlerts() {
     try {
         // Get current costs
         const [dailyCosts, monthlyCosts] = await Promise.all([
-            prisma.usageLog.aggregate({
+            database_1.prisma.usageLog.aggregate({
                 where: { createdAt: { gte: today } },
                 _sum: { cost: true },
             }),
-            prisma.usageLog.aggregate({
+            database_1.prisma.usageLog.aggregate({
                 where: { createdAt: { gte: monthStart } },
                 _sum: { cost: true },
             }),
@@ -271,7 +270,7 @@ async function checkAndSendCostAlerts() {
         const dailyCost = dailyCosts._sum.cost || 0;
         const monthlyCost = monthlyCosts._sum.cost || 0;
         // Get top spenders
-        const topSpenders = await prisma.usageLog.groupBy({
+        const topSpenders = await database_1.prisma.usageLog.groupBy({
             by: ['userId'],
             where: { createdAt: { gte: today } },
             _sum: { cost: true },
@@ -279,7 +278,7 @@ async function checkAndSendCostAlerts() {
             take: 5,
         });
         const userIds = topSpenders.map(s => s.userId);
-        const users = await prisma.user.findMany({
+        const users = await database_1.prisma.user.findMany({
             where: { id: { in: userIds } },
             select: { id: true, email: true },
         });

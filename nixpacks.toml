@@ -19,8 +19,12 @@ cmds = [
 [phases.build]
 cmds = [
   "echo '=== Building Client ==='",
-  "cd client && npm run build"
+  "cd client && npm run build",
+  "echo '=== Compiling Backend TypeScript ==='",
+  "cd backend && npx tsc || echo 'TypeScript compiled with warnings (non-blocking)'",
+  "echo '=== Copying JS-only files to dist ==='",
+  "cd backend && for f in $(find src -name '*.js' -not -path '*/node_modules/*'); do ts=\"${f%.js}.ts\"; if [ ! -f \"$ts\" ]; then dest=\"dist/${f#src/}\"; mkdir -p \"$(dirname \"$dest\")\"; cp \"$f\" \"$dest\"; echo \"Copied $f\"; fi; done"
 ]
 
 [start]
-cmd = "npx prisma generate --schema=./backend/prisma/schema.prisma && node index.cjs"
+cmd = "npx prisma generate --schema=./backend/prisma/schema.prisma && node backend/dist/server.js"

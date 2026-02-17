@@ -5,10 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const openai_1 = __importDefault(require("openai"));
 const sdk_1 = __importDefault(require("@anthropic-ai/sdk"));
+const generative_ai_1 = require("@google/generative-ai");
 class AIService {
     constructor() {
         this.openai = null;
         this.anthropic = null;
+        this.gemini = null;
         this.provider = process.env.AI_PROVIDER || 'fallback';
         // Initialize OpenAI if key is provided and valid
         const openaiKey = process.env.OPENAI_API_KEY;
@@ -24,8 +26,14 @@ class AIService {
                 apiKey: anthropicKey,
             });
         }
+        // Initialize Google Gemini if key is provided and valid
+        const geminiKey = process.env.GOOGLE_API_KEY;
+        if (geminiKey && !geminiKey.includes('REPLACE') && geminiKey.length > 10) {
+            const genAI = new generative_ai_1.GoogleGenerativeAI(geminiKey);
+            this.gemini = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        }
         // Auto-detect provider if keys are available
-        if (!this.openai && !this.anthropic) {
+        if (!this.openai && !this.anthropic && !this.gemini) {
             this.provider = 'fallback';
             console.log('🤖 AI Service: Using fallback mock generation (no API keys configured)');
         }
@@ -35,6 +43,9 @@ class AIService {
         else if (this.anthropic && this.provider === 'anthropic') {
             console.log('🤖 AI Service: Using Anthropic Claude');
         }
+        else if (this.gemini && this.provider === 'gemini') {
+            console.log('🤖 AI Service: Using Google Gemini');
+        }
         else if (this.openai) {
             this.provider = 'openai';
             console.log('🤖 AI Service: Auto-selected OpenAI GPT');
@@ -42,6 +53,10 @@ class AIService {
         else if (this.anthropic) {
             this.provider = 'anthropic';
             console.log('🤖 AI Service: Auto-selected Anthropic Claude');
+        }
+        else if (this.gemini) {
+            this.provider = 'gemini';
+            console.log('🤖 AI Service: Auto-selected Google Gemini');
         }
     }
     async generateWithOpenAI(prompt) {
@@ -113,6 +128,40 @@ Always deliver comprehensive, valuable content that exceeds expectations.`,
                 completion_tokens: response.usage.output_tokens,
                 total_tokens: response.usage.input_tokens + response.usage.output_tokens
             }
+        };
+    }
+    async generateWithGemini(prompt) {
+        if (!this.gemini)
+            throw new Error('Google Gemini not configured');
+        const systemInstruction = `You are a professional AI prompt engineer and strategy consultant. Generate high-quality, detailed, and actionable content based on the user's requirements. Make sure your responses are:
+
+1. Professional and well-structured
+2. Specific and actionable
+3. Tailored to the user's exact needs
+4. Include concrete examples where appropriate
+5. Provide step-by-step guidance when relevant
+6. Use proper formatting with headers, lists, and sections
+
+Always deliver comprehensive, valuable content that exceeds expectations.`;
+        const result = await this.gemini.generateContent({
+            contents: [{ role: 'user', parts: [{ text: `${systemInstruction}\n\n${prompt}` }] }],
+            generationConfig: {
+                maxOutputTokens: 3000,
+                temperature: 0.7,
+            },
+        });
+        const response = result.response;
+        const text = response.text();
+        const usage = response.usageMetadata;
+        return {
+            content: text || 'No content generated',
+            provider: 'gemini',
+            model: 'gemini-2.0-flash',
+            usage: {
+                prompt_tokens: usage?.promptTokenCount || 0,
+                completion_tokens: usage?.candidatesTokenCount || 0,
+                total_tokens: usage?.totalTokenCount || 0,
+            },
         };
     }
     generateMockResponse(category, answers, customization) {
@@ -1467,7 +1516,7 @@ This strategy has been personalized based on your specific requirements and will
 Please provide a detailed strategy that addresses the user's specific needs with actionable recommendations and implementation guidance.`
         };
     }
-    async generatePrompt(category, answers, customization) {
+    async generatePrompt(category, answers, customization, preferredProvider) {
         try {
             let systemPrompt = `You are an expert ${category} strategist and consultant. Based on the user's specific responses and requirements, create a comprehensive, professional, and highly actionable ${category} strategy.
 
@@ -1487,14 +1536,21 @@ Requirements for your response:
 10. Make the detail level: ${customization.detailLevel || 'comprehensive'}
 
 Create a detailed ${category} strategy that exceeds expectations and provides tremendous value.`;
-            // Try real AI services first, fall back to mock if needed
-            if (this.provider === 'openai' && this.openai) {
+            // Use preferred provider if specified and available, otherwise use default
+            const activeProvider = this.resolveProvider(preferredProvider);
+            if (activeProvider === 'openai' && this.openai) {
                 console.log('🤖 Generating with OpenAI...');
-                return await this.generateWithOpenAI(systemPrompt);
+                const result = await this.generateWithOpenAI(systemPrompt);
+                return { ...result, provider: 'openai', model: 'gpt-4o' };
             }
-            else if (this.provider === 'anthropic' && this.anthropic) {
+            else if (activeProvider === 'anthropic' && this.anthropic) {
                 console.log('🤖 Generating with Anthropic...');
-                return await this.generateWithAnthropic(systemPrompt);
+                const result = await this.generateWithAnthropic(systemPrompt);
+                return { ...result, provider: 'anthropic', model: 'claude-3-haiku' };
+            }
+            else if (activeProvider === 'gemini' && this.gemini) {
+                console.log('🤖 Generating with Google Gemini...');
+                return await this.generateWithGemini(systemPrompt);
             }
             else {
                 console.log('🤖 Using fallback mock generation...');
@@ -1503,12 +1559,11 @@ Create a detailed ${category} strategy that exceeds expectations and provides tr
         }
         catch (error) {
             console.error('AI generation error:', error);
-            // Always fall back to mock on error
             console.log('🤖 Falling back to mock generation due to error...');
             return this.generateMockResponse(category, answers, customization);
         }
     }
-    async refinePrompt(currentPrompt, refinementQuery, category, originalAnswers) {
+    async refinePrompt(currentPrompt, refinementQuery, category, originalAnswers, preferredProvider) {
         try {
             const systemPrompt = `You are an expert prompt refinement specialist. The user has an existing ${category} prompt and wants to refine it based on their specific request.
 
@@ -1533,16 +1588,20 @@ Requirements:
 7. Ensure the refinement actually addresses what the user asked for
 
 Return the complete refined prompt that incorporates the user's requested improvements.`;
-            if (this.provider === 'openai' && this.openai) {
+            const activeProvider = this.resolveProvider(preferredProvider);
+            if (activeProvider === 'openai' && this.openai) {
                 console.log('🤖 Refining with OpenAI...');
                 return await this.generateWithOpenAI(systemPrompt);
             }
-            else if (this.provider === 'anthropic' && this.anthropic) {
+            else if (activeProvider === 'anthropic' && this.anthropic) {
                 console.log('🤖 Refining with Anthropic...');
                 return await this.generateWithAnthropic(systemPrompt);
             }
+            else if (activeProvider === 'gemini' && this.gemini) {
+                console.log('🤖 Refining with Google Gemini...');
+                return await this.generateWithGemini(systemPrompt);
+            }
             else {
-                // Enhanced mock refinement logic
                 console.log('🤖 Using fallback mock refinement...');
                 return this.generateMockRefinement(currentPrompt, refinementQuery, category, originalAnswers);
             }
@@ -1578,11 +1637,32 @@ Return the complete refined prompt that incorporates the user's requested improv
             }
         };
     }
+    resolveProvider(preferred) {
+        if (preferred) {
+            // Check if the preferred provider is available
+            if (preferred === 'openai' && this.openai)
+                return 'openai';
+            if (preferred === 'anthropic' && this.anthropic)
+                return 'anthropic';
+            if (preferred === 'gemini' && this.gemini)
+                return 'gemini';
+            // If preferred provider not available, fall through to default
+            console.log(`⚠️ Preferred provider '${preferred}' not available, using default '${this.provider}'`);
+        }
+        return this.provider;
+    }
     getProviderStatus() {
         return this.provider;
     }
+    getAvailableProviders() {
+        return [
+            { id: 'openai', name: 'OpenAI', model: 'GPT-4o', available: this.openai !== null },
+            { id: 'anthropic', name: 'Anthropic', model: 'Claude 3 Haiku', available: this.anthropic !== null },
+            { id: 'gemini', name: 'Google', model: 'Gemini 2.0 Flash', available: this.gemini !== null },
+        ];
+    }
     isConfigured() {
-        return this.openai !== null || this.anthropic !== null;
+        return this.openai !== null || this.anthropic !== null || this.gemini !== null;
     }
     async generateSuggestions(category) {
         const suggestions = [

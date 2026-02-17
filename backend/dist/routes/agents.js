@@ -616,4 +616,135 @@ router.get('/:id/embed-code', auth_1.authenticate, async (req, res) => {
         });
     }
 });
+// ============================================
+// KNOWLEDGE BASE — Agent Document Management
+// ============================================
+/**
+ * GET /api/agents/:id/documents
+ * List documents attached to an agent
+ */
+router.get('/:id/documents', auth_1.authenticate, async (req, res) => {
+    try {
+        const agent = await database_1.default.agent.findFirst({
+            where: { id: req.params.id, userId: req.user.id },
+        });
+        if (!agent) {
+            return res.status(404).json({ success: false, error: 'Agent not found' });
+        }
+        const agentDocs = await database_1.default.agentDocument.findMany({
+            where: { agentId: agent.id },
+            include: {
+                document: {
+                    select: {
+                        id: true,
+                        title: true,
+                        fileName: true,
+                        fileType: true,
+                        fileSize: true,
+                        status: true,
+                        chunkCount: true,
+                        totalTokens: true,
+                        createdAt: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        return res.json({
+            success: true,
+            data: agentDocs.map((ad) => ({
+                id: ad.id,
+                attachedAt: ad.createdAt,
+                ...ad.document,
+            })),
+        });
+    }
+    catch (error) {
+        console.error('List agent documents error:', error);
+        return res.status(500).json({ success: false, error: 'Failed to list agent documents' });
+    }
+});
+/**
+ * POST /api/agents/:id/documents
+ * Attach a document to an agent's knowledge base
+ */
+router.post('/:id/documents', [
+    auth_1.authenticate,
+    (0, express_validator_1.body)('documentId').notEmpty().withMessage('documentId is required'),
+], async (req, res) => {
+    try {
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, error: 'Validation failed', details: errors.array() });
+        }
+        const agent = await database_1.default.agent.findFirst({
+            where: { id: req.params.id, userId: req.user.id },
+        });
+        if (!agent) {
+            return res.status(404).json({ success: false, error: 'Agent not found' });
+        }
+        // Verify document belongs to user and is ready
+        const document = await database_1.default.document.findFirst({
+            where: { id: req.body.documentId, userId: req.user.id },
+        });
+        if (!document) {
+            return res.status(404).json({ success: false, error: 'Document not found' });
+        }
+        if (document.status !== 'ready') {
+            return res.status(400).json({ success: false, error: 'Document is not ready yet' });
+        }
+        // Create link (upsert to handle duplicates gracefully)
+        const agentDoc = await database_1.default.agentDocument.upsert({
+            where: {
+                agentId_documentId: {
+                    agentId: agent.id,
+                    documentId: document.id,
+                },
+            },
+            update: {},
+            create: {
+                agentId: agent.id,
+                documentId: document.id,
+            },
+        });
+        return res.json({
+            success: true,
+            data: {
+                id: agentDoc.id,
+                agentId: agentDoc.agentId,
+                documentId: agentDoc.documentId,
+                attachedAt: agentDoc.createdAt,
+            },
+        });
+    }
+    catch (error) {
+        console.error('Attach document error:', error);
+        return res.status(500).json({ success: false, error: 'Failed to attach document' });
+    }
+});
+/**
+ * DELETE /api/agents/:id/documents/:docId
+ * Detach a document from an agent's knowledge base
+ */
+router.delete('/:id/documents/:docId', auth_1.authenticate, async (req, res) => {
+    try {
+        const agent = await database_1.default.agent.findFirst({
+            where: { id: req.params.id, userId: req.user.id },
+        });
+        if (!agent) {
+            return res.status(404).json({ success: false, error: 'Agent not found' });
+        }
+        await database_1.default.agentDocument.deleteMany({
+            where: {
+                agentId: agent.id,
+                documentId: req.params.docId,
+            },
+        });
+        return res.json({ success: true, message: 'Document detached from agent' });
+    }
+    catch (error) {
+        console.error('Detach document error:', error);
+        return res.status(500).json({ success: false, error: 'Failed to detach document' });
+    }
+});
 exports.default = router;

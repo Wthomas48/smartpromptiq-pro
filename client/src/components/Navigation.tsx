@@ -93,6 +93,7 @@ const navigationSections: NavSection[] = [
     items: [
       { href: "/app-builders", label: "App Market", icon: Store, badge: "100+", badgeColor: "from-orange-500 to-amber-500" },
       { href: "/teams", label: "Teams", icon: Users },
+      { href: "/team-dashboard", label: "Team Collab", icon: Sparkles, badge: "LIVE", badgeColor: "from-yellow-500 to-orange-500" },
     ]
   },
   {

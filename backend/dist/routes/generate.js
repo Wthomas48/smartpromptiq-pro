@@ -39,14 +39,15 @@ router.post('/generate-prompt', [
                 message: 'Generation limit exceeded. Please upgrade your plan.'
             });
         }
-        const { category, answers, customization } = req.body;
+        const { category, answers, customization, provider: preferredProvider } = req.body;
         console.log('🚀 Generating prompt with AI service:', {
             category,
+            preferredProvider: preferredProvider || 'default',
             provider: aiService_1.default.getProviderStatus(),
             configured: aiService_1.default.isConfigured()
         });
         // Generate the AI prompt using the AI service
-        const result = await aiService_1.default.generatePrompt(category, answers, customization);
+        const result = await aiService_1.default.generatePrompt(category, answers, customization, preferredProvider);
         // Update user's generation count
         await database_1.default.user.update({
             where: { id: req.user.id },
@@ -60,6 +61,8 @@ router.post('/generate-prompt', [
                 prompt: result.content,
                 category,
                 generatedAt: new Date(),
+                provider: result.provider || aiService_1.default.getProviderStatus(),
+                model: result.model,
                 usage: result.usage
             }
         });
@@ -100,14 +103,15 @@ router.post('/refine-prompt', [
                 message: 'Generation limit exceeded. Please upgrade your plan.'
             });
         }
-        const { currentPrompt, refinementQuery, category, originalAnswers } = req.body;
+        const { currentPrompt, refinementQuery, category, originalAnswers, provider: preferredProvider } = req.body;
         console.log('🔧 Refining prompt with AI service:', {
             category,
+            preferredProvider: preferredProvider || 'default',
             provider: aiService_1.default.getProviderStatus(),
             refinementQuery: refinementQuery.substring(0, 50) + '...'
         });
         // Refine the prompt using the AI service
-        const result = await aiService_1.default.refinePrompt(currentPrompt, refinementQuery, category, originalAnswers);
+        const result = await aiService_1.default.refinePrompt(currentPrompt, refinementQuery, category, originalAnswers, preferredProvider);
         // Update user's generation count for refinements
         await database_1.default.user.update({
             where: { id: req.user.id },
@@ -659,6 +663,25 @@ This comprehensive plan provides the structure and flexibility needed for sustai
     }
     return prompt;
 }
+// Get available AI providers
+router.get('/providers', auth_1.authenticate, async (req, res) => {
+    try {
+        res.json({
+            success: true,
+            data: {
+                providers: aiService_1.default.getAvailableProviders(),
+                defaultProvider: aiService_1.default.getProviderStatus(),
+            }
+        });
+    }
+    catch (error) {
+        console.error('Get providers error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get provider list'
+        });
+    }
+});
 // Get generation stats
 router.get('/stats', auth_1.authenticate, async (req, res) => {
     try {

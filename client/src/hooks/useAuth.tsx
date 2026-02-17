@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, authAPI } from "@/config/api";
 import { ensureSafeUser, isValidUser } from "@/utils/safeDataUtils";
+import { disconnectSocket } from "@/lib/socket";
 
 interface User {
   id: string | number;  // Backend can return number, frontend converts to string
@@ -348,6 +349,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Sign out from Supabase
       const { supabase } = await import('@/lib/supabase');
       await supabase.auth.signOut();
+
+      // Disconnect WebSocket
+      disconnectSocket();
 
       // Clear local state
       localStorage.removeItem("token");

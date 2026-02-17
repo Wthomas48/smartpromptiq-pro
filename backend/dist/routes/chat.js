@@ -8,8 +8,10 @@ const cors_1 = __importDefault(require("cors"));
 const express_validator_1 = require("express-validator");
 const openai_1 = __importDefault(require("openai"));
 const sdk_1 = __importDefault(require("@anthropic-ai/sdk"));
+const generative_ai_1 = require("@google/generative-ai");
 const database_1 = __importDefault(require("../config/database"));
 const apiKeyAuth_1 = require("../middleware/apiKeyAuth");
+const ragService_1 = require("../services/ragService");
 const router = express_1.default.Router();
 // ============================================
 // PERMISSIVE CORS FOR WIDGET EMBEDDING
@@ -44,6 +46,12 @@ if (openaiKey && !openaiKey.includes('REPLACE') && openaiKey.startsWith('sk-')) 
 const anthropicKey = process.env.ANTHROPIC_API_KEY;
 if (anthropicKey && !anthropicKey.includes('REPLACE') && anthropicKey.startsWith('sk-ant-')) {
     anthropic = new sdk_1.default({ apiKey: anthropicKey });
+}
+let gemini = null;
+const geminiKey = process.env.GOOGLE_API_KEY;
+if (geminiKey && !geminiKey.includes('REPLACE') && geminiKey.length > 10) {
+    const genAI = new generative_ai_1.GoogleGenerativeAI(geminiKey);
+    gemini = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 }
 /**
  * POST /api/chat
@@ -140,6 +148,51 @@ router.post('/', [
             role: 'user',
             content: message
         });
+        // ── Knowledge Base RAG Context ──────────────────────────────
+        // If the agent has attached documents, retrieve relevant chunks
+        // and inject them into the system prompt.
+        let systemPrompt = agent.systemPrompt;
+        try {
+            const agentDocs = await database_1.default.agentDocument.findMany({
+                where: { agentId: agent.id },
+                include: {
+                    document: {
+                        select: { id: true, status: true },
+                    },
+                },
+            });
+            const readyDocIds = agentDocs
+                .filter((ad) => ad.document.status === 'ready')
+                .map((ad) => ad.documentId);
+            if (readyDocIds.length > 0 && openai) {
+                // Embed user question and search across all attached docs
+                const queryEmbedding = await (0, ragService_1.embedQuery)(message);
+                const allChunks = await database_1.default.documentChunk.findMany({
+                    where: { documentId: { in: readyDocIds } },
+                    select: { content: true, chunkIndex: true, heading: true, embedding: true },
+                });
+                const scored = allChunks
+                    .map((chunk) => {
+                    const emb = JSON.parse(chunk.embedding);
+                    return { ...chunk, similarity: (0, ragService_1.cosineSimilarity)(queryEmbedding, emb) };
+                })
+                    .sort((a, b) => b.similarity - a.similarity)
+                    .slice(0, 5);
+                if (scored.length > 0 && scored[0].similarity > 0.3) {
+                    const contextBlocks = scored
+                        .map((c, i) => {
+                        const header = c.heading ? ` (${c.heading})` : '';
+                        return `[${i + 1}]${header}\n${c.content}`;
+                    })
+                        .join('\n\n---\n\n');
+                    systemPrompt += `\n\n## Knowledge Base Context\nThe following excerpts from uploaded documents may help answer the user's question. Use them when relevant and cite sources with [1], [2], etc. If the answer is not in the excerpts, use your general knowledge.\n\n${contextBlocks}`;
+                }
+            }
+        }
+        catch (ragError) {
+            console.error('RAG context retrieval error (non-fatal):', ragError);
+            // Continue without RAG context — not a fatal error
+        }
         // Generate AI response
         let assistantMessage = '';
         let tokensUsed = 0;
@@ -149,7 +202,7 @@ router.post('/', [
                     model: agent.model,
                     max_tokens: agent.maxTokens,
                     temperature: agent.temperature,
-                    system: agent.systemPrompt,
+                    system: systemPrompt,
                     messages: conversationHistory.map(msg => ({
                         role: msg.role === 'system' ? 'user' : msg.role,
                         content: msg.content
@@ -166,13 +219,27 @@ router.post('/', [
                     max_tokens: agent.maxTokens,
                     temperature: agent.temperature,
                     messages: [
-                        { role: 'system', content: agent.systemPrompt },
+                        { role: 'system', content: systemPrompt },
                         ...conversationHistory
                     ]
                 });
                 assistantMessage = response.choices[0]?.message?.content ||
                     'I apologize, but I could not generate a response.';
                 tokensUsed = response.usage?.total_tokens || 0;
+            }
+            else if (agent.provider === 'gemini' && gemini) {
+                const result = await gemini.generateContent({
+                    contents: [
+                        { role: 'user', parts: [{ text: `${systemPrompt}\n\n${conversationHistory.map(m => `${m.role}: ${m.content}`).join('\n')}` }] },
+                    ],
+                    generationConfig: {
+                        maxOutputTokens: agent.maxTokens,
+                        temperature: agent.temperature,
+                    },
+                });
+                const resp = result.response;
+                assistantMessage = resp.text() || 'I apologize, but I could not generate a response.';
+                tokensUsed = resp.usageMetadata?.totalTokenCount || 0;
             }
             else {
                 // Fallback response when no AI provider is configured
