@@ -1,5 +1,8 @@
 FROM node:22-alpine
 
+# Cache buster — change this value to force a full rebuild
+ARG CACHE_BUST=2026-02-17-v3
+
 WORKDIR /app
 
 # Install build dependencies for native modules + openssl for Prisma
