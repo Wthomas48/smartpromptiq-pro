@@ -5,8 +5,8 @@ builder = "nixpacks"
 aptPkgs = ["openssl"]
 
 [deploy]
-startCommand = "npm start"
-healthcheckPath = "/health"
+startCommand = "cd backend && npm install --production && cd .. && npx prisma generate --schema=./backend/prisma/schema.prisma && node backend/dist/server.js"
+healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
