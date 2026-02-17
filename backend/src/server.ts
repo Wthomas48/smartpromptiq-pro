@@ -537,10 +537,12 @@ app.use('/api/chat', chatRoutes); // Embeddable Widget Chat API - Public API for
 app.use('/api/agents', agentsRoutes); // Agent Management API - Create and manage chat agents
 app.use('/api/discord', discordRoutes); // Discord OAuth + Webhook Notifications
 app.use('/api/images', imageRoutes); // Image Generation - DALL-E 3 AI Images
-app.use('/api/documents', documentRoutes); // Document Chat - RAG-powered document Q&A
-app.use('/api/search', searchRoutes); // Web Search - Tavily-powered search + AI synthesis
-app.use('/api/code', codeRoutes); // Code Interpreter - Piston-powered code execution
-app.use('/api/memory', memoryRoutes); // Persistent Memory - User preferences across sessions
+// New AI features - log registration for debugging
+console.log('📋 Registering new AI feature routes...');
+app.use('/api/documents', documentRoutes); console.log('  ✅ /api/documents');
+app.use('/api/search', searchRoutes); console.log('  ✅ /api/search');
+app.use('/api/code', codeRoutes); console.log('  ✅ /api/code');
+app.use('/api/memory', memoryRoutes); console.log('  ✅ /api/memory');
 app.use('/api', generateRoutes);
 app.use('/api/personal', categoryRoutes);
 app.use('/api/product', categoryRoutes);
@@ -605,7 +607,11 @@ app.all('/api/*', (req, res) => {
 });
 
 // SPA fallback - serve index.html for non-API routes (GET only)
+// Exclude socket.io paths — those are handled by Socket.io at the HTTP server level
 app.get('*', (req, res) => {
+  if (req.originalUrl.startsWith('/socket.io')) {
+    return res.status(404).json({ error: 'Socket.io endpoint - use WebSocket connection' });
+  }
   console.log(`📄 Serving SPA for: ${req.originalUrl}`);
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });

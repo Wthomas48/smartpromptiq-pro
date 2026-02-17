@@ -488,10 +488,16 @@ app.use('/api/chat', chat_1.default); // Embeddable Widget Chat API - Public API
 app.use('/api/agents', agents_1.default); // Agent Management API - Create and manage chat agents
 app.use('/api/discord', discord_1.default); // Discord OAuth + Webhook Notifications
 app.use('/api/images', images_1.default); // Image Generation - DALL-E 3 AI Images
-app.use('/api/documents', documents_1.default); // Document Chat - RAG-powered document Q&A
-app.use('/api/search', search_1.default); // Web Search - Tavily-powered search + AI synthesis
-app.use('/api/code', code_1.default); // Code Interpreter - Piston-powered code execution
-app.use('/api/memory', memory_1.default); // Persistent Memory - User preferences across sessions
+// New AI features - log registration for debugging
+console.log('📋 Registering new AI feature routes...');
+app.use('/api/documents', documents_1.default);
+console.log('  ✅ /api/documents');
+app.use('/api/search', search_1.default);
+console.log('  ✅ /api/search');
+app.use('/api/code', code_1.default);
+console.log('  ✅ /api/code');
+app.use('/api/memory', memory_1.default);
+console.log('  ✅ /api/memory');
 app.use('/api', generate_1.default);
 app.use('/api/personal', categories_1.default);
 app.use('/api/product', categories_1.default);
@@ -549,7 +555,11 @@ app.all('/api/*', (req, res) => {
     });
 });
 // SPA fallback - serve index.html for non-API routes (GET only)
+// Exclude socket.io paths — those are handled by Socket.io at the HTTP server level
 app.get('*', (req, res) => {
+    if (req.originalUrl.startsWith('/socket.io')) {
+        return res.status(404).json({ error: 'Socket.io endpoint - use WebSocket connection' });
+    }
     console.log(`📄 Serving SPA for: ${req.originalUrl}`);
     res.sendFile(path_1.default.join(clientDistPath, 'index.html'));
 });
