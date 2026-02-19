@@ -15,16 +15,14 @@ const VALID_ROLES = ['USER', 'ADMIN', 'MODERATOR'] as const;
 type ValidRole = typeof VALID_ROLES[number];
 
 /**
- * Environment check - demo tokens only allowed in development
+ * Environment check helpers — read at call time so dotenv has loaded.
+ * Previously these were cached at module scope (before dotenv ran),
+ * causing NODE_ENV to be undefined and all checks to fail.
  */
-const isDevelopment = process.env.NODE_ENV === 'development';
-const isProduction = process.env.NODE_ENV === 'production';
-
-/**
- * Security flag - disable unverified JWT decode in production
- * Set ALLOW_UNVERIFIED_JWT=true to enable (NOT RECOMMENDED FOR PRODUCTION)
- */
-const allowUnverifiedJWT = process.env.ALLOW_UNVERIFIED_JWT === 'true' && !isProduction;
+const getIsDevelopment = () => process.env.NODE_ENV === 'development';
+const getIsProduction  = () => process.env.NODE_ENV === 'production';
+const getAllowUnverifiedJWT = () =>
+  process.env.ALLOW_UNVERIFIED_JWT === 'true' && !getIsProduction();
 
 export interface AuthRequest extends Request {
   user?: {
@@ -62,10 +60,10 @@ const verifySupabaseToken = (token: string): { sub: string; email: string; role?
     const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
 
     // Fallback to JWT_SECRET only in development
-    const secret = supabaseJwtSecret || (isDevelopment ? process.env.JWT_SECRET : null);
+    const secret = supabaseJwtSecret || (getIsDevelopment() ? process.env.JWT_SECRET : null);
 
     if (!secret) {
-      if (isProduction) {
+      if (getIsProduction()) {
         console.error('❌ CRITICAL: SUPABASE_JWT_SECRET not configured in production!');
       } else {
         console.log('   ⚠️ No SUPABASE_JWT_SECRET configured');
@@ -95,7 +93,7 @@ const verifySupabaseToken = (token: string): { sub: string; email: string; role?
     return null;
   } catch (error: any) {
     // Log verification failures in development for debugging
-    if (isDevelopment && error.message) {
+    if (getIsDevelopment() && error.message) {
       console.log(`   ℹ️ Supabase JWT verification failed: ${error.message}`);
     }
     return null;
@@ -184,7 +182,7 @@ export const authenticate = async (
     // SECURITY: Demo/Admin tokens ONLY in development mode
     // These are completely disabled in production for security
     // ═══════════════════════════════════════════════════════════════════════════
-    if (isDevelopment) {
+    if (getIsDevelopment()) {
       // Handle demo tokens for development/demo environment ONLY
       if (token.startsWith('demo-token-')) {
         console.log('⚠️ DEVELOPMENT MODE: Using demo token authentication');
@@ -263,7 +261,7 @@ export const authenticate = async (
     // STRATEGY 3: Unverified JWT decode (DEVELOPMENT ONLY - SECURITY RISK)
     // This is DISABLED in production. Configure SUPABASE_JWT_SECRET properly.
     // ═══════════════════════════════════════════════════════════════════════════
-    if (allowUnverifiedJWT) {
+    if (getAllowUnverifiedJWT()) {
       try {
         const decoded = jwt.decode(token) as any;
 
@@ -355,7 +353,7 @@ export const optionalAuth = async (
     // ═══════════════════════════════════════════════════════════════════════════
     // SECURITY: Demo/Admin tokens ONLY in development mode
     // ═══════════════════════════════════════════════════════════════════════════
-    if (isDevelopment) {
+    if (getIsDevelopment()) {
       if (token.startsWith('demo-token-')) {
         console.log('⚠️ DEVELOPMENT MODE: Using demo token authentication');
         req.user = {
@@ -421,7 +419,7 @@ export const optionalAuth = async (
     }
 
     // STRATEGY 3: Unverified decode (DEVELOPMENT ONLY)
-    if (allowUnverifiedJWT) {
+    if (getAllowUnverifiedJWT()) {
       try {
         const decoded = jwt.decode(token) as any;
         if (decoded && decoded.sub && decoded.email) {

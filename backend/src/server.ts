@@ -1,10 +1,12 @@
+// ─── CRITICAL: Load env vars BEFORE any other import reads process.env ───
+import './env';
+
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { connectDatabase } from './config/database';
@@ -64,22 +66,9 @@ import codeRoutes from './routes/code'; // Code Interpreter - Piston-powered cod
 import memoryRoutes from './routes/memory'; // Persistent Memory - User preferences across sessions
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECURE ENVIRONMENT LOADING
-// Priority: .env.local (secrets) > .env (defaults) > Railway env vars
+// ENV VARS: Already loaded by './env' (first import above)
+// Priority: .env.local (secrets) > .env (defaults) > system env vars
 // ═══════════════════════════════════════════════════════════════════════════════
-const envLocalPath = path.resolve(__dirname, '../.env.local');
-const envPath = path.resolve(__dirname, '../.env');
-
-// Load .env first (defaults/placeholders)
-dotenv.config({ path: envPath });
-
-// Override with .env.local if it exists (contains real secrets)
-if (fs.existsSync(envLocalPath)) {
-  console.log('🔐 Loading secrets from .env.local');
-  dotenv.config({ path: envLocalPath, override: true });
-} else {
-  console.log('⚠️ No .env.local found - using .env (ensure secrets are configured in production env vars)');
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECURITY: Validate critical environment variables

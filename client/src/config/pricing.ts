@@ -76,18 +76,18 @@ export interface AddOnPackage {
 
 // Stripe Price IDs (for reference - actual IDs come from backend)
 export const STRIPE_PRICE_IDS = {
-  // New Starter tier
-  STARTER_MONTHLY: 'price_starter_monthly',
-  STARTER_YEARLY: 'price_starter_yearly',
-  // Academy+ tier (renamed from academy)
-  ACADEMY_PLUS_MONTHLY: 'price_1SUCmKKtG2uGDhSNGAFa0mHD',
-  ACADEMY_PLUS_YEARLY: 'price_1SUCjTKtG2uGDhSNRWFbe07R',
+  // Starter tier
+  STARTER_MONTHLY: 'price_1T2gkzKtG2uGDhSNEgcnY6kg',
+  STARTER_YEARLY: 'price_1T2gl0KtG2uGDhSNrSJdvyCI',
+  // Academy+ tier (verified against Stripe API)
+  ACADEMY_PLUS_MONTHLY: 'price_1SUCjTKtG2uGDhSNRWFbe07R',
+  ACADEMY_PLUS_YEARLY: 'price_1SUCmKKtG2uGDhSNGAFa0mHD',
   // Pro tier
   PRO_MONTHLY: 'price_1SU8gOKtG2uGDhSN8mVgkD1E',
   PRO_YEARLY: 'price_1SU8luKtG2uGDhSNZPP8UFR3',
-  // Team Pro tier
-  TEAM_PRO_MONTHLY: 'price_1SU8tRKtG2uGDhSNWiMGSxlN',
-  TEAM_PRO_YEARLY: 'price_1SU8qRKtG2uGDhSNi8k6uB9z',
+  // Team Pro tier (verified against Stripe API)
+  TEAM_PRO_MONTHLY: 'price_1SU8qRKtG2uGDhSNi8k6uB9z',
+  TEAM_PRO_YEARLY: 'price_1SU8tRKtG2uGDhSNWiMGSxlN',
   // Enterprise tier
   ENTERPRISE_MONTHLY: 'price_1SU8vXKtG2uGDhSN2e92rn5J',
   ENTERPRISE_YEARLY: 'price_1SU8yGKtG2uGDhSN28rCp3Ta',

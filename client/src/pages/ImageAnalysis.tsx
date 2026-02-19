@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import BackButton from '@/components/BackButton';
 import { useAnalyzeImage, useVisionAnalyses, AnalyzeResponse } from '@/hooks/useVision';
@@ -23,9 +24,17 @@ import {
 // ============================================
 
 export default function ImageAnalysis() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auth guard — redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      setLocation('/signin');
+    }
+  }, [isLoading, isAuthenticated, setLocation]);
 
   // State
   const [imagePreview, setImagePreview] = useState<string | null>(null);

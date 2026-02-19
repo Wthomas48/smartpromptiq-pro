@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import BackButton from '@/components/BackButton';
 import {
@@ -33,7 +35,16 @@ const CATEGORIES = [
 ];
 
 export default function Memory() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // Auth guard — redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setLocation('/signin');
+    }
+  }, [authLoading, isAuthenticated, setLocation]);
 
   // State
   const [newContent, setNewContent] = useState('');
