@@ -78,7 +78,8 @@ import {
   Palette,
   Boxes,
   Video,
-  AudioWaveform
+  AudioWaveform,
+  Brain
 } from 'lucide-react';
 
 interface AdminStats {
@@ -136,6 +137,9 @@ const AdminDashboard: React.FC = () => {
 
   // ElevenLabs API stats - will be fetched from real API
   const [elevenLabsStats, setElevenLabsStats] = useState<any>(null);
+
+  // AI Tools monitoring data (Web Search, Vision AI, Code Interpreter, Memory)
+  const [aiToolsData, setAiToolsData] = useState<any>(null);
 
   // New features data state
   const [voiceData, setVoiceData] = useState<any>({
@@ -397,12 +401,13 @@ const AdminDashboard: React.FC = () => {
       }
 
       // ✅ ENABLED: Backend restarted with new endpoints
-      const [tokenResponse, securityResponse, emailResponse, systemResponse, academyResponse] = await Promise.all([
+      const [tokenResponse, securityResponse, emailResponse, systemResponse, academyResponse, aiToolsResponse] = await Promise.all([
         apiRequest('/api/admin/token-monitoring?timeframe=30d', { method: 'GET' }),
         apiRequest('/api/admin/password-security', { method: 'GET' }),
         apiRequest('/api/admin/email-management?timeframe=30d', { method: 'GET' }),
         apiRequest('/api/admin/system-monitoring', { method: 'GET' }),
-        apiRequest('/api/academy/admin/stats', { method: 'GET' })
+        apiRequest('/api/academy/admin/stats', { method: 'GET' }),
+        apiRequest('/api/admin/ai-tools-stats?timeframe=30d', { method: 'GET' })
       ]);
 
       console.log('New admin endpoints enabled - backend running with comprehensive features');
@@ -430,6 +435,11 @@ const AdminDashboard: React.FC = () => {
       if (academyResponse.success) {
         setAcademyData(academyResponse.data);
         console.log('Academy data loaded');
+      }
+
+      if (aiToolsResponse.success) {
+        setAiToolsData(aiToolsResponse.data);
+        console.log('AI Tools data loaded');
       }
     } catch (error: any) {
       console.error('❌ Error fetching comprehensive data:', error);
@@ -495,7 +505,7 @@ const AdminDashboard: React.FC = () => {
       if (activeTab === 'overview' || activeTab === 'analytics') {
         fetchRealTimeData();
       }
-      if (activeTab === 'tokens' || activeTab === 'security' || activeTab === 'emails' || activeTab === 'system') {
+      if (activeTab === 'tokens' || activeTab === 'security' || activeTab === 'emails' || activeTab === 'system' || activeTab === 'aitools') {
         fetchComprehensiveData();
       }
       if (activeTab === 'voice') {
@@ -1162,11 +1172,20 @@ Created: ${formatDate(user.createdAt)}
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const normalized = status?.toLowerCase() || '';
+    switch (normalized) {
+      // Payment/subscription statuses
       case 'succeeded': case 'active': return 'bg-green-100 text-green-800';
       case 'pending': case 'trial': return 'bg-yellow-100 text-yellow-800';
       case 'failed': case 'canceled': return 'bg-red-100 text-red-800';
       case 'refunded': return 'bg-gray-100 text-gray-800';
+      // Subscription tiers
+      case 'free': return 'bg-slate-100 text-slate-700';
+      case 'starter': return 'bg-blue-100 text-blue-700';
+      case 'academy_plus': return 'bg-purple-100 text-purple-700';
+      case 'pro': return 'bg-indigo-100 text-indigo-700';
+      case 'team_pro': return 'bg-teal-100 text-teal-700';
+      case 'enterprise': return 'bg-amber-100 text-amber-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -1307,7 +1326,7 @@ Created: ${formatDate(user.createdAt)}
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-3">
                 {/* Quick Action Buttons with Beautiful Icons */}
                 <Button
                   onClick={() => setActiveTab('overview')}
@@ -1415,6 +1434,18 @@ Created: ${formatDate(user.createdAt)}
                 >
                   <DollarSign className="w-5 h-5" />
                   <span className="text-xs font-medium">Costs</span>
+                </Button>
+
+                <Button
+                  onClick={() => setActiveTab('aitools')}
+                  className={`flex flex-col items-center gap-2 p-4 h-auto ${
+                    activeTab === 'aitools'
+                      ? 'bg-white text-indigo-600 shadow-lg'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  <Brain className="w-5 h-5" />
+                  <span className="text-xs font-medium">AI Tools</span>
                 </Button>
               </div>
 
@@ -2011,7 +2042,14 @@ Created: ${formatDate(user.createdAt)}
               >
                 <DollarSign className="mr-1" size={14} />
                 Costs
-            </TabsTrigger>
+              </TabsTrigger>
+              <TabsTrigger
+                value="aitools"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg font-semibold transition-all duration-300 text-xs whitespace-nowrap"
+              >
+                <Brain className="mr-1" size={14} />
+                AI Tools
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -4201,6 +4239,280 @@ Created: ${formatDate(user.createdAt)}
           {/* Cost Management Dashboard */}
           <TabsContent value="costs" className="space-y-6">
             <CostDashboard />
+          </TabsContent>
+
+          {/* AI Tools Monitoring Tab */}
+          <TabsContent value="aitools" className="space-y-6">
+            {/* AI Tools Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-cyan-500 to-teal-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-cyan-100 text-sm">Web Searches</p>
+                      <p className="text-3xl font-bold">{aiToolsData?.overview?.webSearchUsage?.toLocaleString() || '0'}</p>
+                      <p className="text-cyan-200 text-xs mt-1">+{aiToolsData?.today?.webSearch || 0} today</p>
+                    </div>
+                    <Globe className="w-12 h-12 text-cyan-200" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-violet-100 text-sm">Vision AI Analyses</p>
+                      <p className="text-3xl font-bold">{aiToolsData?.overview?.visionAIUsage?.toLocaleString() || '0'}</p>
+                      <p className="text-violet-200 text-xs mt-1">+{aiToolsData?.today?.visionAI || 0} today</p>
+                    </div>
+                    <Eye className="w-12 h-12 text-violet-200" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-emerald-500 to-green-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-emerald-100 text-sm">Code Executions</p>
+                      <p className="text-3xl font-bold">{aiToolsData?.overview?.codeRunUsage?.toLocaleString() || '0'}</p>
+                      <p className="text-emerald-200 text-xs mt-1">+{aiToolsData?.today?.codeRun || 0} today</p>
+                    </div>
+                    <Zap className="w-12 h-12 text-emerald-200" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-amber-100 text-sm">Memory Slots Used</p>
+                      <p className="text-3xl font-bold">{aiToolsData?.overview?.totalMemories?.toLocaleString() || '0'}</p>
+                      <p className="text-amber-200 text-xs mt-1">{aiToolsData?.overview?.usersWithMemories || 0} users with memories</p>
+                    </div>
+                    <Brain className="w-12 h-12 text-amber-200" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* API Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Server className="w-5 h-5" />
+                  AI Provider Status
+                </CardTitle>
+                <CardDescription>API key configuration status for AI features</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className={`p-4 rounded-xl border ${aiToolsData?.apiStatus?.tavily ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${aiToolsData?.apiStatus?.tavily ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <div>
+                        <p className="font-medium text-sm">Tavily (Web Search)</p>
+                        <p className={`text-xs ${aiToolsData?.apiStatus?.tavily ? 'text-green-600' : 'text-red-600'}`}>
+                          {aiToolsData?.apiStatus?.tavily ? 'Connected' : 'API Key Missing'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`p-4 rounded-xl border ${aiToolsData?.apiStatus?.openai ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${aiToolsData?.apiStatus?.openai ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <div>
+                        <p className="font-medium text-sm">OpenAI (Vision AI + Search)</p>
+                        <p className={`text-xs ${aiToolsData?.apiStatus?.openai ? 'text-green-600' : 'text-red-600'}`}>
+                          {aiToolsData?.apiStatus?.openai ? 'Connected' : 'API Key Missing'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`p-4 rounded-xl border ${aiToolsData?.apiStatus?.google ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${aiToolsData?.apiStatus?.google ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <div>
+                        <p className="font-medium text-sm">Google Gemini (Vision AI fallback)</p>
+                        <p className={`text-xs ${aiToolsData?.apiStatus?.google ? 'text-green-600' : 'text-red-600'}`}>
+                          {aiToolsData?.apiStatus?.google ? 'Connected' : 'API Key Missing'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity Tables */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Recent Web Searches */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Globe className="w-4 h-4 text-cyan-500" />
+                    Recent Web Searches
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {aiToolsData?.recentActivity?.search?.length > 0 ? (
+                      aiToolsData.recentActivity.search.slice(0, 5).map((log: any) => (
+                        <div key={log.id} className="p-2 bg-cyan-50 rounded-lg border border-cyan-100">
+                          <p className="text-xs font-medium text-gray-800">{log.user}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <Badge className={log.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                              {log.success ? 'Success' : 'Failed'}
+                            </Badge>
+                            <span className="text-[10px] text-gray-500">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <Globe className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                        <p className="text-xs">No search activity yet</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Vision AI */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Eye className="w-4 h-4 text-violet-500" />
+                    Recent Vision AI
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {aiToolsData?.recentActivity?.vision?.length > 0 ? (
+                      aiToolsData.recentActivity.vision.slice(0, 5).map((log: any) => (
+                        <div key={log.id} className="p-2 bg-violet-50 rounded-lg border border-violet-100">
+                          <p className="text-xs font-medium text-gray-800">{log.user}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <Badge className={log.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                              {log.success ? 'Success' : 'Failed'}
+                            </Badge>
+                            <span className="text-[10px] text-gray-500">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <Eye className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                        <p className="text-xs">No vision AI activity yet</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Code Executions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Zap className="w-4 h-4 text-emerald-500" />
+                    Recent Code Runs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {aiToolsData?.recentActivity?.code?.length > 0 ? (
+                      aiToolsData.recentActivity.code.slice(0, 5).map((log: any) => (
+                        <div key={log.id} className="p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                          <p className="text-xs font-medium text-gray-800">{log.user}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <Badge className={log.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                              {log.success ? 'Success' : 'Failed'}
+                            </Badge>
+                            <span className="text-[10px] text-gray-500">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <Zap className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                        <p className="text-xs">No code executions yet</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Tier Limits Reference */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  AI Tools Limits by Tier
+                </CardTitle>
+                <CardDescription>Monthly usage limits for each subscription tier</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-3 font-semibold">Feature</th>
+                        <th className="text-center py-2 px-3 font-semibold">Free</th>
+                        <th className="text-center py-2 px-3 font-semibold">Starter</th>
+                        <th className="text-center py-2 px-3 font-semibold">Academy+</th>
+                        <th className="text-center py-2 px-3 font-semibold">Pro</th>
+                        <th className="text-center py-2 px-3 font-semibold">Team Pro</th>
+                        <th className="text-center py-2 px-3 font-semibold">Enterprise</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b hover:bg-gray-50">
+                        <td className="py-2 px-3 flex items-center gap-2"><Globe className="w-4 h-4 text-cyan-500" /> Web Search</td>
+                        <td className="text-center py-2 px-3">5</td>
+                        <td className="text-center py-2 px-3">20</td>
+                        <td className="text-center py-2 px-3">30</td>
+                        <td className="text-center py-2 px-3">100</td>
+                        <td className="text-center py-2 px-3">500</td>
+                        <td className="text-center py-2 px-3 font-bold text-green-600">Unlimited</td>
+                      </tr>
+                      <tr className="border-b hover:bg-gray-50">
+                        <td className="py-2 px-3 flex items-center gap-2"><Eye className="w-4 h-4 text-violet-500" /> Vision AI</td>
+                        <td className="text-center py-2 px-3">3</td>
+                        <td className="text-center py-2 px-3">10</td>
+                        <td className="text-center py-2 px-3">15</td>
+                        <td className="text-center py-2 px-3">50</td>
+                        <td className="text-center py-2 px-3">200</td>
+                        <td className="text-center py-2 px-3 font-bold text-green-600">Unlimited</td>
+                      </tr>
+                      <tr className="border-b hover:bg-gray-50">
+                        <td className="py-2 px-3 flex items-center gap-2"><Zap className="w-4 h-4 text-emerald-500" /> Code Interpreter</td>
+                        <td className="text-center py-2 px-3">5</td>
+                        <td className="text-center py-2 px-3">15</td>
+                        <td className="text-center py-2 px-3">20</td>
+                        <td className="text-center py-2 px-3">100</td>
+                        <td className="text-center py-2 px-3">500</td>
+                        <td className="text-center py-2 px-3 font-bold text-green-600">Unlimited</td>
+                      </tr>
+                      <tr className="hover:bg-gray-50">
+                        <td className="py-2 px-3 flex items-center gap-2"><Brain className="w-4 h-4 text-amber-500" /> Memory Slots</td>
+                        <td className="text-center py-2 px-3">5</td>
+                        <td className="text-center py-2 px-3">10</td>
+                        <td className="text-center py-2 px-3">25</td>
+                        <td className="text-center py-2 px-3">50</td>
+                        <td className="text-center py-2 px-3">100</td>
+                        <td className="text-center py-2 px-3 font-bold text-green-600">Unlimited</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
