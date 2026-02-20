@@ -24,7 +24,7 @@ const geminiKey = process.env.GOOGLE_API_KEY;
 let gemini: GenerativeModel | null = null;
 if (geminiKey && !geminiKey.includes('REPLACE') && geminiKey.length > 10) {
   const genAI = new GoogleGenerativeAI(geminiKey);
-  gemini = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  gemini = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 }
 
 // ============================================
@@ -193,7 +193,7 @@ async function analyzeWithGemini(
   return {
     analysis: resp.text() || 'No analysis generated',
     provider: 'gemini',
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.0-flash-lite',
     usage: {
       prompt_tokens: resp.usageMetadata?.promptTokenCount || 0,
       completion_tokens: resp.usageMetadata?.candidatesTokenCount || 0,
@@ -245,14 +245,37 @@ User's request: ${prompt}
 
 Provide a detailed, well-structured analysis. Use markdown formatting where helpful.`;
 
-  switch (provider) {
-    case 'openai':
-      return analyzeWithOpenAI(imageBase64, mimeType, fullPrompt, options.detail);
-    case 'anthropic':
-      return analyzeWithAnthropic(imageBase64, mimeType, fullPrompt);
-    case 'gemini':
-      return analyzeWithGemini(imageBase64, mimeType, fullPrompt);
-    default:
-      throw new Error(`Unknown provider: ${provider}`);
+  // Provider fallback order
+  const fallbackOrder = ['gemini', 'openai', 'anthropic'].filter(p => p !== provider);
+
+  const callProvider = async (p: string): Promise<VisionAnalysisResult> => {
+    switch (p) {
+      case 'openai':
+        return analyzeWithOpenAI(imageBase64, mimeType, fullPrompt, options.detail);
+      case 'anthropic':
+        return analyzeWithAnthropic(imageBase64, mimeType, fullPrompt);
+      case 'gemini':
+        return analyzeWithGemini(imageBase64, mimeType, fullPrompt);
+      default:
+        throw new Error(`Unknown provider: ${p}`);
+    }
+  };
+
+  // Try primary provider, then fallbacks
+  try {
+    return await callProvider(provider);
+  } catch (err: any) {
+    console.warn(`Vision provider '${provider}' failed: ${err.message}. Trying fallbacks...`);
+    for (const fallback of fallbackOrder) {
+      const client = fallback === 'openai' ? openai : fallback === 'anthropic' ? anthropic : gemini;
+      if (!client) continue;
+      try {
+        console.log(`Vision fallback: trying '${fallback}'...`);
+        return await callProvider(fallback);
+      } catch (fbErr: any) {
+        console.warn(`Vision fallback '${fallback}' also failed: ${fbErr.message}`);
+      }
+    }
+    throw new Error(`All vision providers failed. Last error: ${err.message}`);
   }
 }

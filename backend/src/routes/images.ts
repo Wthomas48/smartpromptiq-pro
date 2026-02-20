@@ -175,11 +175,22 @@ router.post('/generate', authenticate, async (req: Request, res: Response) => {
       imageUrl = `data:image/png;base64,${imageData.b64_json}`;
     }
 
+    // Find or create a default project for storing the generation
+    let imageProject = await prisma.project.findFirst({
+      where: { userId, category: 'image' },
+      select: { id: true },
+    });
+    if (!imageProject) {
+      imageProject = await prisma.project.create({
+        data: { userId, title: 'Image Generations', category: 'image' },
+      });
+    }
+
     // Save to Generation model
     const generation = await prisma.generation.create({
       data: {
         userId,
-        projectId: userId, // Use userId as default project
+        projectId: imageProject.id,
         prompt: prompt.trim(),
         response: filePath || imageUrl.substring(0, 500), // Store path or truncated URL
         model: 'dall-e-3',
@@ -511,11 +522,22 @@ router.post('/analyze', authenticate, async (req: Request, res: Response) => {
     // Analyze image
     const result = await analyzeImage(imageData, mimeType, prompt.trim(), { provider });
 
+    // Find or create a default project for storing the generation
+    let defaultProject = await prisma.project.findFirst({
+      where: { userId, category: 'image-vision' },
+      select: { id: true },
+    });
+    if (!defaultProject) {
+      defaultProject = await prisma.project.create({
+        data: { userId, title: 'Vision Analyses', category: 'image-vision' },
+      });
+    }
+
     // Store analysis in database
     const generation = await prisma.generation.create({
       data: {
         userId,
-        projectId: userId, // Use userId as default project
+        projectId: defaultProject.id,
         prompt: prompt.trim(),
         response: result.analysis,
         model: result.model,

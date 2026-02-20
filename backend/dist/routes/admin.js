@@ -4041,6 +4041,10 @@ const TIER_LIMITS = {
         certificates: false,
         earlyAccess: false,
         playgroundTests: 5,
+        webSearchPerMonth: 5,
+        visionAIPerMonth: 3,
+        codeRunsPerMonth: 5,
+        memorySlots: 5,
         pdfExport: false,
         jsonExport: false,
         audioDownloads: false,
@@ -4085,6 +4089,58 @@ const TIER_LIMITS = {
         certificates: false,
         earlyAccess: false,
         playgroundTests: 25,
+        webSearchPerMonth: 20,
+        visionAIPerMonth: 10,
+        codeRunsPerMonth: 15,
+        memorySlots: 10,
+        pdfExport: true,
+        jsonExport: false,
+        audioDownloads: true,
+        videoExport: false,
+        removeBranding: false,
+        apiAccess: false,
+        apiCallsPerMonth: 0,
+        webhooks: false,
+        teamMembers: 1,
+        teamWorkspace: false,
+        adminDashboard: false,
+        supportLevel: 'email',
+        responseTime: '24-48 hours',
+    },
+    academy_plus: {
+        promptsPerMonth: 200,
+        tokensPerMonth: 1000,
+        advancedModels: false,
+        voiceGenerationsPerMonth: 30,
+        openAIVoices: true,
+        elevenLabsVoices: false,
+        premiumElevenLabsVoices: false,
+        voiceDownloads: true,
+        voiceCommercialUse: false,
+        musicTracksPerMonth: 5,
+        introOutroAccess: true,
+        introOutroDownloads: true,
+        premiumMusicLibrary: false,
+        voiceMusicMixing: false,
+        imageGenerationsPerMonth: 15,
+        stableDiffusion: true,
+        dalleAccess: false,
+        dalle3Access: false,
+        printIntegration: false,
+        blueprintsPerMonth: 2,
+        storyModeVoice: false,
+        appTemplates: true,
+        deploymentHub: false,
+        codeExport: false,
+        freeCourses: true,
+        allCourses: true,
+        certificates: true,
+        earlyAccess: false,
+        playgroundTests: 50,
+        webSearchPerMonth: 30,
+        visionAIPerMonth: 15,
+        codeRunsPerMonth: 20,
+        memorySlots: 25,
         pdfExport: true,
         jsonExport: false,
         audioDownloads: true,
@@ -4129,6 +4185,10 @@ const TIER_LIMITS = {
         certificates: true,
         earlyAccess: false,
         playgroundTests: 100,
+        webSearchPerMonth: 100,
+        visionAIPerMonth: 50,
+        codeRunsPerMonth: 100,
+        memorySlots: 50,
         pdfExport: true,
         jsonExport: true,
         audioDownloads: true,
@@ -4143,6 +4203,55 @@ const TIER_LIMITS = {
         supportLevel: 'priority',
         responseTime: '12-24 hours',
     },
+    team_pro: {
+        promptsPerMonth: 2000,
+        tokensPerMonth: 5000,
+        advancedModels: true,
+        voiceGenerationsPerMonth: 500,
+        openAIVoices: true,
+        elevenLabsVoices: true,
+        premiumElevenLabsVoices: true,
+        voiceDownloads: true,
+        voiceCommercialUse: true,
+        musicTracksPerMonth: 150,
+        introOutroAccess: true,
+        introOutroDownloads: true,
+        premiumMusicLibrary: true,
+        voiceMusicMixing: true,
+        imageGenerationsPerMonth: 300,
+        stableDiffusion: true,
+        dalleAccess: true,
+        dalle3Access: true,
+        printIntegration: true,
+        blueprintsPerMonth: -1,
+        storyModeVoice: true,
+        appTemplates: true,
+        deploymentHub: true,
+        codeExport: true,
+        freeCourses: true,
+        allCourses: true,
+        certificates: true,
+        earlyAccess: true,
+        playgroundTests: 500,
+        webSearchPerMonth: 500,
+        visionAIPerMonth: 200,
+        codeRunsPerMonth: 500,
+        memorySlots: 100,
+        pdfExport: true,
+        jsonExport: true,
+        audioDownloads: true,
+        videoExport: true,
+        removeBranding: true,
+        apiAccess: true,
+        apiCallsPerMonth: 1000,
+        webhooks: true,
+        teamMembers: 5,
+        teamWorkspace: true,
+        adminDashboard: true,
+        supportLevel: 'priority',
+        responseTime: '4-12 hours',
+    },
+    // Legacy alias: 'business' maps to team_pro
     business: {
         promptsPerMonth: 2000,
         tokensPerMonth: 5000,
@@ -4173,6 +4282,10 @@ const TIER_LIMITS = {
         certificates: true,
         earlyAccess: true,
         playgroundTests: 500,
+        webSearchPerMonth: 500,
+        visionAIPerMonth: 200,
+        codeRunsPerMonth: 500,
+        memorySlots: 100,
         pdfExport: true,
         jsonExport: true,
         audioDownloads: true,
@@ -4217,6 +4330,10 @@ const TIER_LIMITS = {
         certificates: true,
         earlyAccess: true,
         playgroundTests: -1,
+        webSearchPerMonth: -1,
+        visionAIPerMonth: -1,
+        codeRunsPerMonth: -1,
+        memorySlots: -1,
         pdfExport: true,
         jsonExport: true,
         audioDownloads: true,
@@ -4308,6 +4425,26 @@ router.get('/users/:id/features', auth_1.authenticate, requireAdmin, async (req,
                 name: 'Advanced AI Models (GPT-4, Claude)',
                 hasAccess: tierLimits.advancedModels,
                 description: tierLimits.advancedModels ? 'Full access to GPT-4 and Claude' : 'Limited to GPT-3.5',
+            },
+            webSearch: {
+                name: 'Web Search',
+                hasAccess: (tierLimits.webSearchPerMonth || 0) > 0,
+                limit: tierLimits.webSearchPerMonth || 0,
+            },
+            visionAI: {
+                name: 'Vision AI',
+                hasAccess: (tierLimits.visionAIPerMonth || 0) > 0,
+                limit: tierLimits.visionAIPerMonth || 0,
+            },
+            codeInterpreter: {
+                name: 'Code Interpreter',
+                hasAccess: (tierLimits.codeRunsPerMonth || 0) > 0,
+                limit: tierLimits.codeRunsPerMonth || 0,
+            },
+            memory: {
+                name: 'Memory',
+                hasAccess: (tierLimits.memorySlots || 0) > 0,
+                limit: tierLimits.memorySlots || 0,
             },
             voiceGeneration: {
                 name: 'Voice Generation',
@@ -4534,12 +4671,13 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
         });
         // Build comprehensive feature overview
         const featureOverview = {
-            tiers: ['free', 'starter', 'pro', 'business', 'enterprise'],
+            tiers: ['free', 'starter', 'academy_plus', 'pro', 'team_pro', 'enterprise'],
             tierDisplayNames: {
                 free: 'Free',
                 starter: 'Starter ($19/mo)',
+                academy_plus: 'Academy+ ($29/mo)',
                 pro: 'Pro ($49/mo)',
-                business: 'Business ($99/mo)',
+                team_pro: 'Team Pro ($99/mo)',
                 enterprise: 'Enterprise ($299/mo)',
             },
             tierUserCounts: tierStats,
@@ -4549,8 +4687,53 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: '10/month',
                         starter: '100/month',
+                        academy_plus: '200/month',
                         pro: '500/month',
-                        business: '2000/month',
+                        team_pro: '2000/month',
+                        enterprise: 'Unlimited',
+                    },
+                },
+                webSearch: {
+                    name: 'Web Search',
+                    limits: {
+                        free: '5/month',
+                        starter: '20/month',
+                        academy_plus: '30/month',
+                        pro: '100/month',
+                        team_pro: '500/month',
+                        enterprise: 'Unlimited',
+                    },
+                },
+                visionAI: {
+                    name: 'Vision AI',
+                    limits: {
+                        free: '3/month',
+                        starter: '10/month',
+                        academy_plus: '15/month',
+                        pro: '50/month',
+                        team_pro: '200/month',
+                        enterprise: 'Unlimited',
+                    },
+                },
+                codeInterpreter: {
+                    name: 'Code Interpreter',
+                    limits: {
+                        free: '5/month',
+                        starter: '15/month',
+                        academy_plus: '20/month',
+                        pro: '100/month',
+                        team_pro: '500/month',
+                        enterprise: 'Unlimited',
+                    },
+                },
+                memory: {
+                    name: 'Memory Slots',
+                    limits: {
+                        free: '5 slots',
+                        starter: '10 slots',
+                        academy_plus: '25 slots',
+                        pro: '50 slots',
+                        team_pro: '100 slots',
                         enterprise: 'Unlimited',
                     },
                 },
@@ -4559,8 +4742,9 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: '5/month (OpenAI only)',
                         starter: '50/month (OpenAI only)',
+                        academy_plus: '30/month (OpenAI only)',
                         pro: '200/month (OpenAI + ElevenLabs)',
-                        business: '500/month (All voices)',
+                        team_pro: '500/month (All voices)',
                         enterprise: 'Unlimited (All voices)',
                     },
                 },
@@ -4569,8 +4753,9 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: '3 tracks/month',
                         starter: '10 tracks/month + Intro/Outro',
+                        academy_plus: '5 tracks/month + Intro/Outro',
                         pro: '50 tracks/month + Premium Library',
-                        business: '150 tracks/month + All features',
+                        team_pro: '150 tracks/month + All features',
                         enterprise: 'Unlimited + All features',
                     },
                 },
@@ -4579,8 +4764,9 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: '5 images/month (SD only)',
                         starter: '30 images/month (SD only)',
+                        academy_plus: '15 images/month (SD only)',
                         pro: '100 images/month (SD + DALL-E 3)',
-                        business: '300 images/month + POD Integration',
+                        team_pro: '300 images/month + POD Integration',
                         enterprise: 'Unlimited + POD Priority',
                     },
                 },
@@ -4589,8 +4775,9 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: '1 blueprint/month',
                         starter: '3 blueprints/month + Templates',
+                        academy_plus: '2 blueprints/month + Templates',
                         pro: '10 blueprints/month + Story Mode + Deployment',
-                        business: 'Unlimited + All features',
+                        team_pro: 'Unlimited + All features',
                         enterprise: 'Unlimited + All features',
                     },
                 },
@@ -4599,8 +4786,9 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: 'Free courses only',
                         starter: 'Free courses only',
+                        academy_plus: 'All 57 courses + Certificates',
                         pro: 'All 57 courses + Certificates',
-                        business: 'All courses + Early Access',
+                        team_pro: 'All courses + Early Access',
                         enterprise: 'All courses + Early Access',
                     },
                 },
@@ -4609,8 +4797,9 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: 'No access',
                         starter: 'No access',
+                        academy_plus: 'No access',
                         pro: 'No access',
-                        business: '1000 calls/month + Webhooks',
+                        team_pro: '1000 calls/month + Webhooks',
                         enterprise: 'Unlimited + Webhooks',
                     },
                 },
@@ -4619,8 +4808,9 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: '1 member',
                         starter: '1 member',
+                        academy_plus: '1 member',
                         pro: '1 member',
-                        business: '5 members + Workspace + Admin',
+                        team_pro: '5 members + Workspace + Admin',
                         enterprise: 'Unlimited members + All features',
                     },
                 },
@@ -4629,8 +4819,9 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
                     limits: {
                         free: 'Community (48-72h)',
                         starter: 'Email (24-48h)',
+                        academy_plus: 'Email (24-48h)',
                         pro: 'Priority (12-24h)',
-                        business: 'Priority (4-12h)',
+                        team_pro: 'Priority (4-12h)',
                         enterprise: 'Dedicated (1-4h)',
                     },
                 },
@@ -4655,7 +4846,7 @@ router.get('/feature-overview', auth_1.authenticate, requireAdmin, async (_req, 
  * Update a user's subscription tier (admin override)
  */
 router.put('/users/:id/tier', auth_1.authenticate, requireAdmin, [
-    (0, express_validator_1.body)('tier').isIn(['free', 'starter', 'pro', 'business', 'enterprise']).withMessage('Invalid tier'),
+    (0, express_validator_1.body)('tier').isIn(['free', 'starter', 'academy_plus', 'pro', 'team_pro', 'enterprise']).withMessage('Invalid tier'),
     (0, express_validator_1.body)('reason').notEmpty().trim().withMessage('Reason is required for tier changes'),
 ], async (req, res) => {
     try {
@@ -5254,6 +5445,202 @@ router.post('/run-migrations', async (req, res) => {
             success: false,
             message: 'Migration failed',
             error: error.message
+        });
+    }
+});
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI TOOLS MONITORING (Web Search, Vision AI, Code Interpreter, Memory)
+// ═══════════════════════════════════════════════════════════════════════════════
+/**
+ * GET /api/admin/ai-tools-stats
+ * Get usage statistics for AI tools features
+ */
+router.get('/ai-tools-stats', auth_1.authenticate, requireAdmin, async (req, res) => {
+    try {
+        const timeframe = parseTimeframe(req.query.timeframe);
+        const since = new Date(Date.now() - timeframe.days * 24 * 60 * 60 * 1000);
+        // Count usage logs by action/endpoint for AI tools
+        const [webSearchCount, visionAICount, codeRunCount, memoryCount, totalMemories, recentSearchLogs, recentVisionLogs, recentCodeLogs, userMemoryStats,] = await Promise.all([
+            // Web search usage
+            database_1.default.usageLog.count({
+                where: {
+                    createdAt: { gte: since },
+                    OR: [
+                        { endpoint: { contains: '/api/search' } },
+                        { action: { startsWith: 'search:' } },
+                    ],
+                },
+            }),
+            // Vision AI usage
+            database_1.default.usageLog.count({
+                where: {
+                    createdAt: { gte: since },
+                    OR: [
+                        { endpoint: { contains: '/api/images/analyze' } },
+                        { action: { startsWith: 'vision:' } },
+                    ],
+                },
+            }),
+            // Code interpreter usage
+            database_1.default.usageLog.count({
+                where: {
+                    createdAt: { gte: since },
+                    OR: [
+                        { endpoint: { contains: '/api/code' } },
+                        { action: { startsWith: 'code:' } },
+                    ],
+                },
+            }),
+            // Memory operations
+            database_1.default.usageLog.count({
+                where: {
+                    createdAt: { gte: since },
+                    OR: [
+                        { endpoint: { contains: '/api/memory' } },
+                        { action: { startsWith: 'memory:' } },
+                    ],
+                },
+            }),
+            // Total active memories
+            database_1.default.userMemory.count({
+                where: { isActive: true },
+            }),
+            // Recent search logs (last 10)
+            database_1.default.usageLog.findMany({
+                where: {
+                    OR: [
+                        { endpoint: { contains: '/api/search' } },
+                        { action: { startsWith: 'search:' } },
+                    ],
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 10,
+                include: {
+                    user: { select: { email: true, firstName: true, lastName: true } },
+                },
+            }),
+            // Recent vision logs
+            database_1.default.usageLog.findMany({
+                where: {
+                    OR: [
+                        { endpoint: { contains: '/api/images/analyze' } },
+                        { action: { startsWith: 'vision:' } },
+                    ],
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 10,
+                include: {
+                    user: { select: { email: true, firstName: true, lastName: true } },
+                },
+            }),
+            // Recent code execution logs
+            database_1.default.usageLog.findMany({
+                where: {
+                    OR: [
+                        { endpoint: { contains: '/api/code' } },
+                        { action: { startsWith: 'code:' } },
+                    ],
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 10,
+                include: {
+                    user: { select: { email: true, firstName: true, lastName: true } },
+                },
+            }),
+            // Memory stats per user
+            database_1.default.userMemory.groupBy({
+                by: ['userId'],
+                _count: { id: true },
+                where: { isActive: true },
+            }),
+        ]);
+        // Get today's counts
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const [searchToday, visionToday, codeToday] = await Promise.all([
+            database_1.default.usageLog.count({
+                where: {
+                    createdAt: { gte: todayStart },
+                    OR: [
+                        { endpoint: { contains: '/api/search' } },
+                        { action: { startsWith: 'search:' } },
+                    ],
+                },
+            }),
+            database_1.default.usageLog.count({
+                where: {
+                    createdAt: { gte: todayStart },
+                    OR: [
+                        { endpoint: { contains: '/api/images/analyze' } },
+                        { action: { startsWith: 'vision:' } },
+                    ],
+                },
+            }),
+            database_1.default.usageLog.count({
+                where: {
+                    createdAt: { gte: todayStart },
+                    OR: [
+                        { endpoint: { contains: '/api/code' } },
+                        { action: { startsWith: 'code:' } },
+                    ],
+                },
+            }),
+        ]);
+        res.json({
+            success: true,
+            data: {
+                timeframe: timeframe.label,
+                overview: {
+                    webSearchUsage: webSearchCount,
+                    visionAIUsage: visionAICount,
+                    codeRunUsage: codeRunCount,
+                    memoryOperations: memoryCount,
+                    totalMemories,
+                    usersWithMemories: userMemoryStats.length,
+                },
+                today: {
+                    webSearch: searchToday,
+                    visionAI: visionToday,
+                    codeRun: codeToday,
+                },
+                recentActivity: {
+                    search: recentSearchLogs.map(log => ({
+                        id: log.id,
+                        user: log.user?.email || 'Unknown',
+                        action: log.action || log.endpoint,
+                        success: log.success,
+                        tokensUsed: log.tokensConsumed,
+                        createdAt: log.createdAt,
+                    })),
+                    vision: recentVisionLogs.map(log => ({
+                        id: log.id,
+                        user: log.user?.email || 'Unknown',
+                        action: log.action || log.endpoint,
+                        success: log.success,
+                        tokensUsed: log.tokensConsumed,
+                        createdAt: log.createdAt,
+                    })),
+                    code: recentCodeLogs.map(log => ({
+                        id: log.id,
+                        user: log.user?.email || 'Unknown',
+                        action: log.action || log.endpoint,
+                        success: log.success,
+                        createdAt: log.createdAt,
+                    })),
+                },
+                apiStatus: {
+                    tavily: !!process.env.TAVILY_API_KEY,
+                    openai: !!process.env.OPENAI_API_KEY,
+                    google: !!process.env.GOOGLE_API_KEY,
+                },
+            },
+        });
+    }
+    catch (error) {
+        console.error('AI tools stats error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
         });
     }
 });

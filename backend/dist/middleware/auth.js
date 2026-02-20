@@ -16,15 +16,13 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
  */
 const VALID_ROLES = ['USER', 'ADMIN', 'MODERATOR'];
 /**
- * Environment check - demo tokens only allowed in development
+ * Environment check helpers — read at call time so dotenv has loaded.
+ * Previously these were cached at module scope (before dotenv ran),
+ * causing NODE_ENV to be undefined and all checks to fail.
  */
-const isDevelopment = process.env.NODE_ENV === 'development';
-const isProduction = process.env.NODE_ENV === 'production';
-/**
- * Security flag - disable unverified JWT decode in production
- * Set ALLOW_UNVERIFIED_JWT=true to enable (NOT RECOMMENDED FOR PRODUCTION)
- */
-const allowUnverifiedJWT = process.env.ALLOW_UNVERIFIED_JWT === 'true' && !isProduction;
+const getIsDevelopment = () => process.env.NODE_ENV === 'development';
+const getIsProduction = () => process.env.NODE_ENV === 'production';
+const getAllowUnverifiedJWT = () => process.env.ALLOW_UNVERIFIED_JWT === 'true' && !getIsProduction();
 /**
  * Validate and normalize a role string against the whitelist
  * Returns 'USER' for any invalid or unexpected role values
@@ -51,9 +49,9 @@ const verifySupabaseToken = (token) => {
         // SECURITY: Require dedicated SUPABASE_JWT_SECRET in production
         const supabaseJwtSecret = process.env.SUPABASE_JWT_SECRET;
         // Fallback to JWT_SECRET only in development
-        const secret = supabaseJwtSecret || (isDevelopment ? process.env.JWT_SECRET : null);
+        const secret = supabaseJwtSecret || (getIsDevelopment() ? process.env.JWT_SECRET : null);
         if (!secret) {
-            if (isProduction) {
+            if (getIsProduction()) {
                 console.error('❌ CRITICAL: SUPABASE_JWT_SECRET not configured in production!');
             }
             else {
@@ -81,7 +79,7 @@ const verifySupabaseToken = (token) => {
     }
     catch (error) {
         // Log verification failures in development for debugging
-        if (isDevelopment && error.message) {
+        if (getIsDevelopment() && error.message) {
             console.log(`   ℹ️ Supabase JWT verification failed: ${error.message}`);
         }
         return null;
@@ -158,7 +156,7 @@ const authenticate = async (req, res, next) => {
         // SECURITY: Demo/Admin tokens ONLY in development mode
         // These are completely disabled in production for security
         // ═══════════════════════════════════════════════════════════════════════════
-        if (isDevelopment) {
+        if (getIsDevelopment()) {
             // Handle demo tokens for development/demo environment ONLY
             if (token.startsWith('demo-token-')) {
                 console.log('⚠️ DEVELOPMENT MODE: Using demo token authentication');
@@ -231,7 +229,7 @@ const authenticate = async (req, res, next) => {
         // STRATEGY 3: Unverified JWT decode (DEVELOPMENT ONLY - SECURITY RISK)
         // This is DISABLED in production. Configure SUPABASE_JWT_SECRET properly.
         // ═══════════════════════════════════════════════════════════════════════════
-        if (allowUnverifiedJWT) {
+        if (getAllowUnverifiedJWT()) {
             try {
                 const decoded = jsonwebtoken_1.default.decode(token);
                 if (decoded && decoded.sub && decoded.email) {
@@ -312,7 +310,7 @@ const optionalAuth = async (req, res, next) => {
         // ═══════════════════════════════════════════════════════════════════════════
         // SECURITY: Demo/Admin tokens ONLY in development mode
         // ═══════════════════════════════════════════════════════════════════════════
-        if (isDevelopment) {
+        if (getIsDevelopment()) {
             if (token.startsWith('demo-token-')) {
                 console.log('⚠️ DEVELOPMENT MODE: Using demo token authentication');
                 req.user = {
@@ -374,7 +372,7 @@ const optionalAuth = async (req, res, next) => {
             }
         }
         // STRATEGY 3: Unverified decode (DEVELOPMENT ONLY)
-        if (allowUnverifiedJWT) {
+        if (getAllowUnverifiedJWT()) {
             try {
                 const decoded = jsonwebtoken_1.default.decode(token);
                 if (decoded && decoded.sub && decoded.email) {

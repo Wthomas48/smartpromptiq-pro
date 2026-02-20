@@ -1635,7 +1635,7 @@ model Document {
   fileType    String  // pdf, txt, md, docx
   fileSize    Int     // bytes
   mimeType    String
-  filePath    String  // Supabase Storage path
+  filePath    String? // Supabase Storage path (null if stored locally)
 
   status       String  @default("uploading") // uploading, processing, ready, failed
   errorMessage String?

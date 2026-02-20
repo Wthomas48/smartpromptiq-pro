@@ -3,13 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// ─── CRITICAL: Load env vars BEFORE any other import reads process.env ───
+require("./env");
 const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
 const morgan_1 = __importDefault(require("morgan"));
-const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const database_1 = require("./config/database");
@@ -59,21 +60,9 @@ const search_1 = __importDefault(require("./routes/search")); // Web Search - Ta
 const code_1 = __importDefault(require("./routes/code")); // Code Interpreter - Piston-powered code execution
 const memory_1 = __importDefault(require("./routes/memory")); // Persistent Memory - User preferences across sessions
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECURE ENVIRONMENT LOADING
-// Priority: .env.local (secrets) > .env (defaults) > Railway env vars
+// ENV VARS: Already loaded by './env' (first import above)
+// Priority: .env.local (secrets) > .env (defaults) > system env vars
 // ═══════════════════════════════════════════════════════════════════════════════
-const envLocalPath = path_1.default.resolve(__dirname, '../.env.local');
-const envPath = path_1.default.resolve(__dirname, '../.env');
-// Load .env first (defaults/placeholders)
-dotenv_1.default.config({ path: envPath });
-// Override with .env.local if it exists (contains real secrets)
-if (fs_1.default.existsSync(envLocalPath)) {
-    console.log('🔐 Loading secrets from .env.local');
-    dotenv_1.default.config({ path: envLocalPath, override: true });
-}
-else {
-    console.log('⚠️ No .env.local found - using .env (ensure secrets are configured in production env vars)');
-}
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECURITY: Validate critical environment variables
 // ═══════════════════════════════════════════════════════════════════════════════
